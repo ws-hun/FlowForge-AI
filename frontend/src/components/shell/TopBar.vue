@@ -1,8 +1,7 @@
 <template>
   <header class="top-nav">
     <RouterLink to="/" class="top-brand">
-      <span>F</span>
-      <strong>FlowForge</strong>
+      <img :src="logo" alt="FlowForge AI" class="brand-logo" />
     </RouterLink>
 
     <nav class="top-links">
@@ -20,3 +19,7 @@
     </div>
   </header>
 </template>
+
+<script setup lang="ts">
+import logo from '@/assets/icons/logo.png'
+</script>
