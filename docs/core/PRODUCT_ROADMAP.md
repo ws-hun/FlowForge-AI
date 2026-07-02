@@ -1,0 +1,101 @@
+# FlowForge AI - Product Roadmap
+
+This document defines the active product direction for FlowForge.
+
+FlowForge is an AI Native Workspace. The roadmap must always move the product toward creation, execution, reuse, and workflow composition.
+
+---
+
+## Current Product Stage
+
+FlowForge is moving from:
+
+Stage 1: AI Task Execution
+
+to:
+
+Stage 2: Prompt Library
+
+Stage 2 is not a prompt management table. It is the beginning of reusable AI work assets.
+
+---
+
+## Stage 1: AI Task Execution
+
+Goal:
+
+Users can describe a task, execute it through an AI provider, receive structured output, and keep execution history.
+
+Done means:
+
+- A user can run an AI task.
+- The result is structured enough to review.
+- The execution is saved as history.
+- API keys are configured outside source code.
+
+Stage 1 is the foundation, not the final product shape.
+
+---
+
+## Stage 2: Prompt Library
+
+Goal:
+
+Users can save, discover, improve, and reuse proven AI work patterns.
+
+The library should feel like a creative asset space, not a data management screen.
+
+Core user jobs:
+
+- Save a useful Prompt as a reusable asset.
+- Find the right Prompt quickly.
+- Fill Prompt variables for the current context.
+- Send the prepared Prompt into AI Command Workspace.
+- Use execution results to improve future Prompts.
+
+Stage 2 priority order:
+
+1. Prompt reuse flow
+2. Prompt variable filling
+3. Prompt detail and preview
+4. Starter Prompt quality
+5. Prompt usage history
+6. Prompt versioning
+
+Out of scope for Stage 2:
+
+- Dense management tables
+- Team permission systems
+- Analytics-first screens
+- Complex workflow graphs
+
+---
+
+## Stage 3: Workflow Builder
+
+Goal:
+
+Users can connect Prompts, AI tasks, knowledge context, and output steps into executable flows.
+
+Prompt assets from Stage 2 become Workflow nodes.
+
+The first Workflow Builder should be a calm canvas, not an automation admin system.
+
+---
+
+## Product Decision Rules
+
+Before building a feature, ask:
+
+1. Does this help the user create something?
+2. Does this help the user execute AI work?
+3. Does this help the user reuse previous work?
+4. Does the UI feel like a workspace instead of an admin panel?
+
+If the answer is no, do not build it yet.
+
+---
+
+## Current North Star
+
+Turn a user's idea into a reusable, executable AI workflow.

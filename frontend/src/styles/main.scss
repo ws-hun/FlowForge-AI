@@ -254,7 +254,8 @@ a {
 
 .workspace-input:focus,
 .quiet-input:focus,
-.quiet-select:focus {
+.quiet-select:focus,
+.quiet-textarea:focus {
   border-color: rgba(79, 124, 255, 0.5);
   box-shadow: 0 0 0 4px rgba(79, 124, 255, 0.08), tokens.$shadow-soft;
 }
@@ -269,6 +270,20 @@ a {
   outline: 0;
   background: tokens.$surface;
   color: tokens.$text-primary;
+}
+
+.quiet-textarea {
+  width: 100%;
+  min-height: 96px;
+  padding: 13px;
+  border: 1px solid tokens.$border;
+  border-radius: tokens.$radius-md;
+  outline: 0;
+  background: tokens.$surface;
+  color: tokens.$text-primary;
+  line-height: 1.7;
+  resize: vertical;
+  transition: 200ms ease;
 }
 
 .mono,
@@ -710,6 +725,34 @@ a {
   }
 
   span {
+    color: tokens.$text-secondary;
+    font-size: 13px;
+  }
+}
+
+.variable-workspace {
+  display: grid;
+  gap: 16px;
+
+  h2 {
+    margin: 12px 0 8px;
+    color: tokens.$text-primary;
+    font-size: 24px;
+    letter-spacing: -0.03em;
+  }
+
+  p {
+    margin: 0;
+    color: tokens.$text-secondary;
+    line-height: 1.7;
+  }
+
+  label {
+    display: grid;
+    gap: 8px;
+  }
+
+  label > span {
     color: tokens.$text-secondary;
     font-size: 13px;
   }

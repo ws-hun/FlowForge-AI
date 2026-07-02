@@ -47,7 +47,7 @@
         </div>
 
         <div class="prompt-actions">
-          <button type="button" class="primary-button" @click="usePrompt(prompt)">使用</button>
+          <button type="button" class="primary-button" @click="preparePrompt(prompt)">使用</button>
           <button type="button" class="secondary-button" @click="openEdit(prompt)">编辑</button>
           <button type="button" class="ghost-button" @click="removePrompt(prompt)">删除</button>
         </div>
@@ -102,6 +102,32 @@
         </div>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="variableDialogOpen" title="准备执行 Prompt" width="640px" class="calm-dialog">
+      <div v-if="selectedPrompt" class="variable-workspace">
+        <div>
+          <span class="badge">{{ selectedPrompt.category }}</span>
+          <h2>{{ selectedPrompt.title }}</h2>
+          <p>{{ selectedPrompt.description }}</p>
+        </div>
+
+        <label v-for="variable in promptVariables" :key="variable">
+          <span>{{ variable }}</span>
+          <textarea
+            v-model="variableValues[variable]"
+            class="quiet-textarea"
+            :placeholder="`填写 ${variable} 的上下文...`"
+          ></textarea>
+        </label>
+      </div>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <button type="button" class="ghost-button" @click="variableDialogOpen = false">取消</button>
+          <button type="button" class="primary-button" @click="sendPreparedPrompt">进入 Task</button>
+        </div>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
@@ -131,6 +157,9 @@ const saving = ref(false)
 const dialogOpen = ref(false)
 const editingPrompt = ref<PromptAsset | null>(null)
 const tagInput = ref('')
+const variableDialogOpen = ref(false)
+const selectedPrompt = ref<PromptAsset | null>(null)
+const variableValues = ref<Record<string, string>>({})
 
 const form = reactive<SavePromptPayload>({
   title: '',
@@ -197,6 +226,13 @@ const filteredPrompts = computed(() => {
 
     return categoryMatched && favoriteMatched && keywordMatched
   })
+})
+
+const promptVariables = computed(() => {
+  if (!selectedPrompt.value) {
+    return []
+  }
+  return extractVariables(selectedPrompt.value.content)
 })
 
 onMounted(loadPromptAssets)
@@ -316,9 +352,41 @@ async function createStarterPrompts() {
   }
 }
 
-function usePrompt(prompt: PromptAsset) {
-  workspace.taskInput = prompt.content
+function preparePrompt(prompt: PromptAsset) {
+  const variables = extractVariables(prompt.content)
+  if (!variables.length) {
+    sendToTask(prompt.content)
+    return
+  }
+
+  selectedPrompt.value = prompt
+  variableValues.value = Object.fromEntries(variables.map((variable) => [variable, '']))
+  variableDialogOpen.value = true
+}
+
+function sendPreparedPrompt() {
+  if (!selectedPrompt.value) {
+    return
+  }
+
+  let preparedPrompt = selectedPrompt.value.content
+  for (const variable of promptVariables.value) {
+    const value = variableValues.value[variable]?.trim()
+    preparedPrompt = preparedPrompt.split(`{${variable}}`).join(value || `{${variable}}`)
+  }
+
+  variableDialogOpen.value = false
+  sendToTask(preparedPrompt)
+}
+
+function sendToTask(content: string) {
+  workspace.taskInput = content
   ElMessage.success('Prompt 已带入 AI Command Workspace')
   router.push('/tasks')
+}
+
+function extractVariables(content: string) {
+  const matches = content.match(/\{[a-zA-Z0-9_\u4e00-\u9fa5-]+\}/g) || []
+  return Array.from(new Set(matches.map((match) => match.slice(1, -1))))
 }
 </script>
