@@ -29,10 +29,10 @@
     </div>
 
     <div v-else-if="filteredPrompts.length" class="gallery-grid">
-      <article v-for="prompt in filteredPrompts" :key="prompt.id" class="soft-card prompt-tile">
+      <article v-for="prompt in filteredPrompts" :key="prompt.id" class="soft-card prompt-tile" @click="openPromptDetail(prompt)">
         <div class="row-between">
           <span class="badge">{{ prompt.category }}</span>
-          <button type="button" class="icon-button" :class="{ active: prompt.favorite }" @click="toggleFavorite(prompt)">
+          <button type="button" class="icon-button" :class="{ active: prompt.favorite }" @click.stop="toggleFavorite(prompt)">
             {{ prompt.favorite ? '★' : '☆' }}
           </button>
         </div>
@@ -47,9 +47,9 @@
         </div>
 
         <div class="prompt-actions">
-          <button type="button" class="primary-button" @click="preparePrompt(prompt)">使用</button>
-          <button type="button" class="secondary-button" @click="openEdit(prompt)">编辑</button>
-          <button type="button" class="ghost-button" @click="removePrompt(prompt)">删除</button>
+          <button type="button" class="primary-button" @click.stop="openPromptDetail(prompt)">准备执行</button>
+          <button type="button" class="secondary-button" @click.stop="openEdit(prompt)">编辑</button>
+          <button type="button" class="ghost-button" @click.stop="removePrompt(prompt)">删除</button>
         </div>
       </article>
     </div>
@@ -103,31 +103,60 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="variableDialogOpen" title="准备执行 Prompt" width="640px" class="calm-dialog">
-      <div v-if="selectedPrompt" class="variable-workspace">
-        <div>
-          <span class="badge">{{ selectedPrompt.category }}</span>
-          <h2>{{ selectedPrompt.title }}</h2>
-          <p>{{ selectedPrompt.description }}</p>
+    <el-drawer v-model="detailOpen" size="560px" :with-header="false" class="prompt-detail-drawer">
+      <aside v-if="selectedPrompt" class="prompt-detail">
+        <header class="prompt-detail-header">
+          <div>
+            <span class="badge">{{ selectedPrompt.category }}</span>
+            <h2>{{ selectedPrompt.title }}</h2>
+            <p>{{ selectedPrompt.description }}</p>
+          </div>
+          <button type="button" class="icon-button" @click="detailOpen = false">×</button>
+        </header>
+
+        <div class="tag-cloud">
+          <span v-for="tag in selectedPrompt.tags" :key="tag">#{{ tag }}</span>
         </div>
 
-        <label v-for="variable in promptVariables" :key="variable">
-          <span>{{ variable }}</span>
-          <textarea
-            v-model="variableValues[variable]"
-            class="quiet-textarea"
-            :placeholder="`填写 ${variable} 的上下文...`"
-          ></textarea>
-        </label>
-      </div>
+        <section class="detail-section">
+          <div class="section-heading compact">
+            <h3>Prompt</h3>
+            <span>更新于 {{ formatDate(selectedPrompt.updatedAt) }}</span>
+          </div>
+          <pre class="detail-code">{{ selectedPrompt.content }}</pre>
+        </section>
 
-      <template #footer>
-        <div class="dialog-footer">
-          <button type="button" class="ghost-button" @click="variableDialogOpen = false">取消</button>
+        <section v-if="promptVariables.length" class="detail-section">
+          <div class="section-heading compact">
+            <h3>变量</h3>
+            <span>{{ promptVariables.length }} 个上下文输入</span>
+          </div>
+          <div class="variable-list">
+            <label v-for="variable in promptVariables" :key="variable">
+              <span>{{ variable }}</span>
+              <textarea
+                v-model="variableValues[variable]"
+                class="quiet-textarea"
+                :placeholder="`填写 ${variable} 的上下文...`"
+              ></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="detail-section">
+          <div class="section-heading compact">
+            <h3>执行预览</h3>
+            <span>将发送到 AI Command Workspace</span>
+          </div>
+          <pre class="detail-code preview">{{ preparedPromptPreview }}</pre>
+        </section>
+
+        <footer class="prompt-detail-actions">
+          <button type="button" class="ghost-button" @click="openEditFromDetail">编辑 Prompt</button>
           <button type="button" class="primary-button" @click="sendPreparedPrompt">进入 Task</button>
-        </div>
-      </template>
-    </el-dialog>
+        </footer>
+      </aside>
+    </el-drawer>
   </section>
 </template>
 
@@ -157,7 +186,7 @@ const saving = ref(false)
 const dialogOpen = ref(false)
 const editingPrompt = ref<PromptAsset | null>(null)
 const tagInput = ref('')
-const variableDialogOpen = ref(false)
+const detailOpen = ref(false)
 const selectedPrompt = ref<PromptAsset | null>(null)
 const variableValues = ref<Record<string, string>>({})
 
@@ -235,6 +264,19 @@ const promptVariables = computed(() => {
   return extractVariables(selectedPrompt.value.content)
 })
 
+const preparedPromptPreview = computed(() => {
+  if (!selectedPrompt.value) {
+    return ''
+  }
+
+  let preparedPrompt = selectedPrompt.value.content
+  for (const variable of promptVariables.value) {
+    const value = variableValues.value[variable]?.trim()
+    preparedPrompt = preparedPrompt.split(`{${variable}}`).join(value || `{${variable}}`)
+  }
+  return preparedPrompt
+})
+
 onMounted(loadPromptAssets)
 
 async function loadPromptAssets() {
@@ -259,6 +301,14 @@ function openEdit(prompt: PromptAsset) {
   editingPrompt.value = prompt
   fillForm(prompt)
   dialogOpen.value = true
+}
+
+function openEditFromDetail() {
+  if (!selectedPrompt.value) {
+    return
+  }
+  detailOpen.value = false
+  openEdit(selectedPrompt.value)
 }
 
 function fillForm(prompt?: PromptAsset) {
@@ -352,31 +402,19 @@ async function createStarterPrompts() {
   }
 }
 
-function preparePrompt(prompt: PromptAsset) {
+function openPromptDetail(prompt: PromptAsset) {
   const variables = extractVariables(prompt.content)
-  if (!variables.length) {
-    sendToTask(prompt.content)
-    return
-  }
-
   selectedPrompt.value = prompt
   variableValues.value = Object.fromEntries(variables.map((variable) => [variable, '']))
-  variableDialogOpen.value = true
+  detailOpen.value = true
 }
 
 function sendPreparedPrompt() {
   if (!selectedPrompt.value) {
     return
   }
-
-  let preparedPrompt = selectedPrompt.value.content
-  for (const variable of promptVariables.value) {
-    const value = variableValues.value[variable]?.trim()
-    preparedPrompt = preparedPrompt.split(`{${variable}}`).join(value || `{${variable}}`)
-  }
-
-  variableDialogOpen.value = false
-  sendToTask(preparedPrompt)
+  detailOpen.value = false
+  sendToTask(preparedPromptPreview.value)
 }
 
 function sendToTask(content: string) {
@@ -388,5 +426,14 @@ function sendToTask(content: string) {
 function extractVariables(content: string) {
   const matches = content.match(/\{[a-zA-Z0-9_\u4e00-\u9fa5-]+\}/g) || []
   return Array.from(new Set(matches.map((match) => match.slice(1, -1))))
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(new Date(value))
 }
 </script>
