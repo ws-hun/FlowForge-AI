@@ -31,3 +31,24 @@ export interface SaveApiKeyPayload {
   model: string
   active: boolean
 }
+
+export interface PromptAsset {
+  id: string
+  title: string
+  category: string
+  description: string
+  content: string
+  tags: string[]
+  favorite: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SavePromptPayload {
+  title: string
+  category: string
+  description: string
+  content: string
+  tags: string[]
+  favorite: boolean
+}

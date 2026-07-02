@@ -569,10 +569,58 @@ a {
 }
 
 .library-toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 12px;
   margin-bottom: 22px;
+
+  .quiet-input {
+    flex: 1 1 260px;
+  }
+}
+
+.category-pill,
+.icon-button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid tokens.$border;
+  background: tokens.$surface;
+  color: tokens.$text-secondary;
+  cursor: pointer;
+  transition: transform 200ms ease, box-shadow 200ms ease, background 200ms ease, color 200ms ease;
+}
+
+.category-pill {
+  padding: 0 14px;
+  border-radius: 999px;
+}
+
+.category-pill:hover,
+.category-pill.active,
+.ghost-button.active {
+  background: tokens.$surface-secondary;
+  color: tokens.$text-primary;
+}
+
+.icon-button {
+  width: 40px;
+  border-radius: tokens.$radius-md;
+  font-size: 18px;
+
+  &.active {
+    border-color: rgba(245, 158, 11, 0.24);
+    background: rgba(245, 158, 11, 0.1);
+    color: tokens.$warning;
+  }
+}
+
+.category-pill:hover,
+.icon-button:hover {
+  transform: scale(1.01);
+  box-shadow: tokens.$shadow-hover;
 }
 
 .gallery-grid {
@@ -583,7 +631,7 @@ a {
 
 .prompt-tile {
   display: grid;
-  min-height: 220px;
+  min-height: 320px;
   align-content: start;
   gap: 14px;
   padding: 20px;
@@ -597,6 +645,95 @@ a {
     margin: 0;
     color: tokens.$text-secondary;
     line-height: 1.7;
+  }
+}
+
+.prompt-preview {
+  display: -webkit-box;
+  min-height: 86px;
+  max-height: 118px;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  color: tokens.$text-secondary;
+  font-family: tokens.$mono;
+  font-size: 12px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.prompt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: auto;
+
+  .primary-button,
+  .secondary-button,
+  .ghost-button {
+    min-height: 38px;
+  }
+}
+
+.prompt-empty {
+  gap: 18px;
+  padding: 32px;
+  text-align: center;
+
+  strong,
+  span {
+    display: block;
+  }
+
+  strong {
+    margin-bottom: 8px;
+    color: tokens.$text-primary;
+    font-size: 18px;
+  }
+}
+
+.empty-actions,
+.dialog-footer {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.prompt-form {
+  display: grid;
+  gap: 16px;
+
+  label {
+    display: grid;
+    gap: 8px;
+  }
+
+  span {
+    color: tokens.$text-secondary;
+    font-size: 13px;
+  }
+}
+
+.prompt-editor {
+  min-height: 220px;
+  box-shadow: none;
+}
+
+.skeleton-tile {
+  background:
+    linear-gradient(90deg, rgba(243, 245, 247, 0.65), rgba(255, 255, 255, 0.92), rgba(243, 245, 247, 0.65));
+  background-size: 220% 100%;
+  animation: calm-skeleton 1.2s ease-in-out infinite;
+}
+
+@keyframes calm-skeleton {
+  0% {
+    background-position: 120% 0;
+  }
+
+  100% {
+    background-position: -120% 0;
   }
 }
 
