@@ -597,22 +597,31 @@ a {
 }
 
 .result-doc {
-  padding: 28px;
+  max-height: calc(100vh - 150px);
+  overflow: auto;
+  padding: 32px;
 
   h2 {
-    margin: 0;
-    font-size: 30px;
+    max-width: 760px;
+    margin: 12px 0 0;
+    font-size: 28px;
     letter-spacing: -0.03em;
-    line-height: 1.25;
+    line-height: 1.22;
   }
 }
 
+.result-doc-header {
+  padding-bottom: 24px;
+  border-bottom: 1px solid tokens.$border;
+}
+
 .doc-section {
-  margin-top: 28px;
+  margin-top: 30px;
 
   h3 {
-    margin: 0 0 10px;
+    margin: 0 0 14px;
     font-size: 16px;
+    letter-spacing: -0.02em;
   }
 
   ul {
@@ -623,10 +632,115 @@ a {
   }
 }
 
+.key-point-list {
+  display: grid;
+  gap: 10px;
+  padding-left: 0 !important;
+  list-style: none;
+
+  li {
+    position: relative;
+    padding: 13px 14px 13px 36px;
+    border: 1px solid tokens.$border;
+    border-radius: tokens.$radius-lg;
+    background: rgba(243, 245, 247, 0.72);
+    color: tokens.$text-secondary;
+    line-height: 1.65;
+
+    &::before {
+      position: absolute;
+      top: 21px;
+      left: 16px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: tokens.$primary;
+      content: "";
+    }
+  }
+}
+
 .document-body {
   color: tokens.$text-primary;
-  white-space: pre-wrap;
   line-height: 1.8;
+}
+
+.rendered-document {
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+  border: 1px solid tokens.$border;
+  border-radius: tokens.$radius-lg;
+  background: linear-gradient(180deg, #fff, rgba(243, 245, 247, 0.58));
+
+  h4 {
+    margin: 18px 0 2px;
+    color: tokens.$text-primary;
+    font-size: 20px;
+    letter-spacing: -0.03em;
+    line-height: 1.35;
+
+    &:first-child {
+      margin-top: 0;
+    }
+
+    &.level-1,
+    &.level-2 {
+      font-size: 22px;
+    }
+
+    &.level-4 {
+      font-size: 16px;
+    }
+  }
+
+  p {
+    margin: 0;
+    color: tokens.$text-secondary;
+    line-height: 1.82;
+  }
+}
+
+.rendered-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 22px;
+  color: tokens.$text-secondary;
+  line-height: 1.72;
+
+  li::marker {
+    color: tokens.$primary;
+  }
+}
+
+.rendered-code-wrap {
+  overflow: hidden;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: tokens.$radius-lg;
+  background: #111827;
+  box-shadow: tokens.$shadow-soft;
+
+  > span {
+    display: block;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    color: #c7d2fe;
+    font-family: tokens.$mono;
+    font-size: 12px;
+  }
+}
+
+.rendered-code {
+  max-height: 420px;
+  margin: 0;
+  overflow: auto;
+  padding: 16px;
+  color: #e5e7eb;
+  font-family: tokens.$mono;
+  font-size: 13px;
+  line-height: 1.75;
+  white-space: pre;
 }
 
 .library-toolbar {
