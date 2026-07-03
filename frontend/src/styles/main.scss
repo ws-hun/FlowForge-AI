@@ -145,6 +145,13 @@ a {
   box-shadow: none;
 }
 
+.secondary-button:disabled,
+.ghost-button:disabled {
+  color: tokens.$text-muted;
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
 .secondary-button,
 .ghost-button,
 .danger-button {
@@ -171,6 +178,12 @@ a {
 }
 
 .primary-button:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.secondary-button:disabled:hover,
+.ghost-button:disabled:hover {
   transform: none;
   box-shadow: none;
 }
@@ -323,6 +336,15 @@ a {
     color: tokens.$text-secondary;
     font-size: 14px;
   }
+}
+
+.section-kicker {
+  margin: 0 0 6px;
+  color: tokens.$text-muted;
+  font-size: 12px;
+  font-weight: 720;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .workspace-grid {
@@ -642,6 +664,65 @@ a {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
+}
+
+.starter-section {
+  margin: 0 0 32px;
+  padding: 20px;
+  border: 1px solid tokens.$border;
+  border-radius: tokens.$radius-lg;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.starter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.starter-tile {
+  cursor: pointer;
+  display: grid;
+  min-height: 218px;
+  align-content: start;
+  gap: 12px;
+  padding: 18px;
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 18px;
+    letter-spacing: -0.02em;
+  }
+
+  p {
+    margin: 0;
+    color: tokens.$text-secondary;
+    line-height: 1.7;
+  }
+
+  .ghost-button {
+    width: fit-content;
+    min-height: 36px;
+    margin-top: auto;
+    background: tokens.$surface-secondary;
+  }
+
+  .ghost-button:disabled {
+    color: tokens.$text-muted;
+    cursor: default;
+    opacity: 0.72;
+  }
+}
+
+.starter-signal {
+  width: fit-content;
+  padding: 5px 9px;
+  border: 1px solid rgba(79, 124, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(79, 124, 255, 0.07);
+  color: tokens.$primary;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .prompt-tile {
@@ -1074,7 +1155,8 @@ a {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .gallery-grid {
+  .gallery-grid,
+  .starter-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1096,9 +1178,14 @@ a {
   }
 
   .gallery-grid,
+  .starter-grid,
   .template-grid,
   .library-toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .starter-section {
+    padding: 16px;
   }
 
   .composer-footer,

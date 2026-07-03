@@ -24,6 +24,42 @@
       <button type="button" class="primary-button" @click="openCreate">新建 Prompt</button>
     </div>
 
+    <section v-if="!loading" class="starter-section">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">Starter Prompt Pack</p>
+          <h2>从已验证的工作方式开始。</h2>
+        </div>
+        <button type="button" class="secondary-button" :disabled="saving || allStarterPromptsAdded" @click="createStarterPrompts">
+          {{ allStarterPromptsAdded ? '已全部加入' : '加入全部' }}
+        </button>
+      </div>
+
+      <div class="starter-grid">
+        <article
+          v-for="starter in starterPrompts"
+          :key="starter.title"
+          class="soft-card starter-tile"
+          @click="openStarterDetail(starter)"
+        >
+          <span class="starter-signal">{{ starter.signal }}</span>
+          <strong>{{ starter.title }}</strong>
+          <p>{{ starter.description }}</p>
+          <div class="tag-cloud">
+            <span v-for="tag in starter.tags" :key="tag">#{{ tag }}</span>
+          </div>
+          <button
+            type="button"
+            class="ghost-button"
+            :disabled="starterPromptExists(starter)"
+            @click.stop="importStarterPrompt(starter)"
+          >
+            {{ starterPromptExists(starter) ? '已加入' : '加入 Library' }}
+          </button>
+        </article>
+      </div>
+    </section>
+
     <div v-if="loading" class="gallery-grid">
       <article v-for="item in 3" :key="item" class="soft-card prompt-tile skeleton-tile"></article>
     </div>
@@ -57,11 +93,10 @@
     <div v-else class="empty-state prompt-empty">
       <div>
         <strong>还没有可复用 Prompt</strong>
-        <span>先创建一个常用工作方式，或加入一组 FlowForge Starter Prompt。</span>
+        <span>先创建一个常用工作方式，或从上方 Starter Prompt Pack 选择一个开始。</span>
       </div>
       <div class="empty-actions">
         <button type="button" class="primary-button" @click="openCreate">新建 Prompt</button>
-        <button type="button" class="secondary-button" @click="createStarterPrompts">添加示例</button>
       </div>
     </div>
 
@@ -152,8 +187,21 @@
         </section>
 
         <footer class="prompt-detail-actions">
-          <button type="button" class="ghost-button" @click="openEditFromDetail">编辑 Prompt</button>
-          <button type="button" class="primary-button" @click="sendPreparedPrompt">进入 Task</button>
+          <template v-if="isStarterDetail">
+            <button
+              type="button"
+              class="ghost-button"
+              :disabled="selectedPrompt ? starterPromptExists(selectedPrompt) : false"
+              @click="selectedPrompt && importStarterPrompt(selectedPrompt)"
+            >
+              {{ selectedPrompt && starterPromptExists(selectedPrompt) ? '已加入 Library' : '加入 Library' }}
+            </button>
+            <button type="button" class="primary-button" @click="importStarterAndRun">加入并进入 Task</button>
+          </template>
+          <template v-else>
+            <button type="button" class="ghost-button" @click="openEditFromDetail">编辑 Prompt</button>
+            <button type="button" class="primary-button" @click="sendPreparedPrompt">进入 Task</button>
+          </template>
         </footer>
       </aside>
     </el-drawer>
@@ -174,6 +222,10 @@ import {
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { PromptAsset, SavePromptPayload } from '@/types'
 
+type StarterPrompt = SavePromptPayload & {
+  signal: string
+}
+
 const router = useRouter()
 const workspace = useWorkspaceStore()
 
@@ -187,6 +239,7 @@ const dialogOpen = ref(false)
 const editingPrompt = ref<PromptAsset | null>(null)
 const tagInput = ref('')
 const detailOpen = ref(false)
+const detailSource = ref<'library' | 'starter'>('library')
 const selectedPrompt = ref<PromptAsset | null>(null)
 const variableValues = ref<Record<string, string>>({})
 
@@ -199,37 +252,65 @@ const form = reactive<SavePromptPayload>({
   favorite: false
 })
 
-const starterPrompts: SavePromptPayload[] = [
+const starterPrompts: StarterPrompt[] = [
   {
-    title: '需求拆解 Flow',
+    signal: 'Idea to Scope',
+    title: '产品想法成形 Flow',
     category: '产品',
-    description: '把模糊想法整理为目标用户、MVP 范围、优先级和下一步任务。',
-    content: '请将下面的产品想法拆解为：目标用户、核心问题、MVP 功能、优先级、风险和下一步执行任务。\n\n输入：{idea}',
-    tags: ['产品', 'MVP', '拆解'],
+    description: '把一句模糊想法整理成可执行的产品方向、MVP 范围和第一轮任务。',
+    content:
+      '你是一位资深产品负责人。请把下面的产品想法整理成一个清晰、可执行的 MVP 方案。\n\n产品想法：{idea}\n目标用户：{target_user}\n约束条件：{constraints}\n\n请按以下结构输出：\n1. 一句话定位\n2. 用户问题\n3. MVP 功能边界\n4. 不做什么\n5. 优先级建议\n6. 主要风险\n7. 接下来 3 个行动项',
+    tags: ['产品', 'MVP', '规划'],
     favorite: true
   },
   {
-    title: '接口设计 Flow',
+    signal: 'Spec to API',
+    title: '接口方案生成 Flow',
     category: '工程',
-    description: '根据业务目标生成 REST API 草案、数据结构和边界条件。',
-    content: '请根据下面的业务目标，设计 REST API 草案，包括资源路径、请求体、响应体、错误码、边界条件和测试建议。\n\n目标：{goal}',
-    tags: ['API', '后端', '设计'],
+    description: '把业务目标转化为 REST API 草案、请求响应结构、错误边界和测试建议。',
+    content:
+      '你是一位 Staff Backend Engineer。请根据下面的信息设计一组简洁、可演进的 REST API。\n\n业务目标：{goal}\n核心资源：{resource}\n前端使用场景：{frontend_scenario}\n\n请输出：\n1. API 设计原则\n2. Endpoint 列表\n3. 请求体与响应体 JSON 示例\n4. 错误码与边界条件\n5. 数据校验规则\n6. 后端分层建议\n7. 必须覆盖的测试用例',
+    tags: ['API', '后端', '工程'],
     favorite: false
   },
   {
-    title: '风险评审 Flow',
+    signal: 'Plan Review',
+    title: '方案风险评审 Flow',
     category: '评审',
-    description: '识别方案中的技术风险、依赖风险、用户体验风险和测试缺口。',
-    content: '请评审下面的方案，输出主要风险、影响范围、优先级、缓解建议和必须补充的测试。\n\n方案：{proposal}',
-    tags: ['质量', '评审', '风险'],
+    description: '在开工前识别技术、体验、依赖和测试风险，避免方案只停留在乐观假设。',
+    content:
+      '你是一位严谨的技术评审负责人。请评审下面的方案，不要泛泛而谈，要指出具体风险和可执行的修正建议。\n\n方案：{proposal}\n当前阶段：{stage}\n关键限制：{limitations}\n\n请输出：\n1. 最高风险清单\n2. 每个风险的影响范围\n3. 发生概率与严重程度\n4. 缓解方案\n5. 需要补充的产品决策\n6. 需要补充的测试\n7. 是否建议现在推进',
+    tags: ['评审', '质量', '风险'],
     favorite: false
   },
   {
-    title: '会议总结 Flow',
+    signal: 'Notes to Action',
+    title: '会议行动项 Flow',
     category: '协作',
-    description: '把会议记录整理成结论、决策、行动项和待确认问题。',
-    content: '请将下面的会议记录整理为：核心结论、已决策事项、行动项、负责人、截止时间和待确认问题。\n\n会议记录：{notes}',
-    tags: ['总结', '团队', '行动项'],
+    description: '把松散会议记录整理成清晰结论、负责人、截止时间和待确认问题。',
+    content:
+      '你是一位高效的项目协作助手。请将下面的会议记录整理成可执行的团队同步文档。\n\n会议记录：{notes}\n项目背景：{context}\n\n请输出：\n1. 核心结论\n2. 已确认决策\n3. 行动项列表（事项 / 负责人 / 截止时间 / 优先级）\n4. 待确认问题\n5. 需要同步给谁\n6. 下一次跟进建议',
+    tags: ['协作', '总结', '行动项'],
+    favorite: false
+  },
+  {
+    signal: 'Research Brief',
+    title: '研究简报 Flow',
+    category: '研究',
+    description: '把一个研究主题整理成问题框架、信息缺口、调研路径和可交付简报。',
+    content:
+      '你是一位产品研究员。请围绕下面主题生成一份研究简报框架，重点是帮助团队快速理解问题和下一步调研路径。\n\n研究主题：{topic}\n已知背景：{background}\n目标产出：{deliverable}\n\n请输出：\n1. 研究目标\n2. 关键问题\n3. 已知事实与假设\n4. 信息缺口\n5. 调研路径\n6. 预期交付物结构\n7. 一周内可执行计划',
+    tags: ['研究', '简报', '调研'],
+    favorite: false
+  },
+  {
+    signal: 'Draft to Doc',
+    title: '文档润色 Flow',
+    category: '文档',
+    description: '把粗糙草稿改写成结构清晰、语气专业、可直接交付的文档。',
+    content:
+      '你是一位资深技术写作者。请把下面草稿改写成清晰、克制、可交付的专业文档。\n\n草稿：{draft}\n读者：{audience}\n期望语气：{tone}\n\n请输出：\n1. 改写后的完整文档\n2. 结构调整说明\n3. 删除或弱化的内容\n4. 仍需补充的信息',
+    tags: ['文档', '写作', '润色'],
     favorite: false
   }
 ]
@@ -240,6 +321,12 @@ const categories = computed(() => {
 })
 
 const visibleCategories = computed(() => categories.value.slice(0, 6))
+
+const existingPromptTitles = computed(() => new Set(prompts.value.map((prompt) => normalizeTitle(prompt.title))))
+
+const allStarterPromptsAdded = computed(() => starterPrompts.every((prompt) => starterPromptExists(prompt)))
+
+const isStarterDetail = computed(() => detailSource.value === 'starter')
 
 const filteredPrompts = computed(() => {
   const keyword = search.value.trim().toLowerCase()
@@ -392,19 +479,59 @@ async function removePrompt(prompt: PromptAsset) {
 async function createStarterPrompts() {
   saving.value = true
   try {
-    await Promise.all(starterPrompts.map((prompt) => createPrompt(prompt)))
-    ElMessage.success('示例 Prompt 已加入 Library')
+    const promptsToCreate = starterPrompts.filter((prompt) => !starterPromptExists(prompt))
+    if (!promptsToCreate.length) {
+      ElMessage.info('Starter Prompt 已全部在 Library 中')
+      return
+    }
+
+    await Promise.all(promptsToCreate.map((prompt) => createPrompt(toSavePayload(prompt))))
+    ElMessage.success('Starter Prompt Pack 已加入 Library')
     await loadPromptAssets()
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || '示例 Prompt 创建失败')
+    ElMessage.error(error.response?.data?.message || 'Starter Prompt 创建失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+async function importStarterPrompt(prompt: SavePromptPayload) {
+  if (starterPromptExists(prompt)) {
+    ElMessage.info('这个 Prompt 已在 Library 中')
+    return true
+  }
+
+  saving.value = true
+  try {
+    await createPrompt(toSavePayload(prompt))
+    ElMessage.success('Prompt 已加入 Library')
+    await loadPromptAssets()
+    return true
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || 'Prompt 加入失败')
+    return false
   } finally {
     saving.value = false
   }
 }
 
 function openPromptDetail(prompt: PromptAsset) {
+  detailSource.value = 'library'
   const variables = extractVariables(prompt.content)
   selectedPrompt.value = prompt
+  variableValues.value = Object.fromEntries(variables.map((variable) => [variable, '']))
+  detailOpen.value = true
+}
+
+function openStarterDetail(prompt: StarterPrompt) {
+  detailSource.value = 'starter'
+  const variables = extractVariables(prompt.content)
+  selectedPrompt.value = {
+    ...toSavePayload(prompt),
+    id: prompt.title,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }
   variableValues.value = Object.fromEntries(variables.map((variable) => [variable, '']))
   detailOpen.value = true
 }
@@ -415,6 +542,20 @@ function sendPreparedPrompt() {
   }
   detailOpen.value = false
   sendToTask(preparedPromptPreview.value)
+}
+
+async function importStarterAndRun() {
+  if (!selectedPrompt.value) {
+    return
+  }
+
+  if (!starterPromptExists(selectedPrompt.value)) {
+    const imported = await importStarterPrompt(selectedPrompt.value)
+    if (!imported) {
+      return
+    }
+  }
+  sendPreparedPrompt()
 }
 
 function sendToTask(content: string) {
@@ -435,5 +576,24 @@ function formatDate(value: string) {
     hour: '2-digit',
     minute: '2-digit'
   }).format(new Date(value))
+}
+
+function starterPromptExists(prompt: Pick<SavePromptPayload, 'title'>) {
+  return existingPromptTitles.value.has(normalizeTitle(prompt.title))
+}
+
+function normalizeTitle(title: string) {
+  return title.trim().toLowerCase()
+}
+
+function toSavePayload(prompt: SavePromptPayload): SavePromptPayload {
+  return {
+    title: prompt.title,
+    category: prompt.category,
+    description: prompt.description,
+    content: prompt.content,
+    tags: [...prompt.tags],
+    favorite: prompt.favorite
+  }
 }
 </script>
