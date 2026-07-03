@@ -2,6 +2,7 @@ package com.flowforge.ai.controller;
 
 import com.flowforge.ai.dto.PromptRequest;
 import com.flowforge.ai.dto.PromptResponse;
+import com.flowforge.ai.dto.PromptVersionResponse;
 import com.flowforge.ai.dto.TaskHistoryResponse;
 import com.flowforge.ai.service.PromptService;
 import com.flowforge.ai.service.TaskService;
@@ -56,6 +57,16 @@ public class PromptController {
     @GetMapping("/{id}/runs")
     public List<TaskHistoryResponse> listPromptRuns(@PathVariable UUID id) {
         return taskService.listPromptRuns(id);
+    }
+
+    @GetMapping("/{id}/versions")
+    public List<PromptVersionResponse> listVersions(@PathVariable UUID id) {
+        return promptService.listVersions(id);
+    }
+
+    @PostMapping("/{id}/versions/{versionId}/restore")
+    public PromptResponse restoreVersion(@PathVariable UUID id, @PathVariable UUID versionId) {
+        return promptService.restoreVersion(id, versionId);
     }
 
     @DeleteMapping("/{id}")

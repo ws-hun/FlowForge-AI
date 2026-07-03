@@ -206,6 +206,45 @@
           </div>
         </section>
 
+        <section v-if="!isStarterDetail" class="detail-section">
+          <div class="section-heading compact">
+            <h3>版本记录</h3>
+            <span>{{ promptVersions.length ? `${promptVersions.length} 个快照` : '编辑后自动生成' }}</span>
+          </div>
+          <div v-if="promptVersionsLoading" class="version-list">
+            <article v-for="item in 2" :key="item" class="version-item skeleton-run"></article>
+          </div>
+          <div v-else-if="promptVersions.length" class="version-list">
+            <button
+              v-for="version in promptVersions"
+              :key="version.id"
+              type="button"
+              class="version-item"
+              :class="{ active: selectedVersion?.id === version.id }"
+              @click="selectedVersion = version"
+            >
+              <span>v{{ version.versionNumber }}</span>
+              <strong>{{ version.title }}</strong>
+              <time>{{ formatDate(version.createdAt) }}</time>
+            </button>
+          </div>
+          <div v-else class="quiet-empty">
+            第一次编辑 Prompt 后，旧内容会作为版本快照保存在这里。
+          </div>
+
+          <div v-if="selectedVersion" class="version-preview">
+            <div class="row-between">
+              <span class="badge">v{{ selectedVersion.versionNumber }}</span>
+              <button type="button" class="ghost-button" :disabled="saving" @click="restoreVersionSnapshot(selectedVersion)">
+                恢复此版本
+              </button>
+            </div>
+            <strong>{{ selectedVersion.title }}</strong>
+            <p>{{ selectedVersion.description }}</p>
+            <pre class="detail-code">{{ selectedVersion.content }}</pre>
+          </div>
+        </section>
+
         <footer class="prompt-detail-actions">
           <template v-if="isStarterDetail">
             <button
@@ -236,12 +275,14 @@ import {
   createPrompt,
   deletePrompt,
   listPromptRuns,
+  listPromptVersions,
   listPrompts,
+  restorePromptVersion,
   togglePromptFavorite,
   updatePrompt
 } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
-import type { PromptAsset, SavePromptPayload, TaskHistoryItem } from '@/types'
+import type { PromptAsset, PromptVersion, SavePromptPayload, TaskHistoryItem } from '@/types'
 
 type StarterPrompt = SavePromptPayload & {
   signal: string
@@ -264,6 +305,9 @@ const detailSource = ref<'library' | 'starter'>('library')
 const selectedPrompt = ref<PromptAsset | null>(null)
 const promptRuns = ref<TaskHistoryItem[]>([])
 const promptRunsLoading = ref(false)
+const promptVersions = ref<PromptVersion[]>([])
+const promptVersionsLoading = ref(false)
+const selectedVersion = ref<PromptVersion | null>(null)
 const variableValues = ref<Record<string, string>>({})
 
 const form = reactive<SavePromptPayload>({
@@ -455,14 +499,22 @@ async function savePromptAsset() {
   saving.value = true
   try {
     if (editingPrompt.value) {
-      await updatePrompt(editingPrompt.value.id, payload)
+      const { data } = await updatePrompt(editingPrompt.value.id, payload)
+      replacePromptInLibrary(data)
+      if (selectedPrompt.value?.id === data.id) {
+        selectedPrompt.value = data
+        variableValues.value = buildVariableValues(data.content, true)
+        await loadPromptVersions(data.id)
+      }
       ElMessage.success('Prompt 已更新')
     } else {
       await createPrompt(payload)
       ElMessage.success('Prompt 已保存')
     }
     dialogOpen.value = false
-    await loadPromptAssets()
+    if (!editingPrompt.value) {
+      await loadPromptAssets()
+    }
   } catch (error: any) {
     ElMessage.error(error.response?.data?.message || 'Prompt 保存失败')
   } finally {
@@ -543,25 +595,28 @@ async function importStarterPrompt(prompt: SavePromptPayload, notifyExisting = t
 
 function openPromptDetail(prompt: PromptAsset) {
   detailSource.value = 'library'
-  const variables = extractVariables(prompt.content)
   selectedPrompt.value = prompt
   promptRuns.value = []
-  variableValues.value = Object.fromEntries(variables.map((variable) => [variable, '']))
+  promptVersions.value = []
+  selectedVersion.value = null
+  variableValues.value = buildVariableValues(prompt.content)
   detailOpen.value = true
   loadPromptRuns(prompt.id)
+  loadPromptVersions(prompt.id)
 }
 
 function openStarterDetail(prompt: StarterPrompt) {
   detailSource.value = 'starter'
-  const variables = extractVariables(prompt.content)
   promptRuns.value = []
+  promptVersions.value = []
+  selectedVersion.value = null
   selectedPrompt.value = {
     ...toSavePayload(prompt),
     id: prompt.title,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }
-  variableValues.value = Object.fromEntries(variables.map((variable) => [variable, '']))
+  variableValues.value = buildVariableValues(prompt.content)
   detailOpen.value = true
 }
 
@@ -596,12 +651,69 @@ async function loadPromptRuns(promptId: string) {
   promptRunsLoading.value = true
   try {
     const { data } = await listPromptRuns(promptId)
+    if (selectedPrompt.value?.id !== promptId) {
+      return
+    }
     promptRuns.value = data
   } catch (error: any) {
     ElMessage.error(error.response?.data?.message || 'Prompt 执行记录加载失败')
   } finally {
     promptRunsLoading.value = false
   }
+}
+
+async function loadPromptVersions(promptId: string) {
+  promptVersionsLoading.value = true
+  try {
+    const { data } = await listPromptVersions(promptId)
+    if (selectedPrompt.value?.id !== promptId) {
+      return
+    }
+    promptVersions.value = data
+    if (selectedVersion.value && !data.some((version) => version.id === selectedVersion.value?.id)) {
+      selectedVersion.value = null
+    }
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || 'Prompt 版本记录加载失败')
+  } finally {
+    promptVersionsLoading.value = false
+  }
+}
+
+async function restoreVersionSnapshot(version: PromptVersion) {
+  if (!selectedPrompt.value) {
+    return
+  }
+
+  saving.value = true
+  try {
+    const { data } = await restorePromptVersion(selectedPrompt.value.id, version.id)
+    replacePromptInLibrary(data)
+    selectedPrompt.value = data
+    selectedVersion.value = null
+    variableValues.value = buildVariableValues(data.content, true)
+    await loadPromptVersions(data.id)
+    ElMessage.success('Prompt 已恢复到选中版本')
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || 'Prompt 版本恢复失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+function replacePromptInLibrary(prompt: PromptAsset) {
+  const index = prompts.value.findIndex((item) => item.id === prompt.id)
+  if (index >= 0) {
+    prompts.value[index] = prompt
+  } else {
+    prompts.value = [prompt, ...prompts.value]
+  }
+}
+
+function buildVariableValues(content: string, preserveCurrent = false) {
+  return Object.fromEntries(
+    extractVariables(content).map((variable) => [variable, preserveCurrent ? variableValues.value[variable] || '' : ''])
+  )
 }
 
 function extractVariables(content: string) {

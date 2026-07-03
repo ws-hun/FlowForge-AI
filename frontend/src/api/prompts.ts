@@ -1,5 +1,5 @@
 import http from './client'
-import type { PromptAsset, SavePromptPayload, TaskHistoryItem } from '@/types'
+import type { PromptAsset, PromptVersion, SavePromptPayload, TaskHistoryItem } from '@/types'
 
 export interface PromptQuery {
   query?: string
@@ -29,4 +29,12 @@ export function deletePrompt(id: string) {
 
 export function listPromptRuns(id: string) {
   return http.get<TaskHistoryItem[]>(`/api/prompts/${id}/runs`)
+}
+
+export function listPromptVersions(id: string) {
+  return http.get<PromptVersion[]>(`/api/prompts/${id}/versions`)
+}
+
+export function restorePromptVersion(id: string, versionId: string) {
+  return http.post<PromptAsset>(`/api/prompts/${id}/versions/${versionId}/restore`)
 }

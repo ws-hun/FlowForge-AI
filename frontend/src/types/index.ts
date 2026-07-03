@@ -46,6 +46,19 @@ export interface PromptAsset {
   updatedAt: string
 }
 
+export interface PromptVersion {
+  id: string
+  promptId: string
+  versionNumber: number
+  title: string
+  category: string
+  description: string
+  content: string
+  tags: string[]
+  favorite: boolean
+  createdAt: string
+}
+
 export interface SavePromptPayload {
   title: string
   category: string

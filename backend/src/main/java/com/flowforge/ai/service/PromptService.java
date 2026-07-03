@@ -2,8 +2,11 @@ package com.flowforge.ai.service;
 
 import com.flowforge.ai.dto.PromptRequest;
 import com.flowforge.ai.dto.PromptResponse;
+import com.flowforge.ai.dto.PromptVersionResponse;
 import com.flowforge.ai.entity.Prompt;
+import com.flowforge.ai.entity.PromptVersion;
 import com.flowforge.ai.repository.PromptRepository;
+import com.flowforge.ai.repository.PromptVersionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -24,6 +27,7 @@ public class PromptService {
     private static final String TAG_SEPARATOR = ",";
 
     private final PromptRepository promptRepository;
+    private final PromptVersionRepository promptVersionRepository;
 
     @Transactional(readOnly = true)
     public List<PromptResponse> listPrompts(String query, String category, Boolean favorite) {
@@ -50,6 +54,7 @@ public class PromptService {
     public PromptResponse updatePrompt(UUID id, PromptRequest request) {
         Prompt prompt = promptRepository.findById(id)
                 .orElseThrow(() -> new IllegalStateException("Prompt not found"));
+        saveVersionSnapshot(prompt);
         applyRequest(prompt, request);
         return toResponse(prompt);
     }
@@ -64,7 +69,54 @@ public class PromptService {
 
     @Transactional
     public void deletePrompt(UUID id) {
+        promptVersionRepository.deleteByPromptId(id);
         promptRepository.deleteById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PromptVersionResponse> listVersions(UUID promptId) {
+        return promptVersionRepository.findTop8ByPromptIdOrderByVersionNumberDesc(promptId)
+                .stream()
+                .map(this::toVersionResponse)
+                .toList();
+    }
+
+    @Transactional
+    public PromptResponse restoreVersion(UUID promptId, UUID versionId) {
+        Prompt prompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new IllegalStateException("Prompt not found"));
+        PromptVersion version = promptVersionRepository.findById(versionId)
+                .filter(item -> item.getPromptId().equals(promptId))
+                .orElseThrow(() -> new IllegalStateException("Prompt version not found"));
+
+        saveVersionSnapshot(prompt);
+        prompt.setTitle(version.getTitle());
+        prompt.setCategory(version.getCategory());
+        prompt.setDescription(version.getDescription());
+        prompt.setContent(version.getContent());
+        prompt.setTags(version.getTags());
+        prompt.setFavorite(version.isFavorite());
+
+        return toResponse(prompt);
+    }
+
+    private void saveVersionSnapshot(Prompt prompt) {
+        int versionNumber = promptVersionRepository.findTopByPromptIdOrderByVersionNumberDesc(prompt.getId())
+                .map(PromptVersion::getVersionNumber)
+                .orElse(0) + 1;
+
+        PromptVersion version = PromptVersion.builder()
+                .promptId(prompt.getId())
+                .versionNumber(versionNumber)
+                .title(prompt.getTitle())
+                .category(prompt.getCategory())
+                .description(prompt.getDescription())
+                .content(prompt.getContent())
+                .tags(prompt.getTags())
+                .favorite(prompt.isFavorite())
+                .build();
+
+        promptVersionRepository.save(version);
     }
 
     private void applyRequest(Prompt prompt, PromptRequest request) {
@@ -144,6 +196,21 @@ public class PromptService {
                 prompt.isFavorite(),
                 prompt.getCreatedAt(),
                 prompt.getUpdatedAt()
+        );
+    }
+
+    private PromptVersionResponse toVersionResponse(PromptVersion version) {
+        return new PromptVersionResponse(
+                version.getId(),
+                version.getPromptId(),
+                version.getVersionNumber(),
+                version.getTitle(),
+                version.getCategory(),
+                version.getDescription(),
+                version.getContent(),
+                splitTags(version.getTags()),
+                version.isFavorite(),
+                version.getCreatedAt()
         );
     }
 }
