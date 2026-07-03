@@ -67,3 +67,24 @@ export interface SavePromptPayload {
   tags: string[]
   favorite: boolean
 }
+
+export type FlowNodeType = 'input' | 'prompt' | 'ai-task' | 'output'
+
+export interface FlowNode {
+  id: string
+  type: FlowNodeType
+  title: string
+  description: string
+  content?: string
+  promptId?: string | null
+  promptTitle?: string | null
+}
+
+export interface FlowDraft {
+  id: string
+  title: string
+  description: string
+  nodes: FlowNode[]
+  createdAt: string
+  updatedAt: string
+}

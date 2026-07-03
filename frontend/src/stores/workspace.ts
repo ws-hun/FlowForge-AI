@@ -9,11 +9,16 @@ import {
   runTask,
   saveApiKey
 } from '@/api/tasks'
-import type { ApiKeyConfig, SaveApiKeyPayload, TaskHistoryItem, TaskRunResponse } from '@/types'
+import type { ApiKeyConfig, FlowDraft, FlowNode, PromptAsset, SaveApiKeyPayload, TaskHistoryItem, TaskRunResponse } from '@/types'
+
+const FLOW_DRAFTS_STORAGE_KEY = 'flowforge.flowDrafts'
+const ACTIVE_FLOW_STORAGE_KEY = 'flowforge.activeFlowId'
 
 export const useWorkspaceStore = defineStore('workspace', () => {
   const tasks = ref<TaskHistoryItem[]>([])
   const apiKeys = ref<ApiKeyConfig[]>([])
+  const flowDrafts = ref<FlowDraft[]>([])
+  const activeFlowId = ref('')
   const latestResult = ref<TaskRunResponse | null>(null)
   const taskInput = ref('')
   const taskSourcePromptId = ref<string | null>(null)
@@ -23,6 +28,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const settingsLoading = ref(false)
 
   const activeProvider = computed(() => apiKeys.value.find((item) => item.active))
+  const activeFlow = computed(() => flowDrafts.value.find((flow) => flow.id === activeFlowId.value) || null)
 
   async function loadTasks() {
     historyLoading.value = true
@@ -80,6 +86,122 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     taskSourcePromptTitle.value = ''
   }
 
+  function loadFlowDrafts() {
+    try {
+      const rawDrafts = localStorage.getItem(FLOW_DRAFTS_STORAGE_KEY)
+      flowDrafts.value = rawDrafts ? JSON.parse(rawDrafts) : []
+      activeFlowId.value = localStorage.getItem(ACTIVE_FLOW_STORAGE_KEY) || flowDrafts.value[0]?.id || ''
+    } catch {
+      flowDrafts.value = []
+      activeFlowId.value = ''
+    }
+  }
+
+  function createFlowDraft(description: string) {
+    const trimmedDescription = description.trim()
+    if (!trimmedDescription) {
+      return null
+    }
+
+    const now = new Date().toISOString()
+    const title = buildFlowTitle(trimmedDescription)
+    const flow: FlowDraft = {
+      id: createId(),
+      title,
+      description: trimmedDescription,
+      nodes: createStarterFlowNodes(trimmedDescription),
+      createdAt: now,
+      updatedAt: now
+    }
+
+    flowDrafts.value = [flow, ...flowDrafts.value]
+    activeFlowId.value = flow.id
+    persistFlowDrafts()
+    return flow
+  }
+
+  function selectFlowDraft(id: string) {
+    activeFlowId.value = id
+    localStorage.setItem(ACTIVE_FLOW_STORAGE_KEY, id)
+  }
+
+  function addPromptToActiveFlow(prompt: PromptAsset) {
+    if (!activeFlow.value) {
+      return
+    }
+
+    const promptNode: FlowNode = {
+      id: createId(),
+      type: 'prompt',
+      title: prompt.title,
+      description: prompt.description,
+      content: prompt.content,
+      promptId: prompt.id,
+      promptTitle: prompt.title
+    }
+
+    updateActiveFlow((flow) => {
+      const outputIndex = flow.nodes.findIndex((node) => node.type === 'output')
+      const insertIndex = outputIndex >= 0 ? outputIndex : flow.nodes.length
+      flow.nodes.splice(insertIndex, 0, promptNode)
+    })
+  }
+
+  function removeFlowNode(nodeId: string) {
+    updateActiveFlow((flow) => {
+      if (flow.nodes.length <= 3) {
+        return
+      }
+      flow.nodes = flow.nodes.filter((node) => node.id !== nodeId)
+    })
+  }
+
+  function sendFlowToTask() {
+    if (!activeFlow.value) {
+      return
+    }
+
+    const promptBlocks = activeFlow.value.nodes
+      .filter((node) => node.type === 'prompt' && node.content)
+      .map((node) => `## ${node.title}\n${node.content}`)
+      .join('\n\n')
+
+    prepareTask(
+      [
+        `请按下面的 Flow 目标执行 AI 工作流。`,
+        '',
+        `Flow: ${activeFlow.value.title}`,
+        `目标: ${activeFlow.value.description}`,
+        promptBlocks ? `\n可复用 Prompt 节点:\n${promptBlocks}` : '',
+        '',
+        '请输出：1. Summary 2. Key Points 3. Result 4. Next Actions'
+      ].join('\n')
+    )
+  }
+
+  function updateActiveFlow(mutator: (flow: FlowDraft) => void) {
+    const flow = activeFlow.value
+    if (!flow) {
+      return
+    }
+
+    const nextFlow: FlowDraft = {
+      ...flow,
+      nodes: flow.nodes.map((node) => ({ ...node })),
+      updatedAt: new Date().toISOString()
+    }
+    mutator(nextFlow)
+    flowDrafts.value = flowDrafts.value.map((item) => (item.id === nextFlow.id ? nextFlow : item))
+    persistFlowDrafts()
+  }
+
+  function persistFlowDrafts() {
+    localStorage.setItem(FLOW_DRAFTS_STORAGE_KEY, JSON.stringify(flowDrafts.value))
+    if (activeFlowId.value) {
+      localStorage.setItem(ACTIVE_FLOW_STORAGE_KEY, activeFlowId.value)
+    }
+  }
+
   async function saveProvider(payload: SaveApiKeyPayload) {
     settingsLoading.value = true
     try {
@@ -120,12 +242,15 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function bootstrap() {
+    loadFlowDrafts()
     await Promise.all([loadTasks(), loadApiKeys()])
   }
 
   return {
     tasks,
     apiKeys,
+    flowDrafts,
+    activeFlowId,
     latestResult,
     taskInput,
     taskSourcePromptId,
@@ -134,9 +259,16 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     historyLoading,
     settingsLoading,
     activeProvider,
+    activeFlow,
     bootstrap,
     loadTasks,
     loadApiKeys,
+    loadFlowDrafts,
+    createFlowDraft,
+    selectFlowDraft,
+    addPromptToActiveFlow,
+    removeFlowNode,
+    sendFlowToTask,
     executeTask,
     prepareTask,
     clearTaskSource,
@@ -145,3 +277,37 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     removeProvider
   }
 })
+
+function createStarterFlowNodes(description: string): FlowNode[] {
+  return [
+    {
+      id: createId(),
+      type: 'input',
+      title: 'Intent',
+      description: '用户想完成的 AI 工作',
+      content: description
+    },
+    {
+      id: createId(),
+      type: 'ai-task',
+      title: 'AI Execution',
+      description: '调用当前激活的模型执行结构化任务'
+    },
+    {
+      id: createId(),
+      type: 'output',
+      title: 'Structured Result',
+      description: '沉淀 Summary、Key Points、Result 和下一步行动'
+    }
+  ]
+}
+
+function buildFlowTitle(description: string) {
+  const firstLine = description.split('\n').find(Boolean) || description
+  const title = firstLine.replace(/[。.,，]/g, '').slice(0, 24)
+  return title || 'Untitled Flow'
+}
+
+function createId() {
+  return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`
+}

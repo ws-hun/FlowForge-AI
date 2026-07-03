@@ -1139,6 +1139,289 @@ a {
   }
 }
 
+.flow-builder-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr) 320px;
+  align-items: start;
+  gap: 18px;
+}
+
+.flow-draft-panel,
+.flow-inspector,
+.flow-canvas-panel {
+  padding: 22px;
+}
+
+.flow-draft-panel,
+.flow-inspector {
+  position: sticky;
+  top: 108px;
+  display: grid;
+  gap: 18px;
+}
+
+.panel-heading {
+  display: grid;
+  gap: 8px;
+
+  h2 {
+    margin: 0;
+    color: tokens.$text-primary;
+    font-size: 21px;
+    letter-spacing: -0.03em;
+    line-height: 1.25;
+  }
+
+  p {
+    margin: 0;
+    color: tokens.$text-secondary;
+    line-height: 1.65;
+  }
+}
+
+.flow-intent-input {
+  min-height: 156px;
+  background: tokens.$surface-secondary;
+}
+
+.draft-list {
+  display: grid;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid tokens.$border;
+}
+
+.draft-item {
+  appearance: none;
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid tokens.$border;
+  border-radius: tokens.$radius-lg;
+  background: rgba(243, 245, 247, 0.68);
+  color: tokens.$text-secondary;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease, background 200ms ease;
+
+  strong {
+    overflow: hidden;
+    color: tokens.$text-primary;
+    font-size: 14px;
+    line-height: 1.45;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  span {
+    color: tokens.$text-muted;
+    font-size: 12px;
+  }
+
+  &:hover,
+  &.active {
+    transform: scale(1.01);
+    border-color: rgba(79, 124, 255, 0.22);
+    background: rgba(79, 124, 255, 0.06);
+    box-shadow: tokens.$shadow-soft;
+  }
+}
+
+.quiet-note {
+  margin: 0;
+  color: tokens.$text-secondary;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.flow-canvas-panel {
+  min-height: 640px;
+  background:
+    linear-gradient(rgba(229, 231, 235, 0.56) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(229, 231, 235, 0.56) 1px, transparent 1px),
+    rgba(255, 255, 255, 0.86);
+  background-size: 34px 34px;
+}
+
+.flow-canvas-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 22px;
+
+  h2 {
+    margin: 14px 0 8px;
+    color: tokens.$text-primary;
+    font-size: 32px;
+    letter-spacing: -0.04em;
+    line-height: 1.1;
+  }
+
+  p {
+    max-width: 620px;
+    margin: 0;
+    color: tokens.$text-secondary;
+    line-height: 1.7;
+  }
+}
+
+.flow-map {
+  display: grid;
+  min-height: 500px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  align-items: center;
+  gap: 0;
+}
+
+.flow-card-node {
+  appearance: none;
+  position: relative;
+  display: grid;
+  min-height: 156px;
+  align-content: start;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid tokens.$border;
+  border-radius: tokens.$radius-lg;
+  background: rgba(255, 255, 255, 0.92);
+  color: tokens.$text-secondary;
+  text-align: left;
+  box-shadow: tokens.$shadow-soft;
+  cursor: pointer;
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+
+  span {
+    width: fit-content;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: tokens.$surface-secondary;
+    color: tokens.$text-secondary;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 18px;
+    letter-spacing: -0.03em;
+    line-height: 1.25;
+  }
+
+  p {
+    margin: 0;
+    color: tokens.$text-secondary;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  &:hover,
+  &.active {
+    transform: scale(1.01);
+    border-color: rgba(79, 124, 255, 0.24);
+    box-shadow: tokens.$shadow-hover;
+  }
+
+  &.input span {
+    background: rgba(34, 197, 94, 0.1);
+    color: tokens.$success;
+  }
+
+  &.prompt span {
+    background: rgba(124, 92, 255, 0.1);
+    color: tokens.$accent;
+  }
+
+  &.ai-task span {
+    background: rgba(79, 124, 255, 0.1);
+    color: tokens.$primary;
+  }
+
+  &.output span {
+    background: rgba(245, 158, 11, 0.12);
+    color: tokens.$warning;
+  }
+}
+
+.flow-connector {
+  height: 1px;
+  min-width: 32px;
+  background: linear-gradient(90deg, tokens.$border, rgba(79, 124, 255, 0.28), tokens.$border);
+}
+
+.flow-empty-state {
+  display: grid;
+  min-height: 520px;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 24px;
+    letter-spacing: -0.03em;
+  }
+
+  p {
+    max-width: 360px;
+    margin: 0;
+    color: tokens.$text-secondary;
+    line-height: 1.7;
+  }
+}
+
+.flow-node-content {
+  max-height: 220px;
+}
+
+.prompt-node-picker {
+  display: grid;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid tokens.$border;
+}
+
+.prompt-node-option {
+  appearance: none;
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid tokens.$border;
+  border-radius: tokens.$radius-lg;
+  background: rgba(243, 245, 247, 0.7);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  small {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    color: tokens.$text-secondary;
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
+  &:hover:not(:disabled) {
+    transform: scale(1.01);
+    border-color: rgba(124, 92, 255, 0.22);
+    box-shadow: tokens.$shadow-soft;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+  }
+}
+
 .flow-space {
   min-height: 640px;
   padding: 18px;
@@ -1311,8 +1594,14 @@ a {
 
   .workspace-grid,
   .two-column,
-  .settings-layout {
+  .settings-layout,
+  .flow-builder-layout {
     grid-template-columns: 1fr;
+  }
+
+  .flow-draft-panel,
+  .flow-inspector {
+    position: static;
   }
 
   .template-grid {
@@ -1367,5 +1656,22 @@ a {
   .flow-canvas > span {
     width: 1px;
     height: 48px;
+  }
+
+  .flow-canvas-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .flow-map {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .flow-connector {
+    width: 1px;
+    min-width: 1px;
+    height: 30px;
+    justify-self: center;
   }
 }
