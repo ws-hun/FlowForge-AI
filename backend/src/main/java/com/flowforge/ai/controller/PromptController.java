@@ -2,7 +2,9 @@ package com.flowforge.ai.controller;
 
 import com.flowforge.ai.dto.PromptRequest;
 import com.flowforge.ai.dto.PromptResponse;
+import com.flowforge.ai.dto.TaskHistoryResponse;
 import com.flowforge.ai.service.PromptService;
+import com.flowforge.ai.service.TaskService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,6 +27,7 @@ import java.util.UUID;
 public class PromptController {
 
     private final PromptService promptService;
+    private final TaskService taskService;
 
     @GetMapping
     public List<PromptResponse> listPrompts(
@@ -48,6 +51,11 @@ public class PromptController {
     @PatchMapping("/{id}/favorite")
     public PromptResponse toggleFavorite(@PathVariable UUID id) {
         return promptService.toggleFavorite(id);
+    }
+
+    @GetMapping("/{id}/runs")
+    public List<TaskHistoryResponse> listPromptRuns(@PathVariable UUID id) {
+        return taskService.listPromptRuns(id);
     }
 
     @DeleteMapping("/{id}")

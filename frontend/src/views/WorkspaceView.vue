@@ -16,6 +16,7 @@
         v-model="workspace.taskInput"
         class="workspace-input"
         placeholder="例如：帮我把一个产品想法拆解成 PRD、接口草案和执行任务..."
+        @input="workspace.clearTaskSource"
       ></textarea>
       <div class="composer-footer">
         <span>{{ workspace.taskInput.trim() ? '已准备进入 AI Command Workspace' : '先写下一个想法，或从模板开始' }}</span>
@@ -89,7 +90,7 @@ function startBuilding() {
 }
 
 async function useTemplate(prompt: string) {
-  workspace.taskInput = prompt
+  workspace.prepareTask(prompt)
   await nextTick()
   inputRef.value?.focus()
 }

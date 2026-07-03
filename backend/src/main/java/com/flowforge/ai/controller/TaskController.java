@@ -23,7 +23,7 @@ public class TaskController {
 
     @PostMapping("/run")
     public TaskRunResponse runTask(@Valid @RequestBody RunTaskRequest request) {
-        return taskService.runTask(request.input());
+        return taskService.runTask(request);
     }
 
     @GetMapping

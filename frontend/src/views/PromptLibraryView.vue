@@ -186,6 +186,26 @@
           <pre class="detail-code preview">{{ preparedPromptPreview }}</pre>
         </section>
 
+        <section v-if="!isStarterDetail" class="detail-section">
+          <div class="section-heading compact">
+            <h3>最近执行</h3>
+            <span>{{ promptRuns.length ? `${promptRuns.length} 条记录` : '还没有执行记录' }}</span>
+          </div>
+          <div v-if="promptRunsLoading" class="run-timeline">
+            <article v-for="item in 2" :key="item" class="run-item skeleton-run"></article>
+          </div>
+          <div v-else-if="promptRuns.length" class="run-timeline">
+            <article v-for="run in promptRuns" :key="run.id" class="run-item">
+              <time>{{ formatDate(run.createdAt) }}</time>
+              <strong>{{ run.summary }}</strong>
+              <p>{{ run.result }}</p>
+            </article>
+          </div>
+          <div v-else class="quiet-empty">
+            从这个 Prompt 进入 AI Command Workspace 后，结果会沉淀在这里。
+          </div>
+        </section>
+
         <footer class="prompt-detail-actions">
           <template v-if="isStarterDetail">
             <button
@@ -215,12 +235,13 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   createPrompt,
   deletePrompt,
+  listPromptRuns,
   listPrompts,
   togglePromptFavorite,
   updatePrompt
 } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
-import type { PromptAsset, SavePromptPayload } from '@/types'
+import type { PromptAsset, SavePromptPayload, TaskHistoryItem } from '@/types'
 
 type StarterPrompt = SavePromptPayload & {
   signal: string
@@ -241,6 +262,8 @@ const tagInput = ref('')
 const detailOpen = ref(false)
 const detailSource = ref<'library' | 'starter'>('library')
 const selectedPrompt = ref<PromptAsset | null>(null)
+const promptRuns = ref<TaskHistoryItem[]>([])
+const promptRunsLoading = ref(false)
 const variableValues = ref<Record<string, string>>({})
 
 const form = reactive<SavePromptPayload>({
@@ -495,21 +518,24 @@ async function createStarterPrompts() {
   }
 }
 
-async function importStarterPrompt(prompt: SavePromptPayload) {
-  if (starterPromptExists(prompt)) {
-    ElMessage.info('这个 Prompt 已在 Library 中')
-    return true
+async function importStarterPrompt(prompt: SavePromptPayload, notifyExisting = true): Promise<PromptAsset | null> {
+  const existingPrompt = findExistingPrompt(prompt)
+  if (existingPrompt) {
+    if (notifyExisting) {
+      ElMessage.info('这个 Prompt 已在 Library 中')
+    }
+    return existingPrompt
   }
 
   saving.value = true
   try {
-    await createPrompt(toSavePayload(prompt))
+    const { data } = await createPrompt(toSavePayload(prompt))
     ElMessage.success('Prompt 已加入 Library')
     await loadPromptAssets()
-    return true
+    return data
   } catch (error: any) {
     ElMessage.error(error.response?.data?.message || 'Prompt 加入失败')
-    return false
+    return null
   } finally {
     saving.value = false
   }
@@ -519,13 +545,16 @@ function openPromptDetail(prompt: PromptAsset) {
   detailSource.value = 'library'
   const variables = extractVariables(prompt.content)
   selectedPrompt.value = prompt
+  promptRuns.value = []
   variableValues.value = Object.fromEntries(variables.map((variable) => [variable, '']))
   detailOpen.value = true
+  loadPromptRuns(prompt.id)
 }
 
 function openStarterDetail(prompt: StarterPrompt) {
   detailSource.value = 'starter'
   const variables = extractVariables(prompt.content)
+  promptRuns.value = []
   selectedPrompt.value = {
     ...toSavePayload(prompt),
     id: prompt.title,
@@ -541,7 +570,7 @@ function sendPreparedPrompt() {
     return
   }
   detailOpen.value = false
-  sendToTask(preparedPromptPreview.value)
+  sendToTask(preparedPromptPreview.value, selectedPrompt.value)
 }
 
 async function importStarterAndRun() {
@@ -549,19 +578,30 @@ async function importStarterAndRun() {
     return
   }
 
-  if (!starterPromptExists(selectedPrompt.value)) {
-    const imported = await importStarterPrompt(selectedPrompt.value)
-    if (!imported) {
-      return
-    }
+  const prompt = await importStarterPrompt(selectedPrompt.value, false)
+  if (!prompt) {
+    return
   }
-  sendPreparedPrompt()
+  detailOpen.value = false
+  sendToTask(preparedPromptPreview.value, prompt)
 }
 
-function sendToTask(content: string) {
-  workspace.taskInput = content
+function sendToTask(content: string, prompt?: PromptAsset | null) {
+  workspace.prepareTask(content, prompt ? { id: prompt.id, title: prompt.title } : null)
   ElMessage.success('Prompt 已带入 AI Command Workspace')
   router.push('/tasks')
+}
+
+async function loadPromptRuns(promptId: string) {
+  promptRunsLoading.value = true
+  try {
+    const { data } = await listPromptRuns(promptId)
+    promptRuns.value = data
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || 'Prompt 执行记录加载失败')
+  } finally {
+    promptRunsLoading.value = false
+  }
 }
 
 function extractVariables(content: string) {
@@ -580,6 +620,10 @@ function formatDate(value: string) {
 
 function starterPromptExists(prompt: Pick<SavePromptPayload, 'title'>) {
   return existingPromptTitles.value.has(normalizeTitle(prompt.title))
+}
+
+function findExistingPrompt(prompt: Pick<SavePromptPayload, 'title'>) {
+  return prompts.value.find((item) => normalizeTitle(item.title) === normalizeTitle(prompt.title)) || null
 }
 
 function normalizeTitle(title: string) {

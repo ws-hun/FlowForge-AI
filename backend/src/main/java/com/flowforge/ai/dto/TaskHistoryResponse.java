@@ -8,6 +8,8 @@ public record TaskHistoryResponse(
         String input,
         String summary,
         String result,
+        UUID sourcePromptId,
+        String sourcePromptTitle,
         LocalDateTime createdAt
 ) {
 }

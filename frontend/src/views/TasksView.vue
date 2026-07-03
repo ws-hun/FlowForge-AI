@@ -13,6 +13,10 @@
           class="workspace-input"
           placeholder="描述你希望 AI 完成的任务..."
         ></textarea>
+        <div v-if="workspace.taskSourcePromptTitle" class="source-note">
+          <span>来自 Prompt</span>
+          <strong>{{ workspace.taskSourcePromptTitle }}</strong>
+        </div>
         <div class="composer-footer">
           <span>{{ workspace.activeProvider?.provider || '请先配置 Provider' }}</span>
           <button class="primary-button" :disabled="workspace.running" @click="workspace.executeTask">

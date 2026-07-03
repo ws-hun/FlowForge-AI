@@ -6,8 +6,8 @@ import type {
   TaskRunResponse
 } from '@/types'
 
-export function runTask(input: string) {
-  return http.post<TaskRunResponse>('/api/tasks/run', { input })
+export function runTask(input: string, promptId?: string | null) {
+  return http.post<TaskRunResponse>('/api/tasks/run', { input, promptId })
 }
 
 export function listTasks() {

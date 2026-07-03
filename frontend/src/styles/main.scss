@@ -299,6 +299,30 @@ a {
   transition: 200ms ease;
 }
 
+.source-note {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 8px 10px;
+  border: 1px solid rgba(79, 124, 255, 0.14);
+  border-radius: tokens.$radius-md;
+  background: rgba(79, 124, 255, 0.06);
+  color: tokens.$text-secondary;
+  font-size: 13px;
+
+  span {
+    color: tokens.$primary;
+    font-weight: 700;
+  }
+
+  strong {
+    color: tokens.$text-primary;
+    font-weight: 680;
+  }
+}
+
 .mono,
 .code-block {
   font-family: tokens.$mono;
@@ -923,6 +947,64 @@ a {
     color: tokens.$text-secondary;
     font-size: 13px;
   }
+}
+
+.run-timeline {
+  display: grid;
+  gap: 10px;
+}
+
+.run-item {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid tokens.$border;
+  border-radius: tokens.$radius-lg;
+  background: rgba(243, 245, 247, 0.7);
+
+  time {
+    color: tokens.$text-muted;
+    font-size: 12px;
+  }
+
+  strong {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    color: tokens.$text-primary;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  p {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    color: tokens.$text-secondary;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+}
+
+.quiet-empty {
+  padding: 16px;
+  border: 1px dashed tokens.$border;
+  border-radius: tokens.$radius-lg;
+  background: tokens.$surface-secondary;
+  color: tokens.$text-secondary;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.skeleton-run {
+  min-height: 86px;
+  background:
+    linear-gradient(90deg, rgba(243, 245, 247, 0.65), rgba(255, 255, 255, 0.92), rgba(243, 245, 247, 0.65));
+  background-size: 220% 100%;
+  animation: calm-skeleton 1.2s ease-in-out infinite;
 }
 
 .prompt-detail-actions {

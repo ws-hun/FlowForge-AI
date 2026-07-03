@@ -11,6 +11,8 @@ export interface TaskHistoryItem {
   input: string
   summary: string
   result: string
+  sourcePromptId?: string | null
+  sourcePromptTitle?: string | null
   createdAt: string
 }
 

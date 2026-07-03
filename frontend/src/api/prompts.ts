@@ -1,5 +1,5 @@
 import http from './client'
-import type { PromptAsset, SavePromptPayload } from '@/types'
+import type { PromptAsset, SavePromptPayload, TaskHistoryItem } from '@/types'
 
 export interface PromptQuery {
   query?: string
@@ -25,4 +25,8 @@ export function togglePromptFavorite(id: string) {
 
 export function deletePrompt(id: string) {
   return http.delete<void>(`/api/prompts/${id}`)
+}
+
+export function listPromptRuns(id: string) {
+  return http.get<TaskHistoryItem[]>(`/api/prompts/${id}/runs`)
 }

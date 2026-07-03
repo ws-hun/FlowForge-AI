@@ -1,9 +1,12 @@
 package com.flowforge.ai.service;
 
 import com.flowforge.ai.dto.OpenAiTaskResult;
+import com.flowforge.ai.dto.RunTaskRequest;
 import com.flowforge.ai.dto.TaskHistoryResponse;
 import com.flowforge.ai.dto.TaskRunResponse;
+import com.flowforge.ai.entity.Prompt;
 import com.flowforge.ai.entity.Task;
+import com.flowforge.ai.repository.PromptRepository;
 import com.flowforge.ai.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -18,15 +21,19 @@ public class TaskService {
 
     private final OpenAiService openAiService;
     private final TaskRepository taskRepository;
+    private final PromptRepository promptRepository;
 
     @Transactional
-    public TaskRunResponse runTask(String input) {
-        OpenAiTaskResult aiResult = openAiService.processTask(input);
+    public TaskRunResponse runTask(RunTaskRequest request) {
+        Prompt sourcePrompt = resolveSourcePrompt(request);
+        OpenAiTaskResult aiResult = openAiService.processTask(request.input());
 
         Task task = Task.builder()
-                .input(input)
+                .input(request.input())
                 .summary(aiResult.summary())
                 .result(aiResult.result())
+                .sourcePromptId(sourcePrompt == null ? null : sourcePrompt.getId())
+                .sourcePromptTitle(sourcePrompt == null ? null : sourcePrompt.getTitle())
                 .build();
 
         taskRepository.save(task);
@@ -46,12 +53,30 @@ public class TaskService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<TaskHistoryResponse> listPromptRuns(java.util.UUID promptId) {
+        return taskRepository.findTop6BySourcePromptIdOrderByCreatedAtDesc(promptId)
+                .stream()
+                .map(this::toHistoryResponse)
+                .toList();
+    }
+
+    private Prompt resolveSourcePrompt(RunTaskRequest request) {
+        if (request.promptId() == null) {
+            return null;
+        }
+        return promptRepository.findById(request.promptId())
+                .orElseThrow(() -> new IllegalStateException("Prompt not found"));
+    }
+
     private TaskHistoryResponse toHistoryResponse(Task task) {
         return new TaskHistoryResponse(
                 task.getId(),
                 task.getInput(),
                 task.getSummary(),
                 task.getResult(),
+                task.getSourcePromptId(),
+                task.getSourcePromptTitle(),
                 task.getCreatedAt()
         );
     }

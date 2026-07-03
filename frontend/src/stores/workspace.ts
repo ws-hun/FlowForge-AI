@@ -16,6 +16,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const apiKeys = ref<ApiKeyConfig[]>([])
   const latestResult = ref<TaskRunResponse | null>(null)
   const taskInput = ref('')
+  const taskSourcePromptId = ref<string | null>(null)
+  const taskSourcePromptTitle = ref('')
   const running = ref(false)
   const historyLoading = ref(false)
   const settingsLoading = ref(false)
@@ -53,9 +55,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
     running.value = true
     try {
-      const { data } = await runTask(taskInput.value.trim())
+      const { data } = await runTask(taskInput.value.trim(), taskSourcePromptId.value)
       latestResult.value = data
       taskInput.value = ''
+      taskSourcePromptId.value = null
+      taskSourcePromptTitle.value = ''
       ElMessage.success('任务执行完成')
       await loadTasks()
     } catch (error: any) {
@@ -63,6 +67,17 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     } finally {
       running.value = false
     }
+  }
+
+  function prepareTask(input: string, sourcePrompt?: { id: string; title: string } | null) {
+    taskInput.value = input
+    taskSourcePromptId.value = sourcePrompt?.id || null
+    taskSourcePromptTitle.value = sourcePrompt?.title || ''
+  }
+
+  function clearTaskSource() {
+    taskSourcePromptId.value = null
+    taskSourcePromptTitle.value = ''
   }
 
   async function saveProvider(payload: SaveApiKeyPayload) {
@@ -113,6 +128,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     apiKeys,
     latestResult,
     taskInput,
+    taskSourcePromptId,
+    taskSourcePromptTitle,
     running,
     historyLoading,
     settingsLoading,
@@ -121,6 +138,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     loadTasks,
     loadApiKeys,
     executeTask,
+    prepareTask,
+    clearTaskSource,
     saveProvider,
     activateProvider,
     removeProvider

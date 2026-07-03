@@ -36,6 +36,12 @@ public class Task {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String summary;
 
+    @Column(name = "source_prompt_id")
+    private UUID sourcePromptId;
+
+    @Column(name = "source_prompt_title", length = 120)
+    private String sourcePromptTitle;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
