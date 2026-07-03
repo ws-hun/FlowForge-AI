@@ -14,10 +14,14 @@ import org.springframework.web.client.RestClientResponseException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class OpenAiService {
+
+    private static final Pattern SUMMARY_PATTERN = Pattern.compile("\"summary\"\\s*:\\s*\"((?:\\\\.|[^\"])*)\"");
 
     private final RestClient restClient;
     private final AiApiKeyService aiApiKeyService;
@@ -45,13 +49,7 @@ public class OpenAiService {
 
         String raw = sendRequest(config, "/chat/completions", requestBody);
         String jsonText = extractChatCompletionText(raw);
-        JsonNode parsed = parseJson(jsonText);
-
-        return new OpenAiTaskResult(
-                parsed.path("summary").asText(""),
-                parsed.path("result").asText(""),
-                raw
-        );
+        return parseTaskResult(jsonText, raw);
     }
 
     private OpenAiTaskResult processWithOpenAi(String input, AiApiKey config) {
@@ -80,13 +78,7 @@ public class OpenAiService {
 
         String raw = sendRequest(config, "/responses", requestBody);
         String jsonText = extractOpenAiResponsesText(raw);
-        JsonNode parsed = parseJson(jsonText);
-
-        return new OpenAiTaskResult(
-                parsed.path("summary").asText(""),
-                parsed.path("result").asText(""),
-                raw
-        );
+        return parseTaskResult(jsonText, raw);
     }
 
     private void validateConfig(AiApiKey config) {
@@ -105,7 +97,15 @@ public class OpenAiService {
         return List.of(
                 Map.of(
                         "role", "system",
-                        "content", "You are FlowForge AI. Analyze the user's task and always return valid JSON with summary and result fields."
+                        "content", """
+                                You are FlowForge AI. Return one strict JSON object only.
+                                Requirements:
+                                - No markdown fences.
+                                - No comments.
+                                - No placeholder tokens such as [...] or {...}.
+                                - The summary field must be a string.
+                                - The result field must be a string. If the result is structured, write it as readable markdown text inside the string.
+                                """
                 ),
                 Map.of(
                         "role", "user",
@@ -119,8 +119,13 @@ public class OpenAiService {
                 请处理下面的用户任务，并严格返回 JSON：
                 {
                   "summary": "用一句话总结任务和处理结论",
-                  "result": "详细、可执行、结构化的处理结果"
+                  "result": "详细、可执行、结构化的处理结果。必须是字符串，不要返回对象或数组。"
                 }
+
+                注意：
+                - 只返回 JSON，不要使用 Markdown 代码块。
+                - 不要使用 [...]、{...} 这类占位符。
+                - 如果内容很多，请写成字符串中的分段文本。
 
                 用户任务：
                 %s
@@ -188,11 +193,94 @@ public class OpenAiService {
         throw new IllegalStateException("AI response does not contain message content");
     }
 
-    private JsonNode parseJson(String jsonText) {
-        try {
-            return objectMapper.readTree(jsonText);
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException("AI output is not valid JSON: " + jsonText, e);
+    private OpenAiTaskResult parseTaskResult(String aiText, String raw) {
+        JsonNode parsed = tryParseJson(aiText);
+        if (parsed == null) {
+            return new OpenAiTaskResult(
+                    extractSummaryFromText(aiText),
+                    aiText,
+                    raw
+            );
         }
+
+        return new OpenAiTaskResult(
+                readSummary(parsed, aiText),
+                readResult(parsed, aiText),
+                raw
+        );
+    }
+
+    private JsonNode tryParseJson(String jsonText) {
+        String normalized = stripMarkdownFence(jsonText.trim());
+        try {
+            return objectMapper.readTree(normalized);
+        } catch (JsonProcessingException e) {
+            String candidate = extractJsonObject(normalized);
+            if (!candidate.equals(normalized)) {
+                try {
+                    return objectMapper.readTree(candidate);
+                } catch (JsonProcessingException ignored) {
+                    return null;
+                }
+            }
+            return null;
+        }
+    }
+
+    private String readSummary(JsonNode parsed, String fallbackText) {
+        JsonNode summary = parsed.path("summary");
+        if (summary.isTextual() && StringUtils.hasText(summary.asText())) {
+            return summary.asText();
+        }
+        return extractSummaryFromText(fallbackText);
+    }
+
+    private String readResult(JsonNode parsed, String fallbackText) {
+        JsonNode result = parsed.path("result");
+        if (result.isMissingNode() || result.isNull()) {
+            return fallbackText;
+        }
+        if (result.isTextual()) {
+            return result.asText();
+        }
+        try {
+            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
+        } catch (JsonProcessingException e) {
+            return result.toString();
+        }
+    }
+
+    private String extractSummaryFromText(String text) {
+        Matcher matcher = SUMMARY_PATTERN.matcher(text);
+        if (matcher.find()) {
+            try {
+                return objectMapper.readValue("\"" + matcher.group(1) + "\"", String.class);
+            } catch (JsonProcessingException ignored) {
+                return matcher.group(1);
+            }
+        }
+
+        String firstLine = text.lines()
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .findFirst()
+                .orElse("AI 已返回结果，但格式不是严格 JSON");
+        return firstLine.length() > 160 ? firstLine.substring(0, 160) : firstLine;
+    }
+
+    private String stripMarkdownFence(String text) {
+        if (text.startsWith("```")) {
+            return text.replaceFirst("^```(?:json)?\\s*", "").replaceFirst("\\s*```$", "").trim();
+        }
+        return text;
+    }
+
+    private String extractJsonObject(String text) {
+        int start = text.indexOf('{');
+        int end = text.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            return text.substring(start, end + 1);
+        }
+        return text;
     }
 }
