@@ -9,9 +9,18 @@ import {
   runTask,
   saveApiKey
 } from '@/api/tasks'
-import type { ApiKeyConfig, FlowDraft, FlowNode, PromptAsset, SaveApiKeyPayload, TaskHistoryItem, TaskRunResponse } from '@/types'
+import { createFlow, listFlows, updateFlow } from '@/api/flows'
+import type {
+  ApiKeyConfig,
+  FlowDraft,
+  FlowNode,
+  PromptAsset,
+  SaveApiKeyPayload,
+  SaveFlowPayload,
+  TaskHistoryItem,
+  TaskRunResponse
+} from '@/types'
 
-const FLOW_DRAFTS_STORAGE_KEY = 'flowforge.flowDrafts'
 const ACTIVE_FLOW_STORAGE_KEY = 'flowforge.activeFlowId'
 
 export const useWorkspaceStore = defineStore('workspace', () => {
@@ -26,6 +35,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const running = ref(false)
   const historyLoading = ref(false)
   const settingsLoading = ref(false)
+  const flowLoading = ref(false)
 
   const activeProvider = computed(() => apiKeys.value.find((item) => item.active))
   const activeFlow = computed(() => flowDrafts.value.find((flow) => flow.id === activeFlowId.value) || null)
@@ -86,38 +96,48 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     taskSourcePromptTitle.value = ''
   }
 
-  function loadFlowDrafts() {
+  async function loadFlowDrafts() {
+    flowLoading.value = true
     try {
-      const rawDrafts = localStorage.getItem(FLOW_DRAFTS_STORAGE_KEY)
-      flowDrafts.value = rawDrafts ? JSON.parse(rawDrafts) : []
-      activeFlowId.value = localStorage.getItem(ACTIVE_FLOW_STORAGE_KEY) || flowDrafts.value[0]?.id || ''
-    } catch {
-      flowDrafts.value = []
-      activeFlowId.value = ''
+      const { data } = await listFlows()
+      flowDrafts.value = data
+
+      const storedActiveFlowId = localStorage.getItem(ACTIVE_FLOW_STORAGE_KEY) || ''
+      const activeFlowExists = data.some((flow) => flow.id === storedActiveFlowId)
+      activeFlowId.value = activeFlowExists ? storedActiveFlowId : data[0]?.id || ''
+    } catch (error: any) {
+      ElMessage.error(error.response?.data?.message || 'Flow 草稿加载失败')
+    } finally {
+      flowLoading.value = false
     }
   }
 
-  function createFlowDraft(description: string) {
+  async function createFlowDraft(description: string) {
     const trimmedDescription = description.trim()
     if (!trimmedDescription) {
       return null
     }
 
-    const now = new Date().toISOString()
     const title = buildFlowTitle(trimmedDescription)
-    const flow: FlowDraft = {
-      id: createId(),
+    const payload: SaveFlowPayload = {
       title,
       description: trimmedDescription,
-      nodes: createStarterFlowNodes(trimmedDescription),
-      createdAt: now,
-      updatedAt: now
+      nodes: createStarterFlowNodes(trimmedDescription)
     }
 
-    flowDrafts.value = [flow, ...flowDrafts.value]
-    activeFlowId.value = flow.id
-    persistFlowDrafts()
-    return flow
+    flowLoading.value = true
+    try {
+      const { data } = await createFlow(payload)
+      flowDrafts.value = [data, ...flowDrafts.value]
+      activeFlowId.value = data.id
+      localStorage.setItem(ACTIVE_FLOW_STORAGE_KEY, data.id)
+      return data
+    } catch (error: any) {
+      ElMessage.error(error.response?.data?.message || 'Flow 草稿创建失败')
+      return null
+    } finally {
+      flowLoading.value = false
+    }
   }
 
   function selectFlowDraft(id: string) {
@@ -125,9 +145,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     localStorage.setItem(ACTIVE_FLOW_STORAGE_KEY, id)
   }
 
-  function addPromptToActiveFlow(prompt: PromptAsset) {
+  async function addPromptToActiveFlow(prompt: PromptAsset) {
     if (!activeFlow.value) {
-      return
+      return null
     }
 
     const promptNode: FlowNode = {
@@ -140,15 +160,16 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       promptTitle: prompt.title
     }
 
-    updateActiveFlow((flow) => {
+    const updatedFlow = await updateActiveFlow((flow) => {
       const outputIndex = flow.nodes.findIndex((node) => node.type === 'output')
       const insertIndex = outputIndex >= 0 ? outputIndex : flow.nodes.length
       flow.nodes.splice(insertIndex, 0, promptNode)
     })
+    return updatedFlow ? promptNode : null
   }
 
-  function removeFlowNode(nodeId: string) {
-    updateActiveFlow((flow) => {
+  async function removeFlowNode(nodeId: string) {
+    await updateActiveFlow((flow) => {
       if (flow.nodes.length <= 3) {
         return
       }
@@ -179,10 +200,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     )
   }
 
-  function updateActiveFlow(mutator: (flow: FlowDraft) => void) {
+  async function updateActiveFlow(mutator: (flow: FlowDraft) => void) {
     const flow = activeFlow.value
     if (!flow) {
-      return
+      return null
     }
 
     const nextFlow: FlowDraft = {
@@ -191,14 +212,17 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       updatedAt: new Date().toISOString()
     }
     mutator(nextFlow)
-    flowDrafts.value = flowDrafts.value.map((item) => (item.id === nextFlow.id ? nextFlow : item))
-    persistFlowDrafts()
-  }
 
-  function persistFlowDrafts() {
-    localStorage.setItem(FLOW_DRAFTS_STORAGE_KEY, JSON.stringify(flowDrafts.value))
-    if (activeFlowId.value) {
-      localStorage.setItem(ACTIVE_FLOW_STORAGE_KEY, activeFlowId.value)
+    flowLoading.value = true
+    try {
+      const { data } = await updateFlow(nextFlow.id, toSaveFlowPayload(nextFlow))
+      flowDrafts.value = flowDrafts.value.map((item) => (item.id === data.id ? data : item))
+      return data
+    } catch (error: any) {
+      ElMessage.error(error.response?.data?.message || 'Flow 草稿保存失败')
+      return null
+    } finally {
+      flowLoading.value = false
     }
   }
 
@@ -242,8 +266,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function bootstrap() {
-    loadFlowDrafts()
-    await Promise.all([loadTasks(), loadApiKeys()])
+    await Promise.all([loadTasks(), loadApiKeys(), loadFlowDrafts()])
   }
 
   return {
@@ -258,6 +281,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     running,
     historyLoading,
     settingsLoading,
+    flowLoading,
     activeProvider,
     activeFlow,
     bootstrap,
@@ -306,6 +330,14 @@ function buildFlowTitle(description: string) {
   const firstLine = description.split('\n').find(Boolean) || description
   const title = firstLine.replace(/[。.,，]/g, '').slice(0, 24)
   return title || 'Untitled Flow'
+}
+
+function toSaveFlowPayload(flow: FlowDraft): SaveFlowPayload {
+  return {
+    title: flow.title,
+    description: flow.description,
+    nodes: flow.nodes
+  }
 }
 
 function createId() {

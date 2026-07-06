@@ -22,10 +22,10 @@
         <button
           type="button"
           :class="workspace.activeFlow ? 'secondary-button' : 'primary-button'"
-          :disabled="!flowIntent.trim()"
+          :disabled="!flowIntent.trim() || workspace.flowLoading"
           @click="createFlow"
         >
-          创建 Flow 草稿
+          {{ workspace.flowLoading ? '保存中...' : '创建 Flow 草稿' }}
         </button>
 
         <div class="draft-list">
@@ -122,7 +122,7 @@
             :key="prompt.id"
             type="button"
             class="prompt-node-option"
-            :disabled="!workspace.activeFlow"
+            :disabled="!workspace.activeFlow || workspace.flowLoading"
             @click="addPromptNode(prompt)"
           >
             <span class="badge">{{ prompt.category }}</span>
@@ -183,8 +183,8 @@ async function loadPromptAssets() {
   }
 }
 
-function createFlow() {
-  const flow = workspace.createFlowDraft(flowIntent.value)
+async function createFlow() {
+  const flow = await workspace.createFlowDraft(flowIntent.value)
   if (!flow) {
     return
   }
@@ -198,18 +198,19 @@ function selectFlow(id: string) {
   selectedNodeId.value = workspace.activeFlow?.nodes[0]?.id || ''
 }
 
-function addPromptNode(prompt: PromptAsset) {
-  workspace.addPromptToActiveFlow(prompt)
-  const addedNode = [...(workspace.activeFlow?.nodes || [])].reverse().find((node) => node.promptId === prompt.id)
+async function addPromptNode(prompt: PromptAsset) {
+  const addedNode = await workspace.addPromptToActiveFlow(prompt)
   selectedNodeId.value = addedNode?.id || selectedNodeId.value
-  ElMessage.success('Prompt 已加入 Flow')
+  if (addedNode) {
+    ElMessage.success('Prompt 已加入 Flow')
+  }
 }
 
-function removeSelectedNode() {
+async function removeSelectedNode() {
   if (!selectedNode.value) {
     return
   }
-  workspace.removeFlowNode(selectedNode.value.id)
+  await workspace.removeFlowNode(selectedNode.value.id)
   selectedNodeId.value = workspace.activeFlow?.nodes[0]?.id || ''
 }
 

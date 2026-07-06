@@ -88,3 +88,9 @@ export interface FlowDraft {
   createdAt: string
   updatedAt: string
 }
+
+export interface SaveFlowPayload {
+  title: string
+  description: string
+  nodes: FlowNode[]
+}
