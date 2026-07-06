@@ -86,6 +86,28 @@
       </section>
 
       <aside class="surface flow-inspector">
+        <div v-if="workspace.activeFlow" class="flow-asset-editor">
+          <div class="panel-heading">
+            <span class="section-kicker">Flow Asset</span>
+            <h2>调整 Flow 目标</h2>
+          </div>
+          <input v-model="flowTitle" class="quiet-input" placeholder="Flow 标题" />
+          <textarea v-model="flowDescription" class="quiet-textarea" placeholder="Flow 目标"></textarea>
+          <div class="flow-editor-actions">
+            <button
+              type="button"
+              class="secondary-button"
+              :disabled="!flowMetaChanged || workspace.flowLoading"
+              @click="saveFlowMeta"
+            >
+              保存
+            </button>
+            <button type="button" class="danger-button" :disabled="workspace.flowLoading" @click="confirmDeleteFlow">
+              删除
+            </button>
+          </div>
+        </div>
+
         <template v-if="workspace.activeFlow && selectedNode">
           <div class="panel-heading">
             <span class="section-kicker">Inspector</span>
@@ -142,7 +164,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { FlowNode, FlowNodeType, PromptAsset } from '@/types'
@@ -151,6 +173,8 @@ const router = useRouter()
 const workspace = useWorkspaceStore()
 
 const flowIntent = ref('')
+const flowTitle = ref('')
+const flowDescription = ref('')
 const prompts = ref<PromptAsset[]>([])
 const selectedNodeId = ref('')
 
@@ -161,10 +185,19 @@ const selectedNode = computed<FlowNode | null>(() => {
   return workspace.activeFlow.nodes.find((node) => node.id === selectedNodeId.value) || workspace.activeFlow.nodes[0] || null
 })
 
+const flowMetaChanged = computed(() => {
+  if (!workspace.activeFlow) {
+    return false
+  }
+  return flowTitle.value.trim() !== workspace.activeFlow.title || flowDescription.value.trim() !== workspace.activeFlow.description
+})
+
 watch(
   () => workspace.activeFlow?.id,
   () => {
     selectedNodeId.value = workspace.activeFlow?.nodes[0]?.id || ''
+    flowTitle.value = workspace.activeFlow?.title || ''
+    flowDescription.value = workspace.activeFlow?.description || ''
   },
   { immediate: true }
 )
@@ -212,6 +245,41 @@ async function removeSelectedNode() {
   }
   await workspace.removeFlowNode(selectedNode.value.id)
   selectedNodeId.value = workspace.activeFlow?.nodes[0]?.id || ''
+}
+
+async function saveFlowMeta() {
+  const updatedFlow = await workspace.updateFlowMeta(flowTitle.value, flowDescription.value)
+  if (!updatedFlow) {
+    return
+  }
+  flowTitle.value = updatedFlow.title
+  flowDescription.value = updatedFlow.description
+  ElMessage.success('Flow 已保存')
+}
+
+async function confirmDeleteFlow() {
+  if (!workspace.activeFlow) {
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(`删除「${workspace.activeFlow.title}」后无法继续编辑这个 Flow。`, '删除 Flow', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    const deleted = await workspace.deleteFlowDraft(workspace.activeFlow.id)
+    if (deleted) {
+      flowTitle.value = workspace.activeFlow?.title || ''
+      flowDescription.value = workspace.activeFlow?.description || ''
+      selectedNodeId.value = workspace.activeFlow?.nodes[0]?.id || ''
+      ElMessage.success('Flow 已删除')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('Flow 删除失败')
+    }
+  }
 }
 
 function runFlowPreview() {

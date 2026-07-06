@@ -1489,6 +1489,23 @@ a {
   max-height: 220px;
 }
 
+.flow-asset-editor {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid tokens.$border;
+
+  .quiet-textarea {
+    min-height: 116px;
+  }
+}
+
+.flow-editor-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .prompt-node-picker {
   display: grid;
   gap: 10px;

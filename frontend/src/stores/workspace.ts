@@ -9,7 +9,7 @@ import {
   runTask,
   saveApiKey
 } from '@/api/tasks'
-import { createFlow, listFlows, updateFlow } from '@/api/flows'
+import { createFlow, deleteFlow, listFlows, updateFlow } from '@/api/flows'
 import type {
   ApiKeyConfig,
   FlowDraft,
@@ -177,6 +177,48 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     })
   }
 
+  async function updateFlowMeta(title: string, description: string) {
+    const cleanTitle = title.trim()
+    const cleanDescription = description.trim()
+
+    if (!cleanTitle || !cleanDescription) {
+      ElMessage.warning('请补全 Flow 标题和目标')
+      return null
+    }
+
+    return updateActiveFlow((flow) => {
+      flow.title = cleanTitle
+      flow.description = cleanDescription
+      const intentNode = flow.nodes.find((node) => node.type === 'input')
+      if (intentNode) {
+        intentNode.content = cleanDescription
+        intentNode.description = '用户想完成的 AI 工作'
+      }
+    })
+  }
+
+  async function deleteFlowDraft(id: string) {
+    flowLoading.value = true
+    try {
+      await deleteFlow(id)
+      flowDrafts.value = flowDrafts.value.filter((flow) => flow.id !== id)
+      if (activeFlowId.value === id) {
+        activeFlowId.value = flowDrafts.value[0]?.id || ''
+        if (activeFlowId.value) {
+          localStorage.setItem(ACTIVE_FLOW_STORAGE_KEY, activeFlowId.value)
+        } else {
+          localStorage.removeItem(ACTIVE_FLOW_STORAGE_KEY)
+        }
+      }
+      return true
+    } catch (error: any) {
+      ElMessage.error(error.response?.data?.message || 'Flow 草稿删除失败')
+      return false
+    } finally {
+      flowLoading.value = false
+    }
+  }
+
   function sendFlowToTask() {
     if (!activeFlow.value) {
       return
@@ -292,6 +334,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     selectFlowDraft,
     addPromptToActiveFlow,
     removeFlowNode,
+    updateFlowMeta,
+    deleteFlowDraft,
     sendFlowToTask,
     executeTask,
     prepareTask,
