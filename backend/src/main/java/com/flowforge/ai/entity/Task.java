@@ -42,6 +42,12 @@ public class Task {
     @Column(name = "source_prompt_title", length = 120)
     private String sourcePromptTitle;
 
+    @Column(name = "source_flow_id")
+    private UUID sourceFlowId;
+
+    @Column(name = "source_flow_title", length = 120)
+    private String sourceFlowTitle;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

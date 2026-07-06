@@ -13,9 +13,9 @@
           class="workspace-input"
           placeholder="描述你希望 AI 完成的任务..."
         ></textarea>
-        <div v-if="workspace.taskSourcePromptTitle" class="source-note">
-          <span>来自 Prompt</span>
-          <strong>{{ workspace.taskSourcePromptTitle }}</strong>
+        <div v-if="workspace.taskSourcePromptTitle || workspace.taskSourceFlowTitle" class="source-note">
+          <span>{{ workspace.taskSourceFlowTitle ? '来自 Flow' : '来自 Prompt' }}</span>
+          <strong>{{ workspace.taskSourceFlowTitle || workspace.taskSourcePromptTitle }}</strong>
         </div>
         <div class="composer-footer">
           <span>{{ workspace.activeProvider?.provider || '请先配置 Provider' }}</span>

@@ -444,6 +444,24 @@ a {
   padding: 18px;
 }
 
+.history-source-row {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 6px 8px;
+  border: 1px solid tokens.$border;
+  border-radius: tokens.$radius-md;
+  background: rgba(243, 245, 247, 0.72);
+
+  strong {
+    color: tokens.$text-secondary;
+    font-size: 13px;
+    font-weight: 650;
+  }
+}
+
 .row-between {
   display: flex;
   align-items: center;

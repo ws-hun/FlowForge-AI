@@ -10,6 +10,8 @@ public record TaskHistoryResponse(
         String result,
         UUID sourcePromptId,
         String sourcePromptTitle,
+        UUID sourceFlowId,
+        String sourceFlowTitle,
         LocalDateTime createdAt
 ) {
 }

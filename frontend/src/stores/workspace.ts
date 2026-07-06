@@ -32,6 +32,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const taskInput = ref('')
   const taskSourcePromptId = ref<string | null>(null)
   const taskSourcePromptTitle = ref('')
+  const taskSourceFlowId = ref<string | null>(null)
+  const taskSourceFlowTitle = ref('')
   const running = ref(false)
   const historyLoading = ref(false)
   const settingsLoading = ref(false)
@@ -71,11 +73,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
     running.value = true
     try {
-      const { data } = await runTask(taskInput.value.trim(), taskSourcePromptId.value)
+      const { data } = await runTask(taskInput.value.trim(), taskSourcePromptId.value, taskSourceFlowId.value)
       latestResult.value = data
       taskInput.value = ''
       taskSourcePromptId.value = null
       taskSourcePromptTitle.value = ''
+      taskSourceFlowId.value = null
+      taskSourceFlowTitle.value = ''
       ElMessage.success('任务执行完成')
       await loadTasks()
     } catch (error: any) {
@@ -85,15 +89,23 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
-  function prepareTask(input: string, sourcePrompt?: { id: string; title: string } | null) {
+  function prepareTask(
+    input: string,
+    sourcePrompt?: { id: string; title: string } | null,
+    sourceFlow?: { id: string; title: string } | null
+  ) {
     taskInput.value = input
     taskSourcePromptId.value = sourcePrompt?.id || null
     taskSourcePromptTitle.value = sourcePrompt?.title || ''
+    taskSourceFlowId.value = sourceFlow?.id || null
+    taskSourceFlowTitle.value = sourceFlow?.title || ''
   }
 
   function clearTaskSource() {
     taskSourcePromptId.value = null
     taskSourcePromptTitle.value = ''
+    taskSourceFlowId.value = null
+    taskSourceFlowTitle.value = ''
   }
 
   async function loadFlowDrafts() {
@@ -238,7 +250,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         promptBlocks ? `\n可复用 Prompt 节点:\n${promptBlocks}` : '',
         '',
         '请输出：1. Summary 2. Key Points 3. Result 4. Next Actions'
-      ].join('\n')
+      ].join('\n'),
+      null,
+      { id: activeFlow.value.id, title: activeFlow.value.title }
     )
   }
 
@@ -320,6 +334,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     taskInput,
     taskSourcePromptId,
     taskSourcePromptTitle,
+    taskSourceFlowId,
+    taskSourceFlowTitle,
     running,
     historyLoading,
     settingsLoading,

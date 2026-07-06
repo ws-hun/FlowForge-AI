@@ -14,6 +14,10 @@
             <strong>{{ task.input }}</strong>
             <small>{{ new Date(task.createdAt).toLocaleString() }}</small>
           </div>
+          <div v-if="task.sourceFlowTitle || task.sourcePromptTitle" class="history-source-row">
+            <span class="badge">{{ task.sourceFlowTitle ? 'Flow' : 'Prompt' }}</span>
+            <strong>{{ task.sourceFlowTitle || task.sourcePromptTitle }}</strong>
+          </div>
           <p class="muted">{{ task.summary }}</p>
           <el-collapse>
             <el-collapse-item title="查看结果" :name="task.id">
