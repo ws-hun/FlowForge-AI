@@ -1531,6 +1531,13 @@ a {
   border-top: 1px solid tokens.$border;
 }
 
+.flow-run-section {
+  display: grid;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid tokens.$border;
+}
+
 .prompt-node-option {
   appearance: none;
   display: grid;

@@ -2,6 +2,8 @@ package com.flowforge.ai.controller;
 
 import com.flowforge.ai.dto.FlowRequest;
 import com.flowforge.ai.dto.FlowResponse;
+import com.flowforge.ai.dto.TaskHistoryResponse;
+import com.flowforge.ai.service.TaskService;
 import com.flowforge.ai.service.WorkflowService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ import java.util.UUID;
 public class WorkflowController {
 
     private final WorkflowService workflowService;
+    private final TaskService taskService;
 
     @GetMapping
     public List<FlowResponse> listFlows() {
@@ -37,6 +40,11 @@ public class WorkflowController {
     @PutMapping("/{id}")
     public FlowResponse updateFlow(@PathVariable UUID id, @Valid @RequestBody FlowRequest request) {
         return workflowService.updateFlow(id, request);
+    }
+
+    @GetMapping("/{id}/runs")
+    public List<TaskHistoryResponse> listFlowRuns(@PathVariable UUID id) {
+        return taskService.listFlowRuns(id);
     }
 
     @DeleteMapping("/{id}")

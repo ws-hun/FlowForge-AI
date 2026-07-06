@@ -156,6 +156,26 @@
             先在 Prompt Library 中沉淀可复用 Prompt，再把它们作为 Flow 节点接入。
           </p>
         </div>
+
+        <div v-if="workspace.activeFlow" class="flow-run-section">
+          <div class="section-heading compact">
+            <h3>最近执行</h3>
+            <span>{{ flowRuns.length ? `${flowRuns.length} 条记录` : '暂无记录' }}</span>
+          </div>
+          <div v-if="flowRunsLoading" class="run-timeline">
+            <article v-for="item in 2" :key="item" class="run-item skeleton-run"></article>
+          </div>
+          <div v-else-if="flowRuns.length" class="run-timeline">
+            <article v-for="run in flowRuns" :key="run.id" class="run-item">
+              <time>{{ formatDate(run.createdAt) }}</time>
+              <strong>{{ run.summary }}</strong>
+              <p>{{ run.result }}</p>
+            </article>
+          </div>
+          <p v-else class="quiet-note">
+            从这个 Flow 发送到 Task 并执行后，记录会回到这里。
+          </p>
+        </div>
       </aside>
     </div>
   </section>
@@ -165,9 +185,10 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { listFlowRuns } from '@/api/flows'
 import { listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
-import type { FlowNode, FlowNodeType, PromptAsset } from '@/types'
+import type { FlowNode, FlowNodeType, PromptAsset, TaskHistoryItem } from '@/types'
 
 const router = useRouter()
 const workspace = useWorkspaceStore()
@@ -176,6 +197,8 @@ const flowIntent = ref('')
 const flowTitle = ref('')
 const flowDescription = ref('')
 const prompts = ref<PromptAsset[]>([])
+const flowRuns = ref<TaskHistoryItem[]>([])
+const flowRunsLoading = ref(false)
 const selectedNodeId = ref('')
 
 const selectedNode = computed<FlowNode | null>(() => {
@@ -198,6 +221,10 @@ watch(
     selectedNodeId.value = workspace.activeFlow?.nodes[0]?.id || ''
     flowTitle.value = workspace.activeFlow?.title || ''
     flowDescription.value = workspace.activeFlow?.description || ''
+    flowRuns.value = []
+    if (workspace.activeFlow?.id) {
+      loadFlowRuns(workspace.activeFlow.id)
+    }
   },
   { immediate: true }
 )
@@ -213,6 +240,20 @@ async function loadPromptAssets() {
     prompts.value = data
   } catch (error: any) {
     ElMessage.error(error.response?.data?.message || 'Prompt Library 加载失败')
+  }
+}
+
+async function loadFlowRuns(flowId: string) {
+  flowRunsLoading.value = true
+  try {
+    const { data } = await listFlowRuns(flowId)
+    if (workspace.activeFlow?.id === flowId) {
+      flowRuns.value = data
+    }
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || 'Flow 执行记录加载失败')
+  } finally {
+    flowRunsLoading.value = false
   }
 }
 

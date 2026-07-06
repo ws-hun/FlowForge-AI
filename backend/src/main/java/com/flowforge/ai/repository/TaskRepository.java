@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface TaskRepository extends JpaRepository<Task, UUID> {
 
     List<Task> findTop6BySourcePromptIdOrderByCreatedAtDesc(UUID sourcePromptId);
+
+    List<Task> findTop6BySourceFlowIdOrderByCreatedAtDesc(UUID sourceFlowId);
 }

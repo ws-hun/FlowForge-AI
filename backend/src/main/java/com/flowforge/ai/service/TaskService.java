@@ -67,6 +67,14 @@ public class TaskService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<TaskHistoryResponse> listFlowRuns(java.util.UUID flowId) {
+        return taskRepository.findTop6BySourceFlowIdOrderByCreatedAtDesc(flowId)
+                .stream()
+                .map(this::toHistoryResponse)
+                .toList();
+    }
+
     private Prompt resolveSourcePrompt(RunTaskRequest request) {
         if (request.promptId() == null) {
             return null;
