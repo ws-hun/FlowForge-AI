@@ -85,7 +85,17 @@
           </template>
         </div>
 
-        <div v-else class="flow-empty-state">
+        <AiResultDocument
+          v-if="workspace.activeFlow && flowExecutionVisible && workspace.latestResult"
+          class="flow-execution-result"
+          :summary="workspace.latestResult.summary"
+          :result="workspace.latestResult.result"
+          :raw="workspace.latestResult.raw"
+          compact
+          :show-raw="false"
+        />
+
+        <div v-if="!workspace.activeFlow" class="flow-empty-state">
           <span class="badge">Canvas</span>
           <strong>先创建一个 Flow 草稿</strong>
           <p>FlowForge 会生成一个安静的工作流骨架，你可以继续加入 Prompt 节点。</p>
@@ -192,6 +202,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import { listFlowRuns } from '@/api/flows'
 import { listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
@@ -206,6 +217,7 @@ const flowDescription = ref('')
 const prompts = ref<PromptAsset[]>([])
 const flowRuns = ref<TaskHistoryItem[]>([])
 const flowRunsLoading = ref(false)
+const flowExecutionVisible = ref(false)
 const selectedNodeId = ref('')
 
 const selectedNode = computed<FlowNode | null>(() => {
@@ -229,6 +241,7 @@ watch(
     flowTitle.value = workspace.activeFlow?.title || ''
     flowDescription.value = workspace.activeFlow?.description || ''
     flowRuns.value = []
+    flowExecutionVisible.value = false
     if (workspace.activeFlow?.id) {
       loadFlowRuns(workspace.activeFlow.id)
     }
@@ -339,6 +352,7 @@ async function executeFlowNow() {
   const flowId = workspace.activeFlow?.id
   const result = await workspace.executeActiveFlow()
   if (result && flowId) {
+    flowExecutionVisible.value = true
     await loadFlowRuns(flowId)
   }
 }
