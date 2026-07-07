@@ -59,7 +59,14 @@
             <h2>{{ workspace.activeFlow.title }}</h2>
             <p>{{ workspace.activeFlow.description }}</p>
           </div>
-          <button type="button" class="primary-button" @click="runFlowPreview">发送到 Task</button>
+          <div class="flow-run-actions">
+            <button type="button" class="ghost-button" :disabled="workspace.running" @click="sendFlowToTaskWorkspace">
+              带入 Task
+            </button>
+            <button type="button" class="primary-button" :disabled="workspace.running" @click="executeFlowNow">
+              {{ workspace.running ? '执行中...' : '执行 Flow' }}
+            </button>
+          </div>
         </div>
 
         <div v-if="workspace.activeFlow" class="flow-map">
@@ -323,9 +330,17 @@ async function confirmDeleteFlow() {
   }
 }
 
-function runFlowPreview() {
+function sendFlowToTaskWorkspace() {
   workspace.sendFlowToTask()
   router.push('/tasks')
+}
+
+async function executeFlowNow() {
+  const flowId = workspace.activeFlow?.id
+  const result = await workspace.executeActiveFlow()
+  if (result && flowId) {
+    await loadFlowRuns(flowId)
+  }
 }
 
 function nodeLabel(type: FlowNodeType) {

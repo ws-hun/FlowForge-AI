@@ -236,24 +236,31 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       return
     }
 
-    const promptBlocks = activeFlow.value.nodes
-      .filter((node) => node.type === 'prompt' && node.content)
-      .map((node) => `## ${node.title}\n${node.content}`)
-      .join('\n\n')
-
     prepareTask(
-      [
-        `请按下面的 Flow 目标执行 AI 工作流。`,
-        '',
-        `Flow: ${activeFlow.value.title}`,
-        `目标: ${activeFlow.value.description}`,
-        promptBlocks ? `\n可复用 Prompt 节点:\n${promptBlocks}` : '',
-        '',
-        '请输出：1. Summary 2. Key Points 3. Result 4. Next Actions'
-      ].join('\n'),
+      buildFlowTaskInput(activeFlow.value),
       null,
       { id: activeFlow.value.id, title: activeFlow.value.title }
     )
+  }
+
+  async function executeActiveFlow() {
+    if (!activeFlow.value) {
+      return null
+    }
+
+    running.value = true
+    try {
+      const { data } = await runTask(buildFlowTaskInput(activeFlow.value), null, activeFlow.value.id)
+      latestResult.value = data
+      ElMessage.success('Flow 执行完成')
+      await loadTasks()
+      return data
+    } catch (error: any) {
+      ElMessage.error(error.response?.data?.message || 'Flow 执行失败')
+      return null
+    } finally {
+      running.value = false
+    }
   }
 
   async function updateActiveFlow(mutator: (flow: FlowDraft) => void) {
@@ -353,6 +360,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     updateFlowMeta,
     deleteFlowDraft,
     sendFlowToTask,
+    executeActiveFlow,
     executeTask,
     prepareTask,
     clearTaskSource,
@@ -384,6 +392,23 @@ function createStarterFlowNodes(description: string): FlowNode[] {
       description: '沉淀 Summary、Key Points、Result 和下一步行动'
     }
   ]
+}
+
+function buildFlowTaskInput(flow: FlowDraft) {
+  const promptBlocks = flow.nodes
+    .filter((node) => node.type === 'prompt' && node.content)
+    .map((node) => `## ${node.title}\n${node.content}`)
+    .join('\n\n')
+
+  return [
+    `请按下面的 Flow 目标执行 AI 工作流。`,
+    '',
+    `Flow: ${flow.title}`,
+    `目标: ${flow.description}`,
+    promptBlocks ? `\n可复用 Prompt 节点:\n${promptBlocks}` : '',
+    '',
+    '请输出：1. Summary 2. Key Points 3. Result 4. Next Actions'
+  ].join('\n')
 }
 
 function buildFlowTitle(description: string) {

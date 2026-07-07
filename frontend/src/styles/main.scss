@@ -1398,6 +1398,13 @@ a {
   }
 }
 
+.flow-run-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
+}
+
 .flow-map {
   display: grid;
   min-height: 500px;
