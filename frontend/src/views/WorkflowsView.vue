@@ -174,7 +174,32 @@
             <p>{{ nodeStateDescription(selectedNode) }}</p>
           </div>
 
-          <pre v-if="selectedNode.content" class="detail-code flow-node-content">{{ selectedNode.content }}</pre>
+          <div class="flow-node-editor">
+            <label>
+              <span>Node title</span>
+              <input v-model="nodeTitle" class="quiet-input" placeholder="节点标题" />
+            </label>
+            <label>
+              <span>Description</span>
+              <textarea v-model="nodeDescription" class="quiet-textarea" placeholder="节点说明"></textarea>
+            </label>
+            <label v-if="nodeCanEditContent">
+              <span>{{ selectedNode.type === 'prompt' ? 'Prompt content' : 'Input content' }}</span>
+              <textarea
+                v-model="nodeContent"
+                class="quiet-textarea flow-node-content-editor"
+                placeholder="定义这个节点在 Flow 中提供的上下文..."
+              ></textarea>
+            </label>
+            <button
+              type="button"
+              class="secondary-button"
+              :disabled="!nodeEditorChanged || workspace.flowLoading"
+              @click="saveSelectedNode"
+            >
+              保存节点
+            </button>
+          </div>
 
           <button
             v-if="selectedNode.type === 'prompt'"
@@ -260,6 +285,9 @@ const flowIntent = ref('')
 const flowTitle = ref('')
 const flowDescription = ref('')
 const flowRunContext = ref('')
+const nodeTitle = ref('')
+const nodeDescription = ref('')
+const nodeContent = ref('')
 const prompts = ref<PromptAsset[]>([])
 const flowRuns = ref<TaskHistoryItem[]>([])
 const flowRunsLoading = ref(false)
@@ -292,6 +320,22 @@ const selectedNodeState = computed<FlowNodeRunState>(() => {
     return 'idle'
   }
   return nodeStatus(selectedNode.value.id)
+})
+
+const nodeCanEditContent = computed(() => {
+  return selectedNode.value?.type === 'input' || selectedNode.value?.type === 'prompt'
+})
+
+const nodeEditorChanged = computed(() => {
+  if (!selectedNode.value) {
+    return false
+  }
+  const contentChanged = nodeCanEditContent.value && nodeContent.value.trim() !== (selectedNode.value.content || '')
+  return (
+    nodeTitle.value.trim() !== selectedNode.value.title ||
+    nodeDescription.value.trim() !== selectedNode.value.description ||
+    contentChanged
+  )
 })
 
 const flowRunTitle = computed(() => {
@@ -336,6 +380,12 @@ watch(
       loadFlowRuns(workspace.activeFlow.id)
     }
   },
+  { immediate: true }
+)
+
+watch(
+  () => selectedNode.value?.id,
+  () => syncSelectedNodeEditor(),
   { immediate: true }
 )
 
@@ -402,6 +452,26 @@ async function removeSelectedNode() {
   await workspace.removeFlowNode(selectedNode.value.id)
   selectedNodeId.value = workspace.activeFlow?.nodes[0]?.id || ''
   resetFlowRunState()
+}
+
+async function saveSelectedNode() {
+  if (!selectedNode.value) {
+    return
+  }
+
+  const updatedFlow = await workspace.updateFlowNode(selectedNode.value.id, {
+    title: nodeTitle.value,
+    description: nodeDescription.value,
+    content: nodeCanEditContent.value ? nodeContent.value : selectedNode.value.content
+  })
+
+  if (!updatedFlow) {
+    return
+  }
+
+  resetFlowRunState()
+  syncSelectedNodeEditor()
+  ElMessage.success('节点已保存')
 }
 
 async function saveFlowMeta() {
@@ -598,5 +668,11 @@ function nodeStateDescription(node: FlowNode) {
     output: '把 Summary、Key Points 与 Result 沉淀为可回看的执行结果。'
   }
   return descriptions[node.type]
+}
+
+function syncSelectedNodeEditor() {
+  nodeTitle.value = selectedNode.value?.title || ''
+  nodeDescription.value = selectedNode.value?.description || ''
+  nodeContent.value = selectedNode.value?.content || ''
 }
 </script>

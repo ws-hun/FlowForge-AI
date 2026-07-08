@@ -189,6 +189,29 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     })
   }
 
+  async function updateFlowNode(nodeId: string, patch: Pick<FlowNode, 'title' | 'description'> & { content?: string }) {
+    const cleanTitle = patch.title.trim()
+    const cleanDescription = patch.description.trim()
+
+    if (!cleanTitle || !cleanDescription) {
+      ElMessage.warning('请补全节点标题和说明')
+      return null
+    }
+
+    return updateActiveFlow((flow) => {
+      const targetNode = flow.nodes.find((node) => node.id === nodeId)
+      if (!targetNode) {
+        return
+      }
+
+      targetNode.title = cleanTitle
+      targetNode.description = cleanDescription
+      if (typeof patch.content === 'string') {
+        targetNode.content = patch.content.trim()
+      }
+    })
+  }
+
   async function updateFlowMeta(title: string, description: string) {
     const cleanTitle = title.trim()
     const cleanDescription = description.trim()
@@ -365,6 +388,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     selectFlowDraft,
     addPromptToActiveFlow,
     removeFlowNode,
+    updateFlowNode,
     updateFlowMeta,
     deleteFlowDraft,
     composeActiveFlowInput,
@@ -404,6 +428,10 @@ function createStarterFlowNodes(description: string): FlowNode[] {
 }
 
 function buildFlowTaskInput(flow: FlowDraft, runtimeContext = '') {
+  const inputBlocks = flow.nodes
+    .filter((node) => node.type === 'input' && node.content && node.content.trim() !== flow.description.trim())
+    .map((node) => `## ${node.title}\n${node.content}`)
+    .join('\n\n')
   const promptBlocks = flow.nodes
     .filter((node) => node.type === 'prompt' && node.content)
     .map((node) => `## ${node.title}\n${node.content}`)
@@ -415,6 +443,7 @@ function buildFlowTaskInput(flow: FlowDraft, runtimeContext = '') {
     '',
     `Flow: ${flow.title}`,
     `目标: ${flow.description}`,
+    inputBlocks ? `\n输入节点上下文:\n${inputBlocks}` : '',
     cleanRuntimeContext ? `\n本次运行上下文:\n${cleanRuntimeContext}` : '',
     promptBlocks ? `\n可复用 Prompt 节点:\n${promptBlocks}` : '',
     '',
