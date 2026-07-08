@@ -1510,6 +1510,35 @@ a {
   background: rgba(255, 255, 255, 0.94);
 }
 
+.flow-result-loop {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.flow-result-loop-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(124, 92, 255, 0.14);
+  border-radius: tokens.$radius-lg;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: tokens.$shadow-soft;
+
+  strong {
+    display: block;
+    color: tokens.$text-primary;
+    font-size: 14px;
+  }
+
+  .secondary-button {
+    flex-shrink: 0;
+    min-height: 36px;
+  }
+}
+
 .flow-map {
   display: grid;
   min-height: 500px;

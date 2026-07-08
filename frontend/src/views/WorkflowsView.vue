@@ -121,15 +121,25 @@
           </details>
         </section>
 
-        <AiResultDocument
-          v-if="workspace.activeFlow && flowExecutionVisible && workspace.latestResult"
-          class="flow-execution-result"
-          :summary="workspace.latestResult.summary"
-          :result="workspace.latestResult.result"
-          :raw="workspace.latestResult.raw"
-          compact
-          :show-raw="false"
-        />
+        <section v-if="workspace.activeFlow && flowExecutionVisible && workspace.latestResult" class="flow-result-loop">
+          <div class="flow-result-loop-actions">
+            <div>
+              <span class="section-kicker">Iteration</span>
+              <strong>基于这次结果继续推进</strong>
+            </div>
+            <button type="button" class="secondary-button" @click="useLatestResultAsRunContext">
+              带入下一轮
+            </button>
+          </div>
+          <AiResultDocument
+            class="flow-execution-result"
+            :summary="workspace.latestResult.summary"
+            :result="workspace.latestResult.result"
+            :raw="workspace.latestResult.raw"
+            compact
+            :show-raw="false"
+          />
+        </section>
 
         <div v-if="!workspace.activeFlow" class="flow-empty-state">
           <span class="badge">Canvas</span>
@@ -543,6 +553,30 @@ async function duplicateSelectedPromptNode() {
   resetFlowRunState()
   syncSelectedNodeEditor()
   ElMessage.success('Prompt 变体已创建')
+}
+
+function useLatestResultAsRunContext() {
+  if (!workspace.latestResult) {
+    return
+  }
+
+  const continuationContext = [
+    '上一轮 Flow 执行结果：',
+    '',
+    `Summary: ${workspace.latestResult.summary}`,
+    '',
+    'Result:',
+    workspace.latestResult.result,
+    '',
+    '请基于以上结果继续迭代，保持输出结构清晰。'
+  ].join('\n')
+
+  flowRunContext.value = flowRunContext.value.trim()
+    ? `${flowRunContext.value.trim()}\n\n---\n\n${continuationContext}`
+    : continuationContext
+  flowExecutionVisible.value = false
+  resetFlowRunState()
+  ElMessage.success('已带入 Run Brief')
 }
 
 async function saveFlowMeta() {
