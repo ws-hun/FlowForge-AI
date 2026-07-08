@@ -191,6 +191,14 @@
             >
               下移
             </button>
+            <button
+              type="button"
+              class="ghost-button"
+              :disabled="workspace.flowLoading"
+              @click="duplicateSelectedPromptNode"
+            >
+              复制
+            </button>
           </div>
 
           <div class="flow-node-editor">
@@ -519,6 +527,22 @@ async function moveSelectedPromptNode(direction: 'up' | 'down') {
   selectedNodeId.value = selectedNode.value.id
   resetFlowRunState()
   ElMessage.success('Prompt 顺序已调整')
+}
+
+async function duplicateSelectedPromptNode() {
+  if (!selectedNode.value || selectedNode.value.type !== 'prompt') {
+    return
+  }
+
+  const duplicatedNode = await workspace.duplicateFlowPromptNode(selectedNode.value.id)
+  if (!duplicatedNode) {
+    return
+  }
+
+  selectedNodeId.value = duplicatedNode.id
+  resetFlowRunState()
+  syncSelectedNodeEditor()
+  ElMessage.success('Prompt 变体已创建')
 }
 
 async function saveFlowMeta() {

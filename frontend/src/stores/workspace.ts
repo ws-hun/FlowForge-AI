@@ -235,6 +235,33 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     })
   }
 
+  async function duplicateFlowPromptNode(nodeId: string) {
+    if (!activeFlow.value) {
+      return null
+    }
+
+    const sourceNode = activeFlow.value.nodes.find((node) => node.id === nodeId && node.type === 'prompt')
+    if (!sourceNode) {
+      return null
+    }
+
+    const duplicatedNode: FlowNode = {
+      ...sourceNode,
+      id: createId(),
+      title: `${sourceNode.title} Copy`
+    }
+
+    const updatedFlow = await updateActiveFlow((flow) => {
+      const sourceIndex = flow.nodes.findIndex((node) => node.id === nodeId)
+      if (sourceIndex < 0) {
+        return
+      }
+      flow.nodes.splice(sourceIndex + 1, 0, duplicatedNode)
+    })
+
+    return updatedFlow ? duplicatedNode : null
+  }
+
   async function updateFlowMeta(title: string, description: string) {
     const cleanTitle = title.trim()
     const cleanDescription = description.trim()
@@ -413,6 +440,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     removeFlowNode,
     updateFlowNode,
     moveFlowPromptNode,
+    duplicateFlowPromptNode,
     updateFlowMeta,
     deleteFlowDraft,
     composeActiveFlowInput,
