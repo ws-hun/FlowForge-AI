@@ -231,26 +231,34 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
-  function sendFlowToTask() {
+  function composeActiveFlowInput(runtimeContext = '') {
+    if (!activeFlow.value) {
+      return ''
+    }
+
+    return buildFlowTaskInput(activeFlow.value, runtimeContext)
+  }
+
+  function sendFlowToTask(runtimeContext = '') {
     if (!activeFlow.value) {
       return
     }
 
     prepareTask(
-      buildFlowTaskInput(activeFlow.value),
+      buildFlowTaskInput(activeFlow.value, runtimeContext),
       null,
       { id: activeFlow.value.id, title: activeFlow.value.title }
     )
   }
 
-  async function executeActiveFlow() {
+  async function executeActiveFlow(runtimeContext = '') {
     if (!activeFlow.value) {
       return null
     }
 
     running.value = true
     try {
-      const { data } = await runTask(buildFlowTaskInput(activeFlow.value), null, activeFlow.value.id)
+      const { data } = await runTask(buildFlowTaskInput(activeFlow.value, runtimeContext), null, activeFlow.value.id)
       latestResult.value = data
       ElMessage.success('Flow 执行完成')
       await loadTasks()
@@ -359,6 +367,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     removeFlowNode,
     updateFlowMeta,
     deleteFlowDraft,
+    composeActiveFlowInput,
     sendFlowToTask,
     executeActiveFlow,
     executeTask,
@@ -394,17 +403,19 @@ function createStarterFlowNodes(description: string): FlowNode[] {
   ]
 }
 
-function buildFlowTaskInput(flow: FlowDraft) {
+function buildFlowTaskInput(flow: FlowDraft, runtimeContext = '') {
   const promptBlocks = flow.nodes
     .filter((node) => node.type === 'prompt' && node.content)
     .map((node) => `## ${node.title}\n${node.content}`)
     .join('\n\n')
+  const cleanRuntimeContext = runtimeContext.trim()
 
   return [
     `请按下面的 Flow 目标执行 AI 工作流。`,
     '',
     `Flow: ${flow.title}`,
     `目标: ${flow.description}`,
+    cleanRuntimeContext ? `\n本次运行上下文:\n${cleanRuntimeContext}` : '',
     promptBlocks ? `\n可复用 Prompt 节点:\n${promptBlocks}` : '',
     '',
     '请输出：1. Summary 2. Key Points 3. Result 4. Next Actions'

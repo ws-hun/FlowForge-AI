@@ -100,6 +100,27 @@
           </template>
         </div>
 
+        <section v-if="workspace.activeFlow" class="flow-run-brief">
+          <div class="section-heading compact">
+            <div>
+              <h3>Run Brief</h3>
+              <span>执行前确认 AI 将接收的工作上下文</span>
+            </div>
+            <span>{{ workspace.activeProvider?.model || 'No provider' }}</span>
+          </div>
+
+          <textarea
+            v-model="flowRunContext"
+            class="quiet-textarea flow-context-input"
+            placeholder="为本次运行补充上下文，例如目标用户、输出格式、约束条件或业务背景..."
+          ></textarea>
+
+          <details class="flow-input-preview">
+            <summary>查看本次 AI 输入</summary>
+            <pre>{{ flowRunInputPreview }}</pre>
+          </details>
+        </section>
+
         <AiResultDocument
           v-if="workspace.activeFlow && flowExecutionVisible && workspace.latestResult"
           class="flow-execution-result"
@@ -238,6 +259,7 @@ const workspace = useWorkspaceStore()
 const flowIntent = ref('')
 const flowTitle = ref('')
 const flowDescription = ref('')
+const flowRunContext = ref('')
 const prompts = ref<PromptAsset[]>([])
 const flowRuns = ref<TaskHistoryItem[]>([])
 const flowRunsLoading = ref(false)
@@ -262,6 +284,8 @@ const flowMetaChanged = computed(() => {
   }
   return flowTitle.value.trim() !== workspace.activeFlow.title || flowDescription.value.trim() !== workspace.activeFlow.description
 })
+
+const flowRunInputPreview = computed(() => workspace.composeActiveFlowInput(flowRunContext.value))
 
 const selectedNodeState = computed<FlowNodeRunState>(() => {
   if (!selectedNode.value) {
@@ -305,6 +329,7 @@ watch(
     selectedNodeId.value = workspace.activeFlow?.nodes[0]?.id || ''
     flowTitle.value = workspace.activeFlow?.title || ''
     flowDescription.value = workspace.activeFlow?.description || ''
+    flowRunContext.value = ''
     flowRuns.value = []
     flowExecutionVisible.value = false
     if (workspace.activeFlow?.id) {
@@ -416,7 +441,7 @@ async function confirmDeleteFlow() {
 }
 
 function sendFlowToTaskWorkspace() {
-  workspace.sendFlowToTask()
+  workspace.sendFlowToTask(flowRunContext.value)
   router.push('/tasks')
 }
 
@@ -428,7 +453,7 @@ async function executeFlowNow() {
   }
 
   startFlowRun(flow.nodes)
-  const result = await workspace.executeActiveFlow()
+  const result = await workspace.executeActiveFlow(flowRunContext.value)
   if (result && flowId) {
     completeFlowRun()
     flowExecutionVisible.value = true

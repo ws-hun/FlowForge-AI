@@ -1646,6 +1646,71 @@ a {
   }
 }
 
+.flow-run-brief {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 18px;
+  border: 1px solid rgba(79, 124, 255, 0.14);
+  border-radius: tokens.$radius-lg;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: tokens.$shadow-soft;
+
+  .section-heading {
+    margin-bottom: 0;
+  }
+}
+
+.flow-context-input {
+  min-height: 108px;
+  background: rgba(243, 245, 247, 0.78);
+}
+
+.flow-input-preview {
+  overflow: hidden;
+  border: 1px solid tokens.$border;
+  border-radius: tokens.$radius-lg;
+  background: tokens.$surface-secondary;
+
+  summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 44px;
+    padding: 0 14px;
+    color: tokens.$text-secondary;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 680;
+    list-style: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::after {
+      color: tokens.$text-muted;
+      content: "Preview";
+      font-family: tokens.$mono;
+      font-size: 11px;
+      font-weight: 700;
+    }
+  }
+
+  pre {
+    max-height: 280px;
+    margin: 0;
+    overflow: auto;
+    padding: 16px;
+    border-top: 1px solid tokens.$border;
+    color: tokens.$text-secondary;
+    font-family: tokens.$mono;
+    font-size: 12px;
+    line-height: 1.75;
+    white-space: pre-wrap;
+  }
+}
+
 .flow-empty-state {
   display: grid;
   min-height: 520px;
