@@ -1768,6 +1768,17 @@ a {
   font-size: 12px;
 }
 
+.flow-node-order-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+
+  .ghost-button {
+    min-height: 36px;
+    background: rgba(243, 245, 247, 0.72);
+  }
+}
+
 .node-status-card {
   display: grid;
   gap: 8px;

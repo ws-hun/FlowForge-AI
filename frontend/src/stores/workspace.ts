@@ -173,8 +173,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
 
     const updatedFlow = await updateActiveFlow((flow) => {
+      const aiTaskIndex = flow.nodes.findIndex((node) => node.type === 'ai-task')
       const outputIndex = flow.nodes.findIndex((node) => node.type === 'output')
-      const insertIndex = outputIndex >= 0 ? outputIndex : flow.nodes.length
+      const insertIndex = aiTaskIndex >= 0 ? aiTaskIndex : outputIndex >= 0 ? outputIndex : flow.nodes.length
       flow.nodes.splice(insertIndex, 0, promptNode)
     })
     return updatedFlow ? promptNode : null
@@ -209,6 +210,28 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       if (typeof patch.content === 'string') {
         targetNode.content = patch.content.trim()
       }
+    })
+  }
+
+  async function moveFlowPromptNode(nodeId: string, direction: 'up' | 'down') {
+    return updateActiveFlow((flow) => {
+      const promptNodes = flow.nodes.filter((node) => node.type === 'prompt')
+      const currentIndex = promptNodes.findIndex((node) => node.id === nodeId)
+      const nextIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+
+      if (currentIndex < 0 || nextIndex < 0 || nextIndex >= promptNodes.length) {
+        return
+      }
+
+      const currentNode = promptNodes[currentIndex]
+      promptNodes[currentIndex] = promptNodes[nextIndex]
+      promptNodes[nextIndex] = currentNode
+      flow.nodes = [
+        ...flow.nodes.filter((node) => node.type === 'input'),
+        ...promptNodes,
+        ...flow.nodes.filter((node) => node.type === 'ai-task'),
+        ...flow.nodes.filter((node) => node.type === 'output')
+      ]
     })
   }
 
@@ -389,6 +412,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     addPromptToActiveFlow,
     removeFlowNode,
     updateFlowNode,
+    moveFlowPromptNode,
     updateFlowMeta,
     deleteFlowDraft,
     composeActiveFlowInput,

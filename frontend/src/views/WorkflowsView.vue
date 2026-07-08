@@ -174,6 +174,25 @@
             <p>{{ nodeStateDescription(selectedNode) }}</p>
           </div>
 
+          <div v-if="selectedNode.type === 'prompt'" class="flow-node-order-actions">
+            <button
+              type="button"
+              class="ghost-button"
+              :disabled="!canMoveSelectedNodeUp || workspace.flowLoading"
+              @click="moveSelectedPromptNode('up')"
+            >
+              上移
+            </button>
+            <button
+              type="button"
+              class="ghost-button"
+              :disabled="!canMoveSelectedNodeDown || workspace.flowLoading"
+              @click="moveSelectedPromptNode('down')"
+            >
+              下移
+            </button>
+          </div>
+
           <div class="flow-node-editor">
             <label>
               <span>Node title</span>
@@ -338,6 +357,19 @@ const nodeEditorChanged = computed(() => {
   )
 })
 
+const selectedPromptIndex = computed(() => {
+  if (!selectedNode.value || selectedNode.value.type !== 'prompt') {
+    return -1
+  }
+  return promptNodes.value.findIndex((node) => node.id === selectedNode.value?.id)
+})
+
+const promptNodes = computed(() => workspace.activeFlow?.nodes.filter((node) => node.type === 'prompt') || [])
+const canMoveSelectedNodeUp = computed(() => selectedPromptIndex.value > 0)
+const canMoveSelectedNodeDown = computed(() => {
+  return selectedPromptIndex.value >= 0 && selectedPromptIndex.value < promptNodes.value.length - 1
+})
+
 const flowRunTitle = computed(() => {
   const labels: Record<FlowRunPhase, string> = {
     idle: 'Flow Ready',
@@ -472,6 +504,21 @@ async function saveSelectedNode() {
   resetFlowRunState()
   syncSelectedNodeEditor()
   ElMessage.success('节点已保存')
+}
+
+async function moveSelectedPromptNode(direction: 'up' | 'down') {
+  if (!selectedNode.value || selectedNode.value.type !== 'prompt') {
+    return
+  }
+
+  const movedFlow = await workspace.moveFlowPromptNode(selectedNode.value.id, direction)
+  if (!movedFlow) {
+    return
+  }
+
+  selectedNodeId.value = selectedNode.value.id
+  resetFlowRunState()
+  ElMessage.success('Prompt 顺序已调整')
 }
 
 async function saveFlowMeta() {
