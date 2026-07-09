@@ -265,14 +265,25 @@
                 placeholder="定义这个节点在 Flow 中提供的上下文..."
               ></textarea>
             </label>
-            <button
-              type="button"
-              class="secondary-button"
-              :disabled="!nodeEditorChanged || workspace.flowLoading"
-              @click="saveSelectedNode"
-            >
-              保存节点
-            </button>
+            <div class="flow-node-editor-actions">
+              <button
+                type="button"
+                class="secondary-button"
+                :disabled="!nodeEditorChanged || workspace.flowLoading"
+                @click="saveSelectedNode"
+              >
+                保存节点
+              </button>
+              <button
+                v-if="nodeCanSaveAsPrompt"
+                type="button"
+                class="ghost-button"
+                :disabled="savingNodePrompt || workspace.flowLoading"
+                @click="saveSelectedNodeAsPrompt"
+              >
+                {{ savingNodePrompt ? '保存中...' : '沉淀为 Prompt' }}
+              </button>
+            </div>
           </div>
 
           <button
@@ -407,6 +418,7 @@ const flowRunsLoading = ref(false)
 const selectedFlowRun = ref<TaskHistoryItem | null>(null)
 const flowExecutionVisible = ref(false)
 const savingResultPrompt = ref(false)
+const savingNodePrompt = ref(false)
 const savedResultPrompt = ref<PromptAsset | null>(null)
 const flowRunPhase = ref<FlowRunPhase>('idle')
 const flowRunStartedAt = ref('')
@@ -469,6 +481,17 @@ const selectedNodeState = computed<FlowNodeRunState>(() => {
 
 const nodeCanEditContent = computed(() => {
   return selectedNode.value?.type === 'input' || selectedNode.value?.type === 'prompt'
+})
+
+const nodeCanSaveAsPrompt = computed(() => {
+  return Boolean(
+    workspace.activeFlow &&
+      selectedNode.value &&
+      nodeCanEditContent.value &&
+      nodeTitle.value.trim() &&
+      nodeDescription.value.trim() &&
+      nodeContent.value.trim()
+  )
 })
 
 const nodeEditorChanged = computed(() => {
@@ -782,6 +805,32 @@ async function saveLatestResultAndAddToFlow() {
   ElMessage.success('已作为 Prompt 节点加入 Flow')
 }
 
+async function saveSelectedNodeAsPrompt() {
+  if (!workspace.activeFlow || !selectedNode.value || !nodeCanSaveAsPrompt.value) {
+    return
+  }
+
+  const payload: SavePromptPayload = {
+    title: `${nodeTitle.value.trim()} 资产`,
+    category: selectedNode.value.type === 'prompt' ? 'Flow Prompt' : 'Flow Input',
+    description: `从 Flow「${workspace.activeFlow.title}」的「${nodeTitle.value.trim()}」节点沉淀出的可复用工作方式。`,
+    content: buildNodePromptAsset(),
+    tags: ['Flow', nodeLabel(selectedNode.value.type), workspace.activeFlow.title],
+    favorite: false
+  }
+
+  savingNodePrompt.value = true
+  try {
+    const { data } = await createPrompt(payload)
+    prompts.value = [data, ...prompts.value.filter((prompt) => prompt.id !== data.id)]
+    ElMessage.success('节点已沉淀到 Prompt Library')
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || 'Prompt 保存失败')
+  } finally {
+    savingNodePrompt.value = false
+  }
+}
+
 async function ensureLatestResultPrompt() {
   if (!activeFlowResult.value || !workspace.activeFlow) {
     return null
@@ -1057,6 +1106,25 @@ function buildResultPromptAsset() {
     '2. 再拆解关键要点',
     '3. 最后输出可执行的详细结果',
     '4. 不要照抄参考内容，要根据新输入重新生成'
+  ].join('\n')
+}
+
+function buildNodePromptAsset() {
+  if (!workspace.activeFlow || !selectedNode.value) {
+    return ''
+  }
+
+  return [
+    `# ${nodeTitle.value.trim()}`,
+    '',
+    `来源 Flow：${workspace.activeFlow.title}`,
+    `节点类型：${nodeLabel(selectedNode.value.type)}`,
+    '',
+    '## 使用场景',
+    nodeDescription.value.trim(),
+    '',
+    '## Prompt 内容',
+    nodeContent.value.trim()
   ].join('\n')
 }
 </script>

@@ -1885,10 +1885,17 @@ a {
     font-weight: 680;
   }
 
-  .secondary-button {
-    width: fit-content;
-    justify-self: end;
+  .secondary-button,
+  .ghost-button {
+    min-height: 36px;
   }
+}
+
+.flow-node-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .flow-node-content-editor {
