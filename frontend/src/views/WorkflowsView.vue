@@ -429,6 +429,13 @@ import type { FlowNode, FlowNodeType, PromptAsset, SavePromptPayload, TaskHistor
 
 type FlowNodeRunState = 'idle' | 'queued' | 'running' | 'completed' | 'error'
 type FlowRunPhase = 'idle' | 'running' | 'completed' | 'error'
+type FlowTemplate = {
+  category: string
+  title: string
+  description: string
+  intent: string
+  nodes: Array<Pick<FlowNode, 'title' | 'description' | 'content'>>
+}
 
 const router = useRouter()
 const workspace = useWorkspaceStore()
@@ -458,27 +465,69 @@ const nodeRunStates = ref<Record<string, FlowNodeRunState>>({})
 const selectedNodeId = ref('')
 let flowProgressTimers: number[] = []
 
-const flowTemplates = [
+const flowTemplates: FlowTemplate[] = [
   {
     category: 'Product',
     title: 'Idea to MVP',
     description: '把一个模糊产品想法拆成定位、MVP 边界、风险和任务。',
     intent:
-      '把一个产品想法依次拆解为：一句话定位、目标用户、核心问题、MVP 功能边界、不做什么、主要风险、下一步执行任务。'
+      '把一个产品想法依次拆解为：一句话定位、目标用户、核心问题、MVP 功能边界、不做什么、主要风险、下一步执行任务。',
+    nodes: [
+      {
+        title: 'Clarify Product Shape',
+        description: '把模糊想法整理为产品定位、目标用户和核心问题。',
+        content:
+          '你是一位资深产品负责人。请先明确这个产品想法的用户、问题和定位。\n\n请输出：\n1. 一句话定位\n2. 目标用户\n3. 用户当前痛点\n4. 现有替代方案\n5. Flow 需要优先解决的问题'
+      },
+      {
+        title: 'Define MVP Boundary',
+        description: '收敛 MVP 范围、优先级和不做事项。',
+        content:
+          '请基于产品定位继续收敛 MVP。\n\n请输出：\n1. 必须做的核心功能\n2. 可以延后的功能\n3. 明确不做什么\n4. 第一版验收标准\n5. 主要风险和验证方式'
+      }
+    ]
   },
   {
     category: 'Engineering',
     title: 'Spec to API',
     description: '把业务目标转成接口方案、数据边界和测试建议。',
     intent:
-      '把一个业务目标依次拆解为：核心资源、REST API 草案、请求响应结构、错误码、边界条件、后端分层建议和测试用例。'
+      '把一个业务目标依次拆解为：核心资源、REST API 草案、请求响应结构、错误码、边界条件、后端分层建议和测试用例。',
+    nodes: [
+      {
+        title: 'Model API Resources',
+        description: '识别业务目标里的核心资源和资源关系。',
+        content:
+          '你是一位 Staff Backend Engineer。请先从业务目标中识别 API 资源模型。\n\n请输出：\n1. 核心资源\n2. 资源之间的关系\n3. 关键字段\n4. 状态流转\n5. 需要避免的过度设计'
+      },
+      {
+        title: 'Draft REST Contract',
+        description: '生成 REST API、请求响应、错误码和测试边界。',
+        content:
+          '请基于资源模型设计 REST API 契约。\n\n请输出：\n1. Endpoint 列表\n2. 请求 JSON 示例\n3. 响应 JSON 示例\n4. 错误码\n5. 边界条件\n6. 必须覆盖的测试用例'
+      }
+    ]
   },
   {
     category: 'Research',
     title: 'Research Brief',
     description: '把研究主题整理成问题框架、信息缺口和行动路径。',
     intent:
-      '把一个研究主题依次整理为：研究目标、关键问题、已知事实、核心假设、信息缺口、调研路径和一周内可执行计划。'
+      '把一个研究主题依次整理为：研究目标、关键问题、已知事实、核心假设、信息缺口、调研路径和一周内可执行计划。',
+    nodes: [
+      {
+        title: 'Frame Research Questions',
+        description: '把研究主题拆成关键问题、假设和信息缺口。',
+        content:
+          '你是一位产品研究员。请把研究主题整理成可执行的研究框架。\n\n请输出：\n1. 研究目标\n2. 关键问题\n3. 已知事实\n4. 核心假设\n5. 信息缺口'
+      },
+      {
+        title: 'Plan Research Actions',
+        description: '把研究框架转化为调研路径和一周行动计划。',
+        content:
+          '请基于研究框架制定调研行动计划。\n\n请输出：\n1. 调研路径\n2. 资料收集清单\n3. 访谈或验证对象\n4. 一周内行动计划\n5. 最终交付物结构'
+      }
+    ]
   }
 ]
 
@@ -709,7 +758,12 @@ async function loadFlowRuns(flowId: string) {
 }
 
 async function createFlow() {
-  const flow = await workspace.createFlowDraft(flowIntent.value)
+  const template = selectedFlowTemplate.value
+    ? flowTemplates.find((item) => item.title === selectedFlowTemplate.value)
+    : null
+  const flow = template
+    ? await workspace.createFlowFromTemplate(template.title, flowIntent.value, template.nodes)
+    : await workspace.createFlowDraft(flowIntent.value)
   if (!flow) {
     return
   }

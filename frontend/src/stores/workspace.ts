@@ -137,6 +137,32 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       nodes: createStarterFlowNodes(trimmedDescription)
     }
 
+    return persistNewFlowDraft(payload, 'Flow 草稿创建失败')
+  }
+
+  async function createFlowFromTemplate(
+    title: string,
+    description: string,
+    promptNodes: Array<Pick<FlowNode, 'title' | 'description' | 'content'>>
+  ) {
+    const cleanTitle = title.trim()
+    const cleanDescription = description.trim()
+
+    if (!cleanTitle || !cleanDescription) {
+      ElMessage.warning('请补全 Flow 模板标题和目标')
+      return null
+    }
+
+    const payload: SaveFlowPayload = {
+      title: cleanTitle,
+      description: cleanDescription,
+      nodes: createTemplatedFlowNodes(cleanDescription, promptNodes)
+    }
+
+    return persistNewFlowDraft(payload, 'Flow 模板创建失败')
+  }
+
+  async function persistNewFlowDraft(payload: SaveFlowPayload, errorMessage: string) {
     flowLoading.value = true
     try {
       const { data } = await createFlow(payload)
@@ -145,7 +171,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       localStorage.setItem(ACTIVE_FLOW_STORAGE_KEY, data.id)
       return data
     } catch (error: any) {
-      ElMessage.error(error.response?.data?.message || 'Flow 草稿创建失败')
+      ElMessage.error(error.response?.data?.message || errorMessage)
       return null
     } finally {
       flowLoading.value = false
@@ -464,6 +490,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     loadApiKeys,
     loadFlowDrafts,
     createFlowDraft,
+    createFlowFromTemplate,
     selectFlowDraft,
     duplicateActiveFlowDraft,
     addPromptToActiveFlow,
@@ -494,6 +521,42 @@ function createStarterFlowNodes(description: string): FlowNode[] {
       description: '用户想完成的 AI 工作',
       content: description
     },
+    {
+      id: createId(),
+      type: 'ai-task',
+      title: 'AI Execution',
+      description: '调用当前激活的模型执行结构化任务'
+    },
+    {
+      id: createId(),
+      type: 'output',
+      title: 'Structured Result',
+      description: '沉淀 Summary、Key Points、Result 和下一步行动'
+    }
+  ]
+}
+
+function createTemplatedFlowNodes(
+  description: string,
+  promptNodes: Array<Pick<FlowNode, 'title' | 'description' | 'content'>>
+): FlowNode[] {
+  return [
+    {
+      id: createId(),
+      type: 'input',
+      title: 'Intent',
+      description: '用户想完成的 AI 工作',
+      content: description
+    },
+    ...promptNodes.map((node) => ({
+      id: createId(),
+      type: 'prompt' as const,
+      title: node.title,
+      description: node.description,
+      content: node.content || '',
+      promptId: null,
+      promptTitle: null
+    })),
     {
       id: createId(),
       type: 'ai-task',
