@@ -1416,11 +1416,17 @@ a {
     line-height: 1.55;
   }
 
-  &:hover {
+  &:hover,
+  &.active {
     transform: scale(1.01);
     border-color: rgba(79, 124, 255, 0.22);
     background: rgba(79, 124, 255, 0.05);
     box-shadow: tokens.$shadow-soft;
+  }
+
+  &.active span {
+    background: tokens.$primary;
+    color: #fff;
   }
 }
 

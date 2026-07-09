@@ -17,6 +17,7 @@
           v-model="flowIntent"
           class="quiet-textarea flow-intent-input"
           placeholder="例如：把一个产品想法依次拆解成 PRD、接口草案和任务清单..."
+          @input="selectedFlowTemplate = ''"
         ></textarea>
 
         <button
@@ -39,6 +40,7 @@
             :key="template.title"
             type="button"
             class="flow-template-option"
+            :class="{ active: selectedFlowTemplate === template.title }"
             @click="useFlowTemplate(template.intent)"
           >
             <span>{{ template.category }}</span>
@@ -432,6 +434,7 @@ const router = useRouter()
 const workspace = useWorkspaceStore()
 
 const flowIntent = ref('')
+const selectedFlowTemplate = ref('')
 const flowTitle = ref('')
 const flowDescription = ref('')
 const flowRunContext = ref('')
@@ -711,6 +714,7 @@ async function createFlow() {
     return
   }
   flowIntent.value = ''
+  selectedFlowTemplate.value = ''
   selectedNodeId.value = flow.nodes[0]?.id || ''
   ElMessage.success('Flow 草稿已创建')
 }
@@ -731,6 +735,8 @@ function selectFlow(id: string) {
 }
 
 function useFlowTemplate(intent: string) {
+  const template = flowTemplates.find((item) => item.intent === intent)
+  selectedFlowTemplate.value = template?.title || ''
   flowIntent.value = intent
 }
 
