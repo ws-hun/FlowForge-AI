@@ -283,6 +283,15 @@
               >
                 {{ savingNodePrompt ? '保存中...' : '沉淀为 Prompt' }}
               </button>
+              <button
+                v-if="nodeCanSendToTask"
+                type="button"
+                class="ghost-button"
+                :disabled="workspace.running"
+                @click="sendSelectedNodeToTaskWorkspace"
+              >
+                带入 Task
+              </button>
             </div>
           </div>
 
@@ -492,6 +501,10 @@ const nodeCanSaveAsPrompt = computed(() => {
       nodeDescription.value.trim() &&
       nodeContent.value.trim()
   )
+})
+
+const nodeCanSendToTask = computed(() => {
+  return Boolean(selectedNode.value && nodeCanEditContent.value && nodeContent.value.trim())
 })
 
 const nodeEditorChanged = computed(() => {
@@ -904,6 +917,20 @@ function sendFlowToTaskWorkspace() {
   router.push('/tasks')
 }
 
+function sendSelectedNodeToTaskWorkspace() {
+  if (!selectedNode.value || !nodeCanSendToTask.value) {
+    return
+  }
+
+  const promptSource =
+    selectedNode.value.type === 'prompt' && selectedNode.value.promptId
+      ? { id: selectedNode.value.promptId, title: selectedNode.value.promptTitle || nodeTitle.value.trim() }
+      : null
+
+  workspace.prepareTask(buildNodeTaskInput(), promptSource)
+  router.push('/tasks')
+}
+
 function goToApiKeys() {
   router.push('/api-keys')
 }
@@ -1124,6 +1151,22 @@ function buildNodePromptAsset() {
     nodeDescription.value.trim(),
     '',
     '## Prompt 内容',
+    nodeContent.value.trim()
+  ].join('\n')
+}
+
+function buildNodeTaskInput() {
+  if (!workspace.activeFlow || !selectedNode.value) {
+    return ''
+  }
+
+  return [
+    `请基于 Flow「${workspace.activeFlow.title}」中的节点完成一次独立 AI 任务。`,
+    '',
+    `节点：${nodeTitle.value.trim()}`,
+    `说明：${nodeDescription.value.trim()}`,
+    '',
+    '节点内容：',
     nodeContent.value.trim()
   ].join('\n')
 }
