@@ -121,11 +121,11 @@
           </details>
         </section>
 
-        <section v-if="workspace.activeFlow && flowExecutionVisible && workspace.latestResult" class="flow-result-loop">
+        <section v-if="workspace.activeFlow && flowExecutionVisible && activeFlowResult" class="flow-result-loop">
           <div class="flow-result-loop-actions">
             <div>
               <span class="section-kicker">Iteration</span>
-              <strong>基于这次结果继续推进</strong>
+              <strong>{{ flowResultHeading }}</strong>
             </div>
             <div class="flow-result-actions">
               <button type="button" class="secondary-button" @click="useLatestResultAsRunContext">
@@ -146,9 +146,9 @@
           </div>
           <AiResultDocument
             class="flow-execution-result"
-            :summary="workspace.latestResult.summary"
-            :result="workspace.latestResult.result"
-            :raw="workspace.latestResult.raw"
+            :summary="activeFlowResult.summary"
+            :result="activeFlowResult.result"
+            :raw="activeFlowResult.raw"
             compact
             :show-raw="false"
           />
@@ -300,11 +300,18 @@
             <article v-for="item in 2" :key="item" class="run-item skeleton-run"></article>
           </div>
           <div v-else-if="flowRuns.length" class="run-timeline">
-            <article v-for="run in flowRuns" :key="run.id" class="run-item">
+            <button
+              v-for="run in flowRuns"
+              :key="run.id"
+              type="button"
+              class="run-item"
+              :class="{ active: selectedFlowRun?.id === run.id }"
+              @click="selectFlowRun(run)"
+            >
               <time>{{ formatDate(run.createdAt) }}</time>
               <strong>{{ run.summary }}</strong>
               <p>{{ run.result }}</p>
-            </article>
+            </button>
           </div>
           <p v-else class="quiet-note">
             从这个 Flow 发送到 Task 并执行后，记录会回到这里。
@@ -323,7 +330,7 @@ import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import { listFlowRuns } from '@/api/flows'
 import { createPrompt, listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
-import type { FlowNode, FlowNodeType, PromptAsset, SavePromptPayload, TaskHistoryItem } from '@/types'
+import type { FlowNode, FlowNodeType, PromptAsset, SavePromptPayload, TaskHistoryItem, TaskRunResponse } from '@/types'
 
 type FlowNodeRunState = 'idle' | 'queued' | 'running' | 'completed' | 'error'
 type FlowRunPhase = 'idle' | 'running' | 'completed' | 'error'
@@ -341,6 +348,7 @@ const nodeContent = ref('')
 const prompts = ref<PromptAsset[]>([])
 const flowRuns = ref<TaskHistoryItem[]>([])
 const flowRunsLoading = ref(false)
+const selectedFlowRun = ref<TaskHistoryItem | null>(null)
 const flowExecutionVisible = ref(false)
 const savingResultPrompt = ref(false)
 const savedResultPrompt = ref<PromptAsset | null>(null)
@@ -366,6 +374,22 @@ const flowMetaChanged = computed(() => {
 })
 
 const flowRunInputPreview = computed(() => workspace.composeActiveFlowInput(flowRunContext.value))
+
+const activeFlowResult = computed<TaskRunResponse | null>(() => {
+  if (selectedFlowRun.value) {
+    return {
+      summary: selectedFlowRun.value.summary,
+      result: selectedFlowRun.value.result,
+      raw: ''
+    }
+  }
+
+  return workspace.latestResult
+})
+
+const flowResultHeading = computed(() => {
+  return selectedFlowRun.value ? '基于历史结果继续推进' : '基于这次结果继续推进'
+})
 
 const selectedNodeState = computed<FlowNodeRunState>(() => {
   if (!selectedNode.value) {
@@ -441,6 +465,7 @@ watch(
     flowRunContext.value = ''
     flowRuns.value = []
     flowExecutionVisible.value = false
+    selectedFlowRun.value = null
     savedResultPrompt.value = null
     if (workspace.activeFlow?.id) {
       loadFlowRuns(workspace.activeFlow.id)
@@ -479,6 +504,9 @@ async function loadFlowRuns(flowId: string) {
     const { data } = await listFlowRuns(flowId)
     if (workspace.activeFlow?.id === flowId) {
       flowRuns.value = data
+      if (selectedFlowRun.value && !data.some((run) => run.id === selectedFlowRun.value?.id)) {
+        selectedFlowRun.value = null
+      }
     }
   } catch (error: any) {
     ElMessage.error(error.response?.data?.message || 'Flow 执行记录加载失败')
@@ -571,18 +599,32 @@ async function duplicateSelectedPromptNode() {
   ElMessage.success('Prompt 变体已创建')
 }
 
+function selectFlowRun(run: TaskHistoryItem) {
+  selectedFlowRun.value = run
+  savedResultPrompt.value = null
+  flowExecutionVisible.value = true
+  flowRunPhase.value = 'completed'
+  flowRunCompletedAt.value = run.createdAt
+  if (workspace.activeFlow) {
+    nodeRunStates.value = workspace.activeFlow.nodes.reduce<Record<string, FlowNodeRunState>>((states, node) => {
+      states[node.id] = 'completed'
+      return states
+    }, {})
+  }
+}
+
 function useLatestResultAsRunContext() {
-  if (!workspace.latestResult) {
+  if (!activeFlowResult.value) {
     return
   }
 
   const continuationContext = [
     '上一轮 Flow 执行结果：',
     '',
-    `Summary: ${workspace.latestResult.summary}`,
+    `Summary: ${activeFlowResult.value.summary}`,
     '',
     'Result:',
-    workspace.latestResult.result,
+    activeFlowResult.value.result,
     '',
     '请基于以上结果继续迭代，保持输出结构清晰。'
   ].join('\n')
@@ -620,7 +662,7 @@ async function saveLatestResultAndAddToFlow() {
 }
 
 async function ensureLatestResultPrompt() {
-  if (!workspace.latestResult || !workspace.activeFlow) {
+  if (!activeFlowResult.value || !workspace.activeFlow) {
     return null
   }
 
@@ -700,6 +742,7 @@ async function executeFlowNow() {
   }
 
   savedResultPrompt.value = null
+  selectedFlowRun.value = null
   startFlowRun(flow.nodes)
   const result = await workspace.executeActiveFlow(flowRunContext.value)
   if (result && flowId) {
@@ -855,7 +898,7 @@ function syncSelectedNodeEditor() {
 }
 
 function buildResultPromptAsset() {
-  if (!workspace.latestResult || !workspace.activeFlow) {
+  if (!activeFlowResult.value || !workspace.activeFlow) {
     return ''
   }
 
@@ -869,10 +912,10 @@ function buildResultPromptAsset() {
     '{input}',
     '',
     '参考 Summary:',
-    workspace.latestResult.summary,
+    activeFlowResult.value.summary,
     '',
     '参考 Result:',
-    workspace.latestResult.result,
+    activeFlowResult.value.result,
     '',
     '请保持：',
     '1. 先给出清晰 Summary',
