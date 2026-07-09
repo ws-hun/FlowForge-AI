@@ -282,6 +282,19 @@
             placeholder="搜索 Prompt、分类或标签..."
           />
 
+          <div v-if="promptFilterChips.length" class="prompt-node-filters">
+            <button
+              v-for="filter in promptFilterChips"
+              :key="filter.value"
+              type="button"
+              class="prompt-filter-chip"
+              :class="{ active: activePromptFilter === filter.value }"
+              @click="activePromptFilter = filter.value"
+            >
+              {{ filter.label }}
+            </button>
+          </div>
+
           <button
             v-for="prompt in visiblePromptOptions"
             :key="prompt.id"
@@ -359,6 +372,7 @@ const nodeDescription = ref('')
 const nodeContent = ref('')
 const prompts = ref<PromptAsset[]>([])
 const promptSearch = ref('')
+const activePromptFilter = ref('all')
 const flowRuns = ref<TaskHistoryItem[]>([])
 const flowRunsLoading = ref(false)
 const selectedFlowRun = ref<TaskHistoryItem | null>(null)
@@ -440,13 +454,35 @@ const canMoveSelectedNodeDown = computed(() => {
   return selectedPromptIndex.value >= 0 && selectedPromptIndex.value < promptNodes.value.length - 1
 })
 
+const promptCategories = computed(() => {
+  return Array.from(new Set(prompts.value.map((prompt) => prompt.category).filter(Boolean))).slice(0, 5)
+})
+
+const promptFilterChips = computed(() => [
+  { label: '全部', value: 'all' },
+  { label: '收藏', value: 'favorite' },
+  ...promptCategories.value.map((category) => ({ label: category, value: `category:${category}` }))
+])
+
 const filteredPromptOptions = computed(() => {
   const keyword = promptSearch.value.trim().toLowerCase()
+  const filteredByCategory = prompts.value.filter((prompt) => {
+    if (activePromptFilter.value === 'favorite') {
+      return prompt.favorite
+    }
+
+    if (activePromptFilter.value.startsWith('category:')) {
+      return prompt.category === activePromptFilter.value.replace('category:', '')
+    }
+
+    return true
+  })
+
   if (!keyword) {
-    return prompts.value
+    return filteredByCategory
   }
 
-  return prompts.value.filter((prompt) =>
+  return filteredByCategory.filter((prompt) =>
     [prompt.title, prompt.category, prompt.description, prompt.content, ...prompt.tags]
       .join(' ')
       .toLowerCase()
