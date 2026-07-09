@@ -1908,9 +1908,15 @@ a {
 }
 
 .flow-editor-actions {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+
+  .secondary-button,
+  .danger-button {
+    min-height: 38px;
+    padding: 0 10px;
+  }
 }
 
 .prompt-node-picker {

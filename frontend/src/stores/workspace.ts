@@ -157,6 +157,35 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     localStorage.setItem(ACTIVE_FLOW_STORAGE_KEY, id)
   }
 
+  async function duplicateActiveFlowDraft() {
+    if (!activeFlow.value) {
+      return null
+    }
+
+    const payload: SaveFlowPayload = {
+      title: `${activeFlow.value.title} Copy`,
+      description: activeFlow.value.description,
+      nodes: activeFlow.value.nodes.map((node) => ({
+        ...node,
+        id: createId()
+      }))
+    }
+
+    flowLoading.value = true
+    try {
+      const { data } = await createFlow(payload)
+      flowDrafts.value = [data, ...flowDrafts.value]
+      activeFlowId.value = data.id
+      localStorage.setItem(ACTIVE_FLOW_STORAGE_KEY, data.id)
+      return data
+    } catch (error: any) {
+      ElMessage.error(error.response?.data?.message || 'Flow 变体创建失败')
+      return null
+    } finally {
+      flowLoading.value = false
+    }
+  }
+
   async function addPromptToActiveFlow(prompt: PromptAsset) {
     if (!activeFlow.value) {
       return null
@@ -436,6 +465,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     loadFlowDrafts,
     createFlowDraft,
     selectFlowDraft,
+    duplicateActiveFlowDraft,
     addPromptToActiveFlow,
     removeFlowNode,
     updateFlowNode,

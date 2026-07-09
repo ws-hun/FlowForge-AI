@@ -178,6 +178,9 @@
             >
               保存
             </button>
+            <button type="button" class="secondary-button" :disabled="workspace.flowLoading" @click="duplicateActiveFlow">
+              创建变体
+            </button>
             <button type="button" class="danger-button" :disabled="workspace.flowLoading" @click="confirmDeleteFlow">
               删除
             </button>
@@ -523,6 +526,16 @@ async function createFlow() {
   flowIntent.value = ''
   selectedNodeId.value = flow.nodes[0]?.id || ''
   ElMessage.success('Flow 草稿已创建')
+}
+
+async function duplicateActiveFlow() {
+  const flow = await workspace.duplicateActiveFlowDraft()
+  if (!flow) {
+    return
+  }
+  selectedNodeId.value = flow.nodes[0]?.id || ''
+  resetFlowRunState()
+  ElMessage.success('Flow 变体已创建')
 }
 
 function selectFlow(id: string) {
