@@ -72,7 +72,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 2 | Prompt Library | Done | Prompt 创建、编辑、收藏、搜索、变量填充、Starter Pack |
 | Stage 2 | Prompt Versioning | Done | Prompt 编辑产生版本快照，支持历史版本恢复 |
 | Stage 2 | Prompt Run History | Done | Prompt 关联执行记录可回看 |
-| Stage 3 | Workflow Builder | In Progress | Flow 草稿、节点编排、Prompt 接入、执行、历史复用 |
+| Stage 3 | Workflow Builder | In Progress | Flow 模板、节点编排、Prompt 接入、执行、历史复用 |
 | Stage 3 | Flow Result Reuse | Done | Flow 结果可带入下一轮、保存为 Prompt、加入当前 Flow |
 | Stage 3 | Node Reuse | Done | Flow 节点可沉淀为 Prompt，也可单独带入 Task 试跑 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
@@ -133,6 +133,9 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | Capability | Status |
 | --- | --- |
 | Flow 草稿创建 | Done |
+| Flow Templates | Done |
+| 模板节点预览 | Done |
+| 模板创建 Prompt 节点 | Done |
 | Flow 标题和目标编辑 | Done |
 | Flow 删除 | Done |
 | Flow 变体创建 | Done |
@@ -513,7 +516,6 @@ Check:
 
 ### Near Term
 
-- Flow templates
 - Workflow Builder node experience polish
 - Better Flow result structure rendering
 - Prompt / Flow reuse loop refinement
