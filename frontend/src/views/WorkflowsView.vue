@@ -134,6 +134,14 @@
               <button type="button" class="ghost-button" :disabled="savingResultPrompt" @click="saveLatestResultAsPrompt">
                 {{ savingResultPrompt ? '保存中...' : '保存为 Prompt' }}
               </button>
+              <button
+                type="button"
+                class="ghost-button"
+                :disabled="savingResultPrompt || workspace.flowLoading"
+                @click="saveLatestResultAndAddToFlow"
+              >
+                保存并加入 Flow
+              </button>
             </div>
           </div>
           <AiResultDocument
@@ -335,6 +343,7 @@ const flowRuns = ref<TaskHistoryItem[]>([])
 const flowRunsLoading = ref(false)
 const flowExecutionVisible = ref(false)
 const savingResultPrompt = ref(false)
+const savedResultPrompt = ref<PromptAsset | null>(null)
 const flowRunPhase = ref<FlowRunPhase>('idle')
 const flowRunStartedAt = ref('')
 const flowRunCompletedAt = ref('')
@@ -432,6 +441,7 @@ watch(
     flowRunContext.value = ''
     flowRuns.value = []
     flowExecutionVisible.value = false
+    savedResultPrompt.value = null
     if (workspace.activeFlow?.id) {
       loadFlowRuns(workspace.activeFlow.id)
     }
@@ -586,8 +596,36 @@ function useLatestResultAsRunContext() {
 }
 
 async function saveLatestResultAsPrompt() {
-  if (!workspace.latestResult || !workspace.activeFlow) {
+  const prompt = await ensureLatestResultPrompt()
+  if (prompt) {
+    ElMessage.success('已保存到 Prompt Library')
+  }
+}
+
+async function saveLatestResultAndAddToFlow() {
+  const prompt = await ensureLatestResultPrompt()
+  if (!prompt) {
     return
+  }
+
+  const addedNode = await workspace.addPromptToActiveFlow(prompt)
+  if (!addedNode) {
+    return
+  }
+
+  selectedNodeId.value = addedNode.id
+  resetFlowRunState()
+  syncSelectedNodeEditor()
+  ElMessage.success('已作为 Prompt 节点加入 Flow')
+}
+
+async function ensureLatestResultPrompt() {
+  if (!workspace.latestResult || !workspace.activeFlow) {
+    return null
+  }
+
+  if (savedResultPrompt.value) {
+    return savedResultPrompt.value
   }
 
   const payload: SavePromptPayload = {
@@ -603,9 +641,11 @@ async function saveLatestResultAsPrompt() {
   try {
     const { data } = await createPrompt(payload)
     prompts.value = [data, ...prompts.value.filter((prompt) => prompt.id !== data.id)]
-    ElMessage.success('已保存到 Prompt Library')
+    savedResultPrompt.value = data
+    return data
   } catch (error: any) {
     ElMessage.error(error.response?.data?.message || 'Prompt 保存失败')
+    return null
   } finally {
     savingResultPrompt.value = false
   }
@@ -659,6 +699,7 @@ async function executeFlowNow() {
     return
   }
 
+  savedResultPrompt.value = null
   startFlowRun(flow.nodes)
   const result = await workspace.executeActiveFlow(flowRunContext.value)
   if (result && flowId) {
