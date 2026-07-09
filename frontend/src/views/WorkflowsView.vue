@@ -63,10 +63,24 @@
             <button type="button" class="ghost-button" :disabled="workspace.running" @click="sendFlowToTaskWorkspace">
               带入 Task
             </button>
-            <button type="button" class="primary-button" :disabled="workspace.running" @click="executeFlowNow">
+            <button
+              type="button"
+              class="primary-button"
+              :disabled="workspace.running || !flowReadyToRun"
+              @click="executeFlowNow"
+            >
               {{ workspace.running ? '执行中...' : '执行 Flow' }}
             </button>
           </div>
+        </div>
+
+        <div v-if="workspace.activeFlow && !flowReadyToRun" class="flow-readiness-note">
+          <span class="flow-run-dot warning"></span>
+          <div>
+            <strong>需要配置 AI Provider</strong>
+            <p>Flow 执行依赖一个已激活的 Provider。配置后即可运行当前工作流。</p>
+          </div>
+          <button type="button" class="secondary-button" @click="goToApiKeys">配置 Provider</button>
         </div>
 
         <div v-if="workspace.activeFlow && flowRunPhase !== 'idle'" class="flow-run-signal" :class="flowRunPhase">
@@ -405,6 +419,7 @@ const flowMetaChanged = computed(() => {
 })
 
 const flowRunInputPreview = computed(() => workspace.composeActiveFlowInput(flowRunContext.value))
+const flowReadyToRun = computed(() => Boolean(workspace.activeProvider))
 
 const activeFlowResult = computed<TaskRunResponse | null>(() => {
   if (selectedFlowRun.value) {
@@ -555,8 +570,7 @@ watch(
 )
 
 onMounted(async () => {
-  workspace.loadFlowDrafts()
-  await loadPromptAssets()
+  await Promise.all([workspace.loadFlowDrafts(), workspace.loadApiKeys(), loadPromptAssets()])
 })
 
 onBeforeUnmount(() => {
@@ -818,10 +832,20 @@ function sendFlowToTaskWorkspace() {
   router.push('/tasks')
 }
 
+function goToApiKeys() {
+  router.push('/api-keys')
+}
+
 async function executeFlowNow() {
   const flow = workspace.activeFlow
   const flowId = flow?.id
   if (!flow || !flowId) {
+    return
+  }
+
+  if (!flowReadyToRun.value) {
+    ElMessage.warning('请先配置并激活 AI Provider')
+    goToApiKeys()
     return
   }
 

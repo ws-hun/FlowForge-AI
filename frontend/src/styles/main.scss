@@ -1463,6 +1463,39 @@ a {
   gap: 10px;
 }
 
+.flow-readiness-note {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 22px;
+  padding: 14px 16px;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: tokens.$radius-lg;
+  background: rgba(255, 251, 235, 0.72);
+  box-shadow: tokens.$shadow-soft;
+
+  strong {
+    display: block;
+    margin-bottom: 4px;
+    color: tokens.$text-primary;
+    font-size: 14px;
+    letter-spacing: -0.01em;
+  }
+
+  p {
+    margin: 0;
+    color: tokens.$text-secondary;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .secondary-button {
+    min-height: 36px;
+    background: rgba(255, 255, 255, 0.76);
+  }
+}
+
 .flow-run-signal {
   display: flex;
   align-items: flex-start;
@@ -1518,6 +1551,11 @@ a {
   .flow-run-signal.error & {
     background: tokens.$error;
     box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+  }
+
+  &.warning {
+    background: tokens.$warning;
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.12);
   }
 }
 
@@ -2264,6 +2302,15 @@ a {
   .flow-canvas-header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .flow-readiness-note {
+    grid-template-columns: auto 1fr;
+
+    .secondary-button {
+      grid-column: 1 / -1;
+      width: 100%;
+    }
   }
 
   .flow-map {
