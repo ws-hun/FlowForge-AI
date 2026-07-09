@@ -333,12 +333,16 @@
             <small>{{ prompt.description }}</small>
           </button>
 
-          <p v-if="!prompts.length" class="quiet-note">
-            先在 Prompt Library 中沉淀可复用 Prompt，再把它们作为 Flow 节点接入。
-          </p>
-          <p v-else-if="!filteredPromptOptions.length" class="quiet-note">
-            没有找到匹配 Prompt，换一个关键词或先去 Prompt Library 创建。
-          </p>
+          <div v-if="!prompts.length" class="prompt-node-empty">
+            <strong>先沉淀一个 Prompt 资产</strong>
+            <p>把稳定的工作方式保存到 Prompt Library，再作为 Flow 节点复用。</p>
+            <button type="button" class="secondary-button" @click="goToPromptLibrary">打开 Prompt Library</button>
+          </div>
+          <div v-else-if="!filteredPromptOptions.length" class="prompt-node-empty">
+            <strong>没有匹配的 Prompt</strong>
+            <p>换一个关键词，或去 Library 创建一个更贴近当前 Flow 的 Prompt。</p>
+            <button type="button" class="secondary-button" @click="goToPromptLibrary">创建 Prompt</button>
+          </div>
         </div>
 
         <div v-if="workspace.activeFlow" class="flow-run-section">
@@ -853,6 +857,10 @@ function sendFlowToTaskWorkspace() {
 
 function goToApiKeys() {
   router.push('/api-keys')
+}
+
+function goToPromptLibrary() {
+  router.push('/prompts')
 }
 
 async function executeFlowNow() {

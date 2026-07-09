@@ -2008,6 +2008,33 @@ a {
   gap: 8px;
 }
 
+.prompt-node-empty {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid tokens.$border;
+  border-radius: tokens.$radius-lg;
+  background: rgba(255, 255, 255, 0.66);
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 14px;
+  }
+
+  p {
+    margin: 0;
+    color: tokens.$text-secondary;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .secondary-button {
+    width: fit-content;
+    min-height: 36px;
+    margin-top: 4px;
+  }
+}
+
 .prompt-filter-chip {
   appearance: none;
   min-height: 30px;
