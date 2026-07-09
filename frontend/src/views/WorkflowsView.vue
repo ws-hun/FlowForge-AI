@@ -28,6 +28,25 @@
           {{ workspace.flowLoading ? '保存中...' : '创建 Flow 草稿' }}
         </button>
 
+        <section class="flow-template-pack">
+          <div class="section-heading compact">
+            <h3>Flow Templates</h3>
+            <span>选择一个创作起点</span>
+          </div>
+
+          <button
+            v-for="template in flowTemplates"
+            :key="template.title"
+            type="button"
+            class="flow-template-option"
+            @click="useFlowTemplate(template.intent)"
+          >
+            <span>{{ template.category }}</span>
+            <strong>{{ template.title }}</strong>
+            <small>{{ template.description }}</small>
+          </button>
+        </section>
+
         <div class="draft-list">
           <div class="section-heading compact">
             <h3>继续创作</h3>
@@ -436,6 +455,30 @@ const nodeRunStates = ref<Record<string, FlowNodeRunState>>({})
 const selectedNodeId = ref('')
 let flowProgressTimers: number[] = []
 
+const flowTemplates = [
+  {
+    category: 'Product',
+    title: 'Idea to MVP',
+    description: '把一个模糊产品想法拆成定位、MVP 边界、风险和任务。',
+    intent:
+      '把一个产品想法依次拆解为：一句话定位、目标用户、核心问题、MVP 功能边界、不做什么、主要风险、下一步执行任务。'
+  },
+  {
+    category: 'Engineering',
+    title: 'Spec to API',
+    description: '把业务目标转成接口方案、数据边界和测试建议。',
+    intent:
+      '把一个业务目标依次拆解为：核心资源、REST API 草案、请求响应结构、错误码、边界条件、后端分层建议和测试用例。'
+  },
+  {
+    category: 'Research',
+    title: 'Research Brief',
+    description: '把研究主题整理成问题框架、信息缺口和行动路径。',
+    intent:
+      '把一个研究主题依次整理为：研究目标、关键问题、已知事实、核心假设、信息缺口、调研路径和一周内可执行计划。'
+  }
+]
+
 const selectedNode = computed<FlowNode | null>(() => {
   if (!workspace.activeFlow) {
     return null
@@ -685,6 +728,10 @@ async function duplicateActiveFlow() {
 function selectFlow(id: string) {
   workspace.selectFlowDraft(id)
   selectedNodeId.value = workspace.activeFlow?.nodes[0]?.id || ''
+}
+
+function useFlowTemplate(intent: string) {
+  flowIntent.value = intent
 }
 
 async function addPromptNode(prompt: PromptAsset) {

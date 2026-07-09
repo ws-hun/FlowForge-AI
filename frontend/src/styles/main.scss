@@ -1374,6 +1374,56 @@ a {
   background: tokens.$surface-secondary;
 }
 
+.flow-template-pack {
+  display: grid;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid tokens.$border;
+}
+
+.flow-template-option {
+  appearance: none;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid tokens.$border;
+  border-radius: tokens.$radius-lg;
+  background: rgba(255, 255, 255, 0.68);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease, background 200ms ease;
+
+  span {
+    width: fit-content;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(79, 124, 255, 0.08);
+    color: tokens.$primary;
+    font-size: 11px;
+    font-weight: 760;
+  }
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 14px;
+    letter-spacing: -0.01em;
+    line-height: 1.35;
+  }
+
+  small {
+    color: tokens.$text-secondary;
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
+  &:hover {
+    transform: scale(1.01);
+    border-color: rgba(79, 124, 255, 0.22);
+    background: rgba(79, 124, 255, 0.05);
+    box-shadow: tokens.$shadow-soft;
+  }
+}
+
 .draft-list {
   display: grid;
   gap: 10px;
