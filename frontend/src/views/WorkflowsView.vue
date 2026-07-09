@@ -300,10 +300,14 @@
             :key="prompt.id"
             type="button"
             class="prompt-node-option"
-            :disabled="!workspace.activeFlow || workspace.flowLoading"
+            :class="{ 'in-flow': promptAlreadyInFlow(prompt) }"
+            :disabled="!workspace.activeFlow || workspace.flowLoading || promptAlreadyInFlow(prompt)"
             @click="addPromptNode(prompt)"
           >
-            <span class="badge">{{ prompt.category }}</span>
+            <div class="prompt-node-option-meta">
+              <span class="badge">{{ prompt.category }}</span>
+              <span v-if="promptAlreadyInFlow(prompt)" class="prompt-node-status">已在 Flow 中</span>
+            </div>
             <strong>{{ prompt.title }}</strong>
             <small>{{ prompt.description }}</small>
           </button>
@@ -449,6 +453,7 @@ const selectedPromptIndex = computed(() => {
 })
 
 const promptNodes = computed(() => workspace.activeFlow?.nodes.filter((node) => node.type === 'prompt') || [])
+const activeFlowPromptIds = computed(() => new Set(promptNodes.value.map((node) => node.promptId).filter(Boolean)))
 const canMoveSelectedNodeUp = computed(() => selectedPromptIndex.value > 0)
 const canMoveSelectedNodeDown = computed(() => {
   return selectedPromptIndex.value >= 0 && selectedPromptIndex.value < promptNodes.value.length - 1
@@ -491,6 +496,10 @@ const filteredPromptOptions = computed(() => {
 })
 
 const visiblePromptOptions = computed(() => filteredPromptOptions.value.slice(0, 8))
+
+function promptAlreadyInFlow(prompt: PromptAsset) {
+  return activeFlowPromptIds.value.has(prompt.id)
+}
 
 const flowRunTitle = computed(() => {
   const labels: Record<FlowRunPhase, string> = {
