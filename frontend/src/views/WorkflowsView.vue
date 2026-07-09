@@ -120,7 +120,14 @@
               <h3>Run Brief</h3>
               <span>执行前确认 AI 将接收的工作上下文</span>
             </div>
-            <span>{{ workspace.activeProvider?.model || 'No provider' }}</span>
+            <span>{{ activeProviderLabel }}</span>
+          </div>
+
+          <div class="flow-brief-strip">
+            <div v-for="item in flowBriefItems" :key="item.label" class="flow-brief-item">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+            </div>
           </div>
 
           <textarea
@@ -420,6 +427,18 @@ const flowMetaChanged = computed(() => {
 
 const flowRunInputPreview = computed(() => workspace.composeActiveFlowInput(flowRunContext.value))
 const flowReadyToRun = computed(() => Boolean(workspace.activeProvider))
+const activeProviderLabel = computed(() => workspace.activeProvider?.model || 'Provider 未配置')
+const flowBriefItems = computed(() => {
+  const nodes = workspace.activeFlow?.nodes || []
+  const promptCount = nodes.filter((node) => node.type === 'prompt').length
+  const outputNode = nodes.find((node) => node.type === 'output')
+
+  return [
+    { label: 'Flow steps', value: `${nodes.length} 个节点` },
+    { label: 'Prompt assets', value: promptCount ? `${promptCount} 个 Prompt` : '等待加入' },
+    { label: 'Output', value: outputNode?.title || 'Structured Result' }
+  ]
+})
 
 const activeFlowResult = computed<TaskRunResponse | null>(() => {
   if (selectedFlowRun.value) {

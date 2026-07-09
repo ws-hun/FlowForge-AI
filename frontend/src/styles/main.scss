@@ -1757,6 +1757,39 @@ a {
   }
 }
 
+.flow-brief-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.flow-brief-item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid tokens.$border;
+  border-radius: tokens.$radius-md;
+  background: rgba(255, 255, 255, 0.64);
+
+  span {
+    color: tokens.$text-muted;
+    font-size: 11px;
+    font-weight: 760;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  strong {
+    overflow: hidden;
+    color: tokens.$text-primary;
+    font-size: 13px;
+    font-weight: 720;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 .flow-context-input {
   min-height: 108px;
   background: rgba(243, 245, 247, 0.78);
@@ -2311,6 +2344,10 @@ a {
       grid-column: 1 / -1;
       width: 100%;
     }
+  }
+
+  .flow-brief-strip {
+    grid-template-columns: 1fr;
   }
 
   .flow-map {
