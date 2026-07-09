@@ -614,6 +614,39 @@ a {
   top: 104px;
 }
 
+.command-readiness-note {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: tokens.$radius-lg;
+  background: rgba(255, 251, 235, 0.72);
+  box-shadow: tokens.$shadow-soft;
+
+  strong {
+    display: block;
+    margin-bottom: 4px;
+    color: tokens.$text-primary;
+    font-size: 14px;
+    letter-spacing: -0.01em;
+  }
+
+  p {
+    margin: 0;
+    color: tokens.$text-secondary;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .secondary-button {
+    min-height: 36px;
+    background: rgba(255, 255, 255, 0.76);
+  }
+}
+
 .result-doc {
   max-height: calc(100vh - 150px);
   overflow: auto;
@@ -2451,6 +2484,15 @@ a {
   .setting-block {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .command-readiness-note {
+    grid-template-columns: auto 1fr;
+
+    .secondary-button {
+      grid-column: 1 / -1;
+      width: 100%;
+    }
   }
 
   .flow-canvas {

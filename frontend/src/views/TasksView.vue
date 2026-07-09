@@ -17,9 +17,21 @@
           <span>{{ workspace.taskSourceFlowTitle ? '来自 Flow' : '来自 Prompt' }}</span>
           <strong>{{ workspace.taskSourceFlowTitle || workspace.taskSourcePromptTitle }}</strong>
         </div>
+        <div v-if="!taskReadyToRun" class="command-readiness-note">
+          <span class="flow-run-dot warning"></span>
+          <div>
+            <strong>需要配置 AI Provider</strong>
+            <p>任务执行依赖一个已激活的 Provider。配置后即可运行当前命令。</p>
+          </div>
+          <button type="button" class="secondary-button" @click="goToApiKeys">配置 Provider</button>
+        </div>
         <div class="composer-footer">
           <span>{{ workspace.activeProvider?.provider || '请先配置 Provider' }}</span>
-          <button class="primary-button" :disabled="workspace.running" @click="workspace.executeTask">
+          <button
+            class="primary-button"
+            :disabled="workspace.running || !workspace.taskInput.trim() || !taskReadyToRun"
+            @click="workspace.executeTask"
+          >
             {{ workspace.running ? '执行中...' : '执行任务' }}
           </button>
         </div>
@@ -39,8 +51,16 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 
+const router = useRouter()
 const workspace = useWorkspaceStore()
+const taskReadyToRun = computed(() => Boolean(workspace.activeProvider))
+
+function goToApiKeys() {
+  router.push('/api-keys')
+}
 </script>

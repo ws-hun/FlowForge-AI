@@ -71,6 +71,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       return
     }
 
+    if (!activeProvider.value) {
+      ElMessage.warning('请先配置并激活 AI Provider')
+      return
+    }
+
     running.value = true
     try {
       const { data } = await runTask(taskInput.value.trim(), taskSourcePromptId.value, taskSourceFlowId.value)
