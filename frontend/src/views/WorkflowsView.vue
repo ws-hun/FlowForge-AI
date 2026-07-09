@@ -127,9 +127,14 @@
               <span class="section-kicker">Iteration</span>
               <strong>基于这次结果继续推进</strong>
             </div>
-            <button type="button" class="secondary-button" @click="useLatestResultAsRunContext">
-              带入下一轮
-            </button>
+            <div class="flow-result-actions">
+              <button type="button" class="secondary-button" @click="useLatestResultAsRunContext">
+                带入下一轮
+              </button>
+              <button type="button" class="ghost-button" :disabled="savingResultPrompt" @click="saveLatestResultAsPrompt">
+                {{ savingResultPrompt ? '保存中...' : '保存为 Prompt' }}
+              </button>
+            </div>
           </div>
           <AiResultDocument
             class="flow-execution-result"
@@ -308,9 +313,9 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import { listFlowRuns } from '@/api/flows'
-import { listPrompts } from '@/api/prompts'
+import { createPrompt, listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
-import type { FlowNode, FlowNodeType, PromptAsset, TaskHistoryItem } from '@/types'
+import type { FlowNode, FlowNodeType, PromptAsset, SavePromptPayload, TaskHistoryItem } from '@/types'
 
 type FlowNodeRunState = 'idle' | 'queued' | 'running' | 'completed' | 'error'
 type FlowRunPhase = 'idle' | 'running' | 'completed' | 'error'
@@ -329,6 +334,7 @@ const prompts = ref<PromptAsset[]>([])
 const flowRuns = ref<TaskHistoryItem[]>([])
 const flowRunsLoading = ref(false)
 const flowExecutionVisible = ref(false)
+const savingResultPrompt = ref(false)
 const flowRunPhase = ref<FlowRunPhase>('idle')
 const flowRunStartedAt = ref('')
 const flowRunCompletedAt = ref('')
@@ -579,6 +585,32 @@ function useLatestResultAsRunContext() {
   ElMessage.success('已带入 Run Brief')
 }
 
+async function saveLatestResultAsPrompt() {
+  if (!workspace.latestResult || !workspace.activeFlow) {
+    return
+  }
+
+  const payload: SavePromptPayload = {
+    title: `${workspace.activeFlow.title} 输出复用`,
+    category: 'Flow Output',
+    description: `从 Flow「${workspace.activeFlow.title}」执行结果沉淀出的可复用输出模式。`,
+    content: buildResultPromptAsset(),
+    tags: ['Flow', 'Result', 'Reusable'],
+    favorite: false
+  }
+
+  savingResultPrompt.value = true
+  try {
+    const { data } = await createPrompt(payload)
+    prompts.value = [data, ...prompts.value.filter((prompt) => prompt.id !== data.id)]
+    ElMessage.success('已保存到 Prompt Library')
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || 'Prompt 保存失败')
+  } finally {
+    savingResultPrompt.value = false
+  }
+}
+
 async function saveFlowMeta() {
   const updatedFlow = await workspace.updateFlowMeta(flowTitle.value, flowDescription.value)
   if (!updatedFlow) {
@@ -779,5 +811,33 @@ function syncSelectedNodeEditor() {
   nodeTitle.value = selectedNode.value?.title || ''
   nodeDescription.value = selectedNode.value?.description || ''
   nodeContent.value = selectedNode.value?.content || ''
+}
+
+function buildResultPromptAsset() {
+  if (!workspace.latestResult || !workspace.activeFlow) {
+    return ''
+  }
+
+  return [
+    '你是一位 AI Workflow 设计助手。请参考下面这次已验证的 Flow 输出模式，生成同类高质量结果。',
+    '',
+    `Flow: ${workspace.activeFlow.title}`,
+    `目标: ${workspace.activeFlow.description}`,
+    '',
+    '可替换输入：',
+    '{input}',
+    '',
+    '参考 Summary:',
+    workspace.latestResult.summary,
+    '',
+    '参考 Result:',
+    workspace.latestResult.result,
+    '',
+    '请保持：',
+    '1. 先给出清晰 Summary',
+    '2. 再拆解关键要点',
+    '3. 最后输出可执行的详细结果',
+    '4. 不要照抄参考内容，要根据新输入重新生成'
+  ].join('\n')
 }
 </script>
