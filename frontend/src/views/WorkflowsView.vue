@@ -273,11 +273,17 @@
         <div class="prompt-node-picker">
           <div class="section-heading compact">
             <h3>加入 Prompt</h3>
-            <span>{{ prompts.length ? `${prompts.length} 个可用` : '暂无 Prompt' }}</span>
+            <span>{{ filteredPromptOptions.length ? `${filteredPromptOptions.length} 个匹配` : '暂无匹配' }}</span>
           </div>
 
+          <input
+            v-model="promptSearch"
+            class="quiet-input prompt-node-search"
+            placeholder="搜索 Prompt、分类或标签..."
+          />
+
           <button
-            v-for="prompt in prompts.slice(0, 5)"
+            v-for="prompt in visiblePromptOptions"
             :key="prompt.id"
             type="button"
             class="prompt-node-option"
@@ -291,6 +297,9 @@
 
           <p v-if="!prompts.length" class="quiet-note">
             先在 Prompt Library 中沉淀可复用 Prompt，再把它们作为 Flow 节点接入。
+          </p>
+          <p v-else-if="!filteredPromptOptions.length" class="quiet-note">
+            没有找到匹配 Prompt，换一个关键词或先去 Prompt Library 创建。
           </p>
         </div>
 
@@ -349,6 +358,7 @@ const nodeTitle = ref('')
 const nodeDescription = ref('')
 const nodeContent = ref('')
 const prompts = ref<PromptAsset[]>([])
+const promptSearch = ref('')
 const flowRuns = ref<TaskHistoryItem[]>([])
 const flowRunsLoading = ref(false)
 const selectedFlowRun = ref<TaskHistoryItem | null>(null)
@@ -429,6 +439,22 @@ const canMoveSelectedNodeUp = computed(() => selectedPromptIndex.value > 0)
 const canMoveSelectedNodeDown = computed(() => {
   return selectedPromptIndex.value >= 0 && selectedPromptIndex.value < promptNodes.value.length - 1
 })
+
+const filteredPromptOptions = computed(() => {
+  const keyword = promptSearch.value.trim().toLowerCase()
+  if (!keyword) {
+    return prompts.value
+  }
+
+  return prompts.value.filter((prompt) =>
+    [prompt.title, prompt.category, prompt.description, prompt.content, ...prompt.tags]
+      .join(' ')
+      .toLowerCase()
+      .includes(keyword)
+  )
+})
+
+const visiblePromptOptions = computed(() => filteredPromptOptions.value.slice(0, 8))
 
 const flowRunTitle = computed(() => {
   const labels: Record<FlowRunPhase, string> = {

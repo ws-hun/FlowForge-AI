@@ -1926,6 +1926,11 @@ a {
   border-top: 1px solid tokens.$border;
 }
 
+.prompt-node-search {
+  min-height: 40px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
 .flow-run-section {
   display: grid;
   gap: 10px;
