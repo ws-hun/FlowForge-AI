@@ -1,397 +1,325 @@
-# FlowForge AI
+<div align="center">
+  <img src="frontend/src/assets/icons/logo.png" alt="FlowForge AI" width="520" />
 
-FlowForge AI is an AI Native Workspace for turning ideas into executable, reusable AI workflows.
+  <h3>AI Native Workspace for building executable AI workflows.</h3>
+  <p>
+    把想法变成可执行、可复用、可持续演进的 AI 工作流。
+  </p>
 
-它不是 ChatGPT Clone，也不是后台管理系统。FlowForge 的目标是提供一个安静、现代、可持续演进的 AI 工作空间：用户从一个想法开始，执行 AI 任务，沉淀 Prompt 资产，再把这些资产编排成可复用的 Flow。
+  <p>
+    <img alt="Stage" src="https://img.shields.io/badge/Stage-Workflow%20Builder-4F7CFF?style=flat-square" />
+    <img alt="Frontend" src="https://img.shields.io/badge/Vue%203-TypeScript-42b883?style=flat-square&logo=vue.js&logoColor=white" />
+    <img alt="Backend" src="https://img.shields.io/badge/Spring%20Boot%203-Java%2017-6DB33F?style=flat-square&logo=springboot&logoColor=white" />
+    <img alt="Database" src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white" />
+    <img alt="AI" src="https://img.shields.io/badge/AI-OpenAI%20Compatible-111827?style=flat-square" />
+    <img alt="Docker" src="https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white" />
+  </p>
 
-## Product Positioning
+  <p>
+    <a href="#product-overview">Product</a> ·
+    <a href="#current-status">Status</a> ·
+    <a href="#features">Features</a> ·
+    <a href="#architecture">Architecture</a> ·
+    <a href="#quick-start">Quick Start</a> ·
+    <a href="#api-overview">API</a> ·
+    <a href="#roadmap">Roadmap</a>
+  </p>
+</div>
 
-**FlowForge AI = AI Workflow Creation Platform**
+---
 
-核心路径：
+## Product Overview
+
+**FlowForge AI** 是一个 AI Native Workspace，不是 ChatGPT Clone，也不是后台管理系统。
+
+它围绕一个核心目标构建：
+
+> 帮助用户把一个想法，逐步转化为可执行、可复用、可沉淀的 AI Workflow。
 
 ```text
 Idea -> AI Command -> Structured Result -> Prompt Asset -> Executable Flow -> Reuse
 ```
 
-当前产品方向遵循：
+FlowForge 关注的不是“管理数据”，而是“创造 AI 工作方式”。用户可以在工作空间中输入任务、执行 AI、保存有效 Prompt、编排 Flow，并把历史结果继续用于下一轮创作。
 
-- Create-first: 先创造，再管理
-- Workspace-first: 页面围绕工作流创作，不围绕数据表
-- Calm UI: 浅色、克制、留白、低噪音
-- Reusable AI Work: 把一次有效执行沉淀为可复用资产
-- Workflow-oriented: AI 不是聊天窗口，而是工作流执行引擎
+## What Makes It Different
 
-## Tech Stack
+| Direction | FlowForge AI |
+| --- | --- |
+| Product Form | AI Native Workspace |
+| Core Experience | Create, execute, reuse, compose |
+| AI Interaction | Structured task execution, not chat |
+| Asset Model | Prompt, Flow, Result, Provider |
+| UI Language | Calm, minimal, Apple / Linear / Notion inspired |
+| Architecture | Vue 3 + Spring Boot + PostgreSQL |
 
-### Frontend
+FlowForge 坚持：
 
-- Vue 3
-- TypeScript
-- Vite
-- Vue Router
-- Pinia
-- Axios
-- Element Plus
-- SCSS
+- **Create-first**: 页面优先服务创造，而不是数据管理
+- **Workspace-first**: 用户进入的是工作空间，而不是后台系统
+- **Reusable AI Work**: 每次有效执行都可以沉淀为 Prompt 或 Flow 资产
+- **Workflow-oriented**: AI 是工作流执行引擎，不是单次问答工具
+- **Calm UI**: 浅色、留白、克制、低噪音
 
-### Backend
+## Current Status
 
-- Java 17
-- Spring Boot 3.3
-- Spring Web
-- Spring Data JPA
-- Bean Validation
-- PostgreSQL
-- Lombok
+FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 
-### AI Provider
-
-- OpenAI-compatible HTTP API
-- DeepSeek supported
-- OpenAI supported
-- API Key managed in UI and stored in PostgreSQL
-- No AI SDK dependency
-
-### Deployment
-
-- Docker
-- Docker Compose
-- Nginx for frontend container
-- PostgreSQL 16 container
-
-## Current Development Status
-
-FlowForge 已经从最初的 AI Task MVP 演进到 **Workflow Builder 阶段**。下面是当前真实进度。
-
-| Stage | Module | Status | Notes |
+| Stage | Module | Status | Description |
 | --- | --- | --- | --- |
-| Stage 1 | AI Task Execution | Done | 可输入任务、调用 AI Provider、返回结构化结果、保存历史 |
-| Stage 1 | Provider Vault | Done | 前端管理 API Key，支持 DeepSeek / OpenAI，密钥不写入源码 |
-| Stage 2 | Prompt Library | Done | Prompt 创建、编辑、收藏、搜索、Starter Pack、变量填充、执行预览 |
+| Stage 1 | AI Task Execution | Done | 自然语言任务输入、AI 调用、结构化结果、历史保存 |
+| Stage 1 | Provider Vault | Done | 在 UI 中管理 DeepSeek / OpenAI API Key，密钥不写入源码 |
+| Stage 2 | Prompt Library | Done | Prompt 创建、编辑、收藏、搜索、变量填充、Starter Pack |
 | Stage 2 | Prompt Versioning | Done | Prompt 编辑产生版本快照，支持历史版本恢复 |
-| Stage 2 | Prompt Run History | Done | 可查看 Prompt 相关执行记录 |
-| Stage 3 | Workflow Builder | In Progress | Flow 草稿、节点编排、Prompt 接入、执行、历史复用已可用 |
-| Stage 3 | Flow Result Reuse | Done | Flow 结果可带入下一轮、保存为 Prompt、保存并加入 Flow |
+| Stage 2 | Prompt Run History | Done | Prompt 关联执行记录可回看 |
+| Stage 3 | Workflow Builder | In Progress | Flow 草稿、节点编排、Prompt 接入、执行、历史复用 |
+| Stage 3 | Flow Result Reuse | Done | Flow 结果可带入下一轮、保存为 Prompt、加入当前 Flow |
 | Stage 3 | Node Reuse | Done | Flow 节点可沉淀为 Prompt，也可单独带入 Task 试跑 |
-| Future | Agents | Preview UI | 当前为产品预留界面，尚未接入真实 Agent Runtime |
-| Future | Knowledge Base | Preview UI | 当前为信息架构占位，尚未接入向量检索 |
-| Future | Analytics | Preview UI | 当前为轻量洞察，尚未做完整数据分析系统 |
+| Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
+| Future | Knowledge Base | Preview UI | 产品预留界面，暂未接入向量检索 |
+| Future | Analytics | Preview UI | 轻量洞察预留，暂未做完整数据分析系统 |
 
-## Core Features
+## Features
 
-### 1. AI Command Workspace
+### AI Command Workspace
 
-面向任务执行的 AI 命令空间，不是聊天界面。
+一个面向 AI 任务执行的命令空间，不是聊天窗口。
 
-已支持：
+| Capability | Status |
+| --- | --- |
+| 自然语言任务输入 | Done |
+| 当前激活 Provider 执行 | Done |
+| Summary / Result / Raw JSON 展示 | Done |
+| Key Points 前端自动提取 | Done |
+| 执行历史保存 | Done |
+| 从 Prompt 带入任务 | Done |
+| 从 Flow 带入任务 | Done |
 
-- 输入自然语言任务
-- 选择当前激活 Provider
-- 调用 AI 生成结构化结果
-- 展示 Summary / Key Points / Result / Raw JSON
-- Key Points 由前端文档组件从 Result 中提取
-- 自动保存执行历史
-- 从 Prompt 或 Flow 带入任务来源
+### Provider Vault
 
-核心接口：
+API Key 不放在配置文件里，避免上传 GitHub 时泄露密钥。
 
-```http
-POST /api/tasks/run
-GET  /api/tasks
-```
+| Capability | Status |
+| --- | --- |
+| DeepSeek Provider | Done |
+| OpenAI Provider | Done |
+| Base URL / Model 配置 | Done |
+| 激活当前 Provider | Done |
+| Masked Key 回显 | Done |
+| 删除 Provider | Done |
 
-### 2. Provider Vault
+### Prompt Library
 
-API Key 不放在配置文件中，避免上传 GitHub 时泄露密钥。
+Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 
-已支持：
+| Capability | Status |
+| --- | --- |
+| Prompt 创建 / 编辑 / 删除 | Done |
+| 分类 / 标签 / 收藏 | Done |
+| Gallery 风格卡片浏览 | Done |
+| Starter Prompt Pack | Done |
+| Prompt 变量识别 | Done |
+| Prompt 变量填充 | Done |
+| 执行预览 | Done |
+| 进入 AI Command Workspace | Done |
+| Prompt 执行历史 | Done |
+| Prompt 版本记录 | Done |
+| 历史版本恢复 | Done |
 
-- 在前端添加 API Key
-- DeepSeek / OpenAI Provider 切换
-- Base URL 和 Model 配置
-- 激活当前 Provider
-- 删除 Provider
-- 密钥保存后只回显 masked key
+### Workflow Builder
 
-核心接口：
+当前重点模块。它是一个轻量 Flow Canvas，用来连接输入、Prompt、AI 执行和结构化输出。
 
-```http
-GET    /api/settings/api-keys
-POST   /api/settings/api-keys
-PATCH  /api/settings/api-keys/{id}/activate
-DELETE /api/settings/api-keys/{id}
-```
+| Capability | Status |
+| --- | --- |
+| Flow 草稿创建 | Done |
+| Flow 标题和目标编辑 | Done |
+| Flow 删除 | Done |
+| Flow 变体创建 | Done |
+| Input / Prompt / AI Task / Output 节点 | Done |
+| 从 Prompt Library 添加 Prompt 节点 | Done |
+| Prompt 节点搜索 | Done |
+| Prompt 分类 / 收藏过滤 | Done |
+| 防止重复加入同一个 Prompt | Done |
+| Prompt 节点编辑 / 删除 / 复制 / 排序 | Done |
+| Provider readiness 提示 | Done |
+| Run Brief 运行上下文 | Done |
+| AI 输入预览 | Done |
+| Flow 执行状态可视化 | Done |
+| Flow 执行结果展示 | Done |
+| Flow 执行历史回看 | Done |
+| 历史结果带入当前画布 | Done |
+| 最新结果带入下一轮 Run Brief | Done |
+| 最新结果保存为 Prompt | Done |
+| 最新结果保存并加入当前 Flow | Done |
+| 当前节点沉淀为 Prompt 资产 | Done |
+| 当前节点单独带入 Task Workspace | Done |
 
-### 3. Prompt Library
+## Product Modules
 
-Prompt Library 不是 Prompt 管理表，而是 AI 工作方式资产库。
+| Page | Purpose | Current State |
+| --- | --- | --- |
+| Workspace | 从一个想法开始创建 AI 工作 | Available |
+| AI Command | 执行结构化 AI 任务 | Available |
+| Prompt Library | 沉淀和复用 Prompt 资产 | Available |
+| Workflows | 编排 Prompt 和 AI 执行为 Flow | Available, active development |
+| History | 回看执行历史 | Available |
+| API Keys | 管理 AI Provider 密钥 | Available |
+| Agents | 智能体产品方向预留 | Preview |
+| Knowledge Base | 文档上下文方向预留 | Preview |
+| Analytics | 工作洞察方向预留 | Preview |
+| Settings | 产品设置入口 | Preview |
 
-已支持：
+## Design Language
 
-- Prompt 创建、编辑、删除
-- 分类、标签、收藏
-- Gallery 风格卡片浏览
-- Starter Prompt Pack
-- Prompt 变量识别与填充
-- 执行预览
-- 一键进入 AI Command Workspace
-- Prompt 执行历史
-- Prompt 版本记录
-- 历史版本恢复
+FlowForge 的产品 UI 遵循 `docs/core` 下的设计约束。
 
-核心接口：
+| Principle | Meaning |
+| --- | --- |
+| Light Mode First | 暖白背景、柔和灰阶、克制主色 |
+| Workspace Layout | 顶部轻导航 + 中央创作区域 |
+| Minimal UI Noise | 避免后台系统式密集布局 |
+| One Primary Action | 每个页面只强调一个核心动作 |
+| Soft Elevation | 12-16px 圆角、柔和阴影 |
+| Product-first | 从用户行为设计页面，不从数据库结构设计页面 |
 
-```http
-GET    /api/prompts
-POST   /api/prompts
-PUT    /api/prompts/{id}
-PATCH  /api/prompts/{id}/favorite
-GET    /api/prompts/{id}/runs
-GET    /api/prompts/{id}/versions
-POST   /api/prompts/{id}/versions/{versionId}/restore
-DELETE /api/prompts/{id}
-```
-
-### 4. Workflow Builder
-
-Workflow Builder 是当前重点阶段。它不是自动化后台，而是一个轻量 Flow Canvas，用来把 Prompt、输入、AI 执行和输出连接起来。
-
-已支持：
-
-- 创建 Flow 草稿
-- 编辑 Flow 标题和目标
-- 删除 Flow
-- 创建 Flow 变体
-- Flow 节点画布
-- Input / Prompt / AI Task / Output 节点结构
-- 从 Prompt Library 添加 Prompt 节点
-- Prompt 节点搜索、分类过滤、收藏过滤
-- 防止重复加入同一个 Prompt
-- Prompt 节点编辑、删除、复制、排序
-- Flow 执行前 Provider readiness 提示
-- Run Brief 运行上下文
-- AI 输入预览
-- Flow 执行过程状态
-- Flow 执行结果文档化展示
-- Flow 执行历史回看
-- 历史结果带入当前画布
-- 最新结果带入下一轮 Run Brief
-- 最新结果保存为 Prompt
-- 最新结果保存并加入当前 Flow
-- 当前节点沉淀为 Prompt 资产
-- 当前节点单独带入 Task Workspace 试跑
-
-核心接口：
-
-```http
-GET    /api/flows
-POST   /api/flows
-PUT    /api/flows/{id}
-GET    /api/flows/{id}/runs
-DELETE /api/flows/{id}
-```
-
-## Product Experience
-
-FlowForge 的界面方向是 **AI Native Workspace**：
-
-- 顶部轻导航
-- 中央 Workspace
-- 浅色暖白背景
-- 柔和阴影
-- 卡片和文档式结果展示
-- 少表格、少后台感
-- 强调创建、执行和复用
-
-设计参考：
-
-- Apple
-- Linear
-- Notion
-- Cursor
-- Raycast
-
-项目中 `docs/core` 是产品和设计约束的最高优先级文档：
+参考气质：
 
 ```text
-docs/core/PRODUCT_CONTEXT.md
-docs/core/PRODUCT_VISION.md
-docs/core/DESIGN_SYSTEM.md
-docs/core/DEVELOPMENT_GUIDE.md
-docs/core/PRODUCT_ROADMAP.md
+Apple / Linear / Notion / Cursor / Raycast
 ```
 
-## Project Structure
+## Architecture
 
 ```text
 FlowForge AI
-├── backend
-│   ├── src/main/java/com/flowforge/ai
-│   │   ├── config
-│   │   ├── controller
-│   │   ├── dto
-│   │   ├── entity
-│   │   ├── repository
-│   │   └── service
-│   ├── src/main/resources/application.yml
-│   ├── Dockerfile
-│   └── pom.xml
-├── frontend
-│   ├── src
-│   │   ├── api
-│   │   ├── assets
-│   │   ├── components
-│   │   ├── layouts
-│   │   ├── router
-│   │   ├── stores
-│   │   ├── styles
-│   │   ├── types
-│   │   └── views
-│   ├── Dockerfile
-│   ├── nginx.conf
-│   └── package.json
-├── docs
-│   ├── architecture
-│   └── core
-├── docker-compose.yml
-├── .env.example
-└── README.md
+├── frontend  Vue 3 + TypeScript + Vite
+├── backend   Spring Boot 3 + Java 17
+├── database  PostgreSQL
+└── ai        OpenAI-compatible HTTP API
 ```
 
-## Backend Architecture
-
-后端采用清晰分层：
+### Backend
 
 ```text
 Controller -> Service -> Repository -> Entity
              DTO <-> API Boundary
 ```
 
-主要模块：
+主要服务：
 
-- `TaskService`: AI 任务执行与历史记录
-- `OpenAiService`: OpenAI-compatible HTTP 调用层
-- `AiApiKeyService`: Provider 密钥管理
-- `PromptService`: Prompt 资产、版本和收藏
-- `WorkflowService`: Flow 草稿与节点结构
+| Service | Responsibility |
+| --- | --- |
+| `TaskService` | AI 任务执行与历史记录 |
+| `OpenAiService` | OpenAI-compatible HTTP 调用 |
+| `AiApiKeyService` | Provider Key 管理 |
+| `PromptService` | Prompt 资产、收藏、版本 |
+| `WorkflowService` | Flow 草稿和节点结构 |
 
-数据库实体：
+核心实体：
 
-- `tasks`
-- `ai_api_keys`
-- `prompts`
-- `prompt_versions`
-- `workflows`
+```text
+tasks
+ai_api_keys
+prompts
+prompt_versions
+workflows
+```
 
-## Frontend Architecture
+### Frontend
 
-前端采用 Vue 3 + TypeScript 的模块化结构：
+```text
+src
+├── api          Axios API clients
+├── assets       Logo and visual assets
+├── components   Reusable UI components
+├── layouts      App shell
+├── router       Vue Router
+├── stores       Pinia workspace state
+├── styles       SCSS tokens and global styles
+├── types        TypeScript domain types
+└── views        Product pages
+```
 
-- `views`: 页面级 Workspace
-- `components`: 可复用展示组件
-- `stores`: Pinia 工作空间状态
-- `api`: Axios REST API 封装
-- `types`: 前端领域类型
-- `styles`: Design Tokens 和全局 SCSS
+## Tech Stack
 
-核心页面：
+| Layer | Technology |
+| --- | --- |
+| Frontend | Vue 3, TypeScript, Vite, Vue Router, Pinia |
+| UI | Element Plus, SCSS, custom design tokens |
+| HTTP | Axios |
+| Backend | Java 17, Spring Boot 3.3, Spring Web |
+| Persistence | Spring Data JPA, PostgreSQL |
+| Validation | Jakarta Bean Validation |
+| AI | OpenAI-compatible REST API, DeepSeek / OpenAI |
+| Deployment | Docker, Docker Compose, Nginx |
 
-- `WorkspaceView`: AI Workspace Landing
-- `TasksView`: AI Command Workspace
-- `PromptLibraryView`: Prompt 资产库
-- `WorkflowsView`: Flow Canvas / Workflow Builder
-- `HistoryView`: 历史记录
-- `ApiKeysView`: Provider Vault
-- `AgentsView`: Agent 产品预留
-- `KnowledgeBaseView`: Knowledge 产品预留
-- `AnalyticsView`: 轻量洞察预留
+## Quick Start
 
-## Quick Start with Docker
-
-### 1. Clone project
+### Docker Compose
 
 ```bash
 git clone git@github.com:ws-hun/FlowForge-AI.git
 cd "FlowForge AI"
-```
-
-### 2. Create env file
-
-```bash
 cp .env.example .env
-```
-
-默认数据库配置：
-
-```text
-Database: flowforge
-Username: flowforge
-Password: flowforge
-Port: 5432
-```
-
-### 3. Start all services
-
-```bash
 docker compose up --build
 ```
 
-访问地址：
+Services:
 
 ```text
-Frontend: http://localhost:5173
-Backend:  http://localhost:8080
-Postgres: localhost:5432
+Frontend  http://localhost:5173
+Backend   http://localhost:8080
+Postgres  localhost:5432
 ```
 
-### 4. Configure AI Provider
+Default database:
 
-进入前端：
+```text
+Database  flowforge
+Username  flowforge
+Password  flowforge
+```
+
+### Configure AI Provider
+
+Open:
 
 ```text
 http://localhost:5173/api-keys
 ```
 
-添加 DeepSeek 或 OpenAI API Key，并激活 Provider。
-
-DeepSeek 默认配置：
+DeepSeek default:
 
 ```text
-Provider: deepseek
-Base URL: https://api.deepseek.com
-Model: deepseek-chat
+Provider  deepseek
+Base URL  https://api.deepseek.com
+Model     deepseek-chat
 ```
 
-OpenAI 默认配置：
+OpenAI default:
 
 ```text
-Provider: openai
-Base URL: https://api.openai.com/v1
-Model: gpt-4o-mini
+Provider  openai
+Base URL  https://api.openai.com/v1
+Model     gpt-4o-mini
 ```
 
 ## Local Development
 
 ### Requirements
 
-- JDK 17+
-- Maven 3.9+
-- Node.js 18+
-- PostgreSQL 16+
+```text
+JDK 17+
+Maven 3.9+
+Node.js 18+
+PostgreSQL 16+
+```
 
-### Start PostgreSQL
-
-可以直接使用 Docker Compose 只启动数据库：
+### Start PostgreSQL Only
 
 ```bash
 docker compose up postgres
-```
-
-或者使用本机 PostgreSQL，并创建数据库：
-
-```sql
-CREATE DATABASE flowforge;
 ```
 
 ### Start Backend
@@ -401,13 +329,10 @@ cd backend
 mvn spring-boot:run
 ```
 
-后端默认读取：
+Backend default:
 
 ```text
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/flowforge
-SPRING_DATASOURCE_USERNAME=flowforge
-SPRING_DATASOURCE_PASSWORD=flowforge
-FRONTEND_URL=http://localhost:5173
+http://localhost:8080
 ```
 
 ### Start Frontend
@@ -418,21 +343,21 @@ npm install
 npm run dev
 ```
 
-Vite dev server:
+Frontend default:
 
 ```text
 http://localhost:5173
 ```
 
-前端开发环境通过 Vite proxy 转发 `/api` 到：
+Vite dev proxy forwards `/api` to:
 
 ```text
 http://localhost:8080
 ```
 
-## Environment Variables
+## Environment
 
-`.env.example` 不包含任何真实 API Key。
+`.env.example` does not contain any real API Key.
 
 ```env
 POSTGRES_DB=flowforge
@@ -446,7 +371,7 @@ SPRING_DATASOURCE_PASSWORD=flowforge
 FRONTEND_URL=http://localhost:5173
 ```
 
-AI Provider Key 通过前端 Provider Vault 写入数据库，不需要放入 `.env` 或 `application.yml`。
+AI Provider Key is managed from the Provider Vault UI and stored in PostgreSQL.
 
 ## API Overview
 
@@ -454,8 +379,12 @@ AI Provider Key 通过前端 Provider Vault 写入数据库，不需要放入 `.
 
 ```http
 POST /api/tasks/run
-Content-Type: application/json
+GET  /api/tasks
+```
 
+Request:
+
+```json
 {
   "input": "请帮我把一个产品想法拆解为 MVP 方案",
   "promptId": null,
@@ -473,43 +402,41 @@ Response:
 }
 ```
 
-前端会基于 `result` 自动渲染文档结构，并提取关键要点展示。
+### Provider
+
+```http
+GET    /api/settings/api-keys
+POST   /api/settings/api-keys
+PATCH  /api/settings/api-keys/{id}/activate
+DELETE /api/settings/api-keys/{id}
+```
 
 ### Prompt
 
 ```http
-GET /api/prompts
-POST /api/prompts
-PUT /api/prompts/{id}
-PATCH /api/prompts/{id}/favorite
-GET /api/prompts/{id}/runs
-GET /api/prompts/{id}/versions
-POST /api/prompts/{id}/versions/{versionId}/restore
+GET    /api/prompts
+POST   /api/prompts
+PUT    /api/prompts/{id}
+PATCH  /api/prompts/{id}/favorite
+GET    /api/prompts/{id}/runs
+GET    /api/prompts/{id}/versions
+POST   /api/prompts/{id}/versions/{versionId}/restore
 DELETE /api/prompts/{id}
 ```
 
 ### Flow
 
 ```http
-GET /api/flows
-POST /api/flows
-PUT /api/flows/{id}
-GET /api/flows/{id}/runs
+GET    /api/flows
+POST   /api/flows
+PUT    /api/flows/{id}
+GET    /api/flows/{id}/runs
 DELETE /api/flows/{id}
-```
-
-### Provider
-
-```http
-GET /api/settings/api-keys
-POST /api/settings/api-keys
-PATCH /api/settings/api-keys/{id}/activate
-DELETE /api/settings/api-keys/{id}
 ```
 
 ## Validation
 
-前端验证命令：
+Frontend:
 
 ```bash
 cd frontend
@@ -517,49 +444,44 @@ npm run typecheck
 npm run build
 ```
 
-后端验证命令：
+Backend:
 
 ```bash
 cd backend
 mvn test
 ```
 
-当前前端构建中可能出现的非阻塞 warning：
+Current known non-blocking frontend build warnings:
 
 - Sass legacy JS API deprecation
 - Rollup PURE annotation warning from `@vueuse/core`
 - Vite chunk size warning
 
-这些不影响当前构建产物。
+## Security
 
-## Security Notes
+FlowForge avoids storing real AI API keys in source code.
 
-- 不在源码中保存真实 API Key
-- `.env.example` 只保留本地开发示例
-- Provider Key 通过 UI 提交到后端
-- 后端只向前端返回 masked key
-- GitHub Push Protection 可阻止误提交密钥
+| Rule | Status |
+| --- | --- |
+| No API Key in `.env.example` | Done |
+| No API Key in `application.yml` | Done |
+| API Key managed from UI | Done |
+| Masked Key returned to frontend | Done |
+| Provider activation stored in DB | Done |
 
-如果曾经把真实 API Key 提交到 Git 历史，请立即：
-
-1. 删除并重写 Git 历史中的密钥
-2. 到 Provider 平台撤销旧 Key
-3. 重新生成新 Key
-4. 确认 GitHub Push Protection 不再报错
+If GitHub Push Protection reports a leaked key, do not bypass it. Remove the secret from Git history, revoke the old key from the provider, and create a new key.
 
 ## Troubleshooting
 
-### Frontend shows `ERR_CONNECTION_REFUSED`
+### `ERR_CONNECTION_REFUSED`
 
-通常是后端没有启动。
-
-检查：
+Usually the backend is not running.
 
 ```bash
 curl http://localhost:8080/api/tasks
 ```
 
-如果连接失败，启动后端：
+Start backend:
 
 ```bash
 cd backend
@@ -568,71 +490,83 @@ mvn spring-boot:run
 
 ### Vite proxy error: `/api/... ECONNREFUSED`
 
-说明前端启动了，但 `localhost:8080` 后端不可访问。
+Frontend is running, but `localhost:8080` is not reachable.
 
-处理：
+Check:
 
-- 确认 Spring Boot 正在运行
-- 确认端口是 `8080`
-- 确认 PostgreSQL 已启动
-- 确认数据库账号密码正确
+- Spring Boot is running
+- Backend port is `8080`
+- PostgreSQL is running
+- Database username/password are correct
 
 ### AI execution fails
 
-检查：
+Check:
 
-- 是否已经在 `/api-keys` 添加 API Key
-- 是否激活了 Provider
-- Base URL 是否正确
-- Model 是否存在
-- API Key 是否有效
-
-### GitHub push blocked by secret scanning
-
-不要点击绕过，应该从 Git 历史中移除密钥并撤销旧 Key。
-
-FlowForge 当前设计已经把 API Key 从配置文件迁移到数据库管理，正常开发不需要把密钥写入源码。
+- API Key has been added in `/api-keys`
+- Provider has been activated
+- Base URL is correct
+- Model name is valid
+- API Key is still active
 
 ## Roadmap
 
 ### Near Term
 
-- 完善 Workflow Builder 节点体验
-- 增加 Flow 模板
-- 优化 Flow 执行结果结构化展示
-- 增强 Prompt 和 Flow 之间的复用闭环
-- 增加更完整的空状态和引导体验
+- Flow templates
+- Workflow Builder node experience polish
+- Better Flow result structure rendering
+- Prompt / Flow reuse loop refinement
+- More complete onboarding and empty states
 
 ### Mid Term
 
-- Knowledge Base 接入真实文档上下文
-- Agent Runtime 原型
+- Knowledge Base with real document context
+- Agent Runtime prototype
 - Workflow Execution Graph
-- 更细粒度的运行日志
-- Prompt 版本对比
-- Flow 版本管理
+- Prompt version diff
+- Flow version management
+- Fine-grained run logs
 
 ### Long Term
 
-- MCP Integration
-- Plugin Ecosystem
-- Team Workspace
-- Role-based Collaboration
-- Cloud Deployment
-- Observability and Cost Control
+- MCP integration
+- Plugin ecosystem
+- Team workspace
+- Role-based collaboration
+- Cloud deployment
+- Observability and cost control
+
+## Project Documents
+
+Product and design constraints live in `docs/core`.
+
+```text
+docs/core/PRODUCT_CONTEXT.md
+docs/core/PRODUCT_VISION.md
+docs/core/DESIGN_SYSTEM.md
+docs/core/DEVELOPMENT_GUIDE.md
+docs/core/PRODUCT_ROADMAP.md
+```
+
+Architecture reference:
+
+```text
+docs/architecture/ARCHITECTURE.md
+```
 
 ## Design Principle
 
-FlowForge 的每个页面都必须回答一个问题：
+Every screen in FlowForge must answer one of these questions:
 
 ```text
-用户在这里创造什么？
-用户在这里执行什么？
-用户在这里复用什么？
+What can the user create here?
+What can the user execute here?
+What can the user reuse here?
 ```
 
-如果一个功能只是在展示数据，它就不应该成为核心体验。
+If a page only displays data, it is not the core FlowForge experience.
 
 ## License
 
-This project is currently under active development. License to be decided.
+This project is under active development. License to be decided.
