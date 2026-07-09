@@ -1416,6 +1416,14 @@ a {
     line-height: 1.55;
   }
 
+  em {
+    color: tokens.$text-muted;
+    font-family: tokens.$mono;
+    font-size: 11px;
+    font-style: normal;
+    font-weight: 700;
+  }
+
   &:hover,
   &.active {
     transform: scale(1.01);
@@ -1427,6 +1435,38 @@ a {
   &.active span {
     background: tokens.$primary;
     color: #fff;
+  }
+}
+
+.flow-template-preview {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(79, 124, 255, 0.16);
+  border-radius: tokens.$radius-lg;
+  background: rgba(79, 124, 255, 0.05);
+
+  span {
+    color: tokens.$primary;
+    font-size: 11px;
+    font-weight: 760;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 13px;
+  }
+
+  ol {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding-left: 18px;
+    color: tokens.$text-secondary;
+    font-size: 12px;
+    line-height: 1.55;
   }
 }
 

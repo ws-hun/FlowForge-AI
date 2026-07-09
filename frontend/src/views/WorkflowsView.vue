@@ -46,7 +46,19 @@
             <span>{{ template.category }}</span>
             <strong>{{ template.title }}</strong>
             <small>{{ template.description }}</small>
+            <em>{{ template.nodes.length }} Prompt nodes</em>
           </button>
+
+          <div v-if="selectedFlowTemplateDetail" class="flow-template-preview">
+            <span>Template Flow</span>
+            <strong>将生成 {{ selectedFlowTemplateDetail.nodes.length + 3 }} 个节点</strong>
+            <ol>
+              <li>Intent</li>
+              <li v-for="node in selectedFlowTemplateDetail.nodes" :key="node.title">{{ node.title }}</li>
+              <li>AI Execution</li>
+              <li>Structured Result</li>
+            </ol>
+          </div>
         </section>
 
         <div class="draft-list">
@@ -558,6 +570,10 @@ const flowBriefItems = computed(() => {
     { label: 'Prompt assets', value: promptCount ? `${promptCount} 个 Prompt` : '等待加入' },
     { label: 'Output', value: outputNode?.title || 'Structured Result' }
   ]
+})
+
+const selectedFlowTemplateDetail = computed(() => {
+  return selectedFlowTemplate.value ? flowTemplates.find((item) => item.title === selectedFlowTemplate.value) || null : null
 })
 
 const activeFlowResult = computed<TaskRunResponse | null>(() => {
