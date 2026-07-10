@@ -11,6 +11,7 @@ import {
 } from '@/api/tasks'
 import { createFlow, deleteFlow, listFlows, updateFlow } from '@/api/flows'
 import { createPrompt } from '@/api/prompts'
+import { applyPromptVariables } from '@/utils/promptVariables'
 import type {
   ApiKeyConfig,
   FlowDraft,
@@ -433,34 +434,38 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
-  function composeActiveFlowInput(runtimeContext = '') {
+  function composeActiveFlowInput(runtimeContext = '', variableValues: Record<string, string> = {}) {
     if (!activeFlow.value) {
       return ''
     }
 
-    return buildFlowTaskInput(activeFlow.value, runtimeContext)
+    return buildFlowTaskInput(activeFlow.value, runtimeContext, variableValues)
   }
 
-  function sendFlowToTask(runtimeContext = '') {
+  function sendFlowToTask(runtimeContext = '', variableValues: Record<string, string> = {}) {
     if (!activeFlow.value) {
       return
     }
 
     prepareTask(
-      buildFlowTaskInput(activeFlow.value, runtimeContext),
+      buildFlowTaskInput(activeFlow.value, runtimeContext, variableValues),
       null,
       { id: activeFlow.value.id, title: activeFlow.value.title }
     )
   }
 
-  async function executeActiveFlow(runtimeContext = '') {
+  async function executeActiveFlow(runtimeContext = '', variableValues: Record<string, string> = {}) {
     if (!activeFlow.value) {
       return null
     }
 
     running.value = true
     try {
-      const { data } = await runTask(buildFlowTaskInput(activeFlow.value, runtimeContext), null, activeFlow.value.id)
+      const { data } = await runTask(
+        buildFlowTaskInput(activeFlow.value, runtimeContext, variableValues),
+        null,
+        activeFlow.value.id
+      )
       latestResult.value = data
       ElMessage.success('Flow 执行完成')
       await loadTasks()
@@ -686,14 +691,14 @@ function createPromptBasedFlowNodes(prompt: PromptAsset): FlowNode[] {
   ]
 }
 
-function buildFlowTaskInput(flow: FlowDraft, runtimeContext = '') {
+function buildFlowTaskInput(flow: FlowDraft, runtimeContext = '', variableValues: Record<string, string> = {}) {
   const inputBlocks = flow.nodes
     .filter((node) => node.type === 'input' && node.content && node.content.trim() !== flow.description.trim())
     .map((node) => `## ${node.title}\n${node.content}`)
     .join('\n\n')
   const promptBlocks = flow.nodes
     .filter((node) => node.type === 'prompt' && node.content)
-    .map((node) => `## ${node.title}\n${node.content}`)
+    .map((node) => `## ${node.title}\n${applyPromptVariables(node.content || '', variableValues)}`)
     .join('\n\n')
   const cleanRuntimeContext = runtimeContext.trim()
 

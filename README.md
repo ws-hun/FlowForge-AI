@@ -167,6 +167,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | 最新结果保存并加入当前 Flow | Done |
 | 当前节点沉淀为 Prompt 资产 | Done |
 | 当前节点单独带入 Task Workspace | Done |
+| Flow Prompt 变量填写与运行时替换 | Done |
 
 ## Product Modules
 

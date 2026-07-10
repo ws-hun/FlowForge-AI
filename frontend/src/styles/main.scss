@@ -1983,6 +1983,66 @@ a {
   background: rgba(243, 245, 247, 0.78);
 }
 
+.flow-variable-inputs {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(79, 124, 255, 0.12);
+  border-radius: tokens.$radius-lg;
+  background: rgba(243, 245, 247, 0.62);
+}
+
+.flow-variable-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+
+  > div {
+    display: grid;
+    gap: 4px;
+  }
+
+  p,
+  > span {
+    margin: 0;
+    color: tokens.$text-secondary;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  > span {
+    flex: 0 0 auto;
+    padding-top: 2px;
+    color: tokens.$text-muted;
+    font-family: tokens.$mono;
+  }
+}
+
+.flow-variable-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.flow-variable-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+
+  > span {
+    color: tokens.$text-secondary;
+    font-family: tokens.$mono;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .quiet-textarea {
+    min-height: 64px;
+    background: rgba(255, 255, 255, 0.82);
+  }
+}
+
 .flow-input-preview {
   overflow: hidden;
   border: 1px solid tokens.$border;
@@ -2597,6 +2657,16 @@ a {
 
   .flow-brief-strip {
     grid-template-columns: 1fr;
+  }
+
+  .flow-variable-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .flow-variable-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
   }
 
   .flow-map {

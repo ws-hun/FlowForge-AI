@@ -163,6 +163,27 @@
             </div>
           </div>
 
+          <div v-if="flowPromptVariables.length" class="flow-variable-inputs">
+            <div class="flow-variable-heading">
+              <div>
+                <span class="section-kicker">Prompt 变量</span>
+                <p>为本次运行填写 Prompt 需要的上下文。</p>
+              </div>
+              <span>{{ flowPromptVariables.length }} 个变量</span>
+            </div>
+
+            <div class="flow-variable-grid">
+              <label v-for="variable in flowPromptVariables" :key="variable" class="flow-variable-field">
+                <span>{{ '{' + variable + '}' }}</span>
+                <textarea
+                  v-model="flowVariableValues[variable]"
+                  class="quiet-textarea"
+                  :placeholder="`填写 ${variable}`"
+                ></textarea>
+              </label>
+            </div>
+          </div>
+
           <textarea
             v-model="flowRunContext"
             class="quiet-textarea flow-context-input"
@@ -437,6 +458,7 @@ import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import { listFlowRuns } from '@/api/flows'
 import { createPrompt, listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
+import { extractPromptVariables } from '@/utils/promptVariables'
 import type { FlowNode, FlowNodeType, PromptAsset, SavePromptPayload, TaskHistoryItem, TaskRunResponse } from '@/types'
 
 type FlowNodeRunState = 'idle' | 'queued' | 'running' | 'completed' | 'error'
@@ -457,6 +479,7 @@ const selectedFlowTemplate = ref('')
 const flowTitle = ref('')
 const flowDescription = ref('')
 const flowRunContext = ref('')
+const flowVariableValues = ref<Record<string, string>>({})
 const nodeTitle = ref('')
 const nodeDescription = ref('')
 const nodeContent = ref('')
@@ -578,7 +601,15 @@ const flowMetaChanged = computed(() => {
   return flowTitle.value.trim() !== workspace.activeFlow.title || flowDescription.value.trim() !== workspace.activeFlow.description
 })
 
-const flowRunInputPreview = computed(() => workspace.composeActiveFlowInput(flowRunContext.value))
+const flowPromptVariables = computed(() => {
+  const variables = (workspace.activeFlow?.nodes || [])
+    .filter((node) => node.type === 'prompt')
+    .flatMap((node) => extractPromptVariables(node.content || ''))
+
+  return Array.from(new Set(variables))
+})
+
+const flowRunInputPreview = computed(() => workspace.composeActiveFlowInput(flowRunContext.value, flowVariableValues.value))
 const flowReadyToRun = computed(() => Boolean(workspace.activeProvider))
 const activeProviderLabel = computed(() => workspace.activeProvider?.model || 'Provider 未配置')
 const flowBriefItems = computed(() => {
@@ -743,6 +774,7 @@ watch(
     flowTitle.value = workspace.activeFlow?.title || ''
     flowDescription.value = workspace.activeFlow?.description || ''
     flowRunContext.value = ''
+    flowVariableValues.value = buildFlowVariableValues(flowPromptVariables.value)
     flowRuns.value = []
     flowExecutionVisible.value = false
     selectedFlowRun.value = null
@@ -753,6 +785,10 @@ watch(
   },
   { immediate: true }
 )
+
+watch(flowPromptVariables, (variables) => {
+  flowVariableValues.value = buildFlowVariableValues(variables, flowVariableValues.value)
+})
 
 watch(
   () => selectedNode.value?.id,
@@ -1057,8 +1093,12 @@ async function confirmDeleteFlow() {
 }
 
 function sendFlowToTaskWorkspace() {
-  workspace.sendFlowToTask(flowRunContext.value)
+  workspace.sendFlowToTask(flowRunContext.value, flowVariableValues.value)
   router.push('/tasks')
+}
+
+function buildFlowVariableValues(variables: string[], currentValues: Record<string, string> = {}) {
+  return Object.fromEntries(variables.map((variable) => [variable, currentValues[variable] || '']))
 }
 
 function sendSelectedNodeToTaskWorkspace() {
@@ -1099,7 +1139,7 @@ async function executeFlowNow() {
   savedResultPrompt.value = null
   selectedFlowRun.value = null
   startFlowRun(flow.nodes)
-  const result = await workspace.executeActiveFlow(flowRunContext.value)
+  const result = await workspace.executeActiveFlow(flowRunContext.value, flowVariableValues.value)
   if (result && flowId) {
     completeFlowRun()
     flowExecutionVisible.value = true

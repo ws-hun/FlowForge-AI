@@ -288,6 +288,7 @@ import {
   updatePrompt
 } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
+import { applyPromptVariables, extractPromptVariables } from '@/utils/promptVariables'
 import type { PromptAsset, PromptVersion, SavePromptPayload, TaskHistoryItem } from '@/types'
 
 type StarterPrompt = SavePromptPayload & {
@@ -421,7 +422,7 @@ const promptVariables = computed(() => {
   if (!selectedPrompt.value) {
     return []
   }
-  return extractVariables(selectedPrompt.value.content)
+  return extractPromptVariables(selectedPrompt.value.content)
 })
 
 const preparedPromptPreview = computed(() => {
@@ -429,12 +430,7 @@ const preparedPromptPreview = computed(() => {
     return ''
   }
 
-  let preparedPrompt = selectedPrompt.value.content
-  for (const variable of promptVariables.value) {
-    const value = variableValues.value[variable]?.trim()
-    preparedPrompt = preparedPrompt.split(`{${variable}}`).join(value || `{${variable}}`)
-  }
-  return preparedPrompt
+  return applyPromptVariables(selectedPrompt.value.content, variableValues.value)
 })
 
 onMounted(loadPromptAssets)
@@ -741,13 +737,8 @@ function replacePromptInLibrary(prompt: PromptAsset) {
 
 function buildVariableValues(content: string, preserveCurrent = false) {
   return Object.fromEntries(
-    extractVariables(content).map((variable) => [variable, preserveCurrent ? variableValues.value[variable] || '' : ''])
+    extractPromptVariables(content).map((variable) => [variable, preserveCurrent ? variableValues.value[variable] || '' : ''])
   )
-}
-
-function extractVariables(content: string) {
-  const matches = content.match(/\{[a-zA-Z0-9_\u4e00-\u9fa5-]+\}/g) || []
-  return Array.from(new Set(matches.map((match) => match.slice(1, -1))))
 }
 
 function formatDate(value: string) {
