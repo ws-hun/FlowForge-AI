@@ -94,6 +94,9 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | 执行历史保存 | Done |
 | 从 Prompt 带入任务 | Done |
 | 从 Flow 带入任务 | Done |
+| 任务来源上下文提示 | Done |
+| 返回来源 Flow / Prompt | Done |
+| 脱离来源作为独立任务执行 | Done |
 
 ### Provider Vault
 
@@ -134,6 +137,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | --- | --- |
 | Flow 草稿创建 | Done |
 | Flow Templates | Done |
+| Product / Engineering / Research / Operations 模板 | Done |
 | 模板节点预览 | Done |
 | 模板创建 Prompt 节点 | Done |
 | Flow 标题和目标编辑 | Done |
