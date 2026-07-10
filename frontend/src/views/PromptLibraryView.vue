@@ -255,10 +255,16 @@
             >
               {{ selectedPrompt && starterPromptExists(selectedPrompt) ? '已加入 Library' : '加入 Library' }}
             </button>
+            <button type="button" class="secondary-button" :disabled="saving" @click="createFlowFromSelectedPrompt">
+              加入并创建 Flow
+            </button>
             <button type="button" class="primary-button" @click="importStarterAndRun">加入并进入 Task</button>
           </template>
           <template v-else>
             <button type="button" class="ghost-button" @click="openEditFromDetail">编辑 Prompt</button>
+            <button type="button" class="secondary-button" :disabled="saving" @click="createFlowFromSelectedPrompt">
+              创建 Flow
+            </button>
             <button type="button" class="primary-button" @click="sendPreparedPrompt">进入 Task</button>
           </template>
         </footer>
@@ -639,6 +645,29 @@ async function importStarterAndRun() {
   }
   detailOpen.value = false
   sendToTask(preparedPromptPreview.value, prompt)
+}
+
+async function createFlowFromSelectedPrompt() {
+  if (!selectedPrompt.value) {
+    return
+  }
+
+  const prompt = isStarterDetail.value
+    ? await importStarterPrompt(selectedPrompt.value, false)
+    : selectedPrompt.value
+
+  if (!prompt) {
+    return
+  }
+
+  const flow = await workspace.createFlowFromPrompt(prompt)
+  if (!flow) {
+    return
+  }
+
+  detailOpen.value = false
+  ElMessage.success('Flow 已从 Prompt 创建')
+  router.push('/workflows')
 }
 
 function sendToTask(content: string, prompt?: PromptAsset | null) {

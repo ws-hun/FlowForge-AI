@@ -167,6 +167,25 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     return persistNewFlowDraft(payload, 'Flow 模板创建失败')
   }
 
+  async function createFlowFromPrompt(prompt: PromptAsset) {
+    const cleanTitle = prompt.title.trim()
+    const cleanDescription = prompt.description.trim()
+    const cleanContent = prompt.content.trim()
+
+    if (!cleanTitle || !cleanDescription || !cleanContent) {
+      ElMessage.warning('Prompt 信息不完整，暂时无法创建 Flow')
+      return null
+    }
+
+    const payload: SaveFlowPayload = {
+      title: `${cleanTitle} Flow`,
+      description: cleanDescription,
+      nodes: createPromptBasedFlowNodes(prompt)
+    }
+
+    return persistNewFlowDraft(payload, '从 Prompt 创建 Flow 失败')
+  }
+
   async function persistNewFlowDraft(payload: SaveFlowPayload, errorMessage: string) {
     flowLoading.value = true
     try {
@@ -496,6 +515,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     loadFlowDrafts,
     createFlowDraft,
     createFlowFromTemplate,
+    createFlowFromPrompt,
     selectFlowDraft,
     duplicateActiveFlowDraft,
     addPromptToActiveFlow,
@@ -562,6 +582,39 @@ function createTemplatedFlowNodes(
       promptId: null,
       promptTitle: null
     })),
+    {
+      id: createId(),
+      type: 'ai-task',
+      title: 'AI Execution',
+      description: '调用当前激活的模型执行结构化任务'
+    },
+    {
+      id: createId(),
+      type: 'output',
+      title: 'Structured Result',
+      description: '沉淀 Summary、Key Points、Result 和下一步行动'
+    }
+  ]
+}
+
+function createPromptBasedFlowNodes(prompt: PromptAsset): FlowNode[] {
+  return [
+    {
+      id: createId(),
+      type: 'input',
+      title: 'Intent',
+      description: '这条可复用 Prompt 想完成的 AI 工作',
+      content: prompt.description
+    },
+    {
+      id: createId(),
+      type: 'prompt',
+      title: prompt.title,
+      description: prompt.description,
+      content: prompt.content,
+      promptId: prompt.id,
+      promptTitle: prompt.title
+    },
     {
       id: createId(),
       type: 'ai-task',

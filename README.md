@@ -73,6 +73,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 2 | Prompt Versioning | Done | Prompt 编辑产生版本快照，支持历史版本恢复 |
 | Stage 2 | Prompt Run History | Done | Prompt 关联执行记录可回看 |
 | Stage 3 | Workflow Builder | In Progress | Flow 模板、节点编排、Prompt 接入、执行、历史复用 |
+| Stage 3 | Prompt-to-Flow Creation | Done | 从已保存 Prompt 或 Starter Prompt 创建保留来源信息的可执行 Flow |
 | Stage 3 | Flow Result Reuse | Done | Flow 结果可带入下一轮、保存为 Prompt、加入当前 Flow |
 | Stage 3 | Node Reuse | Done | Flow 节点可沉淀为 Prompt，也可单独带入 Task 试跑 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
@@ -125,6 +126,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | Prompt 变量填充 | Done |
 | 执行预览 | Done |
 | 进入 AI Command Workspace | Done |
+| 从 Prompt 创建可执行 Flow | Done |
 | Prompt 执行历史 | Done |
 | Prompt 版本记录 | Done |
 | 历史版本恢复 | Done |
@@ -145,6 +147,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | Flow 变体创建 | Done |
 | Input / Prompt / AI Task / Output 节点 | Done |
 | 从 Prompt Library 添加 Prompt 节点 | Done |
+| 从 Prompt 详情创建来源可追溯的 Flow | Done |
 | Prompt 节点搜索 | Done |
 | Prompt 分类 / 收藏过滤 | Done |
 | 防止重复加入同一个 Prompt | Done |

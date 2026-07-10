@@ -2564,6 +2564,15 @@ a {
     gap: 10px;
   }
 
+  .prompt-detail-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+
+    button {
+      width: 100%;
+    }
+  }
+
   .flow-connector {
     width: 1px;
     min-width: 1px;
