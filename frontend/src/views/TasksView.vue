@@ -13,9 +13,21 @@
           class="workspace-input"
           placeholder="描述你希望 AI 完成的任务..."
         ></textarea>
-        <div v-if="workspace.taskSourcePromptTitle || workspace.taskSourceFlowTitle" class="source-note">
-          <span>{{ workspace.taskSourceFlowTitle ? '来自 Flow' : '来自 Prompt' }}</span>
-          <strong>{{ workspace.taskSourceFlowTitle || workspace.taskSourcePromptTitle }}</strong>
+        <div v-if="hasTaskSource" class="task-source-context">
+          <div class="task-source-context-copy">
+            <span>{{ sourceLabel }}</span>
+            <strong>{{ sourceTitle }}</strong>
+            <p>{{ sourceDescription }}</p>
+          </div>
+          <div class="task-source-context-actions">
+            <button v-if="workspace.taskSourceFlowId" type="button" class="ghost-button" @click="returnToFlow">
+              回到 Flow
+            </button>
+            <button v-else type="button" class="ghost-button" @click="openPromptLibrary">
+              查看 Prompt
+            </button>
+            <button type="button" class="ghost-button" @click="detachTaskSource">脱离来源</button>
+          </div>
         </div>
         <div v-if="!taskReadyToRun" class="command-readiness-note">
           <span class="flow-run-dot warning"></span>
@@ -59,8 +71,31 @@ import { useWorkspaceStore } from '@/stores/workspace'
 const router = useRouter()
 const workspace = useWorkspaceStore()
 const taskReadyToRun = computed(() => Boolean(workspace.activeProvider))
+const hasTaskSource = computed(() => Boolean(workspace.taskSourceFlowTitle || workspace.taskSourcePromptTitle))
+const sourceLabel = computed(() => (workspace.taskSourceFlowTitle ? 'Flow context' : 'Prompt context'))
+const sourceTitle = computed(() => workspace.taskSourceFlowTitle || workspace.taskSourcePromptTitle)
+const sourceDescription = computed(() => {
+  return workspace.taskSourceFlowTitle
+    ? '这次执行会保留与原 Flow 的关联，结果可回到工作流中继续迭代。'
+    : '这次执行会保留与原 Prompt 的关联，方便把有效工作方式沉淀为资产。'
+})
 
 function goToApiKeys() {
   router.push('/api-keys')
+}
+
+function returnToFlow() {
+  if (workspace.taskSourceFlowId) {
+    workspace.selectFlowDraft(workspace.taskSourceFlowId)
+  }
+  router.push('/workflows')
+}
+
+function openPromptLibrary() {
+  router.push('/prompts')
+}
+
+function detachTaskSource() {
+  workspace.clearTaskSource()
 }
 </script>
