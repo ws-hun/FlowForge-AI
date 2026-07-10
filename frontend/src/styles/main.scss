@@ -716,6 +716,33 @@ a {
   border-bottom: 1px solid tokens.$border;
 }
 
+.task-result-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 16px;
+  border-top: 1px solid tokens.$border;
+  color: tokens.$text-secondary;
+
+  strong {
+    display: block;
+    margin-top: 4px;
+    color: tokens.$text-primary;
+    font-size: 14px;
+    font-weight: 650;
+    line-height: 1.55;
+  }
+}
+
+.task-result-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .doc-section {
   margin-top: 30px;
 
@@ -2521,6 +2548,19 @@ a {
 
   .task-source-context-actions {
     justify-content: flex-start;
+  }
+
+  .task-result-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .task-result-action-buttons {
+    justify-content: stretch;
+
+    button {
+      flex: 1;
+    }
   }
 
   .command-readiness-note {

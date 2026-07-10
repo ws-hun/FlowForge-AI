@@ -74,6 +74,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 2 | Prompt Run History | Done | Prompt 关联执行记录可回看 |
 | Stage 3 | Workflow Builder | In Progress | Flow 模板、节点编排、Prompt 接入、执行、历史复用 |
 | Stage 3 | Prompt-to-Flow Creation | Done | 从已保存 Prompt 或 Starter Prompt 创建保留来源信息的可执行 Flow |
+| Stage 3 | Task-to-Flow Creation | Done | 将一次有效 AI Command 执行沉淀为 Prompt，并转化为可继续编辑的 Flow |
 | Stage 3 | Flow Result Reuse | Done | Flow 结果可带入下一轮、保存为 Prompt、加入当前 Flow |
 | Stage 3 | Node Reuse | Done | Flow 节点可沉淀为 Prompt，也可单独带入 Task 试跑 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
@@ -98,6 +99,8 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | 任务来源上下文提示 | Done |
 | 返回来源 Flow / Prompt | Done |
 | 脱离来源作为独立任务执行 | Done |
+| 当前执行沉淀为 Prompt | Done |
+| 当前执行创建可编辑 Flow | Done |
 
 ### Provider Vault
 

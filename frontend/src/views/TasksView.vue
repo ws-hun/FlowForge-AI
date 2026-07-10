@@ -50,12 +50,37 @@
       </section>
 
       <section class="result-document">
-        <AiResultDocument
-          v-if="workspace.latestResult"
-          :summary="workspace.latestResult.summary"
-          :result="workspace.latestResult.result"
-          :raw="workspace.latestResult.raw"
-        />
+        <template v-if="workspace.latestResult">
+          <AiResultDocument
+            :summary="workspace.latestResult.summary"
+            :result="workspace.latestResult.result"
+            :raw="workspace.latestResult.raw"
+          />
+          <div v-if="workspace.canPromoteLatestTask" class="task-result-actions">
+            <div>
+              <span class="section-kicker">Reuse</span>
+              <strong>让这次有效执行成为下一次创作的起点。</strong>
+            </div>
+            <div class="task-result-action-buttons">
+              <button
+                type="button"
+                class="ghost-button"
+                :disabled="workspace.taskAssetLoading || Boolean(workspace.latestTaskPrompt)"
+                @click="saveLatestTaskAsPrompt"
+              >
+                {{ workspace.latestTaskPrompt ? '已沉淀为 Prompt' : workspace.taskAssetLoading ? '沉淀中...' : '沉淀为 Prompt' }}
+              </button>
+              <button
+                type="button"
+                class="secondary-button"
+                :disabled="workspace.taskAssetLoading || workspace.flowLoading"
+                @click="createFlowFromLatestTask"
+              >
+                {{ workspace.flowLoading ? '创建中...' : '创建 Flow' }}
+              </button>
+            </div>
+          </div>
+        </template>
         <div v-else class="empty-state">结果会以文档形式显示在这里。</div>
       </section>
     </div>
@@ -65,6 +90,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 
@@ -97,5 +123,22 @@ function openPromptLibrary() {
 
 function detachTaskSource() {
   workspace.clearTaskSource()
+}
+
+async function saveLatestTaskAsPrompt() {
+  const prompt = await workspace.saveLatestTaskAsPrompt()
+  if (prompt) {
+    ElMessage.success('这次任务已沉淀为 Prompt')
+  }
+}
+
+async function createFlowFromLatestTask() {
+  const flow = await workspace.createFlowFromLatestTask()
+  if (!flow) {
+    return
+  }
+
+  ElMessage.success('已从 AI Command 创建 Flow')
+  router.push('/workflows')
 }
 </script>

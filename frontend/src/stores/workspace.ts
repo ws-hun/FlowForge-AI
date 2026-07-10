@@ -10,6 +10,7 @@ import {
   saveApiKey
 } from '@/api/tasks'
 import { createFlow, deleteFlow, listFlows, updateFlow } from '@/api/flows'
+import { createPrompt } from '@/api/prompts'
 import type {
   ApiKeyConfig,
   FlowDraft,
@@ -17,6 +18,7 @@ import type {
   PromptAsset,
   SaveApiKeyPayload,
   SaveFlowPayload,
+  SavePromptPayload,
   TaskHistoryItem,
   TaskRunResponse
 } from '@/types'
@@ -29,6 +31,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const flowDrafts = ref<FlowDraft[]>([])
   const activeFlowId = ref('')
   const latestResult = ref<TaskRunResponse | null>(null)
+  const latestTaskInput = ref('')
+  const latestTaskPrompt = ref<PromptAsset | null>(null)
   const taskInput = ref('')
   const taskSourcePromptId = ref<string | null>(null)
   const taskSourcePromptTitle = ref('')
@@ -38,9 +42,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const historyLoading = ref(false)
   const settingsLoading = ref(false)
   const flowLoading = ref(false)
+  const taskAssetLoading = ref(false)
 
   const activeProvider = computed(() => apiKeys.value.find((item) => item.active))
   const activeFlow = computed(() => flowDrafts.value.find((flow) => flow.id === activeFlowId.value) || null)
+  const canPromoteLatestTask = computed(() => Boolean(latestResult.value && latestTaskInput.value.trim()))
 
   async function loadTasks() {
     historyLoading.value = true
@@ -76,10 +82,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       return
     }
 
+    const input = taskInput.value.trim()
     running.value = true
     try {
-      const { data } = await runTask(taskInput.value.trim(), taskSourcePromptId.value, taskSourceFlowId.value)
+      const { data } = await runTask(input, taskSourcePromptId.value, taskSourceFlowId.value)
       latestResult.value = data
+      latestTaskInput.value = input
+      latestTaskPrompt.value = null
       taskInput.value = ''
       taskSourcePromptId.value = null
       taskSourcePromptTitle.value = ''
@@ -111,6 +120,47 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     taskSourcePromptTitle.value = ''
     taskSourceFlowId.value = null
     taskSourceFlowTitle.value = ''
+  }
+
+  async function saveLatestTaskAsPrompt() {
+    if (!latestResult.value || !latestTaskInput.value.trim()) {
+      ElMessage.warning('请先完成一次 AI Command 执行')
+      return null
+    }
+
+    if (latestTaskPrompt.value) {
+      return latestTaskPrompt.value
+    }
+
+    const payload: SavePromptPayload = {
+      title: buildTaskPromptTitle(latestTaskInput.value),
+      category: 'AI Command',
+      description: buildTaskPromptDescription(latestResult.value.summary),
+      content: latestTaskInput.value.trim(),
+      tags: ['AI Command', 'Task', 'Reusable'],
+      favorite: false
+    }
+
+    taskAssetLoading.value = true
+    try {
+      const { data } = await createPrompt(payload)
+      latestTaskPrompt.value = data
+      return data
+    } catch (error: any) {
+      ElMessage.error(error.response?.data?.message || 'Prompt 沉淀失败')
+      return null
+    } finally {
+      taskAssetLoading.value = false
+    }
+  }
+
+  async function createFlowFromLatestTask() {
+    const prompt = await saveLatestTaskAsPrompt()
+    if (!prompt) {
+      return null
+    }
+
+    return createFlowFromPrompt(prompt)
   }
 
   async function loadFlowDrafts() {
@@ -178,7 +228,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
 
     const payload: SaveFlowPayload = {
-      title: `${cleanTitle} Flow`,
+      title: buildPromptFlowTitle(cleanTitle),
       description: cleanDescription,
       nodes: createPromptBasedFlowNodes(prompt)
     }
@@ -498,6 +548,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     flowDrafts,
     activeFlowId,
     latestResult,
+    latestTaskInput,
+    latestTaskPrompt,
     taskInput,
     taskSourcePromptId,
     taskSourcePromptTitle,
@@ -507,8 +559,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     historyLoading,
     settingsLoading,
     flowLoading,
+    taskAssetLoading,
     activeProvider,
     activeFlow,
+    canPromoteLatestTask,
     bootstrap,
     loadTasks,
     loadApiKeys,
@@ -529,6 +583,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     sendFlowToTask,
     executeActiveFlow,
     executeTask,
+    saveLatestTaskAsPrompt,
+    createFlowFromLatestTask,
     prepareTask,
     clearTaskSource,
     saveProvider,
@@ -658,6 +714,23 @@ function buildFlowTitle(description: string) {
   const firstLine = description.split('\n').find(Boolean) || description
   const title = firstLine.replace(/[。.,，]/g, '').slice(0, 24)
   return title || 'Untitled Flow'
+}
+
+function buildTaskPromptTitle(input: string) {
+  const firstLine = input.split('\n').find(Boolean) || input
+  const title = firstLine.replace(/[#*`_。.,，]/g, '').trim().slice(0, 44)
+  return title ? `${title} Prompt` : 'AI Command Prompt'
+}
+
+function buildTaskPromptDescription(summary: string) {
+  const cleanSummary = summary.replace(/\s+/g, ' ').trim().slice(0, 96)
+  return cleanSummary
+    ? `从一次 AI Command 执行沉淀，用于复用「${cleanSummary}」对应的工作方式。`
+    : '从一次 AI Command 执行沉淀出的可复用工作方式。'
+}
+
+function buildPromptFlowTitle(promptTitle: string) {
+  return `${promptTitle.slice(0, 112).trim() || 'Untitled'} Flow`
 }
 
 function toSaveFlowPayload(flow: FlowDraft): SaveFlowPayload {
