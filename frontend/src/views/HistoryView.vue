@@ -26,6 +26,7 @@
                 v-if="task.flowRunSnapshot"
                 :snapshot="task.flowRunSnapshot"
                 can-create-flow
+                :creating="workspace.flowLoading"
                 @create-flow="createFlowFromSnapshot"
               />
             </el-collapse-item>

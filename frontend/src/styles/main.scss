@@ -1983,6 +1983,17 @@ a {
     background: rgba(79, 124, 255, 0.11);
     transform: scale(1.01);
   }
+
+  &:disabled {
+    border-color: rgba(79, 124, 255, 0.14);
+    background: rgba(79, 124, 255, 0.04);
+    color: tokens.$text-muted;
+    cursor: wait;
+  }
+
+  &:disabled:hover {
+    transform: none;
+  }
 }
 
 .flow-map {

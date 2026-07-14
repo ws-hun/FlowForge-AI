@@ -219,7 +219,13 @@
               </button>
             </div>
           </div>
-          <FlowRunSnapshot v-if="activeFlowRunSnapshot" :snapshot="activeFlowRunSnapshot" />
+          <FlowRunSnapshot
+            v-if="activeFlowRunSnapshot"
+            :snapshot="activeFlowRunSnapshot"
+            can-create-flow
+            :creating="workspace.flowLoading"
+            @create-flow="createFlowFromSnapshot"
+          />
           <AiResultDocument
             class="flow-execution-result"
             :summary="activeFlowResult.summary"
@@ -538,7 +544,16 @@ import { createPrompt, listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { compareFlowRevision } from '@/utils/flowRevisions'
 import { extractPromptVariables } from '@/utils/promptVariables'
-import type { FlowNode, FlowNodeType, FlowVersion, PromptAsset, SavePromptPayload, TaskHistoryItem, TaskRunResponse } from '@/types'
+import type {
+  FlowNode,
+  FlowNodeType,
+  FlowRunSnapshot as FlowRunSnapshotType,
+  FlowVersion,
+  PromptAsset,
+  SavePromptPayload,
+  TaskHistoryItem,
+  TaskRunResponse
+} from '@/types'
 
 type FlowNodeRunState = 'idle' | 'queued' | 'running' | 'completed' | 'error'
 type FlowRunPhase = 'idle' | 'running' | 'completed' | 'error'
@@ -1015,6 +1030,16 @@ async function duplicateActiveFlow() {
   selectedNodeId.value = flow.nodes[0]?.id || ''
   resetFlowRunState()
   ElMessage.success('Flow 变体已创建')
+}
+
+async function createFlowFromSnapshot(snapshot: FlowRunSnapshotType) {
+  const flow = await workspace.createFlowFromRunSnapshot(snapshot)
+  if (!flow) {
+    return
+  }
+
+  selectedNodeId.value = flow.nodes[0]?.id || ''
+  ElMessage.success('已创建新的 Flow，并带入本次运行上下文')
 }
 
 function selectFlow(id: string) {

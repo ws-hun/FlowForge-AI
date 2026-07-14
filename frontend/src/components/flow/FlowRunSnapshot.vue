@@ -37,9 +37,15 @@
         </div>
       </div>
 
-      <button v-if="canCreateFlow" type="button" class="snapshot-create-action" @click.stop="emit('create-flow', snapshot)">
+      <button
+        v-if="canCreateFlow"
+        type="button"
+        class="snapshot-create-action"
+        :disabled="creating"
+        @click.stop="emit('create-flow', snapshot)"
+      >
         <el-icon><Plus /></el-icon>
-        以此为起点创建 Flow
+        {{ creating ? '正在创建 Flow...' : '以此为起点创建 Flow' }}
       </button>
     </div>
   </details>
@@ -54,9 +60,11 @@ const props = withDefaults(
   defineProps<{
     snapshot: FlowRunSnapshot
     canCreateFlow?: boolean
+    creating?: boolean
   }>(),
   {
-    canCreateFlow: false
+    canCreateFlow: false,
+    creating: false
   }
 )
 
