@@ -91,6 +91,16 @@ export interface FlowDraft {
   updatedAt: string
 }
 
+export interface FlowVersion {
+  id: string
+  flowId: string
+  versionNumber: number
+  title: string
+  description: string
+  nodes: FlowNode[]
+  createdAt: string
+}
+
 export interface SaveFlowPayload {
   title: string
   description: string

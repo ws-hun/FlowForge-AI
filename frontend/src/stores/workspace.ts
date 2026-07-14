@@ -258,6 +258,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     localStorage.setItem(ACTIVE_FLOW_STORAGE_KEY, id)
   }
 
+  function replaceFlowDraft(flow: FlowDraft) {
+    const exists = flowDrafts.value.some((item) => item.id === flow.id)
+    flowDrafts.value = exists
+      ? flowDrafts.value.map((item) => (item.id === flow.id ? flow : item))
+      : [flow, ...flowDrafts.value]
+  }
+
   async function duplicateActiveFlowDraft() {
     if (!activeFlow.value) {
       return null
@@ -494,7 +501,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     flowLoading.value = true
     try {
       const { data } = await updateFlow(nextFlow.id, toSaveFlowPayload(nextFlow))
-      flowDrafts.value = flowDrafts.value.map((item) => (item.id === data.id ? data : item))
+      replaceFlowDraft(data)
       return data
     } catch (error: any) {
       ElMessage.error(error.response?.data?.message || 'Flow 草稿保存失败')
@@ -576,6 +583,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     createFlowFromTemplate,
     createFlowFromPrompt,
     selectFlowDraft,
+    replaceFlowDraft,
     duplicateActiveFlowDraft,
     addPromptToActiveFlow,
     removeFlowNode,

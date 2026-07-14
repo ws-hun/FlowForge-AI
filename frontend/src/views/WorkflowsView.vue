@@ -262,6 +262,56 @@
           </div>
         </div>
 
+        <section v-if="workspace.activeFlow" class="flow-revision-section">
+          <div class="section-heading compact">
+            <div>
+              <span class="section-kicker">Revisions</span>
+              <h3>回到任意创作节点</h3>
+            </div>
+            <span>{{ flowVersions.length ? `${flowVersions.length} 个快照` : '编辑后保存' }}</span>
+          </div>
+
+          <div v-if="flowVersionsLoading" class="version-list">
+            <article v-for="item in 2" :key="item" class="version-item skeleton-run"></article>
+          </div>
+          <div v-else-if="flowVersions.length" class="version-list">
+            <button
+              v-for="version in flowVersions"
+              :key="version.id"
+              type="button"
+              class="version-item"
+              :class="{ active: selectedFlowVersion?.id === version.id }"
+              @click="selectedFlowVersion = version"
+            >
+              <span>v{{ version.versionNumber }}</span>
+              <strong>{{ version.title }}</strong>
+              <time>{{ formatDate(version.createdAt) }}</time>
+            </button>
+          </div>
+          <div v-else class="quiet-empty">
+            第一次调整节点或 Flow 目标后，当前状态会作为可恢复的修订保存在这里。
+          </div>
+
+          <div v-if="selectedFlowVersion" class="version-preview flow-version-preview">
+            <div class="row-between">
+              <span class="badge">v{{ selectedFlowVersion.versionNumber }}</span>
+              <button
+                type="button"
+                class="ghost-button"
+                :disabled="restoringFlowVersion || workspace.flowLoading"
+                @click="restoreFlowVersionSnapshot(selectedFlowVersion)"
+              >
+                {{ restoringFlowVersion ? '恢复中...' : '恢复此修订' }}
+              </button>
+            </div>
+            <strong>{{ selectedFlowVersion.title }}</strong>
+            <p>{{ selectedFlowVersion.description }}</p>
+            <div class="flow-version-node-sequence" aria-label="修订节点顺序">
+              <span v-for="node in selectedFlowVersion.nodes" :key="node.id">{{ nodeLabel(node.type) }}</span>
+            </div>
+          </div>
+        </section>
+
         <template v-if="workspace.activeFlow && selectedNode">
           <div class="panel-heading">
             <span class="section-kicker">Inspector</span>
@@ -455,11 +505,11 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
-import { listFlowRuns } from '@/api/flows'
+import { listFlowRuns, listFlowVersions, restoreFlowVersion } from '@/api/flows'
 import { createPrompt, listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { extractPromptVariables } from '@/utils/promptVariables'
-import type { FlowNode, FlowNodeType, PromptAsset, SavePromptPayload, TaskHistoryItem, TaskRunResponse } from '@/types'
+import type { FlowNode, FlowNodeType, FlowVersion, PromptAsset, SavePromptPayload, TaskHistoryItem, TaskRunResponse } from '@/types'
 
 type FlowNodeRunState = 'idle' | 'queued' | 'running' | 'completed' | 'error'
 type FlowRunPhase = 'idle' | 'running' | 'completed' | 'error'
@@ -489,6 +539,10 @@ const activePromptFilter = ref('all')
 const flowRuns = ref<TaskHistoryItem[]>([])
 const flowRunsLoading = ref(false)
 const selectedFlowRun = ref<TaskHistoryItem | null>(null)
+const flowVersions = ref<FlowVersion[]>([])
+const flowVersionsLoading = ref(false)
+const selectedFlowVersion = ref<FlowVersion | null>(null)
+const restoringFlowVersion = ref(false)
 const flowExecutionVisible = ref(false)
 const savingResultPrompt = ref(false)
 const savingNodePrompt = ref(false)
@@ -776,14 +830,27 @@ watch(
     flowRunContext.value = ''
     flowVariableValues.value = buildFlowVariableValues(flowPromptVariables.value)
     flowRuns.value = []
+    flowVersions.value = []
     flowExecutionVisible.value = false
     selectedFlowRun.value = null
+    selectedFlowVersion.value = null
     savedResultPrompt.value = null
     if (workspace.activeFlow?.id) {
       loadFlowRuns(workspace.activeFlow.id)
+      loadFlowVersions(workspace.activeFlow.id)
     }
   },
   { immediate: true }
+)
+
+watch(
+  () => workspace.activeFlow?.updatedAt,
+  (updatedAt, previousUpdatedAt) => {
+    const flowId = workspace.activeFlow?.id
+    if (flowId && updatedAt && updatedAt !== previousUpdatedAt) {
+      loadFlowVersions(flowId)
+    }
+  }
 )
 
 watch(flowPromptVariables, (variables) => {
@@ -827,6 +894,58 @@ async function loadFlowRuns(flowId: string) {
     ElMessage.error(error.response?.data?.message || 'Flow 执行记录加载失败')
   } finally {
     flowRunsLoading.value = false
+  }
+}
+
+async function loadFlowVersions(flowId: string) {
+  flowVersionsLoading.value = true
+  try {
+    const { data } = await listFlowVersions(flowId)
+    if (workspace.activeFlow?.id !== flowId) {
+      return
+    }
+    flowVersions.value = data
+    if (selectedFlowVersion.value && !data.some((version) => version.id === selectedFlowVersion.value?.id)) {
+      selectedFlowVersion.value = null
+    }
+  } catch (error: any) {
+    if (workspace.activeFlow?.id === flowId) {
+      ElMessage.error(error.response?.data?.message || 'Flow 修订记录加载失败')
+    }
+  } finally {
+    if (workspace.activeFlow?.id === flowId) {
+      flowVersionsLoading.value = false
+    }
+  }
+}
+
+async function restoreFlowVersionSnapshot(version: FlowVersion) {
+  const flow = workspace.activeFlow
+  if (!flow) {
+    return
+  }
+
+  restoringFlowVersion.value = true
+  try {
+    const { data } = await restoreFlowVersion(flow.id, version.id)
+    workspace.replaceFlowDraft(data)
+    flowTitle.value = data.title
+    flowDescription.value = data.description
+    selectedNodeId.value = data.nodes[0]?.id || ''
+    syncSelectedNodeEditor()
+    flowRunContext.value = ''
+    flowVariableValues.value = buildFlowVariableValues(flowPromptVariables.value)
+    selectedFlowRun.value = null
+    flowExecutionVisible.value = false
+    savedResultPrompt.value = null
+    selectedFlowVersion.value = null
+    resetFlowRunState()
+    await loadFlowVersions(data.id)
+    ElMessage.success('Flow 已恢复到选中修订')
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || 'Flow 修订恢复失败')
+  } finally {
+    restoringFlowVersion.value = false
   }
 }
 

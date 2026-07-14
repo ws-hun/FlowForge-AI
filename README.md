@@ -77,6 +77,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Task-to-Flow Creation | Done | 将一次有效 AI Command 执行沉淀为 Prompt，并转化为可继续编辑的 Flow |
 | Stage 3 | Flow Result Reuse | Done | Flow 结果可带入下一轮、保存为 Prompt、加入当前 Flow |
 | Stage 3 | Node Reuse | Done | Flow 节点可沉淀为 Prompt，也可单独带入 Task 试跑 |
+| Stage 3 | Flow Revisions | Done | 每次编辑前保存 Flow 快照，可预览并恢复任意创作节点 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
 | Future | Knowledge Base | Preview UI | 产品预留界面，暂未接入向量检索 |
 | Future | Analytics | Preview UI | 轻量洞察预留，暂未做完整数据分析系统 |
@@ -168,6 +169,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | 当前节点沉淀为 Prompt 资产 | Done |
 | 当前节点单独带入 Task Workspace | Done |
 | Flow Prompt 变量填写与运行时替换 | Done |
+| Flow 创作修订快照 / 恢复 | Done |
 
 ## Product Modules
 
@@ -238,6 +240,7 @@ ai_api_keys
 prompts
 prompt_versions
 workflows
+flow_versions
 ```
 
 ### Frontend
@@ -445,6 +448,8 @@ GET    /api/flows
 POST   /api/flows
 PUT    /api/flows/{id}
 GET    /api/flows/{id}/runs
+GET    /api/flows/{id}/versions
+POST   /api/flows/{id}/versions/{versionId}/restore
 DELETE /api/flows/{id}
 ```
 
@@ -538,7 +543,7 @@ Check:
 - Agent Runtime prototype
 - Workflow Execution Graph
 - Prompt version diff
-- Flow version management
+- Flow version comparison
 - Fine-grained run logs
 
 ### Long Term

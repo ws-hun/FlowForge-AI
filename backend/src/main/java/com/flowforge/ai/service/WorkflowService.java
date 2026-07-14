@@ -6,8 +6,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowforge.ai.dto.FlowNodeDto;
 import com.flowforge.ai.dto.FlowRequest;
 import com.flowforge.ai.dto.FlowResponse;
+import com.flowforge.ai.dto.FlowVersionResponse;
 import com.flowforge.ai.entity.Workflow;
+import com.flowforge.ai.entity.WorkflowVersion;
 import com.flowforge.ai.repository.WorkflowRepository;
+import com.flowforge.ai.repository.WorkflowVersionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -21,10 +24,13 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class WorkflowService {
 
+    private static final int VERSION_RETENTION_LIMIT = 8;
+
     private static final TypeReference<List<FlowNodeDto>> NODE_LIST_TYPE = new TypeReference<>() {
     };
 
     private final WorkflowRepository workflowRepository;
+    private final WorkflowVersionRepository workflowVersionRepository;
     private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
@@ -46,13 +52,60 @@ public class WorkflowService {
     public FlowResponse updateFlow(UUID id, FlowRequest request) {
         Workflow workflow = workflowRepository.findById(id)
                 .orElseThrow(() -> new IllegalStateException("Flow not found"));
+        saveVersionSnapshot(workflow);
         applyRequest(workflow, request);
-        return toResponse(workflow);
+        return toResponse(workflowRepository.saveAndFlush(workflow));
     }
 
     @Transactional
     public void deleteFlow(UUID id) {
+        workflowVersionRepository.deleteByFlowId(id);
         workflowRepository.deleteById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public List<FlowVersionResponse> listVersions(UUID flowId) {
+        return workflowVersionRepository.findTop8ByFlowIdOrderByVersionNumberDesc(flowId)
+                .stream()
+                .map(this::toVersionResponse)
+                .toList();
+    }
+
+    @Transactional
+    public FlowResponse restoreVersion(UUID flowId, UUID versionId) {
+        Workflow workflow = workflowRepository.findById(flowId)
+                .orElseThrow(() -> new IllegalStateException("Flow not found"));
+        WorkflowVersion version = workflowVersionRepository.findById(versionId)
+                .filter(item -> item.getFlowId().equals(flowId))
+                .orElseThrow(() -> new IllegalStateException("Flow version not found"));
+
+        saveVersionSnapshot(workflow);
+        workflow.setTitle(version.getTitle());
+        workflow.setDescription(version.getDescription());
+        workflow.setNodesJson(version.getNodesJson());
+
+        return toResponse(workflowRepository.saveAndFlush(workflow));
+    }
+
+    private void saveVersionSnapshot(Workflow workflow) {
+        int versionNumber = workflowVersionRepository.findTopByFlowIdOrderByVersionNumberDesc(workflow.getId())
+                .map(WorkflowVersion::getVersionNumber)
+                .orElse(0) + 1;
+
+        WorkflowVersion version = WorkflowVersion.builder()
+                .flowId(workflow.getId())
+                .versionNumber(versionNumber)
+                .title(workflow.getTitle())
+                .description(workflow.getDescription())
+                .nodesJson(workflow.getNodesJson())
+                .build();
+
+        workflowVersionRepository.saveAndFlush(version);
+
+        List<WorkflowVersion> versions = workflowVersionRepository.findByFlowIdOrderByVersionNumberDesc(workflow.getId());
+        if (versions.size() > VERSION_RETENTION_LIMIT) {
+            workflowVersionRepository.deleteAll(versions.subList(VERSION_RETENTION_LIMIT, versions.size()));
+        }
     }
 
     private void applyRequest(Workflow workflow, FlowRequest request) {
@@ -92,6 +145,18 @@ public class WorkflowService {
                 deserializeNodes(workflow.getNodesJson()),
                 workflow.getCreatedAt(),
                 workflow.getUpdatedAt()
+        );
+    }
+
+    private FlowVersionResponse toVersionResponse(WorkflowVersion version) {
+        return new FlowVersionResponse(
+                version.getId(),
+                version.getFlowId(),
+                version.getVersionNumber(),
+                version.getTitle(),
+                version.getDescription(),
+                deserializeNodes(version.getNodesJson()),
+                version.getCreatedAt()
         );
     }
 }

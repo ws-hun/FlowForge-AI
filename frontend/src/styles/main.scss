@@ -2233,6 +2233,30 @@ a {
   }
 }
 
+.flow-revision-section {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid tokens.$border;
+}
+
+.flow-version-preview {
+  .flow-version-node-sequence {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    span {
+      padding: 4px 8px;
+      border-radius: tokens.$radius-sm;
+      background: tokens.$surface;
+      color: tokens.$text-secondary;
+      font-size: 12px;
+      font-weight: 650;
+    }
+  }
+}
+
 .flow-editor-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
