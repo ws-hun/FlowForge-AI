@@ -142,7 +142,11 @@
             <div
               v-if="index < workspace.activeFlow.nodes.length - 1"
               class="flow-connector"
-              :class="{ active: connectorCompleted(index), running: connectorRunning(index) }"
+              :class="{
+                prepared: connectorPrepared(index),
+                active: connectorCompleted(index),
+                running: connectorRunning(index)
+              }"
             ></div>
           </template>
         </div>
@@ -351,8 +355,8 @@
 
           <div class="node-status-card" :class="selectedNodeState">
             <span>{{ nodeStateLabel(selectedNodeState) }}</span>
-            <strong>{{ nodeStateTitle(selectedNodeState) }}</strong>
-            <p>{{ nodeStateDescription(selectedNode) }}</p>
+            <strong>{{ nodeStateTitle(selectedNodeState, selectedNode) }}</strong>
+            <p>{{ nodeStateDescription(selectedNode, selectedNodeState) }}</p>
           </div>
 
           <div v-if="selectedNode.type === 'prompt'" class="flow-node-order-actions">
@@ -534,7 +538,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
@@ -555,7 +559,7 @@ import type {
   TaskRunResponse
 } from '@/types'
 
-type FlowNodeRunState = 'idle' | 'queued' | 'running' | 'completed' | 'error'
+type FlowNodeRunState = 'idle' | 'prepared' | 'running' | 'completed' | 'error'
 type FlowRunPhase = 'idle' | 'running' | 'completed' | 'error'
 type FlowTemplate = {
   category: string
@@ -596,7 +600,6 @@ const flowRunStartedAt = ref('')
 const flowRunCompletedAt = ref('')
 const nodeRunStates = ref<Record<string, FlowNodeRunState>>({})
 const selectedNodeId = ref('')
-let flowProgressTimers: number[] = []
 
 const flowTemplates: FlowTemplate[] = [
   {
@@ -859,17 +862,18 @@ const flowRunTitle = computed(() => {
 
 const flowRunDescription = computed(() => {
   if (flowRunPhase.value === 'running') {
-    const currentNode = workspace.activeFlow?.nodes.find((node) => nodeStatus(node.id) === 'running')
     const startedAt = flowRunStartedAt.value ? `，开始于 ${formatDate(flowRunStartedAt.value)}` : ''
-    return currentNode ? `正在处理 ${currentNode.title}${startedAt}` : `正在连接 Prompt、AI 执行与结构化输出${startedAt}。`
+    return `本次 Flow 上下文已固定，AI Task 正在调用当前 Provider 生成结构化结果${startedAt}。Input 和 Prompt 仅作为准备步骤。`
   }
 
   if (flowRunPhase.value === 'completed') {
-    return flowRunCompletedAt.value ? `完成于 ${formatDate(flowRunCompletedAt.value)}，结果已沉淀到当前画布。` : '结果已沉淀到当前画布。'
+    return flowRunCompletedAt.value
+      ? `完成于 ${formatDate(flowRunCompletedAt.value)}。AI Task 已返回结果，Output 已沉淀为可复用记录。`
+      : 'AI Task 已返回结果，Output 已沉淀为可复用记录。'
   }
 
   if (flowRunPhase.value === 'error') {
-    return '执行没有完成，请检查当前 Provider 或稍后重试。'
+    return 'AI Task 未能完成，Output 未产生。请检查当前 Provider 配置或稍后重试。'
   }
 
   return 'Flow 已准备好执行。'
@@ -922,10 +926,6 @@ watch(
 
 onMounted(async () => {
   await Promise.all([workspace.loadFlowDrafts(), workspace.loadApiKeys(), loadPromptAssets()])
-})
-
-onBeforeUnmount(() => {
-  clearFlowProgressTimers()
 })
 
 async function loadPromptAssets() {
@@ -1129,10 +1129,7 @@ function selectFlowRun(run: TaskHistoryItem) {
   flowRunPhase.value = 'completed'
   flowRunCompletedAt.value = run.createdAt
   if (workspace.activeFlow) {
-    nodeRunStates.value = workspace.activeFlow.nodes.reduce<Record<string, FlowNodeRunState>>((states, node) => {
-      states[node.id] = 'completed'
-      return states
-    }, {})
+    nodeRunStates.value = buildNodeRunStates(workspace.activeFlow.nodes, 'completed')
   }
 }
 
@@ -1370,90 +1367,99 @@ function nodeStatus(nodeId: string): FlowNodeRunState {
 }
 
 function startFlowRun(nodes: FlowNode[]) {
-  clearFlowProgressTimers()
   flowRunPhase.value = 'running'
   flowRunStartedAt.value = new Date().toISOString()
   flowRunCompletedAt.value = ''
   flowExecutionVisible.value = false
-
-  nodeRunStates.value = nodes.reduce<Record<string, FlowNodeRunState>>((states, node, index) => {
-    states[node.id] = index === 0 ? 'running' : 'queued'
-    return states
-  }, {})
-
-  nodes.slice(1).forEach((node, index) => {
-    const timer = window.setTimeout(() => {
-      if (flowRunPhase.value !== 'running') {
-        return
-      }
-      const previousNode = nodes[index]
-      nodeRunStates.value = {
-        ...nodeRunStates.value,
-        [previousNode.id]: 'completed',
-        [node.id]: 'running'
-      }
-    }, (index + 1) * 700)
-    flowProgressTimers.push(timer)
-  })
+  nodeRunStates.value = buildNodeRunStates(nodes, 'running')
 }
 
 function completeFlowRun() {
   if (!workspace.activeFlow) {
     return
   }
-  clearFlowProgressTimers()
   flowRunPhase.value = 'completed'
   flowRunCompletedAt.value = new Date().toISOString()
-  nodeRunStates.value = workspace.activeFlow.nodes.reduce<Record<string, FlowNodeRunState>>((states, node) => {
-    states[node.id] = 'completed'
-    return states
-  }, {})
+  nodeRunStates.value = buildNodeRunStates(workspace.activeFlow.nodes, 'completed')
 }
 
 function failFlowRun() {
   if (!workspace.activeFlow) {
     return
   }
-  clearFlowProgressTimers()
   flowRunPhase.value = 'error'
-  const runningNode = workspace.activeFlow.nodes.find((node) => nodeStatus(node.id) === 'running')
-  nodeRunStates.value = {
-    ...nodeRunStates.value,
-    ...(runningNode ? { [runningNode.id]: 'error' as FlowNodeRunState } : {})
-  }
+  nodeRunStates.value = buildNodeRunStates(workspace.activeFlow.nodes, 'error')
 }
 
 function resetFlowRunState() {
-  clearFlowProgressTimers()
   flowRunPhase.value = 'idle'
   flowRunStartedAt.value = ''
   flowRunCompletedAt.value = ''
   nodeRunStates.value = {}
 }
 
-function clearFlowProgressTimers() {
-  flowProgressTimers.forEach((timer) => window.clearTimeout(timer))
-  flowProgressTimers = []
+function buildNodeRunStates(nodes: FlowNode[], phase: Exclude<FlowRunPhase, 'idle'>) {
+  return nodes.reduce<Record<string, FlowNodeRunState>>((states, node) => {
+    if (node.type === 'input' || node.type === 'prompt') {
+      states[node.id] = 'prepared'
+      return states
+    }
+
+    if (node.type === 'ai-task') {
+      states[node.id] = phase === 'running' ? 'running' : phase === 'completed' ? 'completed' : 'error'
+      return states
+    }
+
+    states[node.id] = phase === 'completed' ? 'completed' : 'idle'
+    return states
+  }, {})
 }
 
 function connectorCompleted(index: number) {
   const nodes = workspace.activeFlow?.nodes || []
   const currentNode = nodes[index]
   const nextNode = nodes[index + 1]
-  return Boolean(currentNode && nextNode && nodeStatus(currentNode.id) === 'completed' && nodeStatus(nextNode.id) === 'completed')
+  return Boolean(
+    currentNode &&
+      nextNode &&
+      currentNode.type === 'ai-task' &&
+      nextNode.type === 'output' &&
+      nodeStatus(currentNode.id) === 'completed' &&
+      nodeStatus(nextNode.id) === 'completed'
+  )
 }
 
 function connectorRunning(index: number) {
   const nodes = workspace.activeFlow?.nodes || []
   const currentNode = nodes[index]
   const nextNode = nodes[index + 1]
-  return Boolean(currentNode && nextNode && nodeStatus(currentNode.id) === 'completed' && nodeStatus(nextNode.id) === 'running')
+  return Boolean(
+    currentNode &&
+      nextNode &&
+      currentNode.type === 'ai-task' &&
+      nextNode.type === 'output' &&
+      nodeStatus(currentNode.id) === 'running' &&
+      nodeStatus(nextNode.id) === 'idle'
+  )
+}
+
+function connectorPrepared(index: number) {
+  const nodes = workspace.activeFlow?.nodes || []
+  const currentNode = nodes[index]
+  const nextNode = nodes[index + 1]
+  const nextNodeState = nextNode ? nodeStatus(nextNode.id) : 'idle'
+  return Boolean(
+    currentNode &&
+      nextNode &&
+      nodeStatus(currentNode.id) === 'prepared' &&
+      ['prepared', 'running', 'completed'].includes(nextNodeState)
+  )
 }
 
 function nodeStateLabel(state: FlowNodeRunState) {
   const labels: Record<FlowNodeRunState, string> = {
     idle: 'Ready',
-    queued: 'Queued',
+    prepared: 'Prepared',
     running: 'Running',
     completed: 'Done',
     error: 'Error'
@@ -1461,10 +1467,13 @@ function nodeStateLabel(state: FlowNodeRunState) {
   return labels[state]
 }
 
-function nodeStateTitle(state: FlowNodeRunState) {
-  const labels: Record<FlowNodeRunState, string> = {
-    idle: '等待执行',
-    queued: '排队等待',
+function nodeStateTitle(state: FlowNodeRunState, node: FlowNode) {
+  if (state === 'idle') {
+    return node.type === 'output' ? '等待结果' : '等待运行'
+  }
+
+  const labels = {
+    prepared: '已准备',
     running: '正在处理',
     completed: '已完成',
     error: '需要检查'
@@ -1472,7 +1481,31 @@ function nodeStateTitle(state: FlowNodeRunState) {
   return labels[state]
 }
 
-function nodeStateDescription(node: FlowNode) {
+function nodeStateDescription(node: FlowNode, state: FlowNodeRunState) {
+  if (state === 'prepared') {
+    return '已固定为本次运行的上下文，不会作为独立模型调用执行。'
+  }
+
+  if (state === 'running') {
+    return '当前 Flow 正通过激活的 AI Provider 发起一次结构化任务调用。'
+  }
+
+  if (state === 'completed') {
+    return node.type === 'output'
+      ? '结构化结果已保存，可继续带入下一轮或沉淀为 Prompt。'
+      : node.type === 'ai-task'
+        ? 'AI Provider 已返回结构化结果，并已交给 Output 节点记录。'
+        : '该节点已作为这次已完成运行的上下文快照保留。'
+  }
+
+  if (state === 'error') {
+    return 'AI Task 未能完成，检查 Provider 配置后可以重新运行。'
+  }
+
+  if (node.type === 'output') {
+    return '等待 AI Task 返回结构化结果后记录本次运行。'
+  }
+
   const descriptions: Record<FlowNodeType, string> = {
     input: '读取 Flow 目标，作为本次执行的上下文起点。',
     prompt: '将可复用 Prompt 合并到本次 AI 工作流中。',

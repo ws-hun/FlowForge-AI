@@ -161,7 +161,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | Provider readiness 提示 | Done |
 | Run Brief 运行上下文 | Done |
 | AI 输入预览 | Done |
-| Flow 执行状态可视化 | Done |
+| 真实 Flow 运行生命周期反馈（上下文准备 / 单次 AI 调用 / Output 记录） | Done |
 | Flow 执行结果展示 | Done |
 | Flow 执行历史回看 | Done |
 | 历史结果带入当前画布 | Done |
@@ -559,7 +559,7 @@ Check:
 ### Near Term
 
 - Workflow Builder node experience polish
-- Flow 运行步骤的真实执行追踪
+- 面向多步执行引擎的真实节点追踪
 - Prompt / Flow 复用闭环细化
 - More complete onboarding and empty states
 
