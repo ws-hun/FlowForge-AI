@@ -2255,6 +2255,86 @@ a {
       font-weight: 650;
     }
   }
+
+  .flow-version-diff {
+    display: grid;
+    gap: 10px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(79, 124, 255, 0.14);
+  }
+
+  .flow-version-diff-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+
+    span {
+      color: tokens.$text-muted;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    strong {
+      font-size: 13px;
+      letter-spacing: 0;
+    }
+  }
+
+  .flow-version-diff-list {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    li {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: start;
+      gap: 8px;
+    }
+
+    p {
+      margin: 0;
+      color: tokens.$text-secondary;
+      font-size: 12px;
+      line-height: 1.55;
+
+      strong {
+        margin-right: 4px;
+        font-size: inherit;
+      }
+    }
+  }
+
+  .flow-version-diff-kind {
+    min-width: 30px;
+    padding: 3px 5px;
+    border-radius: tokens.$radius-sm;
+    background: tokens.$surface-secondary;
+    color: tokens.$text-secondary;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+
+    &.restore {
+      color: #15803d;
+      background: rgba(34, 197, 94, 0.1);
+    }
+
+    &.remove {
+      color: #b45309;
+      background: rgba(245, 158, 11, 0.12);
+    }
+
+    &.update,
+    &.reorder {
+      color: #4338ca;
+      background: rgba(124, 92, 255, 0.1);
+    }
+  }
 }
 
 .flow-editor-actions {

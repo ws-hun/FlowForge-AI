@@ -309,6 +309,29 @@
             <div class="flow-version-node-sequence" aria-label="修订节点顺序">
               <span v-for="node in selectedFlowVersion.nodes" :key="node.id">{{ nodeLabel(node.type) }}</span>
             </div>
+
+            <div v-if="selectedFlowVersionDiff" class="flow-version-diff">
+              <div class="flow-version-diff-heading">
+                <span>恢复影响</span>
+                <strong>
+                  {{ selectedFlowVersionDiff.hasChanges ? `将恢复 ${selectedFlowVersionDiff.changeCount} 处变化` : '与当前草稿一致' }}
+                </strong>
+              </div>
+              <ul v-if="selectedFlowVersionDiff.hasChanges" class="flow-version-diff-list">
+                <li v-if="selectedFlowVersionDiff.titleChanged">
+                  <span class="flow-version-diff-kind">标题</span>
+                  <p>会恢复为“{{ selectedFlowVersion.title }}”</p>
+                </li>
+                <li v-if="selectedFlowVersionDiff.descriptionChanged">
+                  <span class="flow-version-diff-kind">目标</span>
+                  <p>会恢复这个修订中的 Flow 目标</p>
+                </li>
+                <li v-for="change in selectedFlowVersionDiff.nodeChanges" :key="`${change.kind}-${change.id}`">
+                  <span class="flow-version-diff-kind" :class="change.kind">{{ flowRevisionChangeLabel(change.kind) }}</span>
+                  <p><strong>{{ change.title }}</strong>{{ change.detail }}</p>
+                </li>
+              </ul>
+            </div>
           </div>
         </section>
 
@@ -508,6 +531,7 @@ import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import { listFlowRuns, listFlowVersions, restoreFlowVersion } from '@/api/flows'
 import { createPrompt, listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
+import { compareFlowRevision } from '@/utils/flowRevisions'
 import { extractPromptVariables } from '@/utils/promptVariables'
 import type { FlowNode, FlowNodeType, FlowVersion, PromptAsset, SavePromptPayload, TaskHistoryItem, TaskRunResponse } from '@/types'
 
@@ -653,6 +677,13 @@ const flowMetaChanged = computed(() => {
     return false
   }
   return flowTitle.value.trim() !== workspace.activeFlow.title || flowDescription.value.trim() !== workspace.activeFlow.description
+})
+
+const selectedFlowVersionDiff = computed(() => {
+  if (!workspace.activeFlow || !selectedFlowVersion.value) {
+    return null
+  }
+  return compareFlowRevision(workspace.activeFlow, selectedFlowVersion.value)
 })
 
 const flowPromptVariables = computed(() => {
@@ -1277,6 +1308,16 @@ function nodeLabel(type: FlowNodeType) {
     output: 'Output'
   }
   return labels[type]
+}
+
+function flowRevisionChangeLabel(kind: 'restore' | 'remove' | 'update' | 'reorder') {
+  const labels = {
+    restore: '加入',
+    remove: '移除',
+    update: '还原',
+    reorder: '排序'
+  }
+  return labels[kind]
 }
 
 function formatDate(value: string) {
