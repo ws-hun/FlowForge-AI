@@ -31,6 +31,12 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(ex.getMessage(), LocalDateTime.now());
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleIllegalArgument(IllegalArgumentException ex) {
+        return new ErrorResponse(ex.getMessage(), LocalDateTime.now());
+    }
+
     @ExceptionHandler(NoResourceFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse handleResourceNotFound(NoResourceFoundException ex) {

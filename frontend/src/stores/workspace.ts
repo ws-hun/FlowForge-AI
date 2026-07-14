@@ -30,7 +30,6 @@ const ACTIVE_FLOW_STORAGE_KEY = 'flowforge.activeFlowId'
 type TaskFlowSource = {
   id: string
   title: string
-  runtimeContext?: string
   variableValues?: Record<string, string>
 }
 
@@ -53,7 +52,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const taskSourcePromptTitle = ref('')
   const taskSourceFlowId = ref<string | null>(null)
   const taskSourceFlowTitle = ref('')
-  const taskSourceFlowRunContext = ref('')
   const taskSourceFlowVariableValues = ref<Record<string, string>>({})
   const pendingFlowRunSeed = ref<FlowRunSeed | null>(null)
   const running = ref(false)
@@ -65,6 +63,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const activeProvider = computed(() => apiKeys.value.find((item) => item.active))
   const activeFlow = computed(() => flowDrafts.value.find((flow) => flow.id === activeFlowId.value) || null)
   const canPromoteLatestTask = computed(() => Boolean(latestResult.value && latestTaskInput.value.trim()))
+  const canExecuteTask = computed(() => Boolean(taskSourceFlowId.value || taskInput.value.trim()))
 
   async function loadTasks() {
     historyLoading.value = true
@@ -91,7 +90,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function executeTask() {
-    if (!taskInput.value.trim()) {
+    const isFlowRun = Boolean(taskSourceFlowId.value)
+    const input = taskInput.value.trim()
+
+    if (!isFlowRun && !input) {
       return
     }
 
@@ -100,25 +102,29 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       return
     }
 
-    const input = taskInput.value.trim()
     running.value = true
     try {
       const { data } = await runTask(
         input,
         taskSourcePromptId.value,
         taskSourceFlowId.value,
-        taskSourceFlowRunContext.value,
+        isFlowRun ? input : undefined,
         taskSourceFlowVariableValues.value
       )
       latestResult.value = data
-      latestTaskInput.value = input
+      latestTaskInput.value = data.flowRunSnapshot
+        ? buildFlowTaskInput(
+            data.flowRunSnapshot,
+            data.flowRunSnapshot.runtimeContext,
+            data.flowRunSnapshot.variableValues
+          )
+        : input
       latestTaskPrompt.value = null
       taskInput.value = ''
       taskSourcePromptId.value = null
       taskSourcePromptTitle.value = ''
       taskSourceFlowId.value = null
       taskSourceFlowTitle.value = ''
-      taskSourceFlowRunContext.value = ''
       taskSourceFlowVariableValues.value = {}
       ElMessage.success('任务执行完成')
       await loadTasks()
@@ -139,7 +145,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     taskSourcePromptTitle.value = sourcePrompt?.title || ''
     taskSourceFlowId.value = sourceFlow?.id || null
     taskSourceFlowTitle.value = sourceFlow?.title || ''
-    taskSourceFlowRunContext.value = sourceFlow?.runtimeContext?.trim() || ''
     taskSourceFlowVariableValues.value = { ...(sourceFlow?.variableValues || {}) }
   }
 
@@ -148,7 +153,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     taskSourcePromptTitle.value = ''
     taskSourceFlowId.value = null
     taskSourceFlowTitle.value = ''
-    taskSourceFlowRunContext.value = ''
     taskSourceFlowVariableValues.value = {}
   }
 
@@ -524,12 +528,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
 
     prepareTask(
-      buildFlowTaskInput(activeFlow.value, runtimeContext, variableValues),
+      runtimeContext.trim(),
       null,
       {
         id: activeFlow.value.id,
         title: activeFlow.value.title,
-        runtimeContext,
         variableValues
       }
     )
@@ -543,10 +546,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     running.value = true
     try {
       const { data } = await runTask(
-        buildFlowTaskInput(activeFlow.value, runtimeContext, variableValues),
+        runtimeContext.trim(),
         null,
         activeFlow.value.id,
-        runtimeContext,
+        runtimeContext.trim(),
         variableValues
       )
       latestResult.value = data
@@ -651,6 +654,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     activeProvider,
     activeFlow,
     canPromoteLatestTask,
+    canExecuteTask,
     bootstrap,
     loadTasks,
     loadApiKeys,
@@ -777,7 +781,11 @@ function createPromptBasedFlowNodes(prompt: PromptAsset): FlowNode[] {
   ]
 }
 
-function buildFlowTaskInput(flow: FlowDraft, runtimeContext = '', variableValues: Record<string, string> = {}) {
+function buildFlowTaskInput(
+  flow: Pick<FlowDraft, 'title' | 'description' | 'nodes'>,
+  runtimeContext = '',
+  variableValues: Record<string, string> = {}
+) {
   const inputBlocks = flow.nodes
     .filter((node) => node.type === 'input' && node.content && node.content.trim() !== flow.description.trim())
     .map((node) => `## ${node.title}\n${node.content}`)

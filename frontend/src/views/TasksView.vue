@@ -8,10 +8,14 @@
 
     <div class="two-column command-layout">
       <section class="command-input">
+        <div v-if="workspace.taskSourceFlowId" class="flow-run-brief-heading">
+          <span class="section-kicker">Run Brief</span>
+          <p>为这次 Flow 运行补充目标、约束或输出偏好。</p>
+        </div>
         <textarea
           v-model="workspace.taskInput"
           class="workspace-input"
-          placeholder="描述你希望 AI 完成的任务..."
+          :placeholder="taskInputPlaceholder"
         ></textarea>
         <div v-if="hasTaskSource" class="task-source-context">
           <div class="task-source-context-copy">
@@ -41,7 +45,7 @@
           <span>{{ workspace.activeProvider?.provider || '请先配置 Provider' }}</span>
           <button
             class="primary-button"
-            :disabled="workspace.running || !workspace.taskInput.trim() || !taskReadyToRun"
+            :disabled="workspace.running || !workspace.canExecuteTask || !taskReadyToRun"
             @click="workspace.executeTask"
           >
             {{ workspace.running ? '执行中...' : '执行任务' }}
@@ -100,9 +104,14 @@ const taskReadyToRun = computed(() => Boolean(workspace.activeProvider))
 const hasTaskSource = computed(() => Boolean(workspace.taskSourceFlowTitle || workspace.taskSourcePromptTitle))
 const sourceLabel = computed(() => (workspace.taskSourceFlowTitle ? 'Flow context' : 'Prompt context'))
 const sourceTitle = computed(() => workspace.taskSourceFlowTitle || workspace.taskSourcePromptTitle)
+const taskInputPlaceholder = computed(() => {
+  return workspace.taskSourceFlowId
+    ? '可选：补充本次运行说明、目标用户、输出格式或约束条件...'
+    : '描述你希望 AI 完成的任务...'
+})
 const sourceDescription = computed(() => {
   return workspace.taskSourceFlowTitle
-    ? '这次执行会保留与原 Flow 的关联，结果可回到工作流中继续迭代。'
+    ? 'Flow 将按已保存的节点和 Prompt 执行。这里的内容会作为本次运行简报固定保存。'
     : '这次执行会保留与原 Prompt 的关联，方便把有效工作方式沉淀为资产。'
 })
 

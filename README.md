@@ -78,7 +78,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Flow Result Reuse | Done | Flow 结果可带入下一轮、保存为 Prompt、加入当前 Flow |
 | Stage 3 | Node Reuse | Done | Flow 节点可沉淀为 Prompt，也可单独带入 Task 试跑 |
 | Stage 3 | Flow Revisions | Done | 每次编辑前保存 Flow 快照，恢复前可预览任意创作节点及其影响范围 |
-| Stage 3 | Reproducible Flow Runs | Done | 每次 Flow 执行固定保存当时的节点、目标、Run Brief 和变量值，历史不受后续编辑影响 |
+| Stage 3 | Reproducible Flow Runs | Done | 每次 Flow 执行由服务端根据已保存的节点、目标、Run Brief 和变量值编译，历史不受后续编辑或浏览器输入影响 |
 | Stage 3 | Run Snapshot Reuse | Done | 历史运行快照可创建新的可编辑 Flow，并自动带入当次运行上下文 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
 | Future | Knowledge Base | Preview UI | 产品预留界面，暂未接入向量检索 |
@@ -174,6 +174,8 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | Flow 创作修订快照 / 恢复前影响预览 | Done |
 | 每次 Flow 执行固定保存运行快照 | Done |
 | 快照保留节点、Flow 目标、Run Brief 和 Prompt 变量 | Done |
+| 服务端从固定快照编译实际 AI 输入 | Done |
+| Flow 带入 Task 后以 Run Brief 继续执行 | Done |
 | 从历史运行快照创建新 Flow | Done |
 | 新 Flow 自动带入原运行上下文 | Done |
 

@@ -337,6 +337,17 @@ a {
   }
 }
 
+.flow-run-brief-heading {
+  margin-bottom: 10px;
+
+  p {
+    margin: 4px 0 0;
+    color: tokens.$text-secondary;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+}
+
 .task-source-context-copy {
   min-width: 0;
 }

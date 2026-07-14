@@ -25,8 +25,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,6 +48,9 @@ class TaskServiceTest {
 
     @Captor
     private ArgumentCaptor<Task> taskCaptor;
+
+    @Captor
+    private ArgumentCaptor<String> executionInputCaptor;
 
     private TaskService taskService;
 
@@ -70,21 +75,32 @@ class TaskServiceTest {
                 .id(flowId)
                 .title("Idea to MVP")
                 .description("Turn an idea into a focused MVP")
-                .nodesJson(objectMapper.writeValueAsString(List.of(new FlowNodeDto(
-                        "prompt-1",
-                        "prompt",
-                        "Define the boundary",
-                        "Make the MVP scope explicit",
-                        "Use {audience} as the decision lens.",
-                        null,
-                        null
-                ))))
+                .nodesJson(objectMapper.writeValueAsString(List.of(
+                        new FlowNodeDto(
+                                "input-1",
+                                "input",
+                                "Product context",
+                                "The starting product idea",
+                                "Build a calm workspace for product teams.",
+                                null,
+                                null
+                        ),
+                        new FlowNodeDto(
+                                "prompt-1",
+                                "prompt",
+                                "Define the boundary",
+                                "Make the MVP scope explicit",
+                                "Use {audience} as the decision lens.",
+                                null,
+                                null
+                        )
+                )))
                 .createdAt(updatedAt.minusDays(1))
                 .updatedAt(updatedAt)
                 .build();
 
         when(workflowRepository.findById(flowId)).thenReturn(Optional.of(flow));
-        when(openAiService.processTask("compiled flow input"))
+        when(openAiService.processTask(any()))
                 .thenReturn(new OpenAiTaskResult("Focused MVP", "Detailed result", "{\"summary\":\"Focused MVP\"}"));
         when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
             Task task = invocation.getArgument(0);
@@ -93,7 +109,7 @@ class TaskServiceTest {
         });
 
         TaskRunResponse response = taskService.runTask(new RunTaskRequest(
-                "compiled flow input",
+                "untrusted browser payload",
                 null,
                 flowId,
                 "Target early-stage product teams.",
@@ -101,16 +117,94 @@ class TaskServiceTest {
         ));
 
         verify(taskRepository).save(taskCaptor.capture());
+        verify(openAiService).processTask(executionInputCaptor.capture());
         Task savedTask = taskCaptor.getValue();
+        String executionInput = executionInputCaptor.getValue();
         assertThat(savedTask.getSourceFlowId()).isEqualTo(flowId);
         assertThat(savedTask.getSourceFlowSnapshotJson()).contains("Idea to MVP");
+        assertThat(savedTask.getInput()).isEqualTo(executionInput);
+        assertThat(executionInput)
+                .contains("Flow: Idea to MVP")
+                .contains("Build a calm workspace for product teams.")
+                .contains("Target early-stage product teams.")
+                .contains("Use product leads as the decision lens.")
+                .doesNotContain("untrusted browser payload");
         assertThat(response.taskId()).isNotNull();
         assertThat(response.flowRunSnapshot()).isNotNull();
         assertThat(response.flowRunSnapshot().title()).isEqualTo("Idea to MVP");
         assertThat(response.flowRunSnapshot().flowUpdatedAt()).isEqualTo(updatedAt);
         assertThat(response.flowRunSnapshot().runtimeContext()).isEqualTo("Target early-stage product teams.");
         assertThat(response.flowRunSnapshot().variableValues()).containsEntry("audience", "product leads");
-        assertThat(response.flowRunSnapshot().nodes()).singleElement().extracting(FlowNodeDto::title)
-                .isEqualTo("Define the boundary");
+        assertThat(response.flowRunSnapshot().nodes()).extracting(FlowNodeDto::title)
+                .containsExactly("Product context", "Define the boundary");
+    }
+
+    @Test
+    void preservesTheProvidedInputForStandaloneTasks() {
+        when(openAiService.processTask("Draft an onboarding checklist"))
+                .thenReturn(new OpenAiTaskResult("Onboarding", "Checklist", "{\"summary\":\"Onboarding\"}"));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
+            Task task = invocation.getArgument(0);
+            task.setId(UUID.randomUUID());
+            return task;
+        });
+
+        taskService.runTask(new RunTaskRequest(
+                "Draft an onboarding checklist",
+                null,
+                null,
+                null,
+                null
+        ));
+
+        verify(taskRepository).save(taskCaptor.capture());
+        Task savedTask = taskCaptor.getValue();
+        assertThat(savedTask.getInput()).isEqualTo("Draft an onboarding checklist");
+        assertThat(savedTask.getSourceFlowId()).isNull();
+        assertThat(savedTask.getSourceFlowSnapshotJson()).isNull();
+    }
+
+    @Test
+    void allowsAnEmptyRunBriefForSavedFlowRuns() throws Exception {
+        UUID flowId = UUID.randomUUID();
+        Workflow flow = Workflow.builder()
+                .id(flowId)
+                .title("Empty Brief Flow")
+                .description("Run from saved Flow state")
+                .nodesJson(new ObjectMapper().writeValueAsString(List.of()))
+                .createdAt(LocalDateTime.now().minusMinutes(1))
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        when(workflowRepository.findById(flowId)).thenReturn(Optional.of(flow));
+        when(openAiService.processTask(any()))
+                .thenReturn(new OpenAiTaskResult("Completed", "Result", "{\"summary\":\"Completed\"}"));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
+            Task task = invocation.getArgument(0);
+            task.setId(UUID.randomUUID());
+            return task;
+        });
+
+        taskService.runTask(new RunTaskRequest("", null, flowId, null, null));
+
+        verify(openAiService).processTask(executionInputCaptor.capture());
+        assertThat(executionInputCaptor.getValue())
+                .contains("Flow: Empty Brief Flow")
+                .doesNotContain("本次运行上下文:");
+    }
+
+    @Test
+    void rejectsEmptyStandaloneTaskInput() {
+        assertThatThrownBy(() -> taskService.runTask(new RunTaskRequest(
+                "   ",
+                null,
+                null,
+                null,
+                null
+        )))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("input is required");
+
+        verifyNoInteractions(openAiService, taskRepository);
     }
 }
