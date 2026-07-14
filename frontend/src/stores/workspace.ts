@@ -16,6 +16,7 @@ import type {
   ApiKeyConfig,
   FlowDraft,
   FlowNode,
+  FlowRunSnapshot,
   PromptAsset,
   SaveApiKeyPayload,
   SaveFlowPayload,
@@ -256,6 +257,25 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
 
     return persistNewFlowDraft(payload, '从 Prompt 创建 Flow 失败')
+  }
+
+  async function createFlowFromRunSnapshot(snapshot: FlowRunSnapshot) {
+    const description = snapshot.description.trim()
+    if (!description || !snapshot.nodes.length) {
+      ElMessage.warning('这个运行快照不完整，暂时无法创建 Flow')
+      return null
+    }
+
+    const payload: SaveFlowPayload = {
+      title: buildFlowSnapshotTitle(snapshot.title),
+      description,
+      nodes: snapshot.nodes.map((node) => ({
+        ...node,
+        id: createId()
+      }))
+    }
+
+    return persistNewFlowDraft(payload, '从运行快照创建 Flow 失败')
   }
 
   async function persistNewFlowDraft(payload: SaveFlowPayload, errorMessage: string) {
@@ -610,6 +630,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     createFlowDraft,
     createFlowFromTemplate,
     createFlowFromPrompt,
+    createFlowFromRunSnapshot,
     selectFlowDraft,
     replaceFlowDraft,
     duplicateActiveFlowDraft,
@@ -772,6 +793,12 @@ function buildTaskPromptDescription(summary: string) {
 
 function buildPromptFlowTitle(promptTitle: string) {
   return `${promptTitle.slice(0, 112).trim() || 'Untitled'} Flow`
+}
+
+function buildFlowSnapshotTitle(title: string) {
+  const suffix = ' 续作'
+  const cleanTitle = title.trim() || 'Untitled Flow'
+  return `${cleanTitle.slice(0, 120 - suffix.length).trim()}${suffix}`
 }
 
 function toSaveFlowPayload(flow: FlowDraft): SaveFlowPayload {

@@ -22,7 +22,12 @@
           <el-collapse>
             <el-collapse-item title="查看结果" :name="task.id">
               <AiResultDocument :summary="task.summary" :result="task.result" compact :show-raw="false" />
-              <FlowRunSnapshot v-if="task.flowRunSnapshot" :snapshot="task.flowRunSnapshot" />
+              <FlowRunSnapshot
+                v-if="task.flowRunSnapshot"
+                :snapshot="task.flowRunSnapshot"
+                can-create-flow
+                @create-flow="createFlowFromSnapshot"
+              />
             </el-collapse-item>
           </el-collapse>
         </div>
@@ -33,9 +38,23 @@
 </template>
 
 <script setup lang="ts">
+import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
 import { useWorkspaceStore } from '@/stores/workspace'
+import type { FlowRunSnapshot as FlowRunSnapshotType } from '@/types'
 
+const router = useRouter()
 const workspace = useWorkspaceStore()
+
+async function createFlowFromSnapshot(snapshot: FlowRunSnapshotType) {
+  const flow = await workspace.createFlowFromRunSnapshot(snapshot)
+  if (!flow) {
+    return
+  }
+
+  ElMessage.success('已从运行快照创建新的 Flow')
+  router.push('/workflows')
+}
 </script>

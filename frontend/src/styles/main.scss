@@ -1958,6 +1958,33 @@ a {
   }
 }
 
+.snapshot-create-action {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid rgba(79, 124, 255, 0.2);
+  border-radius: tokens.$radius-md;
+  background: rgba(79, 124, 255, 0.06);
+  color: tokens.$primary;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  transition: background 200ms ease, border-color 200ms ease, transform 200ms ease;
+
+  .el-icon {
+    font-size: 14px;
+  }
+
+  &:hover {
+    border-color: rgba(79, 124, 255, 0.34);
+    background: rgba(79, 124, 255, 0.11);
+    transform: scale(1.01);
+  }
+}
+
 .flow-map {
   display: grid;
   min-height: 500px;

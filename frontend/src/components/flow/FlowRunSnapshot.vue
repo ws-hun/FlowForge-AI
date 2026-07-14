@@ -36,16 +36,32 @@
           </div>
         </div>
       </div>
+
+      <button v-if="canCreateFlow" type="button" class="snapshot-create-action" @click.stop="emit('create-flow', snapshot)">
+        <el-icon><Plus /></el-icon>
+        以此为起点创建 Flow
+      </button>
     </div>
   </details>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { Plus } from '@element-plus/icons-vue'
 import type { FlowRunSnapshot } from '@/types'
 
-const props = defineProps<{
-  snapshot: FlowRunSnapshot
+const props = withDefaults(
+  defineProps<{
+    snapshot: FlowRunSnapshot
+    canCreateFlow?: boolean
+  }>(),
+  {
+    canCreateFlow: false
+  }
+)
+
+const emit = defineEmits<{
+  'create-flow': [snapshot: FlowRunSnapshot]
 }>()
 
 const variableEntries = computed(() => Object.entries(props.snapshot.variableValues || {}))
