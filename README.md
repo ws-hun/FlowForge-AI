@@ -78,6 +78,8 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Flow Result Reuse | Done | Flow 结果可带入下一轮、保存为 Prompt、加入当前 Flow |
 | Stage 3 | Node Reuse | Done | Flow 节点可沉淀为 Prompt，也可单独带入 Task 试跑 |
 | Stage 3 | Flow Revisions | Done | 每次编辑前保存 Flow 快照，恢复前可预览任意创作节点及其影响范围 |
+| Stage 3 | Reproducible Flow Runs | Done | 每次 Flow 执行固定保存当时的节点、目标、Run Brief 和变量值，历史不受后续编辑影响 |
+| Stage 3 | Run Snapshot Reuse | Done | 历史运行快照可创建新的可编辑 Flow，并自动带入当次运行上下文 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
 | Future | Knowledge Base | Preview UI | 产品预留界面，暂未接入向量检索 |
 | Future | Analytics | Preview UI | 轻量洞察预留，暂未做完整数据分析系统 |
@@ -170,6 +172,10 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | 当前节点单独带入 Task Workspace | Done |
 | Flow Prompt 变量填写与运行时替换 | Done |
 | Flow 创作修订快照 / 恢复前影响预览 | Done |
+| 每次 Flow 执行固定保存运行快照 | Done |
+| 快照保留节点、Flow 目标、Run Brief 和 Prompt 变量 | Done |
+| 从历史运行快照创建新 Flow | Done |
+| 新 Flow 自动带入原运行上下文 | Done |
 
 ## Product Modules
 
@@ -405,7 +411,11 @@ Request:
 {
   "input": "请帮我把一个产品想法拆解为 MVP 方案",
   "promptId": null,
-  "flowId": null
+  "flowId": "a-flow-uuid",
+  "flowRunContext": "目标用户为早期产品团队，优先输出一周可验证的 MVP。",
+  "flowVariableValues": {
+    "audience": "产品负责人"
+  }
 }
 ```
 
@@ -415,9 +425,23 @@ Response:
 {
   "summary": "一句话总结",
   "result": "详细结果",
-  "raw": "AI 原始返回"
+  "raw": "AI 原始返回",
+  "taskId": "a-task-uuid",
+  "flowRunSnapshot": {
+    "flowId": "a-flow-uuid",
+    "title": "Idea to MVP",
+    "description": "将一个产品想法拆解为可验证的 MVP。",
+    "nodes": [],
+    "flowUpdatedAt": "2026-07-14T14:30:00",
+    "runtimeContext": "目标用户为早期产品团队，优先输出一周可验证的 MVP。",
+    "variableValues": {
+      "audience": "产品负责人"
+    }
+  }
 }
 ```
+
+`flowRunSnapshot` 仅在由 `flowId` 发起的运行中返回。服务端从数据库读取当前 Flow 后创建快照，不信任浏览器传入的节点结构；后续编辑、恢复修订或删除来源 Flow 都不会改变这次历史运行的上下文。
 
 ### Provider
 
@@ -533,8 +557,8 @@ Check:
 ### Near Term
 
 - Workflow Builder node experience polish
-- Better Flow result structure rendering
-- Prompt / Flow reuse loop refinement
+- Flow 运行步骤的真实执行追踪
+- Prompt / Flow 复用闭环细化
 - More complete onboarding and empty states
 
 ### Mid Term

@@ -54,7 +54,7 @@ async function createFlowFromSnapshot(snapshot: FlowRunSnapshotType) {
     return
   }
 
-  ElMessage.success('已从运行快照创建新的 Flow')
+  ElMessage.success('已创建新的 Flow，并带入本次运行上下文')
   router.push('/workflows')
 }
 </script>

@@ -34,6 +34,12 @@ type TaskFlowSource = {
   variableValues?: Record<string, string>
 }
 
+type FlowRunSeed = {
+  flowId: string
+  runtimeContext: string
+  variableValues: Record<string, string>
+}
+
 export const useWorkspaceStore = defineStore('workspace', () => {
   const tasks = ref<TaskHistoryItem[]>([])
   const apiKeys = ref<ApiKeyConfig[]>([])
@@ -49,6 +55,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const taskSourceFlowTitle = ref('')
   const taskSourceFlowRunContext = ref('')
   const taskSourceFlowVariableValues = ref<Record<string, string>>({})
+  const pendingFlowRunSeed = ref<FlowRunSeed | null>(null)
   const running = ref(false)
   const historyLoading = ref(false)
   const settingsLoading = ref(false)
@@ -275,13 +282,34 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       }))
     }
 
-    return persistNewFlowDraft(payload, '从运行快照创建 Flow 失败')
+    return persistNewFlowDraft(payload, '从运行快照创建 Flow 失败', (flow) => {
+      pendingFlowRunSeed.value = {
+        flowId: flow.id,
+        runtimeContext: snapshot.runtimeContext.trim(),
+        variableValues: { ...snapshot.variableValues }
+      }
+    })
   }
 
-  async function persistNewFlowDraft(payload: SaveFlowPayload, errorMessage: string) {
+  function consumeFlowRunSeed(flowId: string) {
+    if (pendingFlowRunSeed.value?.flowId !== flowId) {
+      return null
+    }
+
+    const seed = pendingFlowRunSeed.value
+    pendingFlowRunSeed.value = null
+    return seed
+  }
+
+  async function persistNewFlowDraft(
+    payload: SaveFlowPayload,
+    errorMessage: string,
+    beforeActivate?: (flow: FlowDraft) => void
+  ) {
     flowLoading.value = true
     try {
       const { data } = await createFlow(payload)
+      beforeActivate?.(data)
       flowDrafts.value = [data, ...flowDrafts.value]
       activeFlowId.value = data.id
       localStorage.setItem(ACTIVE_FLOW_STORAGE_KEY, data.id)
@@ -631,6 +659,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     createFlowFromTemplate,
     createFlowFromPrompt,
     createFlowFromRunSnapshot,
+    consumeFlowRunSeed,
     selectFlowDraft,
     replaceFlowDraft,
     duplicateActiveFlowDraft,

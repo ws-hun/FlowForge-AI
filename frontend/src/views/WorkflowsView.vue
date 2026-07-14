@@ -863,12 +863,14 @@ const flowRunDescription = computed(() => {
 watch(
   () => workspace.activeFlow?.id,
   () => {
+    const activeFlowId = workspace.activeFlow?.id
+    const runSeed = activeFlowId ? workspace.consumeFlowRunSeed(activeFlowId) : null
     resetFlowRunState()
     selectedNodeId.value = workspace.activeFlow?.nodes[0]?.id || ''
     flowTitle.value = workspace.activeFlow?.title || ''
     flowDescription.value = workspace.activeFlow?.description || ''
-    flowRunContext.value = ''
-    flowVariableValues.value = buildFlowVariableValues(flowPromptVariables.value)
+    flowRunContext.value = runSeed?.runtimeContext || ''
+    flowVariableValues.value = buildFlowVariableValues(flowPromptVariables.value, runSeed?.variableValues)
     flowRuns.value = []
     flowVersions.value = []
     flowExecutionVisible.value = false
