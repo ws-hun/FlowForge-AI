@@ -26,6 +26,13 @@ import type {
 
 const ACTIVE_FLOW_STORAGE_KEY = 'flowforge.activeFlowId'
 
+type TaskFlowSource = {
+  id: string
+  title: string
+  runtimeContext?: string
+  variableValues?: Record<string, string>
+}
+
 export const useWorkspaceStore = defineStore('workspace', () => {
   const tasks = ref<TaskHistoryItem[]>([])
   const apiKeys = ref<ApiKeyConfig[]>([])
@@ -39,6 +46,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const taskSourcePromptTitle = ref('')
   const taskSourceFlowId = ref<string | null>(null)
   const taskSourceFlowTitle = ref('')
+  const taskSourceFlowRunContext = ref('')
+  const taskSourceFlowVariableValues = ref<Record<string, string>>({})
   const running = ref(false)
   const historyLoading = ref(false)
   const settingsLoading = ref(false)
@@ -86,7 +95,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const input = taskInput.value.trim()
     running.value = true
     try {
-      const { data } = await runTask(input, taskSourcePromptId.value, taskSourceFlowId.value)
+      const { data } = await runTask(
+        input,
+        taskSourcePromptId.value,
+        taskSourceFlowId.value,
+        taskSourceFlowRunContext.value,
+        taskSourceFlowVariableValues.value
+      )
       latestResult.value = data
       latestTaskInput.value = input
       latestTaskPrompt.value = null
@@ -95,6 +110,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       taskSourcePromptTitle.value = ''
       taskSourceFlowId.value = null
       taskSourceFlowTitle.value = ''
+      taskSourceFlowRunContext.value = ''
+      taskSourceFlowVariableValues.value = {}
       ElMessage.success('任务执行完成')
       await loadTasks()
     } catch (error: any) {
@@ -107,13 +124,15 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   function prepareTask(
     input: string,
     sourcePrompt?: { id: string; title: string } | null,
-    sourceFlow?: { id: string; title: string } | null
+    sourceFlow?: TaskFlowSource | null
   ) {
     taskInput.value = input
     taskSourcePromptId.value = sourcePrompt?.id || null
     taskSourcePromptTitle.value = sourcePrompt?.title || ''
     taskSourceFlowId.value = sourceFlow?.id || null
     taskSourceFlowTitle.value = sourceFlow?.title || ''
+    taskSourceFlowRunContext.value = sourceFlow?.runtimeContext?.trim() || ''
+    taskSourceFlowVariableValues.value = { ...(sourceFlow?.variableValues || {}) }
   }
 
   function clearTaskSource() {
@@ -121,6 +140,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     taskSourcePromptTitle.value = ''
     taskSourceFlowId.value = null
     taskSourceFlowTitle.value = ''
+    taskSourceFlowRunContext.value = ''
+    taskSourceFlowVariableValues.value = {}
   }
 
   async function saveLatestTaskAsPrompt() {
@@ -457,7 +478,12 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     prepareTask(
       buildFlowTaskInput(activeFlow.value, runtimeContext, variableValues),
       null,
-      { id: activeFlow.value.id, title: activeFlow.value.title }
+      {
+        id: activeFlow.value.id,
+        title: activeFlow.value.title,
+        runtimeContext,
+        variableValues
+      }
     )
   }
 
@@ -471,7 +497,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       const { data } = await runTask(
         buildFlowTaskInput(activeFlow.value, runtimeContext, variableValues),
         null,
-        activeFlow.value.id
+        activeFlow.value.id,
+        runtimeContext,
+        variableValues
       )
       latestResult.value = data
       ElMessage.success('Flow 执行完成')

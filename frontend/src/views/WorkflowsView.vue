@@ -219,6 +219,7 @@
               </button>
             </div>
           </div>
+          <FlowRunSnapshot v-if="activeFlowRunSnapshot" :snapshot="activeFlowRunSnapshot" />
           <AiResultDocument
             class="flow-execution-result"
             :summary="activeFlowResult.summary"
@@ -510,7 +511,10 @@
               @click="selectFlowRun(run)"
             >
               <time>{{ formatDate(run.createdAt) }}</time>
-              <strong>{{ run.summary }}</strong>
+              <div class="run-item-heading">
+                <strong>{{ run.summary }}</strong>
+                <span v-if="run.flowRunSnapshot">已固定快照</span>
+              </div>
               <p>{{ run.result }}</p>
             </button>
           </div>
@@ -528,6 +532,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
+import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
 import { listFlowRuns, listFlowVersions, restoreFlowVersion } from '@/api/flows'
 import { createPrompt, listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
@@ -718,12 +723,16 @@ const activeFlowResult = computed<TaskRunResponse | null>(() => {
     return {
       summary: selectedFlowRun.value.summary,
       result: selectedFlowRun.value.result,
-      raw: ''
+      raw: '',
+      taskId: selectedFlowRun.value.id,
+      flowRunSnapshot: selectedFlowRun.value.flowRunSnapshot || null
     }
   }
 
   return workspace.latestResult
 })
+
+const activeFlowRunSnapshot = computed(() => activeFlowResult.value?.flowRunSnapshot || null)
 
 const flowResultHeading = computed(() => {
   return selectedFlowRun.value ? '基于历史结果继续推进' : '基于这次结果继续推进'

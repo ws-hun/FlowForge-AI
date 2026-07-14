@@ -21,7 +21,8 @@
           <p class="muted">{{ task.summary }}</p>
           <el-collapse>
             <el-collapse-item title="查看结果" :name="task.id">
-              <pre class="code-block">{{ task.result }}</pre>
+              <AiResultDocument :summary="task.summary" :result="task.result" compact :show-raw="false" />
+              <FlowRunSnapshot v-if="task.flowRunSnapshot" :snapshot="task.flowRunSnapshot" />
             </el-collapse-item>
           </el-collapse>
         </div>
@@ -32,6 +33,8 @@
 </template>
 
 <script setup lang="ts">
+import AiResultDocument from '@/components/ai/AiResultDocument.vue'
+import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 
 const workspace = useWorkspaceStore()

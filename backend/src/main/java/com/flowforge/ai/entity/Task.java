@@ -48,6 +48,9 @@ public class Task {
     @Column(name = "source_flow_title", length = 120)
     private String sourceFlowTitle;
 
+    @Column(name = "source_flow_snapshot_json", columnDefinition = "TEXT")
+    private String sourceFlowSnapshotJson;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

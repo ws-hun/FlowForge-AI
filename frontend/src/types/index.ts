@@ -4,6 +4,8 @@ export interface TaskRunResponse {
   summary: string
   result: string
   raw: string
+  taskId?: string | null
+  flowRunSnapshot?: FlowRunSnapshot | null
 }
 
 export interface TaskHistoryItem {
@@ -15,6 +17,7 @@ export interface TaskHistoryItem {
   sourcePromptTitle?: string | null
   sourceFlowId?: string | null
   sourceFlowTitle?: string | null
+  flowRunSnapshot?: FlowRunSnapshot | null
   createdAt: string
 }
 
@@ -99,6 +102,16 @@ export interface FlowVersion {
   description: string
   nodes: FlowNode[]
   createdAt: string
+}
+
+export interface FlowRunSnapshot {
+  flowId: string
+  title: string
+  description: string
+  nodes: FlowNode[]
+  flowUpdatedAt: string
+  runtimeContext: string
+  variableValues: Record<string, string>
 }
 
 export interface SaveFlowPayload {

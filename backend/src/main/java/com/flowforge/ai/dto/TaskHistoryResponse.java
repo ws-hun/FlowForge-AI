@@ -12,6 +12,7 @@ public record TaskHistoryResponse(
         String sourcePromptTitle,
         UUID sourceFlowId,
         String sourceFlowTitle,
+        FlowRunSnapshotResponse flowRunSnapshot,
         LocalDateTime createdAt
 ) {
 }

@@ -1,8 +1,12 @@
 package com.flowforge.ai.dto;
 
+import java.util.UUID;
+
 public record TaskRunResponse(
         String summary,
         String result,
-        String raw
+        String raw,
+        UUID taskId,
+        FlowRunSnapshotResponse flowRunSnapshot
 ) {
 }
