@@ -3,6 +3,8 @@ package com.flowforge.ai.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowforge.ai.dto.FlowNodeDto;
+import com.flowforge.ai.dto.FlowExecutionPreviewRequest;
+import com.flowforge.ai.dto.FlowExecutionPreviewResponse;
 import com.flowforge.ai.dto.FlowRunSnapshotResponse;
 import com.flowforge.ai.dto.OpenAiTaskResult;
 import com.flowforge.ai.dto.RunTaskRequest;
@@ -48,7 +50,9 @@ public class TaskService {
         if (sourceFlow == null && !StringUtils.hasText(standaloneInput)) {
             throw new IllegalArgumentException("input is required");
         }
-        FlowRunSnapshotResponse flowRunSnapshot = sourceFlow == null ? null : createFlowRunSnapshot(sourceFlow, request);
+        FlowRunSnapshotResponse flowRunSnapshot = sourceFlow == null
+                ? null
+                : createFlowRunSnapshot(sourceFlow, request.flowRunContext(), request.flowVariableValues());
         String executionInput = flowRunSnapshot == null
                 ? standaloneInput
                 : compileFlowExecutionInput(flowRunSnapshot);
@@ -71,7 +75,24 @@ public class TaskService {
                 aiResult.summary(),
                 aiResult.result(),
                 aiResult.raw(),
+                executionInput,
                 savedTask.getId(),
+                flowRunSnapshot
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public FlowExecutionPreviewResponse previewFlowExecution(UUID flowId, FlowExecutionPreviewRequest request) {
+        Workflow flow = workflowRepository.findById(flowId)
+                .orElseThrow(() -> new IllegalStateException("Flow not found"));
+        FlowRunSnapshotResponse flowRunSnapshot = createFlowRunSnapshot(
+                flow,
+                request.runtimeContext(),
+                request.variableValues()
+        );
+
+        return new FlowExecutionPreviewResponse(
+                compileFlowExecutionInput(flowRunSnapshot),
                 flowRunSnapshot
         );
     }
@@ -116,15 +137,19 @@ public class TaskService {
                 .orElseThrow(() -> new IllegalStateException("Flow not found"));
     }
 
-    private FlowRunSnapshotResponse createFlowRunSnapshot(Workflow flow, RunTaskRequest request) {
+    private FlowRunSnapshotResponse createFlowRunSnapshot(
+            Workflow flow,
+            String runtimeContext,
+            Map<String, String> variableValues
+    ) {
         return new FlowRunSnapshotResponse(
                 flow.getId(),
                 flow.getTitle(),
                 flow.getDescription(),
                 deserializeFlowNodes(flow.getNodesJson()),
                 flow.getUpdatedAt(),
-                cleanOptional(request.flowRunContext()),
-                cleanVariableValues(request.flowVariableValues())
+                cleanOptional(runtimeContext),
+                cleanVariableValues(variableValues)
         );
     }
 

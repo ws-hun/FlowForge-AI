@@ -4,6 +4,7 @@ export interface TaskRunResponse {
   summary: string
   result: string
   raw: string
+  executionInput: string
   taskId?: string | null
   flowRunSnapshot?: FlowRunSnapshot | null
 }
@@ -112,6 +113,16 @@ export interface FlowRunSnapshot {
   flowUpdatedAt: string
   runtimeContext: string
   variableValues: Record<string, string>
+}
+
+export interface FlowExecutionPreviewRequest {
+  runtimeContext?: string
+  variableValues?: Record<string, string>
+}
+
+export interface FlowExecutionPreviewResponse {
+  executionInput: string
+  flowRunSnapshot: FlowRunSnapshot
 }
 
 export interface SaveFlowPayload {

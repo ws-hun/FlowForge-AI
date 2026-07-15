@@ -1,5 +1,12 @@
 import http from './client'
-import type { FlowDraft, FlowVersion, SaveFlowPayload, TaskHistoryItem } from '@/types'
+import type {
+  FlowDraft,
+  FlowExecutionPreviewRequest,
+  FlowExecutionPreviewResponse,
+  FlowVersion,
+  SaveFlowPayload,
+  TaskHistoryItem
+} from '@/types'
 
 export function listFlows() {
   return http.get<FlowDraft[]>('/api/flows')
@@ -19,6 +26,10 @@ export function deleteFlow(id: string) {
 
 export function listFlowRuns(id: string) {
   return http.get<TaskHistoryItem[]>(`/api/flows/${id}/runs`)
+}
+
+export function previewFlowExecution(id: string, payload: FlowExecutionPreviewRequest) {
+  return http.post<FlowExecutionPreviewResponse>(`/api/flows/${id}/execution-preview`, payload)
 }
 
 export function listFlowVersions(id: string) {

@@ -194,9 +194,36 @@
             placeholder="为本次运行补充上下文，例如目标用户、输出格式、约束条件或业务背景..."
           ></textarea>
 
-          <details class="flow-input-preview">
-            <summary>查看本次 AI 输入</summary>
-            <pre>{{ flowRunInputPreview }}</pre>
+          <details class="flow-input-preview" @toggle="onFlowExecutionPreviewToggle">
+            <summary>查看服务端执行输入</summary>
+            <div v-if="flowExecutionPreviewLoading" class="flow-input-preview-status">
+              正在按保存的 Flow 编译本次输入...
+            </div>
+            <div v-else-if="flowExecutionPreview" class="flow-input-preview-content">
+              <div class="flow-input-preview-meta">
+                <span>{{ flowExecutionPreviewStale ? 'Run Brief 已更新' : '与本次执行保持一致' }}</span>
+                <button
+                  v-if="flowExecutionPreviewStale"
+                  type="button"
+                  class="text-button"
+                  @click="loadFlowExecutionPreview"
+                >
+                  刷新输入
+                </button>
+              </div>
+              <pre>{{ flowExecutionPreview.executionInput }}</pre>
+            </div>
+            <div v-else class="flow-input-preview-status">
+              <span>{{ flowExecutionPreviewError || (flowExecutionPreviewStale ? 'Run Brief 已更新，请刷新执行输入。' : '展开后将从服务端生成执行输入。') }}</span>
+              <button
+                v-if="flowExecutionPreviewError || flowExecutionPreviewStale"
+                type="button"
+                class="text-button"
+                @click="loadFlowExecutionPreview"
+              >
+                {{ flowExecutionPreviewError ? '重试' : '刷新输入' }}
+              </button>
+            </div>
           </details>
         </section>
 
@@ -543,7 +570,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
-import { listFlowRuns, listFlowVersions, restoreFlowVersion } from '@/api/flows'
+import { listFlowRuns, listFlowVersions, previewFlowExecution, restoreFlowVersion } from '@/api/flows'
 import { createPrompt, listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { compareFlowRevision } from '@/utils/flowRevisions'
@@ -551,6 +578,7 @@ import { extractPromptVariables } from '@/utils/promptVariables'
 import type {
   FlowNode,
   FlowNodeType,
+  FlowExecutionPreviewResponse,
   FlowRunSnapshot as FlowRunSnapshotType,
   FlowVersion,
   PromptAsset,
@@ -578,6 +606,11 @@ const flowTitle = ref('')
 const flowDescription = ref('')
 const flowRunContext = ref('')
 const flowVariableValues = ref<Record<string, string>>({})
+const flowExecutionPreview = ref<FlowExecutionPreviewResponse | null>(null)
+const flowExecutionPreviewLoading = ref(false)
+const flowExecutionPreviewStale = ref(false)
+const flowExecutionPreviewError = ref('')
+const flowExecutionPreviewRequestVersion = ref(0)
 const nodeTitle = ref('')
 const nodeDescription = ref('')
 const nodeContent = ref('')
@@ -717,7 +750,6 @@ const flowPromptVariables = computed(() => {
   return Array.from(new Set(variables))
 })
 
-const flowRunInputPreview = computed(() => workspace.composeActiveFlowInput(flowRunContext.value, flowVariableValues.value))
 const flowReadyToRun = computed(() => Boolean(workspace.activeProvider))
 const activeProviderLabel = computed(() => workspace.activeProvider?.model || 'Provider 未配置')
 const flowBriefItems = computed(() => {
@@ -742,6 +774,7 @@ const activeFlowResult = computed<TaskRunResponse | null>(() => {
       summary: selectedFlowRun.value.summary,
       result: selectedFlowRun.value.result,
       raw: '',
+      executionInput: selectedFlowRun.value.input,
       taskId: selectedFlowRun.value.id,
       flowRunSnapshot: selectedFlowRun.value.flowRunSnapshot || null
     }
@@ -884,6 +917,7 @@ watch(
   () => {
     const activeFlowId = workspace.activeFlow?.id
     const runSeed = activeFlowId ? workspace.consumeFlowRunSeed(activeFlowId) : null
+    resetFlowExecutionPreview()
     resetFlowRunState()
     selectedNodeId.value = workspace.activeFlow?.nodes[0]?.id || ''
     flowTitle.value = workspace.activeFlow?.title || ''
@@ -909,6 +943,7 @@ watch(
   (updatedAt, previousUpdatedAt) => {
     const flowId = workspace.activeFlow?.id
     if (flowId && updatedAt && updatedAt !== previousUpdatedAt) {
+      invalidateFlowExecutionPreview()
       loadFlowVersions(flowId)
     }
   }
@@ -917,6 +952,10 @@ watch(
 watch(flowPromptVariables, (variables) => {
   flowVariableValues.value = buildFlowVariableValues(variables, flowVariableValues.value)
 })
+
+watch([flowRunContext, flowVariableValues], () => {
+  invalidateFlowExecutionPreview()
+}, { deep: true })
 
 watch(
   () => selectedNode.value?.id,
@@ -934,6 +973,60 @@ async function loadPromptAssets() {
     prompts.value = data
   } catch (error: any) {
     ElMessage.error(error.response?.data?.message || 'Prompt Library 加载失败')
+  }
+}
+
+function invalidateFlowExecutionPreview() {
+  flowExecutionPreviewRequestVersion.value += 1
+  if (flowExecutionPreview.value) {
+    flowExecutionPreviewStale.value = true
+  }
+  if (flowExecutionPreviewLoading.value) {
+    flowExecutionPreviewStale.value = true
+  }
+  flowExecutionPreviewError.value = ''
+}
+
+function resetFlowExecutionPreview() {
+  flowExecutionPreviewRequestVersion.value += 1
+  flowExecutionPreview.value = null
+  flowExecutionPreviewLoading.value = false
+  flowExecutionPreviewStale.value = false
+  flowExecutionPreviewError.value = ''
+}
+
+function onFlowExecutionPreviewToggle(event: Event) {
+  const details = event.currentTarget as HTMLDetailsElement
+  if (details.open && (!flowExecutionPreview.value || flowExecutionPreviewStale.value)) {
+    void loadFlowExecutionPreview()
+  }
+}
+
+async function loadFlowExecutionPreview() {
+  const flow = workspace.activeFlow
+  if (!flow || flowExecutionPreviewLoading.value) {
+    return
+  }
+
+  const flowId = flow.id
+  const requestVersion = flowExecutionPreviewRequestVersion.value
+  flowExecutionPreviewLoading.value = true
+  flowExecutionPreviewError.value = ''
+  try {
+    const { data } = await previewFlowExecution(flowId, {
+      runtimeContext: flowRunContext.value,
+      variableValues: flowVariableValues.value
+    })
+    if (workspace.activeFlow?.id === flowId && flowExecutionPreviewRequestVersion.value === requestVersion) {
+      flowExecutionPreview.value = data
+      flowExecutionPreviewStale.value = false
+    }
+  } catch (error: any) {
+    if (workspace.activeFlow?.id === flowId && flowExecutionPreviewRequestVersion.value === requestVersion) {
+      flowExecutionPreviewError.value = error.response?.data?.message || '执行输入生成失败'
+    }
+  } finally {
+    flowExecutionPreviewLoading.value = false
   }
 }
 
@@ -992,6 +1085,7 @@ async function restoreFlowVersionSnapshot(version: FlowVersion) {
     syncSelectedNodeEditor()
     flowRunContext.value = ''
     flowVariableValues.value = buildFlowVariableValues(flowPromptVariables.value)
+    invalidateFlowExecutionPreview()
     selectedFlowRun.value = null
     flowExecutionVisible.value = false
     savedResultPrompt.value = null

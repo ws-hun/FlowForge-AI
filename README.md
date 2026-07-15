@@ -78,7 +78,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Flow Result Reuse | Done | Flow 结果可带入下一轮、保存为 Prompt、加入当前 Flow |
 | Stage 3 | Node Reuse | Done | Flow 节点可沉淀为 Prompt，也可单独带入 Task 试跑 |
 | Stage 3 | Flow Revisions | Done | 每次编辑前保存 Flow 快照，恢复前可预览任意创作节点及其影响范围 |
-| Stage 3 | Reproducible Flow Runs | Done | 每次 Flow 执行由服务端根据已保存的节点、目标、Run Brief 和变量值编译，历史不受后续编辑或浏览器输入影响 |
+| Stage 3 | Reproducible Flow Runs | Done | 每次 Flow 执行由服务端根据已保存的节点、目标、Run Brief 和变量值编译；工作区可在执行前查看同一份服务端输入，历史不受后续编辑或浏览器输入影响 |
 | Stage 3 | Run Snapshot Reuse | Done | 历史运行快照可创建新的可编辑 Flow，并自动带入当次运行上下文 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
 | Future | Knowledge Base | Preview UI | 产品预留界面，暂未接入向量检索 |
@@ -160,7 +160,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | Prompt 节点编辑 / 删除 / 复制 / 排序 | Done |
 | Provider readiness 提示 | Done |
 | Run Brief 运行上下文 | Done |
-| AI 输入预览 | Done |
+| 服务端执行输入预览 | Done |
 | 真实 Flow 运行生命周期反馈（上下文准备 / 单次 AI 调用 / Output 记录） | Done |
 | Flow 执行结果展示 | Done |
 | Flow 执行历史回看 | Done |
@@ -428,6 +428,7 @@ Response:
   "summary": "一句话总结",
   "result": "详细结果",
   "raw": "AI 原始返回",
+  "executionInput": "服务端实际发送给 AI Provider 的完整输入",
   "taskId": "a-task-uuid",
   "flowRunSnapshot": {
     "flowId": "a-flow-uuid",
@@ -444,6 +445,8 @@ Response:
 ```
 
 `flowRunSnapshot` 仅在由 `flowId` 发起的运行中返回。服务端从数据库读取当前 Flow 后创建快照，不信任浏览器传入的节点结构；后续编辑、恢复修订或删除来源 Flow 都不会改变这次历史运行的上下文。
+
+`executionInput` 是服务端实际提交给 AI Provider 的输入。Flow 工作区的“查看服务端执行输入”使用同一套编译逻辑，确保用户确认的内容与真实执行一致。
 
 ### Provider
 
@@ -474,10 +477,13 @@ GET    /api/flows
 POST   /api/flows
 PUT    /api/flows/{id}
 GET    /api/flows/{id}/runs
+POST   /api/flows/{id}/execution-preview
 GET    /api/flows/{id}/versions
 POST   /api/flows/{id}/versions/{versionId}/restore
 DELETE /api/flows/{id}
 ```
+
+`POST /api/flows/{id}/execution-preview` 只读取已保存的 Flow，不调用 AI Provider，也不会创建任务或写入历史。它接收本次 `runtimeContext` 与 `variableValues`，返回服务端编译的 `executionInput` 和对应的 `flowRunSnapshot`。
 
 ## Validation
 

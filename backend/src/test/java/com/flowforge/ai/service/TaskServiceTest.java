@@ -2,6 +2,8 @@ package com.flowforge.ai.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowforge.ai.dto.FlowNodeDto;
+import com.flowforge.ai.dto.FlowExecutionPreviewRequest;
+import com.flowforge.ai.dto.FlowExecutionPreviewResponse;
 import com.flowforge.ai.dto.OpenAiTaskResult;
 import com.flowforge.ai.dto.RunTaskRequest;
 import com.flowforge.ai.dto.TaskRunResponse;
@@ -191,6 +193,75 @@ class TaskServiceTest {
         assertThat(executionInputCaptor.getValue())
                 .contains("Flow: Empty Brief Flow")
                 .doesNotContain("本次运行上下文:");
+    }
+
+    @Test
+    void previewsTheServerCompiledInputWithoutRunningOrPersistingATask() throws Exception {
+        UUID flowId = UUID.randomUUID();
+        LocalDateTime updatedAt = LocalDateTime.of(2026, 7, 15, 9, 45);
+        Workflow flow = Workflow.builder()
+                .id(flowId)
+                .title("Release Brief")
+                .description("Prepare a focused launch brief")
+                .nodesJson(new ObjectMapper().writeValueAsString(List.of(
+                        new FlowNodeDto(
+                                "input-1",
+                                "input",
+                                "Product context",
+                                "Saved Flow context",
+                                "Create a calm release workspace.",
+                                null,
+                                null
+                        ),
+                        new FlowNodeDto(
+                                "prompt-1",
+                                "prompt",
+                                "Audience lens",
+                                "Use the filled runtime variable",
+                                "Write for {audience} and include a release checklist.",
+                                null,
+                                null
+                        )
+                )))
+                .createdAt(updatedAt.minusDays(2))
+                .updatedAt(updatedAt)
+                .build();
+        when(workflowRepository.findById(flowId)).thenReturn(Optional.of(flow));
+
+        FlowExecutionPreviewResponse response = taskService.previewFlowExecution(
+                flowId,
+                new FlowExecutionPreviewRequest(
+                        "Keep the first release intentionally small.",
+                        Map.of("audience", "product teams")
+                )
+        );
+
+        assertThat(response.executionInput())
+                .contains("Flow: Release Brief")
+                .contains("Create a calm release workspace.")
+                .contains("Keep the first release intentionally small.")
+                .contains("Write for product teams and include a release checklist.")
+                .doesNotContain("untrusted browser node");
+        assertThat(response.flowRunSnapshot().flowId()).isEqualTo(flowId);
+        assertThat(response.flowRunSnapshot().flowUpdatedAt()).isEqualTo(updatedAt);
+        assertThat(response.flowRunSnapshot().nodes()).extracting(FlowNodeDto::title)
+                .containsExactly("Product context", "Audience lens");
+        verifyNoInteractions(openAiService, taskRepository);
+    }
+
+    @Test
+    void rejectsPreviewForAMissingFlow() {
+        UUID flowId = UUID.randomUUID();
+        when(workflowRepository.findById(flowId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> taskService.previewFlowExecution(
+                flowId,
+                new FlowExecutionPreviewRequest(null, Map.of())
+        ))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Flow not found");
+
+        verifyNoInteractions(openAiService, taskRepository);
     }
 
     @Test

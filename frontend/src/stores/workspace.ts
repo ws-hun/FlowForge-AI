@@ -11,7 +11,6 @@ import {
 } from '@/api/tasks'
 import { createFlow, deleteFlow, listFlows, updateFlow } from '@/api/flows'
 import { createPrompt } from '@/api/prompts'
-import { applyPromptVariables } from '@/utils/promptVariables'
 import type {
   ApiKeyConfig,
   FlowDraft,
@@ -112,13 +111,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         taskSourceFlowVariableValues.value
       )
       latestResult.value = data
-      latestTaskInput.value = data.flowRunSnapshot
-        ? buildFlowTaskInput(
-            data.flowRunSnapshot,
-            data.flowRunSnapshot.runtimeContext,
-            data.flowRunSnapshot.variableValues
-          )
-        : input
+      latestTaskInput.value = data.executionInput
       latestTaskPrompt.value = null
       taskInput.value = ''
       taskSourcePromptId.value = null
@@ -514,14 +507,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
-  function composeActiveFlowInput(runtimeContext = '', variableValues: Record<string, string> = {}) {
-    if (!activeFlow.value) {
-      return ''
-    }
-
-    return buildFlowTaskInput(activeFlow.value, runtimeContext, variableValues)
-  }
-
   function sendFlowToTask(runtimeContext = '', variableValues: Record<string, string> = {}) {
     if (!activeFlow.value) {
       return
@@ -674,7 +659,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     duplicateFlowPromptNode,
     updateFlowMeta,
     deleteFlowDraft,
-    composeActiveFlowInput,
     sendFlowToTask,
     executeActiveFlow,
     executeTask,
@@ -779,34 +763,6 @@ function createPromptBasedFlowNodes(prompt: PromptAsset): FlowNode[] {
       description: '沉淀 Summary、Key Points、Result 和下一步行动'
     }
   ]
-}
-
-function buildFlowTaskInput(
-  flow: Pick<FlowDraft, 'title' | 'description' | 'nodes'>,
-  runtimeContext = '',
-  variableValues: Record<string, string> = {}
-) {
-  const inputBlocks = flow.nodes
-    .filter((node) => node.type === 'input' && node.content && node.content.trim() !== flow.description.trim())
-    .map((node) => `## ${node.title}\n${node.content}`)
-    .join('\n\n')
-  const promptBlocks = flow.nodes
-    .filter((node) => node.type === 'prompt' && node.content)
-    .map((node) => `## ${node.title}\n${applyPromptVariables(node.content || '', variableValues)}`)
-    .join('\n\n')
-  const cleanRuntimeContext = runtimeContext.trim()
-
-  return [
-    `请按下面的 Flow 目标执行 AI 工作流。`,
-    '',
-    `Flow: ${flow.title}`,
-    `目标: ${flow.description}`,
-    inputBlocks ? `\n输入节点上下文:\n${inputBlocks}` : '',
-    cleanRuntimeContext ? `\n本次运行上下文:\n${cleanRuntimeContext}` : '',
-    promptBlocks ? `\n可复用 Prompt 节点:\n${promptBlocks}` : '',
-    '',
-    '请输出：1. Summary 2. Key Points 3. Result 4. Next Actions'
-  ].join('\n')
 }
 
 function buildFlowTitle(description: string) {

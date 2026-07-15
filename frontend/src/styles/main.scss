@@ -2314,6 +2314,32 @@ a {
   }
 }
 
+.flow-input-preview-content {
+  border-top: 1px solid tokens.$border;
+}
+
+.flow-input-preview-meta,
+.flow-input-preview-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 16px;
+  color: tokens.$text-muted;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.flow-input-preview-content pre {
+  border-top: 1px solid tokens.$border;
+}
+
+.flow-input-preview-status .text-button,
+.flow-input-preview-meta .text-button {
+  flex: 0 0 auto;
+}
+
 .flow-empty-state {
   display: grid;
   min-height: 520px;

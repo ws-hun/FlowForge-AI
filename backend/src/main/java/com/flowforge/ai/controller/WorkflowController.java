@@ -1,5 +1,7 @@
 package com.flowforge.ai.controller;
 
+import com.flowforge.ai.dto.FlowExecutionPreviewRequest;
+import com.flowforge.ai.dto.FlowExecutionPreviewResponse;
 import com.flowforge.ai.dto.FlowRequest;
 import com.flowforge.ai.dto.FlowResponse;
 import com.flowforge.ai.dto.FlowVersionResponse;
@@ -46,6 +48,14 @@ public class WorkflowController {
     @GetMapping("/{id}/runs")
     public List<TaskHistoryResponse> listFlowRuns(@PathVariable("id") UUID id) {
         return taskService.listFlowRuns(id);
+    }
+
+    @PostMapping("/{id}/execution-preview")
+    public FlowExecutionPreviewResponse previewExecution(
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody FlowExecutionPreviewRequest request
+    ) {
+        return taskService.previewFlowExecution(id, request);
     }
 
     @GetMapping("/{id}/versions")
