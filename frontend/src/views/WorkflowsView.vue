@@ -93,6 +93,15 @@
             <p>{{ workspace.activeFlow.description }}</p>
           </div>
           <div class="flow-run-actions">
+            <button
+              type="button"
+              class="ghost-button flow-add-context-button"
+              :disabled="workspace.flowLoading || workspace.running"
+              @click="addContextNode"
+            >
+              <el-icon><Plus /></el-icon>
+              添加上下文
+            </button>
             <button type="button" class="ghost-button" :disabled="workspace.running" @click="sendFlowToTaskWorkspace">
               带入 Task
             </button>
@@ -461,12 +470,12 @@
           </div>
 
           <button
-            v-if="selectedNode.type === 'prompt'"
+            v-if="canRemoveSelectedNode"
             type="button"
             class="ghost-button"
             @click="removeSelectedNode"
           >
-            移除此 Prompt 节点
+            {{ selectedNode.type === 'prompt' ? '移除此 Prompt 节点' : '移除此上下文节点' }}
           </button>
         </template>
 
@@ -568,6 +577,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus } from '@element-plus/icons-vue'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
 import { listFlowRuns, listFlowVersions, previewFlowExecution, restoreFlowVersion } from '@/api/flows'
@@ -794,6 +804,20 @@ const selectedNodeState = computed<FlowNodeRunState>(() => {
     return 'idle'
   }
   return nodeStatus(selectedNode.value.id)
+})
+
+const primaryInputNodeId = computed(() => {
+  return workspace.activeFlow?.nodes.find((node) => node.type === 'input')?.id || ''
+})
+
+const canRemoveSelectedNode = computed(() => {
+  if (!selectedNode.value) {
+    return false
+  }
+  return (
+    selectedNode.value.type === 'prompt' ||
+    (selectedNode.value.type === 'input' && selectedNode.value.id !== primaryInputNodeId.value)
+  )
 })
 
 const nodeCanEditContent = computed(() => {
@@ -1188,8 +1212,19 @@ async function addPromptNode(prompt: PromptAsset) {
   }
 }
 
+async function addContextNode() {
+  const addedNode = await workspace.addContextToActiveFlow()
+  if (!addedNode) {
+    return
+  }
+
+  selectedNodeId.value = addedNode.id
+  resetFlowRunState()
+  ElMessage.success('上下文节点已加入 Flow')
+}
+
 async function removeSelectedNode() {
-  if (!selectedNode.value) {
+  if (!selectedNode.value || !canRemoveSelectedNode.value) {
     return
   }
   await workspace.removeFlowNode(selectedNode.value.id)

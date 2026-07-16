@@ -81,6 +81,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Reproducible Flow Runs | Done | 每次 Flow 执行由服务端根据已保存的节点、目标、Run Brief 和变量值编译；工作区可在执行前查看同一份服务端输入，历史不受后续编辑或浏览器输入影响 |
 | Stage 3 | Configurable AI Execution Guidance | Done | AI Task 节点可保存工作流专属的执行指令，并由服务端编译进预览与真实 AI 调用 |
 | Stage 3 | Configurable Output Delivery Focus | Done | Output 节点可定义结果的交付重点，确保同一 Flow 的结果表达可以稳定复用 |
+| Stage 3 | Persistent Flow Context | Done | 可在 Flow 中添加独立 Context 节点，将背景、约束或已有材料沉淀为可复用的执行上下文 |
 | Stage 3 | Run Snapshot Reuse | Done | 历史运行快照可创建新的可编辑 Flow，并自动带入当次运行上下文 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
 | Future | Knowledge Base | Preview UI | 产品预留界面，暂未接入向量检索 |
@@ -154,6 +155,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | Flow 删除 | Done |
 | Flow 变体创建 | Done |
 | Input / Prompt / AI Task / Output 节点 | Done |
+| 可新增和移除的 Context 节点 | Done |
 | 从 Prompt Library 添加 Prompt 节点 | Done |
 | 从 Prompt 详情创建来源可追溯的 Flow | Done |
 | Prompt 节点搜索 | Done |
@@ -181,6 +183,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | 每次 Flow 执行固定保存运行快照 | Done |
 | 快照保留节点、Flow 目标、Run Brief 和 Prompt 变量 | Done |
 | 服务端从固定快照编译实际 AI 输入 | Done |
+| 多个保存的 Input / Context 节点按顺序参与服务端编译 | Done |
 | Flow 带入 Task 后以 Run Brief 继续执行 | Done |
 | 从历史运行快照创建新 Flow | Done |
 | 新 Flow 自动带入原运行上下文 | Done |

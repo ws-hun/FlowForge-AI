@@ -88,6 +88,15 @@ class TaskServiceTest {
                                 null
                         ),
                         new FlowNodeDto(
+                                "input-2",
+                                "input",
+                                "Delivery constraints",
+                                "A persisted supporting context node.",
+                                "Keep the first release focused on a single team workflow.",
+                                null,
+                                null
+                        ),
+                        new FlowNodeDto(
                                 "prompt-1",
                                 "prompt",
                                 "Define the boundary",
@@ -146,6 +155,7 @@ class TaskServiceTest {
         assertThat(executionInput)
                 .contains("Flow: Idea to MVP")
                 .contains("Build a calm workspace for product teams.")
+                .contains("Keep the first release focused on a single team workflow.")
                 .contains("Target early-stage product teams.")
                 .contains("Use product leads as the decision lens.")
                 .contains("执行指令:")
@@ -160,7 +170,13 @@ class TaskServiceTest {
         assertThat(response.flowRunSnapshot().runtimeContext()).isEqualTo("Target early-stage product teams.");
         assertThat(response.flowRunSnapshot().variableValues()).containsEntry("audience", "product leads");
         assertThat(response.flowRunSnapshot().nodes()).extracting(FlowNodeDto::title)
-                .containsExactly("Product context", "Define the boundary", "AI execution guidance", "Delivery focus");
+                .containsExactly(
+                        "Product context",
+                        "Delivery constraints",
+                        "Define the boundary",
+                        "AI execution guidance",
+                        "Delivery focus"
+                );
     }
 
     @Test

@@ -388,9 +388,37 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     return updatedFlow ? promptNode : null
   }
 
+  async function addContextToActiveFlow() {
+    if (!activeFlow.value) {
+      return null
+    }
+
+    const contextNode: FlowNode = {
+      id: createId(),
+      type: 'input',
+      title: 'Context',
+      description: '补充本次 Flow 需要参考的背景、约束或已有材料',
+      content: ''
+    }
+
+    const updatedFlow = await updateActiveFlow((flow) => {
+      const firstNonInputIndex = flow.nodes.findIndex((node) => node.type !== 'input')
+      const insertIndex = firstNonInputIndex >= 0 ? firstNonInputIndex : flow.nodes.length
+      flow.nodes.splice(insertIndex, 0, contextNode)
+    })
+    return updatedFlow ? contextNode : null
+  }
+
   async function removeFlowNode(nodeId: string) {
     await updateActiveFlow((flow) => {
-      if (flow.nodes.length <= 3) {
+      const targetNode = flow.nodes.find((node) => node.id === nodeId)
+      const primaryInputNode = flow.nodes.find((node) => node.type === 'input')
+      const canRemove =
+        targetNode &&
+        (targetNode.type === 'prompt' ||
+          (targetNode.type === 'input' && targetNode.id !== primaryInputNode?.id))
+
+      if (!canRemove) {
         return
       }
       flow.nodes = flow.nodes.filter((node) => node.id !== nodeId)
@@ -657,6 +685,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     replaceFlowDraft,
     duplicateActiveFlowDraft,
     addPromptToActiveFlow,
+    addContextToActiveFlow,
     removeFlowNode,
     updateFlowNode,
     moveFlowPromptNode,
