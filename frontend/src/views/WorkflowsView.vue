@@ -180,7 +180,7 @@
             <div class="flow-variable-heading">
               <div>
                 <span class="section-kicker">Flow 变量</span>
-                <p>为 Prompt、执行指令或交付重点补充本次运行上下文。</p>
+                <p>为输入、Context、Prompt、执行指令或交付重点补充本次运行上下文。</p>
               </div>
               <span>{{ flowVariables.length }} 个变量</span>
             </div>
@@ -776,7 +776,7 @@ const selectedFlowVersionDiff = computed(() => {
 
 const flowVariables = computed(() => {
   const variables = (workspace.activeFlow?.nodes || [])
-    .filter((node) => node.type === 'prompt' || node.type === 'ai-task' || node.type === 'output')
+    .filter((node) => node.content?.trim())
     .flatMap((node) => extractPromptVariables(node.content || ''))
 
   return Array.from(new Set(variables))

@@ -161,7 +161,7 @@ public class TaskService {
                 .filter(node -> "input".equals(node.type()))
                 .filter(node -> StringUtils.hasText(node.content()))
                 .filter(node -> !node.content().trim().equals(snapshot.description()))
-                .map(node -> formatNodeBlock(node.title(), node.content()))
+                .map(node -> formatNodeBlock(node.title(), applyFlowVariables(node.content(), snapshot.variableValues())))
                 .reduce((first, second) -> first + "\n\n" + second)
                 .orElse("");
         String promptBlocks = snapshot.nodes().stream()

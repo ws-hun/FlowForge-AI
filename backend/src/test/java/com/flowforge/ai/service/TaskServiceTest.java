@@ -83,7 +83,7 @@ class TaskServiceTest {
                                 "input",
                                 "Product context",
                                 "The starting product idea",
-                                "Build a calm workspace for product teams.",
+                                "Build a calm workspace for {audience}.",
                                 null,
                                 null
                         ),
@@ -92,7 +92,7 @@ class TaskServiceTest {
                                 "input",
                                 "Delivery constraints",
                                 "A persisted supporting context node.",
-                                "Keep the first release focused on a single team workflow.",
+                                "Keep the first release aligned with {audience}.",
                                 null,
                                 null
                         ),
@@ -154,17 +154,18 @@ class TaskServiceTest {
         assertThat(savedTask.getInput()).isEqualTo(executionInput);
         assertThat(executionInput)
                 .contains("Flow: Idea to MVP")
-                .contains("Build a calm workspace for product teams.")
-                .contains("Keep the first release focused on a single team workflow.")
+                .contains("Build a calm workspace for product leads.")
+                .contains("Keep the first release aligned with product leads.")
                 .contains("Target early-stage product teams.")
                 .contains("Use product leads as the decision lens.")
                 .contains("执行指令:")
                 .contains("Prioritize concrete tradeoffs for product leads.")
                 .contains("交付重点:")
                 .contains("End with decisions that product leads can act on immediately.")
+                .doesNotContain("{audience}")
                 .doesNotContain("untrusted browser payload");
-        assertThat(executionInput.indexOf("Build a calm workspace for product teams."))
-                .isLessThan(executionInput.indexOf("Keep the first release focused on a single team workflow."));
+        assertThat(executionInput.indexOf("Build a calm workspace for product leads."))
+                .isLessThan(executionInput.indexOf("Keep the first release aligned with product leads."));
         assertThat(response.taskId()).isNotNull();
         assertThat(response.flowRunSnapshot()).isNotNull();
         assertThat(response.flowRunSnapshot().title()).isEqualTo("Idea to MVP");
@@ -249,7 +250,7 @@ class TaskServiceTest {
                                 "input",
                                 "Product context",
                                 "Saved Flow context",
-                                "Create a calm release workspace.",
+                                "Create a calm release workspace for {audience}.",
                                 null,
                                 null
                         ),
@@ -296,13 +297,14 @@ class TaskServiceTest {
 
         assertThat(response.executionInput())
                 .contains("Flow: Release Brief")
-                .contains("Create a calm release workspace.")
+                .contains("Create a calm release workspace for product teams.")
                 .contains("Keep the first release intentionally small.")
                 .contains("Write for product teams and include a release checklist.")
                 .contains("执行指令:")
                 .contains("Keep the deliverable decisive for product teams.")
                 .contains("交付重点:")
                 .contains("Leave product teams with a sequence they can start today.")
+                .doesNotContain("{audience}")
                 .doesNotContain("untrusted browser node");
         assertThat(response.flowRunSnapshot().flowId()).isEqualTo(flowId);
         assertThat(response.flowRunSnapshot().flowUpdatedAt()).isEqualTo(updatedAt);
