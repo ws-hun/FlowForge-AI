@@ -163,6 +163,8 @@ class TaskServiceTest {
                 .contains("交付重点:")
                 .contains("End with decisions that product leads can act on immediately.")
                 .doesNotContain("untrusted browser payload");
+        assertThat(executionInput.indexOf("Build a calm workspace for product teams."))
+                .isLessThan(executionInput.indexOf("Keep the first release focused on a single team workflow."));
         assertThat(response.taskId()).isNotNull();
         assertThat(response.flowRunSnapshot()).isNotNull();
         assertThat(response.flowRunSnapshot().title()).isEqualTo("Idea to MVP");

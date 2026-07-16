@@ -2413,6 +2413,10 @@ a {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 
+  &.is-context {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .ghost-button {
     min-height: 36px;
     background: rgba(243, 245, 247, 0.72);

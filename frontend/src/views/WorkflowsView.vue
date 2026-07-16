@@ -422,6 +422,28 @@
             </button>
           </div>
 
+          <div
+            v-if="selectedNode.type === 'input' && selectedNode.id !== primaryInputNodeId"
+            class="flow-node-order-actions is-context"
+          >
+            <button
+              type="button"
+              class="ghost-button"
+              :disabled="!canMoveSelectedContextUp || workspace.flowLoading"
+              @click="moveSelectedContextNode('up')"
+            >
+              上移
+            </button>
+            <button
+              type="button"
+              class="ghost-button"
+              :disabled="!canMoveSelectedContextDown || workspace.flowLoading"
+              @click="moveSelectedContextNode('down')"
+            >
+              下移
+            </button>
+          </div>
+
           <div class="flow-node-editor">
             <label>
               <span>Node title</span>
@@ -891,10 +913,21 @@ const selectedPromptIndex = computed(() => {
 })
 
 const promptNodes = computed(() => workspace.activeFlow?.nodes.filter((node) => node.type === 'prompt') || [])
+const contextNodes = computed(() => workspace.activeFlow?.nodes.filter((node) => node.type === 'input').slice(1) || [])
 const activeFlowPromptIds = computed(() => new Set(promptNodes.value.map((node) => node.promptId).filter(Boolean)))
 const canMoveSelectedNodeUp = computed(() => selectedPromptIndex.value > 0)
 const canMoveSelectedNodeDown = computed(() => {
   return selectedPromptIndex.value >= 0 && selectedPromptIndex.value < promptNodes.value.length - 1
+})
+const selectedContextIndex = computed(() => {
+  if (!selectedNode.value || selectedNode.value.type !== 'input') {
+    return -1
+  }
+  return contextNodes.value.findIndex((node) => node.id === selectedNode.value?.id)
+})
+const canMoveSelectedContextUp = computed(() => selectedContextIndex.value > 0)
+const canMoveSelectedContextDown = computed(() => {
+  return selectedContextIndex.value >= 0 && selectedContextIndex.value < contextNodes.value.length - 1
 })
 
 const promptCategories = computed(() => {
@@ -1265,6 +1298,21 @@ async function moveSelectedPromptNode(direction: 'up' | 'down') {
   selectedNodeId.value = selectedNode.value.id
   resetFlowRunState()
   ElMessage.success('Prompt 顺序已调整')
+}
+
+async function moveSelectedContextNode(direction: 'up' | 'down') {
+  if (!selectedNode.value || selectedNode.value.type !== 'input') {
+    return
+  }
+
+  const movedFlow = await workspace.moveFlowContextNode(selectedNode.value.id, direction)
+  if (!movedFlow) {
+    return
+  }
+
+  selectedNodeId.value = selectedNode.value.id
+  resetFlowRunState()
+  ElMessage.success('上下文顺序已调整')
 }
 
 async function duplicateSelectedPromptNode() {

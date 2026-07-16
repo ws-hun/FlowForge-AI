@@ -470,6 +470,30 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     })
   }
 
+  async function moveFlowContextNode(nodeId: string, direction: 'up' | 'down') {
+    return updateActiveFlow((flow) => {
+      const inputNodes = flow.nodes.filter((node) => node.type === 'input')
+      const [primaryInputNode, ...contextNodes] = inputNodes
+      const currentIndex = contextNodes.findIndex((node) => node.id === nodeId)
+      const nextIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+
+      if (!primaryInputNode || currentIndex < 0 || nextIndex < 0 || nextIndex >= contextNodes.length) {
+        return
+      }
+
+      const currentNode = contextNodes[currentIndex]
+      contextNodes[currentIndex] = contextNodes[nextIndex]
+      contextNodes[nextIndex] = currentNode
+      flow.nodes = [
+        primaryInputNode,
+        ...contextNodes,
+        ...flow.nodes.filter((node) => node.type === 'prompt'),
+        ...flow.nodes.filter((node) => node.type === 'ai-task'),
+        ...flow.nodes.filter((node) => node.type === 'output')
+      ]
+    })
+  }
+
   async function duplicateFlowPromptNode(nodeId: string) {
     if (!activeFlow.value) {
       return null
@@ -689,6 +713,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     removeFlowNode,
     updateFlowNode,
     moveFlowPromptNode,
+    moveFlowContextNode,
     duplicateFlowPromptNode,
     updateFlowMeta,
     deleteFlowDraft,
