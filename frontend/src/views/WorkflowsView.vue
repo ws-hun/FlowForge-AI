@@ -423,11 +423,11 @@
               <textarea v-model="nodeDescription" class="quiet-textarea" placeholder="节点说明"></textarea>
             </label>
             <label v-if="nodeCanEditContent">
-              <span>{{ selectedNode.type === 'prompt' ? 'Prompt content' : 'Input content' }}</span>
+              <span>{{ nodeContentLabel }}</span>
               <textarea
                 v-model="nodeContent"
                 class="quiet-textarea flow-node-content-editor"
-                placeholder="定义这个节点在 Flow 中提供的上下文..."
+                :placeholder="nodeContentPlaceholder"
               ></textarea>
             </label>
             <div class="flow-node-editor-actions">
@@ -797,14 +797,39 @@ const selectedNodeState = computed<FlowNodeRunState>(() => {
 })
 
 const nodeCanEditContent = computed(() => {
+  return (
+    selectedNode.value?.type === 'input' ||
+    selectedNode.value?.type === 'prompt' ||
+    selectedNode.value?.type === 'ai-task'
+  )
+})
+
+const nodeCanReuseContent = computed(() => {
   return selectedNode.value?.type === 'input' || selectedNode.value?.type === 'prompt'
+})
+
+const nodeContentLabel = computed(() => {
+  if (selectedNode.value?.type === 'prompt') {
+    return 'Prompt content'
+  }
+  if (selectedNode.value?.type === 'ai-task') {
+    return 'Execution guidance'
+  }
+  return 'Input content'
+})
+
+const nodeContentPlaceholder = computed(() => {
+  if (selectedNode.value?.type === 'ai-task') {
+    return '定义模型应如何组织、评估和交付本次结果...'
+  }
+  return '定义这个节点在 Flow 中提供的上下文...'
 })
 
 const nodeCanSaveAsPrompt = computed(() => {
   return Boolean(
     workspace.activeFlow &&
       selectedNode.value &&
-      nodeCanEditContent.value &&
+      nodeCanReuseContent.value &&
       nodeTitle.value.trim() &&
       nodeDescription.value.trim() &&
       nodeContent.value.trim()
@@ -812,7 +837,7 @@ const nodeCanSaveAsPrompt = computed(() => {
 })
 
 const nodeCanSendToTask = computed(() => {
-  return Boolean(selectedNode.value && nodeCanEditContent.value && nodeContent.value.trim())
+  return Boolean(selectedNode.value && nodeCanReuseContent.value && nodeContent.value.trim())
 })
 
 const nodeEditorChanged = computed(() => {
@@ -1603,7 +1628,7 @@ function nodeStateDescription(node: FlowNode, state: FlowNodeRunState) {
   const descriptions: Record<FlowNodeType, string> = {
     input: '读取 Flow 目标，作为本次执行的上下文起点。',
     prompt: '将可复用 Prompt 合并到本次 AI 工作流中。',
-    'ai-task': '调用当前激活的 AI Provider 完成结构化任务。',
+    'ai-task': '将上游上下文与已保存的执行指令交给当前 AI Provider。',
     output: '把 Summary、Key Points 与 Result 沉淀为可回看的执行结果。'
   }
   return descriptions[node.type]

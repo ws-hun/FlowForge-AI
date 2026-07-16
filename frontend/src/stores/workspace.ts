@@ -25,6 +25,8 @@ import type {
 } from '@/types'
 
 const ACTIVE_FLOW_STORAGE_KEY = 'flowforge.activeFlowId'
+const DEFAULT_AI_TASK_EXECUTION_GUIDANCE =
+  '综合上游上下文与 Prompt，给出清晰、可执行的结构化结果。\n优先保留关键判断、行动建议和必要的边界条件。'
 
 type TaskFlowSource = {
   id: string
@@ -685,7 +687,8 @@ function createStarterFlowNodes(description: string): FlowNode[] {
       id: createId(),
       type: 'ai-task',
       title: 'AI Execution',
-      description: '调用当前激活的模型执行结构化任务'
+      description: '调用当前激活的模型执行结构化任务',
+      content: DEFAULT_AI_TASK_EXECUTION_GUIDANCE
     },
     {
       id: createId(),
@@ -721,7 +724,8 @@ function createTemplatedFlowNodes(
       id: createId(),
       type: 'ai-task',
       title: 'AI Execution',
-      description: '调用当前激活的模型执行结构化任务'
+      description: '调用当前激活的模型执行结构化任务',
+      content: DEFAULT_AI_TASK_EXECUTION_GUIDANCE
     },
     {
       id: createId(),
@@ -754,7 +758,8 @@ function createPromptBasedFlowNodes(prompt: PromptAsset): FlowNode[] {
       id: createId(),
       type: 'ai-task',
       title: 'AI Execution',
-      description: '调用当前激活的模型执行结构化任务'
+      description: '调用当前激活的模型执行结构化任务',
+      content: DEFAULT_AI_TASK_EXECUTION_GUIDANCE
     },
     {
       id: createId(),
