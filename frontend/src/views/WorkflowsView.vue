@@ -167,17 +167,17 @@
             </div>
           </div>
 
-          <div v-if="flowPromptVariables.length" class="flow-variable-inputs">
+          <div v-if="flowVariables.length" class="flow-variable-inputs">
             <div class="flow-variable-heading">
               <div>
-                <span class="section-kicker">Prompt 变量</span>
-                <p>为本次运行填写 Prompt 需要的上下文。</p>
+                <span class="section-kicker">Flow 变量</span>
+                <p>为 Prompt、执行指令或交付重点补充本次运行上下文。</p>
               </div>
-              <span>{{ flowPromptVariables.length }} 个变量</span>
+              <span>{{ flowVariables.length }} 个变量</span>
             </div>
 
             <div class="flow-variable-grid">
-              <label v-for="variable in flowPromptVariables" :key="variable" class="flow-variable-field">
+              <label v-for="variable in flowVariables" :key="variable" class="flow-variable-field">
                 <span>{{ '{' + variable + '}' }}</span>
                 <textarea
                   v-model="flowVariableValues[variable]"
@@ -742,9 +742,9 @@ const selectedFlowVersionDiff = computed(() => {
   return compareFlowRevision(workspace.activeFlow, selectedFlowVersion.value)
 })
 
-const flowPromptVariables = computed(() => {
+const flowVariables = computed(() => {
   const variables = (workspace.activeFlow?.nodes || [])
-    .filter((node) => node.type === 'prompt')
+    .filter((node) => node.type === 'prompt' || node.type === 'ai-task' || node.type === 'output')
     .flatMap((node) => extractPromptVariables(node.content || ''))
 
   return Array.from(new Set(variables))
@@ -800,7 +800,8 @@ const nodeCanEditContent = computed(() => {
   return (
     selectedNode.value?.type === 'input' ||
     selectedNode.value?.type === 'prompt' ||
-    selectedNode.value?.type === 'ai-task'
+    selectedNode.value?.type === 'ai-task' ||
+    selectedNode.value?.type === 'output'
   )
 })
 
@@ -815,12 +816,18 @@ const nodeContentLabel = computed(() => {
   if (selectedNode.value?.type === 'ai-task') {
     return 'Execution guidance'
   }
+  if (selectedNode.value?.type === 'output') {
+    return 'Delivery focus'
+  }
   return 'Input content'
 })
 
 const nodeContentPlaceholder = computed(() => {
   if (selectedNode.value?.type === 'ai-task') {
     return '定义模型应如何组织、评估和交付本次结果...'
+  }
+  if (selectedNode.value?.type === 'output') {
+    return '定义这次结果需要保留的表达重点、行动性和交付标准...'
   }
   return '定义这个节点在 Flow 中提供的上下文...'
 })
@@ -948,7 +955,7 @@ watch(
     flowTitle.value = workspace.activeFlow?.title || ''
     flowDescription.value = workspace.activeFlow?.description || ''
     flowRunContext.value = runSeed?.runtimeContext || ''
-    flowVariableValues.value = buildFlowVariableValues(flowPromptVariables.value, runSeed?.variableValues)
+    flowVariableValues.value = buildFlowVariableValues(flowVariables.value, runSeed?.variableValues)
     flowRuns.value = []
     flowVersions.value = []
     flowExecutionVisible.value = false
@@ -974,7 +981,7 @@ watch(
   }
 )
 
-watch(flowPromptVariables, (variables) => {
+watch(flowVariables, (variables) => {
   flowVariableValues.value = buildFlowVariableValues(variables, flowVariableValues.value)
 })
 
@@ -1109,7 +1116,7 @@ async function restoreFlowVersionSnapshot(version: FlowVersion) {
     selectedNodeId.value = data.nodes[0]?.id || ''
     syncSelectedNodeEditor()
     flowRunContext.value = ''
-    flowVariableValues.value = buildFlowVariableValues(flowPromptVariables.value)
+    flowVariableValues.value = buildFlowVariableValues(flowVariables.value)
     invalidateFlowExecutionPreview()
     selectedFlowRun.value = null
     flowExecutionVisible.value = false
@@ -1629,7 +1636,7 @@ function nodeStateDescription(node: FlowNode, state: FlowNodeRunState) {
     input: '读取 Flow 目标，作为本次执行的上下文起点。',
     prompt: '将可复用 Prompt 合并到本次 AI 工作流中。',
     'ai-task': '将上游上下文与已保存的执行指令交给当前 AI Provider。',
-    output: '把 Summary、Key Points 与 Result 沉淀为可回看的执行结果。'
+    output: '定义本次结果的交付重点，并记录可回看的结构化结果。'
   }
   return descriptions[node.type]
 }

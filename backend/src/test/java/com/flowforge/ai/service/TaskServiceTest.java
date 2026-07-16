@@ -104,6 +104,15 @@ class TaskServiceTest {
                                 "Prioritize concrete tradeoffs for {audience}.",
                                 null,
                                 null
+                        ),
+                        new FlowNodeDto(
+                                "output-1",
+                                "output",
+                                "Delivery focus",
+                                "Make the result useful after this run.",
+                                "End with decisions that {audience} can act on immediately.",
+                                null,
+                                null
                         )
                 )))
                 .createdAt(updatedAt.minusDays(1))
@@ -141,6 +150,8 @@ class TaskServiceTest {
                 .contains("Use product leads as the decision lens.")
                 .contains("执行指令:")
                 .contains("Prioritize concrete tradeoffs for product leads.")
+                .contains("交付重点:")
+                .contains("End with decisions that product leads can act on immediately.")
                 .doesNotContain("untrusted browser payload");
         assertThat(response.taskId()).isNotNull();
         assertThat(response.flowRunSnapshot()).isNotNull();
@@ -149,7 +160,7 @@ class TaskServiceTest {
         assertThat(response.flowRunSnapshot().runtimeContext()).isEqualTo("Target early-stage product teams.");
         assertThat(response.flowRunSnapshot().variableValues()).containsEntry("audience", "product leads");
         assertThat(response.flowRunSnapshot().nodes()).extracting(FlowNodeDto::title)
-                .containsExactly("Product context", "Define the boundary", "AI execution guidance");
+                .containsExactly("Product context", "Define the boundary", "AI execution guidance", "Delivery focus");
     }
 
     @Test
@@ -241,6 +252,15 @@ class TaskServiceTest {
                                 "Keep the deliverable decisive for {audience}.",
                                 null,
                                 null
+                        ),
+                        new FlowNodeDto(
+                                "output-1",
+                                "output",
+                                "Release delivery focus",
+                                "Saved outcome standard for this Flow.",
+                                "Leave {audience} with a sequence they can start today.",
+                                null,
+                                null
                         )
                 )))
                 .createdAt(updatedAt.minusDays(2))
@@ -263,11 +283,13 @@ class TaskServiceTest {
                 .contains("Write for product teams and include a release checklist.")
                 .contains("执行指令:")
                 .contains("Keep the deliverable decisive for product teams.")
+                .contains("交付重点:")
+                .contains("Leave product teams with a sequence they can start today.")
                 .doesNotContain("untrusted browser node");
         assertThat(response.flowRunSnapshot().flowId()).isEqualTo(flowId);
         assertThat(response.flowRunSnapshot().flowUpdatedAt()).isEqualTo(updatedAt);
         assertThat(response.flowRunSnapshot().nodes()).extracting(FlowNodeDto::title)
-                .containsExactly("Product context", "Audience lens", "Launch execution guidance");
+                .containsExactly("Product context", "Audience lens", "Launch execution guidance", "Release delivery focus");
         verifyNoInteractions(openAiService, taskRepository);
     }
 

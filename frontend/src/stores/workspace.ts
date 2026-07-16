@@ -27,6 +27,8 @@ import type {
 const ACTIVE_FLOW_STORAGE_KEY = 'flowforge.activeFlowId'
 const DEFAULT_AI_TASK_EXECUTION_GUIDANCE =
   '综合上游上下文与 Prompt，给出清晰、可执行的结构化结果。\n优先保留关键判断、行动建议和必要的边界条件。'
+const DEFAULT_OUTPUT_DELIVERY_FOCUS =
+  '以清晰的 Summary、Key Points、Result 和 Next Actions 交付。\n结果应便于复盘、分享，并可作为下一轮工作的可靠起点。'
 
 type TaskFlowSource = {
   id: string
@@ -694,7 +696,8 @@ function createStarterFlowNodes(description: string): FlowNode[] {
       id: createId(),
       type: 'output',
       title: 'Structured Result',
-      description: '沉淀 Summary、Key Points、Result 和下一步行动'
+      description: '沉淀 Summary、Key Points、Result 和下一步行动',
+      content: DEFAULT_OUTPUT_DELIVERY_FOCUS
     }
   ]
 }
@@ -731,7 +734,8 @@ function createTemplatedFlowNodes(
       id: createId(),
       type: 'output',
       title: 'Structured Result',
-      description: '沉淀 Summary、Key Points、Result 和下一步行动'
+      description: '沉淀 Summary、Key Points、Result 和下一步行动',
+      content: DEFAULT_OUTPUT_DELIVERY_FOCUS
     }
   ]
 }
@@ -765,7 +769,8 @@ function createPromptBasedFlowNodes(prompt: PromptAsset): FlowNode[] {
       id: createId(),
       type: 'output',
       title: 'Structured Result',
-      description: '沉淀 Summary、Key Points、Result 和下一步行动'
+      description: '沉淀 Summary、Key Points、Result 和下一步行动',
+      content: DEFAULT_OUTPUT_DELIVERY_FOCUS
     }
   ]
 }

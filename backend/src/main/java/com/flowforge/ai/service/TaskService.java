@@ -176,6 +176,12 @@ public class TaskService {
                 .map(node -> formatNodeBlock(node.title(), applyFlowVariables(node.content(), snapshot.variableValues())))
                 .reduce((first, second) -> first + "\n\n" + second)
                 .orElse("");
+        String deliveryFocusBlocks = snapshot.nodes().stream()
+                .filter(node -> "output".equals(node.type()))
+                .filter(node -> StringUtils.hasText(node.content()))
+                .map(node -> formatNodeBlock(node.title(), applyFlowVariables(node.content(), snapshot.variableValues())))
+                .reduce((first, second) -> first + "\n\n" + second)
+                .orElse("");
 
         List<String> sections = new ArrayList<>();
         sections.add("请按下面的 Flow 目标执行 AI 工作流。");
@@ -193,6 +199,9 @@ public class TaskService {
         }
         if (StringUtils.hasText(executionGuidanceBlocks)) {
             sections.add("\n执行指令:\n" + executionGuidanceBlocks);
+        }
+        if (StringUtils.hasText(deliveryFocusBlocks)) {
+            sections.add("\n交付重点:\n" + deliveryFocusBlocks);
         }
         sections.add("");
         sections.add("请输出：1. Summary 2. Key Points 3. Result 4. Next Actions");

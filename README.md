@@ -80,6 +80,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Flow Revisions | Done | 每次编辑前保存 Flow 快照，恢复前可预览任意创作节点及其影响范围 |
 | Stage 3 | Reproducible Flow Runs | Done | 每次 Flow 执行由服务端根据已保存的节点、目标、Run Brief 和变量值编译；工作区可在执行前查看同一份服务端输入，历史不受后续编辑或浏览器输入影响 |
 | Stage 3 | Configurable AI Execution Guidance | Done | AI Task 节点可保存工作流专属的执行指令，并由服务端编译进预览与真实 AI 调用 |
+| Stage 3 | Configurable Output Delivery Focus | Done | Output 节点可定义结果的交付重点，确保同一 Flow 的结果表达可以稳定复用 |
 | Stage 3 | Run Snapshot Reuse | Done | 历史运行快照可创建新的可编辑 Flow，并自动带入当次运行上下文 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
 | Future | Knowledge Base | Preview UI | 产品预留界面，暂未接入向量检索 |
@@ -164,6 +165,8 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | 服务端执行输入预览 | Done |
 | AI Task 执行指令编辑与持久化 | Done |
 | AI Task 执行指令参与服务端预览与真实运行 | Done |
+| Output 交付重点编辑与持久化 | Done |
+| 交付重点参与服务端预览与真实运行 | Done |
 | 真实 Flow 运行生命周期反馈（上下文准备 / 单次 AI 调用 / Output 记录） | Done |
 | Flow 执行结果展示 | Done |
 | Flow 执行历史回看 | Done |
@@ -173,7 +176,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | 最新结果保存并加入当前 Flow | Done |
 | 当前节点沉淀为 Prompt 资产 | Done |
 | 当前节点单独带入 Task Workspace | Done |
-| Flow Prompt 变量填写与运行时替换 | Done |
+| Flow 变量填写与运行时替换（Prompt / AI Task / Output） | Done |
 | Flow 创作修订快照 / 恢复前影响预览 | Done |
 | 每次 Flow 执行固定保存运行快照 | Done |
 | 快照保留节点、Flow 目标、Run Brief 和 Prompt 变量 | Done |
