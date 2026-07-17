@@ -12,6 +12,40 @@
           <span class="section-kicker">Run Brief</span>
           <p>为这次 Flow 运行补充目标、约束或输出偏好。</p>
         </div>
+        <div
+          v-if="workspace.taskSourceFlowId && workspace.taskSourceFlowVariables.length"
+          class="flow-variable-inputs task-flow-variable-inputs"
+          :class="{ 'has-missing': workspace.missingTaskSourceFlowVariables.length }"
+        >
+          <div class="flow-variable-heading">
+            <div>
+              <span class="section-kicker">Flow 变量</span>
+              <p>确认这次运行需要注入的具体值。</p>
+            </div>
+            <span>
+              {{ workspace.missingTaskSourceFlowVariables.length ? `${workspace.missingTaskSourceFlowVariables.length} 项待填写` : '已就绪' }}
+            </span>
+          </div>
+          <div class="flow-variable-grid">
+            <label
+              v-for="variable in workspace.taskSourceFlowVariables"
+              :key="variable"
+              class="flow-variable-field"
+              :class="{ 'is-missing': !workspace.taskSourceFlowVariableValues[variable]?.trim() }"
+            >
+              <span>{{ '{' + variable + '}' }}</span>
+              <textarea
+                v-model="workspace.taskSourceFlowVariableValues[variable]"
+                class="quiet-textarea"
+                :placeholder="`填写 ${variable}`"
+              ></textarea>
+            </label>
+          </div>
+          <div v-if="workspace.missingTaskSourceFlowVariables.length" class="flow-variable-readiness">
+            <span class="flow-run-dot warning"></span>
+            <p>补齐变量后即可执行这个 Flow。</p>
+          </div>
+        </div>
         <textarea
           v-model="workspace.taskInput"
           class="workspace-input"
@@ -33,7 +67,7 @@
             <button type="button" class="ghost-button" @click="detachTaskSource">脱离来源</button>
           </div>
         </div>
-        <div v-if="!taskReadyToRun" class="command-readiness-note">
+        <div v-if="!providerReadyToRun" class="command-readiness-note">
           <span class="flow-run-dot warning"></span>
           <div>
             <strong>需要配置 AI Provider</strong>
@@ -45,7 +79,7 @@
           <span>{{ workspace.activeProvider?.provider || '请先配置 Provider' }}</span>
           <button
             class="primary-button"
-            :disabled="workspace.running || !workspace.canExecuteTask || !taskReadyToRun"
+            :disabled="workspace.running || !workspace.canExecuteTask || !providerReadyToRun"
             @click="workspace.executeTask"
           >
             {{ workspace.running ? '执行中...' : '执行任务' }}
@@ -100,7 +134,7 @@ import { useWorkspaceStore } from '@/stores/workspace'
 
 const router = useRouter()
 const workspace = useWorkspaceStore()
-const taskReadyToRun = computed(() => Boolean(workspace.activeProvider))
+const providerReadyToRun = computed(() => Boolean(workspace.activeProvider))
 const hasTaskSource = computed(() => Boolean(workspace.taskSourceFlowTitle || workspace.taskSourcePromptTitle))
 const sourceLabel = computed(() => (workspace.taskSourceFlowTitle ? 'Flow context' : 'Prompt context'))
 const sourceTitle = computed(() => workspace.taskSourceFlowTitle || workspace.taskSourcePromptTitle)

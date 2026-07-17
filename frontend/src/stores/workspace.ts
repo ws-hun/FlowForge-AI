@@ -66,7 +66,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const activeProvider = computed(() => apiKeys.value.find((item) => item.active))
   const activeFlow = computed(() => flowDrafts.value.find((flow) => flow.id === activeFlowId.value) || null)
   const canPromoteLatestTask = computed(() => Boolean(latestResult.value && latestTaskInput.value.trim()))
-  const canExecuteTask = computed(() => Boolean(taskSourceFlowId.value || taskInput.value.trim()))
+  const taskSourceFlowVariables = computed(() => Object.keys(taskSourceFlowVariableValues.value))
+  const missingTaskSourceFlowVariables = computed(() =>
+    taskSourceFlowVariables.value.filter((variable) => !taskSourceFlowVariableValues.value[variable]?.trim())
+  )
+  const canExecuteTask = computed(() =>
+    taskSourceFlowId.value ? missingTaskSourceFlowVariables.value.length === 0 : Boolean(taskInput.value.trim())
+  )
 
   async function loadTasks() {
     historyLoading.value = true
@@ -102,6 +108,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
     if (!activeProvider.value) {
       ElMessage.warning('请先配置并激活 AI Provider')
+      return
+    }
+
+    if (isFlowRun && missingTaskSourceFlowVariables.value.length) {
+      ElMessage.warning(`请先填写 Flow 变量：${missingTaskSourceFlowVariables.value.join('、')}`)
       return
     }
 
@@ -687,6 +698,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     taskSourcePromptTitle,
     taskSourceFlowId,
     taskSourceFlowTitle,
+    taskSourceFlowVariableValues,
     running,
     historyLoading,
     settingsLoading,
@@ -695,6 +707,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     activeProvider,
     activeFlow,
     canPromoteLatestTask,
+    taskSourceFlowVariables,
+    missingTaskSourceFlowVariables,
     canExecuteTask,
     bootstrap,
     loadTasks,

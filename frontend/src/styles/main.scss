@@ -2220,6 +2220,11 @@ a {
   border: 1px solid rgba(79, 124, 255, 0.12);
   border-radius: tokens.$radius-lg;
   background: rgba(243, 245, 247, 0.62);
+
+  &.has-missing {
+    border-color: rgba(245, 158, 11, 0.22);
+    background: rgba(255, 251, 235, 0.5);
+  }
 }
 
 .flow-variable-heading {
@@ -2270,6 +2275,28 @@ a {
   .quiet-textarea {
     min-height: 64px;
     background: rgba(255, 255, 255, 0.82);
+  }
+
+  &.is-missing .quiet-textarea {
+    border-color: rgba(245, 158, 11, 0.34);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.06);
+  }
+}
+
+.task-flow-variable-inputs {
+  margin-bottom: 12px;
+}
+
+.flow-variable-readiness {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+
+  p {
+    margin: 0;
+    color: tokens.$text-secondary;
+    font-size: 12px;
+    line-height: 1.6;
   }
 }
 

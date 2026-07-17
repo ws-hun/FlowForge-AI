@@ -314,6 +314,42 @@ class TaskServiceTest {
     }
 
     @Test
+    void rejectsAFlowRunWhenRequiredVariablesAreMissing() throws Exception {
+        UUID flowId = UUID.randomUUID();
+        Workflow flow = Workflow.builder()
+                .id(flowId)
+                .title("Audience brief")
+                .description("Prepare a brief for a specific audience")
+                .nodesJson(new ObjectMapper().writeValueAsString(List.of(
+                        new FlowNodeDto(
+                                "input-1",
+                                "input",
+                                "Audience context",
+                                "The audience for this run",
+                                "Prepare this for {audience} in {region}.",
+                                null,
+                                null
+                        )
+                )))
+                .createdAt(LocalDateTime.now().minusMinutes(1))
+                .updatedAt(LocalDateTime.now())
+                .build();
+        when(workflowRepository.findById(flowId)).thenReturn(Optional.of(flow));
+
+        assertThatThrownBy(() -> taskService.runTask(new RunTaskRequest(
+                "",
+                null,
+                flowId,
+                "Keep it concise.",
+                Map.of("audience", "product teams", "region", "   ")
+        )))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("请填写 Flow 变量: region");
+
+        verifyNoInteractions(openAiService, taskRepository);
+    }
+
+    @Test
     void rejectsPreviewForAMissingFlow() {
         UUID flowId = UUID.randomUUID();
         when(workflowRepository.findById(flowId)).thenReturn(Optional.empty());

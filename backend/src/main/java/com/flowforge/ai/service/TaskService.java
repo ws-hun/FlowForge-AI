@@ -24,8 +24,10 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -53,6 +55,9 @@ public class TaskService {
         FlowRunSnapshotResponse flowRunSnapshot = sourceFlow == null
                 ? null
                 : createFlowRunSnapshot(sourceFlow, request.flowRunContext(), request.flowVariableValues());
+        if (flowRunSnapshot != null) {
+            requireFlowVariableValues(flowRunSnapshot);
+        }
         String executionInput = flowRunSnapshot == null
                 ? standaloneInput
                 : compileFlowExecutionInput(flowRunSnapshot);
@@ -227,6 +232,26 @@ public class TaskService {
         }
         matcher.appendTail(compiled);
         return compiled.toString();
+    }
+
+    private void requireFlowVariableValues(FlowRunSnapshotResponse snapshot) {
+        Set<String> requiredVariables = new LinkedHashSet<>();
+        snapshot.nodes().stream()
+                .map(FlowNodeDto::content)
+                .filter(StringUtils::hasText)
+                .forEach(content -> {
+                    Matcher matcher = FLOW_VARIABLE_PATTERN.matcher(content);
+                    while (matcher.find()) {
+                        requiredVariables.add(matcher.group().substring(1, matcher.group().length() - 1));
+                    }
+                });
+
+        List<String> missingVariables = requiredVariables.stream()
+                .filter(variable -> !StringUtils.hasText(snapshot.variableValues().get(variable)))
+                .toList();
+        if (!missingVariables.isEmpty()) {
+            throw new IllegalArgumentException("请填写 Flow 变量: " + String.join(", ", missingVariables));
+        }
     }
 
     private String serializeFlowRunSnapshot(FlowRunSnapshotResponse snapshot) {

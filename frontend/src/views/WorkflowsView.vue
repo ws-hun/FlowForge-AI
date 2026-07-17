@@ -116,7 +116,7 @@
           </div>
         </div>
 
-        <div v-if="workspace.activeFlow && !flowReadyToRun" class="flow-readiness-note">
+        <div v-if="workspace.activeFlow && !providerReadyToRun" class="flow-readiness-note">
           <span class="flow-run-dot warning"></span>
           <div>
             <strong>需要配置 AI Provider</strong>
@@ -176,17 +176,22 @@
             </div>
           </div>
 
-          <div v-if="flowVariables.length" class="flow-variable-inputs">
+          <div v-if="flowVariables.length" class="flow-variable-inputs" :class="{ 'has-missing': hasMissingFlowVariables }">
             <div class="flow-variable-heading">
               <div>
                 <span class="section-kicker">Flow 变量</span>
                 <p>为输入、Context、Prompt、执行指令或交付重点补充本次运行上下文。</p>
               </div>
-              <span>{{ flowVariables.length }} 个变量</span>
+              <span>{{ flowVariableStatusLabel }}</span>
             </div>
 
             <div class="flow-variable-grid">
-              <label v-for="variable in flowVariables" :key="variable" class="flow-variable-field">
+              <label
+                v-for="variable in flowVariables"
+                :key="variable"
+                class="flow-variable-field"
+                :class="{ 'is-missing': !flowVariableValues[variable]?.trim() }"
+              >
                 <span>{{ '{' + variable + '}' }}</span>
                 <textarea
                   v-model="flowVariableValues[variable]"
@@ -194,6 +199,11 @@
                   :placeholder="`填写 ${variable}`"
                 ></textarea>
               </label>
+            </div>
+
+            <div v-if="hasMissingFlowVariables" class="flow-variable-readiness">
+              <span class="flow-run-dot warning"></span>
+              <p>执行前请填写 {{ missingFlowVariableLabels }}。带入 Task 后也可继续补充。</p>
             </div>
           </div>
 
@@ -782,7 +792,18 @@ const flowVariables = computed(() => {
   return Array.from(new Set(variables))
 })
 
-const flowReadyToRun = computed(() => Boolean(workspace.activeProvider))
+const missingFlowVariables = computed(() =>
+  flowVariables.value.filter((variable) => !flowVariableValues.value[variable]?.trim())
+)
+const hasMissingFlowVariables = computed(() => missingFlowVariables.value.length > 0)
+const missingFlowVariableLabels = computed(() =>
+  missingFlowVariables.value.map((variable) => `{${variable}}`).join('、')
+)
+const flowVariableStatusLabel = computed(() =>
+  hasMissingFlowVariables.value ? `${missingFlowVariables.value.length} 项待填写` : `${flowVariables.value.length} 个变量已就绪`
+)
+const providerReadyToRun = computed(() => Boolean(workspace.activeProvider))
+const flowReadyToRun = computed(() => providerReadyToRun.value && !hasMissingFlowVariables.value)
 const activeProviderLabel = computed(() => workspace.activeProvider?.model || 'Provider 未配置')
 const flowBriefItems = computed(() => {
   const nodes = workspace.activeFlow?.nodes || []
@@ -1522,9 +1543,14 @@ async function executeFlowNow() {
     return
   }
 
-  if (!flowReadyToRun.value) {
+  if (!providerReadyToRun.value) {
     ElMessage.warning('请先配置并激活 AI Provider')
     goToApiKeys()
+    return
+  }
+
+  if (hasMissingFlowVariables.value) {
+    ElMessage.warning(`请先填写 Flow 变量：${missingFlowVariables.value.join('、')}`)
     return
   }
 
