@@ -85,6 +85,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Context Ordering | Done | 补充 Context 可在输入区内调整顺序，保存后的排列会直接影响服务端编译给 AI 的上下文顺序 |
 | Stage 3 | Flow Run Preflight | Done | Flow Space 与 AI Command 会提示并阻止未填写变量的执行，服务端在调用 Provider 前执行同样校验 |
 | Stage 3 | Run Snapshot Reuse | Done | 历史运行快照可创建新的可编辑 Flow，并自动带入当次运行上下文 |
+| Stage 3 | Run Settings Reuse | Done | 从 Flow Space 或 History 将历史 Run Brief 与仍然匹配的变量值带回原 Flow，快速开始下一次运行 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
 | Future | Knowledge Base | Preview UI | 产品预留界面，暂未接入向量检索 |
 | Future | Analytics | Preview UI | 轻量洞察预留，暂未做完整数据分析系统 |
@@ -193,6 +194,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | Flow 带入 Task 后以 Run Brief 继续执行 | Done |
 | 从历史运行快照创建新 Flow | Done |
 | 新 Flow 自动带入原运行上下文 | Done |
+| 历史 Run Brief / 变量值复用到原 Flow | Done |
 
 ## Product Modules
 

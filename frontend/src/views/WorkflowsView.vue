@@ -273,8 +273,10 @@
             v-if="activeFlowRunSnapshot"
             :snapshot="activeFlowRunSnapshot"
             can-create-flow
+            can-reuse-run-settings
             :creating="workspace.flowLoading"
             @create-flow="createFlowFromSnapshot"
+            @reuse-run-settings="reuseFlowRunSettings"
           />
           <AiResultDocument
             class="flow-execution-result"
@@ -1385,6 +1387,23 @@ function useLatestResultAsRunContext() {
   flowExecutionVisible.value = false
   resetFlowRunState()
   ElMessage.success('已带入 Run Brief')
+}
+
+function reuseFlowRunSettings(snapshot: FlowRunSnapshotType) {
+  if (!workspace.activeFlow || snapshot.flowId !== workspace.activeFlow.id) {
+    return
+  }
+
+  const snapshotVariableValues = snapshot.variableValues || {}
+  const reusedVariableCount = flowVariables.value.filter((variable) => snapshotVariableValues[variable]?.trim()).length
+  flowRunContext.value = snapshot.runtimeContext || ''
+  flowVariableValues.value = buildFlowVariableValues(flowVariables.value, snapshotVariableValues)
+  flowExecutionVisible.value = false
+  selectedFlowRun.value = null
+  resetFlowRunState()
+
+  const variableMessage = reusedVariableCount ? `，并带入 ${reusedVariableCount} 个变量` : ''
+  ElMessage.success(`已带入本次运行配置${variableMessage}`)
 }
 
 async function saveLatestResultAsPrompt() {

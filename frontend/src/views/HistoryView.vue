@@ -26,8 +26,10 @@
                 v-if="task.flowRunSnapshot"
                 :snapshot="task.flowRunSnapshot"
                 can-create-flow
+                :can-reuse-run-settings="flowStillAvailable(task.flowRunSnapshot)"
                 :creating="workspace.flowLoading"
                 @create-flow="createFlowFromSnapshot"
+                @reuse-run-settings="reuseFlowRunSettings"
               />
             </el-collapse-item>
           </el-collapse>
@@ -48,6 +50,20 @@ import type { FlowRunSnapshot as FlowRunSnapshotType } from '@/types'
 
 const router = useRouter()
 const workspace = useWorkspaceStore()
+
+function flowStillAvailable(snapshot: FlowRunSnapshotType) {
+  return workspace.flowDrafts.some((flow) => flow.id === snapshot.flowId)
+}
+
+function reuseFlowRunSettings(snapshot: FlowRunSnapshotType) {
+  if (!workspace.prepareFlowRunFromSnapshot(snapshot)) {
+    ElMessage.warning('原 Flow 已不存在，请从快照创建新的 Flow')
+    return
+  }
+
+  ElMessage.success('已将本次运行配置带回原 Flow')
+  router.push('/workflows')
+}
 
 async function createFlowFromSnapshot(snapshot: FlowRunSnapshotType) {
   const flow = await workspace.createFlowFromRunSnapshot(snapshot)

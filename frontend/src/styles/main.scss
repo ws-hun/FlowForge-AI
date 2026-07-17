@@ -1973,7 +1973,14 @@ a {
   }
 }
 
-.snapshot-create-action {
+.snapshot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.snapshot-create-action,
+.snapshot-reuse-action {
   display: inline-flex;
   width: fit-content;
   align-items: center;
@@ -2008,6 +2015,17 @@ a {
 
   &:disabled:hover {
     transform: none;
+  }
+}
+
+.snapshot-create-action {
+  border-color: tokens.$border;
+  background: rgba(255, 255, 255, 0.72);
+  color: tokens.$text-secondary;
+
+  &:hover {
+    border-color: rgba(107, 114, 128, 0.24);
+    background: tokens.$surface;
   }
 }
 

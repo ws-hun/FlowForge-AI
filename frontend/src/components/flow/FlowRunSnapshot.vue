@@ -28,7 +28,7 @@
       </div>
 
       <div v-if="variableEntries.length" class="flow-run-snapshot-block">
-        <span>Prompt 变量</span>
+        <span>Flow 变量</span>
         <div class="flow-run-snapshot-variables">
           <div v-for="[name, value] in variableEntries" :key="name">
             <code>{{ '{' + name + '}' }}</code>
@@ -37,42 +37,63 @@
         </div>
       </div>
 
-      <button
-        v-if="canCreateFlow"
-        type="button"
-        class="snapshot-create-action"
-        :disabled="creating"
-        @click.stop="emit('create-flow', snapshot)"
-      >
-        <el-icon><Plus /></el-icon>
-        {{ creating ? '正在创建 Flow...' : '以此为起点创建 Flow' }}
-      </button>
+      <div v-if="showActions" class="snapshot-actions">
+        <button
+          v-if="canReuseRunSettings && hasReusableSettings"
+          type="button"
+          class="snapshot-reuse-action"
+          @click.stop="emit('reuse-run-settings', snapshot)"
+        >
+          <el-icon><RefreshRight /></el-icon>
+          复用本次运行配置
+        </button>
+        <button
+          v-if="canCreateFlow"
+          type="button"
+          class="snapshot-create-action"
+          :disabled="creating"
+          @click.stop="emit('create-flow', snapshot)"
+        >
+          <el-icon><Plus /></el-icon>
+          {{ creating ? '正在创建 Flow...' : '以此为起点创建 Flow' }}
+        </button>
+      </div>
     </div>
   </details>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, RefreshRight } from '@element-plus/icons-vue'
 import type { FlowRunSnapshot } from '@/types'
 
 const props = withDefaults(
   defineProps<{
     snapshot: FlowRunSnapshot
     canCreateFlow?: boolean
+    canReuseRunSettings?: boolean
     creating?: boolean
   }>(),
   {
     canCreateFlow: false,
+    canReuseRunSettings: false,
     creating: false
   }
 )
 
 const emit = defineEmits<{
   'create-flow': [snapshot: FlowRunSnapshot]
+  'reuse-run-settings': [snapshot: FlowRunSnapshot]
 }>()
 
 const variableEntries = computed(() => Object.entries(props.snapshot.variableValues || {}))
+const hasReusableSettings = computed(() =>
+  Boolean(
+    props.snapshot.runtimeContext?.trim() ||
+      variableEntries.value.some(([, value]) => value?.trim())
+  )
+)
+const showActions = computed(() => props.canCreateFlow || (props.canReuseRunSettings && hasReusableSettings.value))
 
 function formatDate(value: string) {
   if (!value) {

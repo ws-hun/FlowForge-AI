@@ -313,6 +313,22 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     return seed
   }
 
+  function prepareFlowRunFromSnapshot(snapshot: FlowRunSnapshot) {
+    const sourceFlow = flowDrafts.value.find((flow) => flow.id === snapshot.flowId)
+    if (!sourceFlow) {
+      return false
+    }
+
+    activeFlowId.value = sourceFlow.id
+    localStorage.setItem(ACTIVE_FLOW_STORAGE_KEY, sourceFlow.id)
+    pendingFlowRunSeed.value = {
+      flowId: sourceFlow.id,
+      runtimeContext: snapshot.runtimeContext?.trim() || '',
+      variableValues: { ...(snapshot.variableValues || {}) }
+    }
+    return true
+  }
+
   async function persistNewFlowDraft(
     payload: SaveFlowPayload,
     errorMessage: string,
@@ -719,6 +735,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     createFlowFromPrompt,
     createFlowFromRunSnapshot,
     consumeFlowRunSeed,
+    prepareFlowRunFromSnapshot,
     selectFlowDraft,
     replaceFlowDraft,
     duplicateActiveFlowDraft,
