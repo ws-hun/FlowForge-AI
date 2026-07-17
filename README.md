@@ -84,6 +84,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Persistent Flow Context | Done | 可在 Flow 中添加独立 Context 节点，将背景、约束或已有材料沉淀为可复用的执行上下文 |
 | Stage 3 | Context Ordering | Done | 补充 Context 可在输入区内调整顺序，保存后的排列会直接影响服务端编译给 AI 的上下文顺序 |
 | Stage 3 | Flow Run Preflight | Done | Flow Space 与 AI Command 会提示并阻止未填写变量的执行，服务端在调用 Provider 前执行同样校验 |
+| Stage 3 | Flow Node Preflight | Done | 空的 Input / Context / Prompt / AI Task / Output 会在画布中标记，真实执行前必须补全内容 |
 | Stage 3 | Run Snapshot Reuse | Done | 历史运行快照可创建新的可编辑 Flow，并自动带入当次运行上下文 |
 | Stage 3 | Run Settings Reuse | Done | 从 Flow Space 或 History 将历史 Run Brief 与仍然匹配的变量值带回原 Flow，快速开始下一次运行 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
@@ -185,6 +186,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | Flow 变量填写与运行时替换（Input / Context / Prompt / AI Task / Output） | Done |
 | Flow 变量运行前完整性检查 | Done |
 | 带入 AI Command 后继续填写 Flow 变量 | Done |
+| Flow 节点内容运行前检查 | Done |
 | Flow 创作修订快照 / 恢复前影响预览 | Done |
 | 每次 Flow 执行固定保存运行快照 | Done |
 | 快照保留节点、Flow 目标、Run Brief 和 Prompt 变量 | Done |

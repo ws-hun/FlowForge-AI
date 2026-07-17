@@ -350,6 +350,51 @@ class TaskServiceTest {
     }
 
     @Test
+    void rejectsAFlowRunWhenNodeContentIsIncomplete() throws Exception {
+        UUID flowId = UUID.randomUUID();
+        Workflow flow = Workflow.builder()
+                .id(flowId)
+                .title("Incomplete research flow")
+                .description("Prepare a focused research brief")
+                .nodesJson(new ObjectMapper().writeValueAsString(List.of(
+                        new FlowNodeDto(
+                                "input-1",
+                                "input",
+                                "Research intent",
+                                "The goal for this Flow",
+                                "Research the selected product category.",
+                                null,
+                                null
+                        ),
+                        new FlowNodeDto(
+                                "input-2",
+                                "input",
+                                "Market context",
+                                "Supporting context that still needs to be written",
+                                "   ",
+                                null,
+                                null
+                        )
+                )))
+                .createdAt(LocalDateTime.now().minusMinutes(1))
+                .updatedAt(LocalDateTime.now())
+                .build();
+        when(workflowRepository.findById(flowId)).thenReturn(Optional.of(flow));
+
+        assertThatThrownBy(() -> taskService.runTask(new RunTaskRequest(
+                "",
+                null,
+                flowId,
+                "Keep the research practical.",
+                Map.of()
+        )))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("请完善 Flow 节点: Market context");
+
+        verifyNoInteractions(openAiService, taskRepository);
+    }
+
+    @Test
     void rejectsPreviewForAMissingFlow() {
         UUID flowId = UUID.randomUUID();
         when(workflowRepository.findById(flowId)).thenReturn(Optional.empty());

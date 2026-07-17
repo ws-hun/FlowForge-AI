@@ -102,7 +102,12 @@
               <el-icon><Plus /></el-icon>
               添加上下文
             </button>
-            <button type="button" class="ghost-button" :disabled="workspace.running" @click="sendFlowToTaskWorkspace">
+            <button
+              type="button"
+              class="ghost-button"
+              :disabled="workspace.running || hasIncompleteFlowNodes"
+              @click="sendFlowToTaskWorkspace"
+            >
               带入 Task
             </button>
             <button
@@ -138,12 +143,16 @@
             <button
               type="button"
               class="flow-card-node"
-              :class="[node.type, `is-${nodeStatus(node.id)}`, { active: selectedNode?.id === node.id }]"
+              :class="[
+                node.type,
+                `is-${nodeStatus(node.id)}`,
+                { active: selectedNode?.id === node.id, 'is-incomplete': nodeNeedsContent(node) }
+              ]"
               @click="selectedNodeId = node.id"
             >
               <div class="flow-node-meta">
                 <span class="flow-node-type">{{ nodeLabel(node.type) }}</span>
-                <span class="flow-node-state">{{ nodeStateLabel(nodeStatus(node.id)) }}</span>
+                <span class="flow-node-state">{{ nodeNeedsContent(node) ? 'Needs content' : nodeStateLabel(nodeStatus(node.id)) }}</span>
               </div>
               <strong>{{ node.title }}</strong>
               <p>{{ node.description }}</p>
@@ -174,6 +183,15 @@
               <span>{{ item.label }}</span>
               <strong>{{ item.value }}</strong>
             </div>
+          </div>
+
+          <div v-if="hasIncompleteFlowNodes" class="flow-readiness-note flow-node-content-readiness">
+            <span class="flow-run-dot warning"></span>
+            <div>
+              <strong>还有节点内容待完善</strong>
+              <p>执行前请补充 {{ incompleteFlowNodeLabels }}，空节点不会被静默忽略。</p>
+            </div>
+            <button type="button" class="secondary-button" @click="selectFirstIncompleteNode">完善节点</button>
           </div>
 
           <div v-if="flowVariables.length" class="flow-variable-inputs" :class="{ 'has-missing': hasMissingFlowVariables }">
@@ -401,10 +419,12 @@
             <p>{{ selectedNode.description }}</p>
           </div>
 
-          <div class="node-status-card" :class="selectedNodeState">
-            <span>{{ nodeStateLabel(selectedNodeState) }}</span>
-            <strong>{{ nodeStateTitle(selectedNodeState, selectedNode) }}</strong>
-            <p>{{ nodeStateDescription(selectedNode, selectedNodeState) }}</p>
+          <div class="node-status-card" :class="[selectedNodeState, { incomplete: selectedNodeIncomplete }]">
+            <span>{{ selectedNodeIncomplete ? 'Needs content' : nodeStateLabel(selectedNodeState) }}</span>
+            <strong>{{ selectedNodeIncomplete ? '补充节点内容' : nodeStateTitle(selectedNodeState, selectedNode) }}</strong>
+            <p>
+              {{ selectedNodeIncomplete ? '填写并保存节点内容后，它才会进入真实 Flow 执行。' : nodeStateDescription(selectedNode, selectedNodeState) }}
+            </p>
           </div>
 
           <div v-if="selectedNode.type === 'prompt'" class="flow-node-order-actions">
@@ -794,6 +814,11 @@ const flowVariables = computed(() => {
   return Array.from(new Set(variables))
 })
 
+const incompleteFlowNodes = computed(() =>
+  (workspace.activeFlow?.nodes || []).filter((node) => nodeNeedsContent(node))
+)
+const hasIncompleteFlowNodes = computed(() => incompleteFlowNodes.value.length > 0)
+const incompleteFlowNodeLabels = computed(() => incompleteFlowNodes.value.map((node) => `「${node.title}」`).join('、'))
 const missingFlowVariables = computed(() =>
   flowVariables.value.filter((variable) => !flowVariableValues.value[variable]?.trim())
 )
@@ -805,7 +830,9 @@ const flowVariableStatusLabel = computed(() =>
   hasMissingFlowVariables.value ? `${missingFlowVariables.value.length} 项待填写` : `${flowVariables.value.length} 个变量已就绪`
 )
 const providerReadyToRun = computed(() => Boolean(workspace.activeProvider))
-const flowReadyToRun = computed(() => providerReadyToRun.value && !hasMissingFlowVariables.value)
+const flowReadyToRun = computed(() =>
+  providerReadyToRun.value && !hasIncompleteFlowNodes.value && !hasMissingFlowVariables.value
+)
 const activeProviderLabel = computed(() => workspace.activeProvider?.model || 'Provider 未配置')
 const flowBriefItems = computed(() => {
   const nodes = workspace.activeFlow?.nodes || []
@@ -850,6 +877,7 @@ const selectedNodeState = computed<FlowNodeRunState>(() => {
   }
   return nodeStatus(selectedNode.value.id)
 })
+const selectedNodeIncomplete = computed(() => Boolean(selectedNode.value && nodeNeedsContent(selectedNode.value)))
 
 const primaryInputNodeId = computed(() => {
   return workspace.activeFlow?.nodes.find((node) => node.type === 'input')?.id || ''
@@ -1525,8 +1553,22 @@ async function confirmDeleteFlow() {
 }
 
 function sendFlowToTaskWorkspace() {
+  if (hasIncompleteFlowNodes.value) {
+    ElMessage.warning(`请先完善 Flow 节点：${incompleteFlowNodes.value.map((node) => node.title).join('、')}`)
+    return
+  }
+
   workspace.sendFlowToTask(flowRunContext.value, flowVariableValues.value)
   router.push('/tasks')
+}
+
+function selectFirstIncompleteNode() {
+  const firstIncompleteNode = incompleteFlowNodes.value[0]
+  if (!firstIncompleteNode) {
+    return
+  }
+
+  selectedNodeId.value = firstIncompleteNode.id
 }
 
 function buildFlowVariableValues(variables: string[], currentValues: Record<string, string> = {}) {
@@ -1568,6 +1610,12 @@ async function executeFlowNow() {
     return
   }
 
+  if (hasIncompleteFlowNodes.value) {
+    ElMessage.warning(`请先完善 Flow 节点：${incompleteFlowNodes.value.map((node) => node.title).join('、')}`)
+    selectFirstIncompleteNode()
+    return
+  }
+
   if (hasMissingFlowVariables.value) {
     ElMessage.warning(`请先填写 Flow 变量：${missingFlowVariables.value.join('、')}`)
     return
@@ -1595,6 +1643,10 @@ function nodeLabel(type: FlowNodeType) {
     output: 'Output'
   }
   return labels[type]
+}
+
+function nodeNeedsContent(node: FlowNode) {
+  return !node.content?.trim()
 }
 
 function flowRevisionChangeLabel(kind: 'restore' | 'remove' | 'update' | 'reorder') {

@@ -56,6 +56,7 @@ public class TaskService {
                 ? null
                 : createFlowRunSnapshot(sourceFlow, request.flowRunContext(), request.flowVariableValues());
         if (flowRunSnapshot != null) {
+            requireFlowNodeContents(flowRunSnapshot);
             requireFlowVariableValues(flowRunSnapshot);
         }
         String executionInput = flowRunSnapshot == null
@@ -251,6 +252,16 @@ public class TaskService {
                 .toList();
         if (!missingVariables.isEmpty()) {
             throw new IllegalArgumentException("请填写 Flow 变量: " + String.join(", ", missingVariables));
+        }
+    }
+
+    private void requireFlowNodeContents(FlowRunSnapshotResponse snapshot) {
+        List<String> incompleteNodes = snapshot.nodes().stream()
+                .filter(node -> !StringUtils.hasText(node.content()))
+                .map(FlowNodeDto::title)
+                .toList();
+        if (!incompleteNodes.isEmpty()) {
+            throw new IllegalArgumentException("请完善 Flow 节点: " + String.join(", ", incompleteNodes));
         }
     }
 
