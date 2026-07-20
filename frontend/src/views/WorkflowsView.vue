@@ -211,6 +211,7 @@
                 :class="{ 'is-missing': !flowVariableValues[variable]?.trim() }"
               >
                 <span>{{ '{' + variable + '}' }}</span>
+                <small>用于 {{ flowVariableUsageLabel(variable) }}</small>
                 <textarea
                   v-model="flowVariableValues[variable]"
                   class="quiet-textarea"
@@ -806,13 +807,15 @@ const selectedFlowVersionDiff = computed(() => {
   return compareFlowRevision(workspace.activeFlow, selectedFlowVersion.value)
 })
 
-const flowVariables = computed(() => {
-  const variables = (workspace.activeFlow?.nodes || [])
-    .filter((node) => node.content?.trim())
-    .flatMap((node) => extractPromptVariables(node.content || ''))
-
-  return Array.from(new Set(variables))
+const flowVariableNodeMap = computed<Record<string, FlowNode[]>>(() => {
+  return (workspace.activeFlow?.nodes || []).reduce<Record<string, FlowNode[]>>((usageMap, node) => {
+    extractPromptVariables(node.content || '').forEach((variable) => {
+      usageMap[variable] = [...(usageMap[variable] || []), node]
+    })
+    return usageMap
+  }, {})
 })
+const flowVariables = computed(() => Object.keys(flowVariableNodeMap.value))
 
 const incompleteFlowNodes = computed(() =>
   (workspace.activeFlow?.nodes || []).filter((node) => nodeNeedsContent(node))
@@ -1643,6 +1646,19 @@ function nodeLabel(type: FlowNodeType) {
     output: 'Output'
   }
   return labels[type]
+}
+
+function flowVariableUsageLabel(variable: string) {
+  return (flowVariableNodeMap.value[variable] || [])
+    .map((node) => `${flowVariableNodeTypeLabel(node)}「${node.title}」`)
+    .join('、')
+}
+
+function flowVariableNodeTypeLabel(node: FlowNode) {
+  if (node.type === 'input' && node.id !== primaryInputNodeId.value) {
+    return 'Context'
+  }
+  return nodeLabel(node.type)
 }
 
 function nodeNeedsContent(node: FlowNode) {
