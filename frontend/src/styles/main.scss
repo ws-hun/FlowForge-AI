@@ -727,6 +727,36 @@ a {
   border-bottom: 1px solid tokens.$border;
 }
 
+.result-doc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.execution-source {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: tokens.$text-secondary;
+  font-size: 12px;
+
+  strong {
+    color: tokens.$text-primary;
+    font-weight: 650;
+  }
+
+  code {
+    padding-left: 8px;
+    border-left: 1px solid tokens.$border;
+    color: tokens.$text-secondary;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+  }
+}
+
 .task-result-actions {
   display: flex;
   align-items: center;
@@ -2790,6 +2820,13 @@ a {
     color: tokens.$primary;
     box-shadow: tokens.$shadow-soft;
   }
+}
+
+.run-provenance {
+  color: tokens.$text-muted;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .flow-run-section {

@@ -93,6 +93,8 @@
             :summary="workspace.latestResult.summary"
             :result="workspace.latestResult.result"
             :raw="workspace.latestResult.raw"
+            :provider="workspace.latestResult.provider"
+            :model="workspace.latestResult.model"
           />
           <div v-if="workspace.canPromoteLatestTask" class="task-result-actions">
             <div>

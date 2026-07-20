@@ -6,6 +6,7 @@ import com.flowforge.ai.dto.FlowExecutionPreviewRequest;
 import com.flowforge.ai.dto.FlowExecutionPreviewResponse;
 import com.flowforge.ai.dto.OpenAiTaskResult;
 import com.flowforge.ai.dto.RunTaskRequest;
+import com.flowforge.ai.dto.TaskHistoryResponse;
 import com.flowforge.ai.dto.TaskRunResponse;
 import com.flowforge.ai.entity.Task;
 import com.flowforge.ai.entity.Workflow;
@@ -19,6 +20,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -130,7 +132,13 @@ class TaskServiceTest {
 
         when(workflowRepository.findById(flowId)).thenReturn(Optional.of(flow));
         when(openAiService.processTask(any()))
-                .thenReturn(new OpenAiTaskResult("Focused MVP", "Detailed result", "{\"summary\":\"Focused MVP\"}"));
+                .thenReturn(new OpenAiTaskResult(
+                        "Focused MVP",
+                        "Detailed result",
+                        "{\"summary\":\"Focused MVP\"}",
+                        "deepseek",
+                        "deepseek-chat"
+                ));
         when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
             Task task = invocation.getArgument(0);
             task.setId(UUID.randomUUID());
@@ -152,6 +160,8 @@ class TaskServiceTest {
         assertThat(savedTask.getSourceFlowId()).isEqualTo(flowId);
         assertThat(savedTask.getSourceFlowSnapshotJson()).contains("Idea to MVP");
         assertThat(savedTask.getInput()).isEqualTo(executionInput);
+        assertThat(savedTask.getProvider()).isEqualTo("deepseek");
+        assertThat(savedTask.getModel()).isEqualTo("deepseek-chat");
         assertThat(executionInput)
                 .contains("Flow: Idea to MVP")
                 .contains("Build a calm workspace for product leads.")
@@ -167,6 +177,8 @@ class TaskServiceTest {
         assertThat(executionInput.indexOf("Build a calm workspace for product leads."))
                 .isLessThan(executionInput.indexOf("Keep the first release aligned with product leads."));
         assertThat(response.taskId()).isNotNull();
+        assertThat(response.provider()).isEqualTo("deepseek");
+        assertThat(response.model()).isEqualTo("deepseek-chat");
         assertThat(response.flowRunSnapshot()).isNotNull();
         assertThat(response.flowRunSnapshot().title()).isEqualTo("Idea to MVP");
         assertThat(response.flowRunSnapshot().flowUpdatedAt()).isEqualTo(updatedAt);
@@ -205,6 +217,29 @@ class TaskServiceTest {
         assertThat(savedTask.getInput()).isEqualTo("Draft an onboarding checklist");
         assertThat(savedTask.getSourceFlowId()).isNull();
         assertThat(savedTask.getSourceFlowSnapshotJson()).isNull();
+    }
+
+    @Test
+    void returnsStoredExecutionProvenanceInTaskHistory() {
+        LocalDateTime createdAt = LocalDateTime.of(2026, 7, 20, 10, 15);
+        Task task = Task.builder()
+                .id(UUID.randomUUID())
+                .input("Prepare a launch brief")
+                .summary("Launch brief prepared")
+                .result("Detailed launch brief")
+                .provider("openai")
+                .model("gpt-4.1")
+                .createdAt(createdAt)
+                .build();
+        when(taskRepository.findAll(any(Sort.class))).thenReturn(List.of(task));
+
+        List<TaskHistoryResponse> history = taskService.listTasks();
+
+        assertThat(history).singleElement().satisfies(item -> {
+            assertThat(item.provider()).isEqualTo("openai");
+            assertThat(item.model()).isEqualTo("gpt-4.1");
+            assertThat(item.createdAt()).isEqualTo(createdAt);
+        });
     }
 
     @Test

@@ -315,6 +315,8 @@
             :summary="activeFlowResult.summary"
             :result="activeFlowResult.result"
             :raw="activeFlowResult.raw"
+            :provider="activeFlowResult.provider"
+            :model="activeFlowResult.model"
             compact
             :show-raw="false"
           />
@@ -629,6 +631,9 @@
                 <strong>{{ run.summary }}</strong>
                 <span v-if="run.flowRunSnapshot">已固定快照</span>
               </div>
+              <span v-if="run.provider || run.model" class="run-provenance">
+                {{ formatProviderName(run.provider) }}<template v-if="run.provider && run.model"> · </template>{{ run.model }}
+              </span>
               <p>{{ run.result }}</p>
             </button>
           </div>
@@ -647,6 +652,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { EditPen, Plus } from '@element-plus/icons-vue'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
+import { formatProviderName } from '@/utils/aiProvider'
 import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
 import { listFlowRuns, listFlowVersions, previewFlowExecution, restoreFlowVersion } from '@/api/flows'
 import { createPrompt, listPrompts } from '@/api/prompts'
@@ -872,6 +878,8 @@ const activeFlowResult = computed<TaskRunResponse | null>(() => {
       summary: selectedFlowRun.value.summary,
       result: selectedFlowRun.value.result,
       raw: '',
+      provider: selectedFlowRun.value.provider,
+      model: selectedFlowRun.value.model,
       executionInput: selectedFlowRun.value.input,
       taskId: selectedFlowRun.value.id,
       flowRunSnapshot: selectedFlowRun.value.flowRunSnapshot || null

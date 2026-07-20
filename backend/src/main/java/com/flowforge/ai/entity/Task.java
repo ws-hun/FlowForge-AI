@@ -36,6 +36,12 @@ public class Task {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String summary;
 
+    @Column(length = 40)
+    private String provider;
+
+    @Column(length = 120)
+    private String model;
+
     @Column(name = "source_prompt_id")
     private UUID sourcePromptId;
 

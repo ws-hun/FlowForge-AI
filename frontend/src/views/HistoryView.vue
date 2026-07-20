@@ -21,7 +21,14 @@
           <p class="muted">{{ task.summary }}</p>
           <el-collapse>
             <el-collapse-item title="查看结果" :name="task.id">
-              <AiResultDocument :summary="task.summary" :result="task.result" compact :show-raw="false" />
+              <AiResultDocument
+                :summary="task.summary"
+                :result="task.result"
+                :provider="task.provider"
+                :model="task.model"
+                compact
+                :show-raw="false"
+              />
               <FlowRunSnapshot
                 v-if="task.flowRunSnapshot"
                 :snapshot="task.flowRunSnapshot"

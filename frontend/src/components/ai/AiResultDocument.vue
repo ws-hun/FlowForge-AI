@@ -1,7 +1,13 @@
 <template>
   <div class="result-doc surface" :class="{ compact }">
     <div class="result-doc-header">
-      <span class="badge">AI Result</span>
+      <div class="result-doc-meta">
+        <span class="badge">AI Result</span>
+        <span v-if="providerLabel || model" class="execution-source">
+          <strong v-if="providerLabel">{{ providerLabel }}</strong>
+          <code v-if="model">{{ model }}</code>
+        </span>
+      </div>
       <p class="page-kicker">摘要</p>
       <h2>{{ summary }}</h2>
     </div>
@@ -43,6 +49,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { formatProviderName } from '@/utils/aiProvider'
 
 type ResultBlock =
   | { type: 'heading'; level: number; content: string }
@@ -55,15 +62,21 @@ const props = withDefaults(
     summary: string
     result: string
     raw?: string
+    provider?: string | null
+    model?: string | null
     compact?: boolean
     showRaw?: boolean
   }>(),
   {
     raw: '',
+    provider: null,
+    model: null,
     compact: false,
     showRaw: true
   }
 )
+
+const providerLabel = computed(() => formatProviderName(props.provider))
 
 const formattedRaw = computed(() => {
   if (!props.raw) return '{}'

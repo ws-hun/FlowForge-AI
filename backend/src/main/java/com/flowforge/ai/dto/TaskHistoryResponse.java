@@ -8,6 +8,8 @@ public record TaskHistoryResponse(
         String input,
         String summary,
         String result,
+        String provider,
+        String model,
         UUID sourcePromptId,
         String sourcePromptTitle,
         UUID sourceFlowId,

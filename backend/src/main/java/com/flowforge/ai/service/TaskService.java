@@ -68,6 +68,8 @@ public class TaskService {
                 .input(executionInput)
                 .summary(aiResult.summary())
                 .result(aiResult.result())
+                .provider(aiResult.provider())
+                .model(aiResult.model())
                 .sourcePromptId(sourcePrompt == null ? null : sourcePrompt.getId())
                 .sourcePromptTitle(sourcePrompt == null ? null : sourcePrompt.getTitle())
                 .sourceFlowId(sourceFlow == null ? null : sourceFlow.getId())
@@ -81,6 +83,8 @@ public class TaskService {
                 aiResult.summary(),
                 aiResult.result(),
                 aiResult.raw(),
+                aiResult.provider(),
+                aiResult.model(),
                 executionInput,
                 savedTask.getId(),
                 flowRunSnapshot
@@ -327,6 +331,8 @@ public class TaskService {
                 task.getInput(),
                 task.getSummary(),
                 task.getResult(),
+                task.getProvider(),
+                task.getModel(),
                 task.getSourcePromptId(),
                 task.getSourcePromptTitle(),
                 task.getSourceFlowId(),

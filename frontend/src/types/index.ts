@@ -4,6 +4,8 @@ export interface TaskRunResponse {
   summary: string
   result: string
   raw: string
+  provider?: Provider | null
+  model?: string | null
   executionInput: string
   taskId?: string | null
   flowRunSnapshot?: FlowRunSnapshot | null
@@ -14,6 +16,8 @@ export interface TaskHistoryItem {
   input: string
   summary: string
   result: string
+  provider?: Provider | null
+  model?: string | null
   sourcePromptId?: string | null
   sourcePromptTitle?: string | null
   sourceFlowId?: string | null

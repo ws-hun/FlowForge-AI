@@ -198,6 +198,9 @@
             <article v-for="run in promptRuns" :key="run.id" class="run-item">
               <time>{{ formatDate(run.createdAt) }}</time>
               <strong>{{ run.summary }}</strong>
+              <span v-if="run.provider || run.model" class="run-provenance">
+                {{ formatProviderName(run.provider) }}<template v-if="run.provider && run.model"> · </template>{{ run.model }}
+              </span>
               <p>{{ run.result }}</p>
             </article>
           </div>
@@ -289,6 +292,7 @@ import {
 } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { applyPromptVariables, extractPromptVariables } from '@/utils/promptVariables'
+import { formatProviderName } from '@/utils/aiProvider'
 import type { PromptAsset, PromptVersion, SavePromptPayload, TaskHistoryItem } from '@/types'
 
 type StarterPrompt = SavePromptPayload & {

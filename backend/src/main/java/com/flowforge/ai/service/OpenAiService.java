@@ -29,11 +29,19 @@ public class OpenAiService {
 
     public OpenAiTaskResult processTask(String input) {
         AiApiKey activeKey = aiApiKeyService.getActiveKey();
-        return switch (activeKey.getProvider()) {
+        OpenAiTaskResult result = switch (activeKey.getProvider()) {
             case "deepseek" -> processWithDeepSeek(input, activeKey);
             case "openai" -> processWithOpenAi(input, activeKey);
             default -> throw new IllegalStateException("Unsupported AI provider: " + activeKey.getProvider());
         };
+
+        return new OpenAiTaskResult(
+                result.summary(),
+                result.result(),
+                result.raw(),
+                activeKey.getProvider(),
+                activeKey.getModel()
+        );
     }
 
     private OpenAiTaskResult processWithDeepSeek(String input, AiApiKey config) {
