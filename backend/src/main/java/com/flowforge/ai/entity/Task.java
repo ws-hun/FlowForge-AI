@@ -42,6 +42,15 @@ public class Task {
     @Column(length = 120)
     private String model;
 
+    @Column(name = "input_tokens")
+    private Integer inputTokens;
+
+    @Column(name = "output_tokens")
+    private Integer outputTokens;
+
+    @Column(name = "total_tokens")
+    private Integer totalTokens;
+
     @Column(name = "source_prompt_id")
     private UUID sourcePromptId;
 

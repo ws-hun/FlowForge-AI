@@ -95,6 +95,9 @@
             :raw="workspace.latestResult.raw"
             :provider="workspace.latestResult.provider"
             :model="workspace.latestResult.model"
+            :input-tokens="workspace.latestResult.inputTokens"
+            :output-tokens="workspace.latestResult.outputTokens"
+            :total-tokens="workspace.latestResult.totalTokens"
           />
           <div v-if="workspace.canPromoteLatestTask" class="task-result-actions">
             <div>

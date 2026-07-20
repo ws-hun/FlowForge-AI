@@ -317,6 +317,9 @@
             :raw="activeFlowResult.raw"
             :provider="activeFlowResult.provider"
             :model="activeFlowResult.model"
+            :input-tokens="activeFlowResult.inputTokens"
+            :output-tokens="activeFlowResult.outputTokens"
+            :total-tokens="activeFlowResult.totalTokens"
             compact
             :show-raw="false"
           />
@@ -631,8 +634,8 @@
                 <strong>{{ run.summary }}</strong>
                 <span v-if="run.flowRunSnapshot">已固定快照</span>
               </div>
-              <span v-if="run.provider || run.model" class="run-provenance">
-                {{ formatProviderName(run.provider) }}<template v-if="run.provider && run.model"> · </template>{{ run.model }}
+              <span v-if="formatExecutionSource(run.provider, run.model, run.totalTokens)" class="run-provenance">
+                {{ formatExecutionSource(run.provider, run.model, run.totalTokens) }}
               </span>
               <p>{{ run.result }}</p>
             </button>
@@ -652,7 +655,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { EditPen, Plus } from '@element-plus/icons-vue'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
-import { formatProviderName } from '@/utils/aiProvider'
+import { formatExecutionSource } from '@/utils/aiProvider'
 import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
 import { listFlowRuns, listFlowVersions, previewFlowExecution, restoreFlowVersion } from '@/api/flows'
 import { createPrompt, listPrompts } from '@/api/prompts'
@@ -880,6 +883,9 @@ const activeFlowResult = computed<TaskRunResponse | null>(() => {
       raw: '',
       provider: selectedFlowRun.value.provider,
       model: selectedFlowRun.value.model,
+      inputTokens: selectedFlowRun.value.inputTokens,
+      outputTokens: selectedFlowRun.value.outputTokens,
+      totalTokens: selectedFlowRun.value.totalTokens,
       executionInput: selectedFlowRun.value.input,
       taskId: selectedFlowRun.value.id,
       flowRunSnapshot: selectedFlowRun.value.flowRunSnapshot || null

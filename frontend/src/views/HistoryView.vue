@@ -26,6 +26,9 @@
                 :result="task.result"
                 :provider="task.provider"
                 :model="task.model"
+                :input-tokens="task.inputTokens"
+                :output-tokens="task.outputTokens"
+                :total-tokens="task.totalTokens"
                 compact
                 :show-raw="false"
               />

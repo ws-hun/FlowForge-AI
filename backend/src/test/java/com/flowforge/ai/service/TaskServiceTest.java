@@ -137,7 +137,10 @@ class TaskServiceTest {
                         "Detailed result",
                         "{\"summary\":\"Focused MVP\"}",
                         "deepseek",
-                        "deepseek-chat"
+                        "deepseek-chat",
+                        820,
+                        430,
+                        1250
                 ));
         when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
             Task task = invocation.getArgument(0);
@@ -162,6 +165,9 @@ class TaskServiceTest {
         assertThat(savedTask.getInput()).isEqualTo(executionInput);
         assertThat(savedTask.getProvider()).isEqualTo("deepseek");
         assertThat(savedTask.getModel()).isEqualTo("deepseek-chat");
+        assertThat(savedTask.getInputTokens()).isEqualTo(820);
+        assertThat(savedTask.getOutputTokens()).isEqualTo(430);
+        assertThat(savedTask.getTotalTokens()).isEqualTo(1250);
         assertThat(executionInput)
                 .contains("Flow: Idea to MVP")
                 .contains("Build a calm workspace for product leads.")
@@ -179,6 +185,9 @@ class TaskServiceTest {
         assertThat(response.taskId()).isNotNull();
         assertThat(response.provider()).isEqualTo("deepseek");
         assertThat(response.model()).isEqualTo("deepseek-chat");
+        assertThat(response.inputTokens()).isEqualTo(820);
+        assertThat(response.outputTokens()).isEqualTo(430);
+        assertThat(response.totalTokens()).isEqualTo(1250);
         assertThat(response.flowRunSnapshot()).isNotNull();
         assertThat(response.flowRunSnapshot().title()).isEqualTo("Idea to MVP");
         assertThat(response.flowRunSnapshot().flowUpdatedAt()).isEqualTo(updatedAt);
@@ -229,6 +238,9 @@ class TaskServiceTest {
                 .result("Detailed launch brief")
                 .provider("openai")
                 .model("gpt-4.1")
+                .inputTokens(640)
+                .outputTokens(360)
+                .totalTokens(1000)
                 .createdAt(createdAt)
                 .build();
         when(taskRepository.findAll(any(Sort.class))).thenReturn(List.of(task));
@@ -238,6 +250,9 @@ class TaskServiceTest {
         assertThat(history).singleElement().satisfies(item -> {
             assertThat(item.provider()).isEqualTo("openai");
             assertThat(item.model()).isEqualTo("gpt-4.1");
+            assertThat(item.inputTokens()).isEqualTo(640);
+            assertThat(item.outputTokens()).isEqualTo(360);
+            assertThat(item.totalTokens()).isEqualTo(1000);
             assertThat(item.createdAt()).isEqualTo(createdAt);
         });
     }

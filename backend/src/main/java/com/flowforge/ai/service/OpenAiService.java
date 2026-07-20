@@ -35,12 +35,20 @@ public class OpenAiService {
             default -> throw new IllegalStateException("Unsupported AI provider: " + activeKey.getProvider());
         };
 
+        return attachExecutionMetadata(activeKey, result);
+    }
+
+    OpenAiTaskResult attachExecutionMetadata(AiApiKey activeKey, OpenAiTaskResult result) {
+        AiTokenUsage usage = extractTokenUsage(result.raw());
         return new OpenAiTaskResult(
                 result.summary(),
                 result.result(),
                 result.raw(),
                 activeKey.getProvider(),
-                activeKey.getModel()
+                activeKey.getModel(),
+                usage.inputTokens(),
+                usage.outputTokens(),
+                usage.totalTokens()
         );
     }
 
@@ -290,5 +298,41 @@ public class OpenAiService {
             return text.substring(start, end + 1);
         }
         return text;
+    }
+
+    private AiTokenUsage extractTokenUsage(String raw) {
+        try {
+            JsonNode usage = objectMapper.readTree(raw).path("usage");
+            if (!usage.isObject()) {
+                return AiTokenUsage.empty();
+            }
+
+            Integer inputTokens = readTokenCount(usage, "input_tokens", "prompt_tokens");
+            Integer outputTokens = readTokenCount(usage, "output_tokens", "completion_tokens");
+            Integer totalTokens = readTokenCount(usage, "total_tokens");
+            if (totalTokens == null && inputTokens != null && outputTokens != null) {
+                totalTokens = inputTokens + outputTokens;
+            }
+            return new AiTokenUsage(inputTokens, outputTokens, totalTokens);
+        } catch (JsonProcessingException | IllegalArgumentException e) {
+            return AiTokenUsage.empty();
+        }
+    }
+
+    private Integer readTokenCount(JsonNode usage, String... fieldNames) {
+        for (String fieldName : fieldNames) {
+            JsonNode value = usage.path(fieldName);
+            if (value.isIntegralNumber() && value.canConvertToInt() && value.intValue() >= 0) {
+                return value.intValue();
+            }
+        }
+        return null;
+    }
+
+    private record AiTokenUsage(Integer inputTokens, Integer outputTokens, Integer totalTokens) {
+
+        private static AiTokenUsage empty() {
+            return new AiTokenUsage(null, null, null);
+        }
     }
 }

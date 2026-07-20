@@ -749,11 +749,20 @@ a {
   }
 
   code {
-    padding-left: 8px;
-    border-left: 1px solid tokens.$border;
     color: tokens.$text-secondary;
     font-family: "JetBrains Mono", monospace;
     font-size: 11px;
+  }
+
+  > * + * {
+    padding-left: 8px;
+    border-left: 1px solid tokens.$border;
+  }
+
+  span {
+    color: tokens.$text-secondary;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
   }
 }
 

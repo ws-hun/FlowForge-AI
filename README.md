@@ -90,6 +90,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Run Snapshot Reuse | Done | 历史运行快照可创建新的可编辑 Flow，并自动带入当次运行上下文 |
 | Stage 3 | Run Settings Reuse | Done | 从 Flow Space 或 History 将历史 Run Brief 与仍然匹配的变量值带回原 Flow，快速开始下一次运行 |
 | Stage 3 | AI Execution Provenance | Done | 每次执行固定保存真实使用的 AI Provider 与模型，并在结果和历史工作流中展示 |
+| Stage 3 | Per-run Token Usage | Done | 从 DeepSeek / OpenAI 响应中读取输入、输出和总 Token，并随运行历史固化 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
 | Future | Knowledge Base | Preview UI | 产品预留界面，暂未接入向量检索 |
 | Future | Analytics | Preview UI | 轻量洞察预留，暂未做完整数据分析系统 |
@@ -108,6 +109,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Key Points 前端自动提取 | Done |
 | 执行历史保存 | Done |
 | AI Provider / Model 执行来源固化 | Done |
+| 单次执行 Token 用量记录 | Done |
 | 从 Prompt 带入任务 | Done |
 | 从 Flow 带入任务 | Done |
 | 任务来源上下文提示 | Done |
@@ -455,6 +457,9 @@ Response:
   "raw": "AI 原始返回",
   "provider": "deepseek",
   "model": "deepseek-chat",
+  "inputTokens": 820,
+  "outputTokens": 430,
+  "totalTokens": 1250,
   "executionInput": "服务端实际发送给 AI Provider 的完整输入",
   "taskId": "a-task-uuid",
   "flowRunSnapshot": {
@@ -476,6 +481,8 @@ Response:
 `executionInput` 是服务端实际提交给 AI Provider 的输入。Flow 工作区的“查看服务端执行输入”使用同一套编译逻辑，确保用户确认的内容与真实执行一致。
 
 `provider` 与 `model` 是本次执行真正使用的 AI 来源。它们会随 Task 一起持久化，因此之后切换 Provider 或模型不会改写历史执行来源；旧记录没有来源信息时，界面会保持安静并省略该元信息。
+
+`inputTokens`、`outputTokens` 与 `totalTokens` 来自 Provider 的真实 `usage` 响应。FlowForge 会兼容 OpenAI Responses 和 DeepSeek Chat Completions 的字段命名，并在旧记录或 Provider 未返回用量时省略展示。
 
 ### Provider
 

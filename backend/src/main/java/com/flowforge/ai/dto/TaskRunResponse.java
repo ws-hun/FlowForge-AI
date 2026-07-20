@@ -8,6 +8,9 @@ public record TaskRunResponse(
         String raw,
         String provider,
         String model,
+        Integer inputTokens,
+        Integer outputTokens,
+        Integer totalTokens,
         String executionInput,
         UUID taskId,
         FlowRunSnapshotResponse flowRunSnapshot
