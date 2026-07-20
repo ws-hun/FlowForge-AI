@@ -11,6 +11,7 @@ import {
 } from '@/api/tasks'
 import { createFlow, deleteFlow, listFlows, updateFlow } from '@/api/flows'
 import { createPrompt } from '@/api/prompts'
+import { extractPromptVariables, isValidPromptVariableName, renamePromptVariable } from '@/utils/promptVariables'
 import type {
   ApiKeyConfig,
   FlowDraft,
@@ -475,6 +476,35 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     })
   }
 
+  async function renameFlowVariable(currentName: string, nextName: string) {
+    const sourceName = currentName.trim()
+    const targetName = nextName.trim()
+    if (!activeFlow.value || !isValidPromptVariableName(sourceName) || !isValidPromptVariableName(targetName)) {
+      ElMessage.warning('变量名仅支持中文、字母、数字、下划线和连字符')
+      return null
+    }
+
+    if (sourceName === targetName) {
+      return activeFlow.value
+    }
+
+    const targetAlreadyExists = activeFlow.value.nodes.some((node) =>
+      extractPromptVariables(node.content || '').includes(targetName)
+    )
+    if (targetAlreadyExists) {
+      ElMessage.warning(`Flow 中已存在变量 {${targetName}}`)
+      return null
+    }
+
+    return updateActiveFlow((flow) => {
+      flow.nodes.forEach((node) => {
+        if (node.content) {
+          node.content = renamePromptVariable(node.content, sourceName, targetName)
+        }
+      })
+    })
+  }
+
   async function moveFlowPromptNode(nodeId: string, direction: 'up' | 'down') {
     return updateActiveFlow((flow) => {
       const promptNodes = flow.nodes.filter((node) => node.type === 'prompt')
@@ -743,6 +773,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     addContextToActiveFlow,
     removeFlowNode,
     updateFlowNode,
+    renameFlowVariable,
     moveFlowPromptNode,
     moveFlowContextNode,
     duplicateFlowPromptNode,

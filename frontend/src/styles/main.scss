@@ -2305,6 +2305,20 @@ a {
     font-weight: 700;
   }
 
+  .flow-variable-name-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+
+    label {
+      color: tokens.$text-secondary;
+      font-family: tokens.$mono;
+      font-size: 12px;
+      font-weight: 700;
+    }
+  }
+
   > small {
     color: tokens.$text-muted;
     font-size: 11px;
@@ -2320,6 +2334,32 @@ a {
   &.is-missing .quiet-textarea {
     border-color: rgba(245, 158, 11, 0.34);
     box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.06);
+  }
+}
+
+.flow-variable-rename-button {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: tokens.$radius-sm;
+  background: transparent;
+  color: tokens.$text-muted;
+  transition: background 200ms ease, border-color 200ms ease, color 200ms ease;
+
+  &:hover {
+    border-color: tokens.$border;
+    background: rgba(255, 255, 255, 0.72);
+    color: tokens.$primary;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 }
 

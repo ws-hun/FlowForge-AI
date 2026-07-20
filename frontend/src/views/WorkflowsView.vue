@@ -204,20 +204,33 @@
             </div>
 
             <div class="flow-variable-grid">
-              <label
-                v-for="variable in flowVariables"
+              <div
+                v-for="(variable, index) in flowVariables"
                 :key="variable"
                 class="flow-variable-field"
                 :class="{ 'is-missing': !flowVariableValues[variable]?.trim() }"
               >
-                <span>{{ '{' + variable + '}' }}</span>
+                <div class="flow-variable-name-row">
+                  <label :for="`flow-variable-${index}`">{{ '{' + variable + '}' }}</label>
+                  <button
+                    type="button"
+                    class="flow-variable-rename-button"
+                    title="重命名变量"
+                    :aria-label="`重命名变量 ${variable}`"
+                    :disabled="workspace.flowLoading || workspace.running"
+                    @click="renameFlowVariable(variable)"
+                  >
+                    <el-icon><EditPen /></el-icon>
+                  </button>
+                </div>
                 <small>用于 {{ flowVariableUsageLabel(variable) }}</small>
                 <textarea
+                  :id="`flow-variable-${index}`"
                   v-model="flowVariableValues[variable]"
                   class="quiet-textarea"
                   :placeholder="`填写 ${variable}`"
                 ></textarea>
-              </label>
+              </div>
             </div>
 
             <div v-if="hasMissingFlowVariables" class="flow-variable-readiness">
@@ -632,14 +645,14 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { EditPen, Plus } from '@element-plus/icons-vue'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
 import { listFlowRuns, listFlowVersions, previewFlowExecution, restoreFlowVersion } from '@/api/flows'
 import { createPrompt, listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { compareFlowRevision } from '@/utils/flowRevisions'
-import { extractPromptVariables } from '@/utils/promptVariables'
+import { extractPromptVariables, isValidPromptVariableName } from '@/utils/promptVariables'
 import type {
   FlowNode,
   FlowNodeType,
@@ -1337,6 +1350,49 @@ async function saveSelectedNode() {
   resetFlowRunState()
   syncSelectedNodeEditor()
   ElMessage.success('节点已保存')
+}
+
+async function renameFlowVariable(variable: string) {
+  try {
+    const { value } = await ElMessageBox.prompt(
+      `当前变量会同步更新 ${flowVariableNodeMap.value[variable]?.length || 0} 个节点。`,
+      `重命名 {${variable}}`,
+      {
+        confirmButtonText: '重命名',
+        cancelButtonText: '取消',
+        inputValue: variable,
+        inputPlaceholder: '输入新的变量名',
+        inputValidator: (input) =>
+          isValidPromptVariableName(input || '') || '仅支持中文、字母、数字、下划线和连字符'
+      }
+    )
+    const nextVariable = value?.trim() || ''
+    if (!nextVariable || nextVariable === variable) {
+      return
+    }
+    if (flowVariables.value.includes(nextVariable)) {
+      ElMessage.warning(`Flow 中已存在变量 {${nextVariable}}`)
+      return
+    }
+
+    const currentValue = flowVariableValues.value[variable] || ''
+    const renamedVariables = flowVariables.value.map((item) => (item === variable ? nextVariable : item))
+    const updatedFlow = await workspace.renameFlowVariable(variable, nextVariable)
+    if (!updatedFlow) {
+      return
+    }
+
+    flowVariableValues.value = buildFlowVariableValues(renamedVariables, {
+      ...flowVariableValues.value,
+      [nextVariable]: currentValue
+    })
+    resetFlowRunState()
+    ElMessage.success(`变量已重命名为 {${nextVariable}}`)
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') {
+      ElMessage.error('变量重命名失败')
+    }
+  }
 }
 
 async function moveSelectedPromptNode(direction: 'up' | 'down') {
