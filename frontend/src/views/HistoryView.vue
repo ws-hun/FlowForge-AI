@@ -43,6 +43,14 @@
             </span>
             <div class="history-reuse-actions">
               <button
+                v-if="!isFailed(task)"
+                type="button"
+                class="secondary-button"
+                @click="continueFromRun(task)"
+              >
+                用结果继续
+              </button>
+              <button
                 v-if="canCompareWithSource(task)"
                 type="button"
                 class="ghost-button"

@@ -108,6 +108,9 @@
               <strong>让这次有效执行成为下一次创作的起点。</strong>
             </div>
             <div class="task-result-action-buttons">
+              <button type="button" class="ghost-button" @click="continueLatestResult">
+                继续此结果
+              </button>
               <button
                 type="button"
                 class="ghost-button"
@@ -200,6 +203,12 @@ async function saveLatestTaskAsPrompt() {
   const prompt = await workspace.saveLatestTaskAsPrompt()
   if (prompt) {
     ElMessage.success('这次任务已沉淀为 Prompt')
+  }
+}
+
+function continueLatestResult() {
+  if (workspace.prepareLatestResultContinuation()) {
+    ElMessage.success('已将当前结果作为下一轮来源')
   }
 }
 

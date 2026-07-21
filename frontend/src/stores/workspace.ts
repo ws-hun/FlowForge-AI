@@ -216,6 +216,23 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     latestTaskPrompt.value = null
   }
 
+  function prepareLatestResultContinuation() {
+    const taskId = latestResult.value?.taskId
+    if (!taskId) {
+      ElMessage.warning('当前结果还没有可复用的运行记录')
+      return null
+    }
+
+    const sourceRun = tasks.value.find((task) => task.id === taskId)
+    if (!sourceRun || sourceRun.status === 'failed') {
+      ElMessage.warning('当前结果暂时无法继续')
+      return null
+    }
+
+    prepareTaskContinuation(sourceRun)
+    return sourceRun
+  }
+
   function clearTaskSource() {
     taskSourcePromptId.value = null
     taskSourcePromptTitle.value = ''
@@ -852,6 +869,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     createFlowFromLatestTask,
     prepareTask,
     prepareTaskContinuation,
+    prepareLatestResultContinuation,
     clearTaskSource,
     saveProvider,
     activateProvider,

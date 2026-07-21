@@ -578,6 +578,10 @@ a {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+
+  .secondary-button {
+    min-height: 36px;
+  }
 }
 
 .history-lineage-note {

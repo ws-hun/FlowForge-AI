@@ -117,6 +117,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | 历史运行精确重跑 | Done |
 | 重跑来源追踪与结果对比 | Done |
 | 历史结果继续创作与来源追踪 | Done |
+| 当前结果 / 任意成功历史结果直接进入下一轮 | Done |
 | 失败执行保存与恢复重跑 | Done |
 | 从 Prompt 带入任务 | Done |
 | 从 Flow 带入任务 | Done |
