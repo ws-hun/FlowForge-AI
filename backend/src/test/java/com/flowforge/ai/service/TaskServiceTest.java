@@ -233,6 +233,7 @@ class TaskServiceTest {
     @Test
     void returnsStoredExecutionProvenanceInTaskHistory() {
         LocalDateTime createdAt = LocalDateTime.of(2026, 7, 20, 10, 15);
+        UUID rerunOfTaskId = UUID.randomUUID();
         Task task = Task.builder()
                 .id(UUID.randomUUID())
                 .input("Prepare a launch brief")
@@ -243,6 +244,7 @@ class TaskServiceTest {
                 .inputTokens(640)
                 .outputTokens(360)
                 .totalTokens(1000)
+                .rerunOfTaskId(rerunOfTaskId)
                 .createdAt(createdAt)
                 .build();
         when(taskRepository.findAll(any(Sort.class))).thenReturn(List.of(task));
@@ -255,6 +257,7 @@ class TaskServiceTest {
             assertThat(item.inputTokens()).isEqualTo(640);
             assertThat(item.outputTokens()).isEqualTo(360);
             assertThat(item.totalTokens()).isEqualTo(1000);
+            assertThat(item.rerunOfTaskId()).isEqualTo(rerunOfTaskId);
             assertThat(item.createdAt()).isEqualTo(createdAt);
         });
     }
@@ -322,9 +325,11 @@ class TaskServiceTest {
         assertThat(rerun.getSourceFlowId()).isEqualTo(flowId);
         assertThat(rerun.getSourceFlowTitle()).isEqualTo("Launch decision");
         assertThat(rerun.getSourceFlowSnapshotJson()).contains("Keep the first release focused.");
+        assertThat(rerun.getRerunOfTaskId()).isEqualTo(sourceTaskId);
         assertThat(rerun.getProvider()).isEqualTo("openai");
         assertThat(rerun.getModel()).isEqualTo("gpt-4.1");
         assertThat(response.executionInput()).isEqualTo(sourceTask.getInput());
+        assertThat(response.rerunOfTaskId()).isEqualTo(sourceTaskId);
         assertThat(response.flowRunSnapshot()).isEqualTo(snapshot);
         assertThat(response.totalTokens()).isEqualTo(750);
         verifyNoInteractions(promptRepository, workflowRepository);

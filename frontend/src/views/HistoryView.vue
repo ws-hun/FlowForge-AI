@@ -18,19 +18,38 @@
             <span class="badge">{{ task.sourceFlowTitle ? 'Flow' : 'Prompt' }}</span>
             <strong>{{ task.sourceFlowTitle || task.sourcePromptTitle }}</strong>
           </div>
+          <div v-if="rerunSource(task)" class="history-lineage-note">
+            <span>重跑自</span>
+            <strong>
+              {{
+                formatExecutionSource(rerunSource(task)?.provider, rerunSource(task)?.model, rerunSource(task)?.totalTokens) ||
+                '来源运行'
+              }}
+            </strong>
+          </div>
           <p class="muted">{{ task.summary }}</p>
           <div class="history-reuse-row">
             <span class="run-provenance">
               {{ formatExecutionSource(task.provider, task.model, task.totalTokens) || '已保存服务端执行输入' }}
             </span>
-            <button
-              type="button"
-              class="ghost-button"
-              :disabled="workspace.running"
-              @click="rerunHistoryTask(task.id)"
-            >
-              {{ workspace.running ? '执行中...' : '使用当前 Provider 重跑' }}
-            </button>
+            <div class="history-reuse-actions">
+              <button
+                v-if="rerunSource(task)"
+                type="button"
+                class="ghost-button"
+                @click="compareWithSource(task)"
+              >
+                对比来源
+              </button>
+              <button
+                type="button"
+                class="ghost-button"
+                :disabled="workspace.running"
+                @click="rerunHistoryTask(task.id)"
+              >
+                {{ workspace.running ? '执行中...' : '使用当前 Provider 重跑' }}
+              </button>
+            </div>
           </div>
           <el-collapse>
             <el-collapse-item title="查看结果" :name="task.id">
@@ -60,20 +79,32 @@
       </article>
       <div v-if="!workspace.tasks.length" class="empty-state">暂无历史记录</div>
     </div>
+
+    <RunComparisonDialog
+      :open="comparisonOpen"
+      :source-run="comparisonSource"
+      :target-run="comparisonTarget"
+      @close="closeComparison"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
+import RunComparisonDialog from '@/components/ai/RunComparisonDialog.vue'
 import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { formatExecutionSource } from '@/utils/aiProvider'
-import type { FlowRunSnapshot as FlowRunSnapshotType } from '@/types'
+import type { FlowRunSnapshot as FlowRunSnapshotType, TaskHistoryItem } from '@/types'
 
 const router = useRouter()
 const workspace = useWorkspaceStore()
+const comparisonOpen = ref(false)
+const comparisonSource = ref<TaskHistoryItem | null>(null)
+const comparisonTarget = ref<TaskHistoryItem | null>(null)
 
 async function rerunHistoryTask(taskId: string) {
   if (!workspace.activeProvider) {
@@ -83,9 +114,39 @@ async function rerunHistoryTask(taskId: string) {
   }
 
   const result = await workspace.rerunHistoricalTask(taskId)
-  if (result) {
+  const sourceRun = workspace.tasks.find((task) => task.id === taskId) || null
+  const targetRun = result?.taskId ? workspace.tasks.find((task) => task.id === result.taskId) || null : null
+  if (sourceRun && targetRun) {
+    openComparison(sourceRun, targetRun)
+  } else if (result) {
     router.push('/tasks')
   }
+}
+
+function rerunSource(task: TaskHistoryItem) {
+  if (!task.rerunOfTaskId) {
+    return null
+  }
+  return workspace.tasks.find((item) => item.id === task.rerunOfTaskId) || null
+}
+
+function openComparison(sourceRun: TaskHistoryItem, targetRun: TaskHistoryItem) {
+  comparisonSource.value = sourceRun
+  comparisonTarget.value = targetRun
+  comparisonOpen.value = true
+}
+
+function compareWithSource(targetRun: TaskHistoryItem) {
+  const sourceRun = rerunSource(targetRun)
+  if (sourceRun) {
+    openComparison(sourceRun, targetRun)
+  }
+}
+
+function closeComparison() {
+  comparisonOpen.value = false
+  comparisonSource.value = null
+  comparisonTarget.value = null
 }
 
 function flowStillAvailable(snapshot: FlowRunSnapshotType) {

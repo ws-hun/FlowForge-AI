@@ -70,7 +70,8 @@ public class TaskService {
                         sourcePrompt == null ? null : sourcePrompt.getTitle(),
                         sourceFlow == null ? null : sourceFlow.getId(),
                         sourceFlow == null ? null : sourceFlow.getTitle(),
-                        flowRunSnapshot
+                        flowRunSnapshot,
+                        null
                 )
         );
     }
@@ -88,7 +89,8 @@ public class TaskService {
                         sourceTask.getSourcePromptTitle(),
                         sourceTask.getSourceFlowId(),
                         sourceTask.getSourceFlowTitle(),
-                        flowRunSnapshot
+                        flowRunSnapshot,
+                        sourceTask.getId()
                 )
         );
     }
@@ -105,6 +107,7 @@ public class TaskService {
                 .inputTokens(aiResult.inputTokens())
                 .outputTokens(aiResult.outputTokens())
                 .totalTokens(aiResult.totalTokens())
+                .rerunOfTaskId(source.rerunOfTaskId())
                 .sourcePromptId(source.promptId())
                 .sourcePromptTitle(source.promptTitle())
                 .sourceFlowId(source.flowId())
@@ -123,6 +126,7 @@ public class TaskService {
                 aiResult.inputTokens(),
                 aiResult.outputTokens(),
                 aiResult.totalTokens(),
+                source.rerunOfTaskId(),
                 executionInput,
                 savedTask.getId(),
                 source.flowRunSnapshot()
@@ -374,6 +378,7 @@ public class TaskService {
                 task.getInputTokens(),
                 task.getOutputTokens(),
                 task.getTotalTokens(),
+                task.getRerunOfTaskId(),
                 task.getSourcePromptId(),
                 task.getSourcePromptTitle(),
                 task.getSourceFlowId(),
@@ -388,7 +393,8 @@ public class TaskService {
             String promptTitle,
             UUID flowId,
             String flowTitle,
-            FlowRunSnapshotResponse flowRunSnapshot
+            FlowRunSnapshotResponse flowRunSnapshot,
+            UUID rerunOfTaskId
     ) {
     }
 }

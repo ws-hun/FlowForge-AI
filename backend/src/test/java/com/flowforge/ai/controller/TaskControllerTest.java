@@ -41,6 +41,7 @@ class TaskControllerTest {
                 400,
                 200,
                 600,
+                sourceTaskId,
                 "Exact stored execution input",
                 newTaskId,
                 null
@@ -50,6 +51,7 @@ class TaskControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.taskId").value(newTaskId.toString()))
+                .andExpect(jsonPath("$.rerunOfTaskId").value(sourceTaskId.toString()))
                 .andExpect(jsonPath("$.executionInput").value("Exact stored execution input"))
                 .andExpect(jsonPath("$.provider").value("openai"))
                 .andExpect(jsonPath("$.totalTokens").value(600));

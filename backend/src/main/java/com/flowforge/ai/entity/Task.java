@@ -51,6 +51,9 @@ public class Task {
     @Column(name = "total_tokens")
     private Integer totalTokens;
 
+    @Column(name = "rerun_of_task_id")
+    private UUID rerunOfTaskId;
+
     @Column(name = "source_prompt_id")
     private UUID sourcePromptId;
 
