@@ -93,6 +93,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Per-run Token Usage | Done | 从 DeepSeek / OpenAI 响应中读取输入、输出和总 Token，并随运行历史固化 |
 | Stage 3 | Exact Historical Rerun | Done | 使用历史中固化的服务端执行输入与 Flow 快照，通过当前 Provider 创建一次新的可比较运行 |
 | Stage 3 | Run Lineage & Comparison | Done | 重跑记录保留来源运行关系，并在 History 中并排比较 Provider、Token、摘要与结果 |
+| Stage 3 | Historical Result Continuation | Done | 从任意历史结果继续创作，服务端读取固定结果编译新输入并保留继续关系 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
 | Future | Knowledge Base | Preview UI | 产品预留界面，暂未接入向量检索 |
 | Future | Analytics | Preview UI | 轻量洞察预留，暂未做完整数据分析系统 |
@@ -114,6 +115,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | 单次执行 Token 用量记录 | Done |
 | 历史运行精确重跑 | Done |
 | 重跑来源追踪与结果对比 | Done |
+| 历史结果继续创作与来源追踪 | Done |
 | 从 Prompt 带入任务 | Done |
 | 从 Flow 带入任务 | Done |
 | 任务来源上下文提示 | Done |
@@ -449,7 +451,8 @@ Request:
   "flowRunContext": "目标用户为早期产品团队，优先输出一周可验证的 MVP。",
   "flowVariableValues": {
     "audience": "产品负责人"
-  }
+  },
+  "continuedFromTaskId": null
 }
 ```
 
@@ -466,6 +469,7 @@ Response:
   "outputTokens": 430,
   "totalTokens": 1250,
   "rerunOfTaskId": null,
+  "continuedFromTaskId": null,
   "executionInput": "服务端实际发送给 AI Provider 的完整输入",
   "taskId": "a-task-uuid",
   "flowRunSnapshot": {
@@ -493,6 +497,8 @@ Response:
 `POST /api/tasks/{id}/rerun` 不会读取或重新编译当前 Flow，而是复用历史 Task 已固化的服务端执行输入、来源信息和 Flow 快照，再通过当前激活的 Provider 创建一条新运行。这样即使 Flow 后续被编辑，也能对同一份输入进行可比较执行。
 
 重跑生成的新 Task 会通过 `rerunOfTaskId` 指向直接来源运行。History 会基于这条运行谱系提供双文档对比，原运行与本次重跑的 Provider、模型、Token、摘要和结果都保持可见。
+
+从比较界面选择“用此结果继续”后，AI Command 只要求用户填写新的推进方向。请求通过 `continuedFromTaskId` 指向来源 Task，后端从数据库读取其 Summary、Result 和原始来源快照，再编译新的执行输入；浏览器不需要回传或复制完整历史结果。
 
 ### Provider
 

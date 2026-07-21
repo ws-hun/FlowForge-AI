@@ -49,17 +49,43 @@ public class TaskService {
     public TaskRunResponse runTask(RunTaskRequest request) {
         Prompt sourcePrompt = resolveSourcePrompt(request);
         Workflow sourceFlow = resolveSourceFlow(request);
+        Task continuedFromTask = resolveContinuedFromTask(request);
+        if (continuedFromTask != null && (sourcePrompt != null || sourceFlow != null)) {
+            throw new IllegalArgumentException("A continuation cannot also start from a Prompt or Flow");
+        }
         String standaloneInput = cleanOptional(request.input());
-        if (sourceFlow == null && !StringUtils.hasText(standaloneInput)) {
+        if (sourceFlow == null && continuedFromTask == null && !StringUtils.hasText(standaloneInput)) {
             throw new IllegalArgumentException("input is required");
         }
-        FlowRunSnapshotResponse flowRunSnapshot = sourceFlow == null
-                ? null
-                : createFlowRunSnapshot(sourceFlow, request.flowRunContext(), request.flowVariableValues());
-        if (flowRunSnapshot != null) {
+        if (continuedFromTask != null && !StringUtils.hasText(standaloneInput)) {
+            throw new IllegalArgumentException("continuation input is required");
+        }
+        FlowRunSnapshotResponse flowRunSnapshot = null;
+        if (sourceFlow != null) {
+            flowRunSnapshot = createFlowRunSnapshot(sourceFlow, request.flowRunContext(), request.flowVariableValues());
+        } else if (continuedFromTask != null) {
+            flowRunSnapshot = deserializeFlowRunSnapshot(continuedFromTask.getSourceFlowSnapshotJson());
+        }
+        if (flowRunSnapshot != null && continuedFromTask == null) {
             requireFlowNodeContents(flowRunSnapshot);
             requireFlowVariableValues(flowRunSnapshot);
         }
+
+        if (continuedFromTask != null) {
+            return executeAndSave(
+                    compileContinuationInput(continuedFromTask, standaloneInput),
+                    new TaskExecutionSource(
+                            continuedFromTask.getSourcePromptId(),
+                            continuedFromTask.getSourcePromptTitle(),
+                            continuedFromTask.getSourceFlowId(),
+                            continuedFromTask.getSourceFlowTitle(),
+                            flowRunSnapshot,
+                            null,
+                            continuedFromTask.getId()
+                    )
+            );
+        }
+
         String executionInput = flowRunSnapshot == null
                 ? standaloneInput
                 : compileFlowExecutionInput(flowRunSnapshot);
@@ -71,6 +97,7 @@ public class TaskService {
                         sourceFlow == null ? null : sourceFlow.getId(),
                         sourceFlow == null ? null : sourceFlow.getTitle(),
                         flowRunSnapshot,
+                        null,
                         null
                 )
         );
@@ -90,7 +117,8 @@ public class TaskService {
                         sourceTask.getSourceFlowId(),
                         sourceTask.getSourceFlowTitle(),
                         flowRunSnapshot,
-                        sourceTask.getId()
+                        sourceTask.getId(),
+                        sourceTask.getContinuedFromTaskId()
                 )
         );
     }
@@ -108,6 +136,7 @@ public class TaskService {
                 .outputTokens(aiResult.outputTokens())
                 .totalTokens(aiResult.totalTokens())
                 .rerunOfTaskId(source.rerunOfTaskId())
+                .continuedFromTaskId(source.continuedFromTaskId())
                 .sourcePromptId(source.promptId())
                 .sourcePromptTitle(source.promptTitle())
                 .sourceFlowId(source.flowId())
@@ -127,6 +156,7 @@ public class TaskService {
                 aiResult.outputTokens(),
                 aiResult.totalTokens(),
                 source.rerunOfTaskId(),
+                source.continuedFromTaskId(),
                 executionInput,
                 savedTask.getId(),
                 source.flowRunSnapshot()
@@ -187,6 +217,14 @@ public class TaskService {
         }
         return workflowRepository.findById(request.flowId())
                 .orElseThrow(() -> new IllegalStateException("Flow not found"));
+    }
+
+    private Task resolveContinuedFromTask(RunTaskRequest request) {
+        if (request.continuedFromTaskId() == null) {
+            return null;
+        }
+        return taskRepository.findById(request.continuedFromTaskId())
+                .orElseThrow(() -> new ResourceNotFoundException("Continuation source task not found"));
     }
 
     private FlowRunSnapshotResponse createFlowRunSnapshot(
@@ -258,6 +296,23 @@ public class TaskService {
         sections.add("");
         sections.add("请输出：1. Summary 2. Key Points 3. Result 4. Next Actions");
         return String.join("\n", sections);
+    }
+
+    private String compileContinuationInput(Task sourceTask, String direction) {
+        return """
+                请基于一次已完成的 AI 运行结果继续推进。
+
+                来源摘要:
+                %s
+
+                来源结果:
+                %s
+
+                本次继续方向:
+                %s
+
+                请保留仍然有效的内容，并针对本次方向输出清晰、可执行的新版本。
+                """.formatted(sourceTask.getSummary(), sourceTask.getResult(), direction).trim();
     }
 
     private String formatNodeBlock(String title, String content) {
@@ -379,6 +434,7 @@ public class TaskService {
                 task.getOutputTokens(),
                 task.getTotalTokens(),
                 task.getRerunOfTaskId(),
+                task.getContinuedFromTaskId(),
                 task.getSourcePromptId(),
                 task.getSourcePromptTitle(),
                 task.getSourceFlowId(),
@@ -394,7 +450,8 @@ public class TaskService {
             UUID flowId,
             String flowTitle,
             FlowRunSnapshotResponse flowRunSnapshot,
-            UUID rerunOfTaskId
+            UUID rerunOfTaskId,
+            UUID continuedFromTaskId
     ) {
     }
 }

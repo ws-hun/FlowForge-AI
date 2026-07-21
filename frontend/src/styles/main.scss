@@ -607,6 +607,16 @@ a {
   }
 }
 
+.run-comparison-pane-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+
+  .secondary-button {
+    min-height: 36px;
+  }
+}
+
 .row-between {
   display: flex;
   align-items: center;

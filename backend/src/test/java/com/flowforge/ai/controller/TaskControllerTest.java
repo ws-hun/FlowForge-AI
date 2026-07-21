@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -29,6 +30,45 @@ class TaskControllerTest {
     private TaskService taskService;
 
     @Test
+    void startsAContinuationFromAStoredTaskResult() throws Exception {
+        UUID sourceTaskId = UUID.randomUUID();
+        UUID newTaskId = UUID.randomUUID();
+        when(taskService.runTask(argThat(request -> sourceTaskId.equals(request.continuedFromTaskId()))))
+                .thenReturn(new TaskRunResponse(
+                        "Continued result",
+                        "Continued content",
+                        "{}",
+                        "deepseek",
+                        "deepseek-chat",
+                        300,
+                        180,
+                        480,
+                        null,
+                        sourceTaskId,
+                        "Server-compiled continuation input",
+                        newTaskId,
+                        null
+                ));
+
+        mockMvc.perform(post("/api/tasks/run")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "input": "补充验证计划",
+                                  "continuedFromTaskId": "%s"
+                                }
+                                """.formatted(sourceTaskId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.continuedFromTaskId").value(sourceTaskId.toString()))
+                .andExpect(jsonPath("$.executionInput").value("Server-compiled continuation input"));
+
+        verify(taskService).runTask(argThat(request ->
+                request.input().equals("补充验证计划")
+                        && sourceTaskId.equals(request.continuedFromTaskId())
+        ));
+    }
+
+    @Test
     void rerunsAStoredTaskThroughTheRestEndpoint() throws Exception {
         UUID sourceTaskId = UUID.randomUUID();
         UUID newTaskId = UUID.randomUUID();
@@ -42,6 +82,7 @@ class TaskControllerTest {
                 200,
                 600,
                 sourceTaskId,
+                null,
                 "Exact stored execution input",
                 newTaskId,
                 null

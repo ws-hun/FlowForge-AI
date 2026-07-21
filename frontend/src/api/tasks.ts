@@ -11,12 +11,14 @@ export function runTask(
   promptId?: string | null,
   flowId?: string | null,
   flowRunContext?: string,
-  flowVariableValues?: Record<string, string>
+  flowVariableValues?: Record<string, string>,
+  continuedFromTaskId?: string | null
 ) {
   return http.post<TaskRunResponse>('/api/tasks/run', {
     input,
     promptId,
     flowId,
+    continuedFromTaskId,
     ...(flowId
       ? {
           flowRunContext: flowRunContext || '',

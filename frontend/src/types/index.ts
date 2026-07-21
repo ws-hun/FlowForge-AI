@@ -10,6 +10,7 @@ export interface TaskRunResponse {
   outputTokens?: number | null
   totalTokens?: number | null
   rerunOfTaskId?: string | null
+  continuedFromTaskId?: string | null
   executionInput: string
   taskId?: string | null
   flowRunSnapshot?: FlowRunSnapshot | null
@@ -26,6 +27,7 @@ export interface TaskHistoryItem {
   outputTokens?: number | null
   totalTokens?: number | null
   rerunOfTaskId?: string | null
+  continuedFromTaskId?: string | null
   sourcePromptId?: string | null
   sourcePromptTitle?: string | null
   sourceFlowId?: string | null

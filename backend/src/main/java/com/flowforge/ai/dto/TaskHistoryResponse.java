@@ -14,6 +14,7 @@ public record TaskHistoryResponse(
         Integer outputTokens,
         Integer totalTokens,
         UUID rerunOfTaskId,
+        UUID continuedFromTaskId,
         UUID sourcePromptId,
         String sourcePromptTitle,
         UUID sourceFlowId,

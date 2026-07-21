@@ -54,6 +54,9 @@ public class Task {
     @Column(name = "rerun_of_task_id")
     private UUID rerunOfTaskId;
 
+    @Column(name = "continued_from_task_id")
+    private UUID continuedFromTaskId;
+
     @Column(name = "source_prompt_id")
     private UUID sourcePromptId;
 

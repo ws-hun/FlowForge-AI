@@ -18,11 +18,15 @@
             <span class="badge">{{ task.sourceFlowTitle ? 'Flow' : 'Prompt' }}</span>
             <strong>{{ task.sourceFlowTitle || task.sourcePromptTitle }}</strong>
           </div>
-          <div v-if="rerunSource(task)" class="history-lineage-note">
-            <span>重跑自</span>
+          <div v-if="lineageSource(task)" class="history-lineage-note">
+            <span>{{ lineageLabel(task) }}</span>
             <strong>
               {{
-                formatExecutionSource(rerunSource(task)?.provider, rerunSource(task)?.model, rerunSource(task)?.totalTokens) ||
+                formatExecutionSource(
+                  lineageSource(task)?.provider,
+                  lineageSource(task)?.model,
+                  lineageSource(task)?.totalTokens
+                ) ||
                 '来源运行'
               }}
             </strong>
@@ -34,7 +38,7 @@
             </span>
             <div class="history-reuse-actions">
               <button
-                v-if="rerunSource(task)"
+                v-if="lineageSource(task)"
                 type="button"
                 class="ghost-button"
                 @click="compareWithSource(task)"
@@ -84,7 +88,9 @@
       :open="comparisonOpen"
       :source-run="comparisonSource"
       :target-run="comparisonTarget"
+      :mode="comparisonMode"
       @close="closeComparison"
+      @continue="continueFromRun"
     />
   </section>
 </template>
@@ -105,6 +111,7 @@ const workspace = useWorkspaceStore()
 const comparisonOpen = ref(false)
 const comparisonSource = ref<TaskHistoryItem | null>(null)
 const comparisonTarget = ref<TaskHistoryItem | null>(null)
+const comparisonMode = ref<'rerun' | 'continuation'>('rerun')
 
 async function rerunHistoryTask(taskId: string) {
   if (!workspace.activeProvider) {
@@ -117,29 +124,43 @@ async function rerunHistoryTask(taskId: string) {
   const sourceRun = workspace.tasks.find((task) => task.id === taskId) || null
   const targetRun = result?.taskId ? workspace.tasks.find((task) => task.id === result.taskId) || null : null
   if (sourceRun && targetRun) {
-    openComparison(sourceRun, targetRun)
+    openComparison(sourceRun, targetRun, 'rerun')
   } else if (result) {
     router.push('/tasks')
   }
 }
 
-function rerunSource(task: TaskHistoryItem) {
-  if (!task.rerunOfTaskId) {
+function lineageSource(task: TaskHistoryItem) {
+  const sourceTaskId = task.rerunOfTaskId || task.continuedFromTaskId
+  if (!sourceTaskId) {
     return null
   }
-  return workspace.tasks.find((item) => item.id === task.rerunOfTaskId) || null
+  return workspace.tasks.find((item) => item.id === sourceTaskId) || null
 }
 
-function openComparison(sourceRun: TaskHistoryItem, targetRun: TaskHistoryItem) {
+function lineageLabel(task: TaskHistoryItem) {
+  return task.rerunOfTaskId ? '重跑自' : '继续自'
+}
+
+function lineageMode(task: TaskHistoryItem): 'rerun' | 'continuation' {
+  return task.rerunOfTaskId ? 'rerun' : 'continuation'
+}
+
+function openComparison(
+  sourceRun: TaskHistoryItem,
+  targetRun: TaskHistoryItem,
+  mode: 'rerun' | 'continuation'
+) {
   comparisonSource.value = sourceRun
   comparisonTarget.value = targetRun
+  comparisonMode.value = mode
   comparisonOpen.value = true
 }
 
 function compareWithSource(targetRun: TaskHistoryItem) {
-  const sourceRun = rerunSource(targetRun)
+  const sourceRun = lineageSource(targetRun)
   if (sourceRun) {
-    openComparison(sourceRun, targetRun)
+    openComparison(sourceRun, targetRun, lineageMode(targetRun))
   }
 }
 
@@ -147,6 +168,13 @@ function closeComparison() {
   comparisonOpen.value = false
   comparisonSource.value = null
   comparisonTarget.value = null
+  comparisonMode.value = 'rerun'
+}
+
+function continueFromRun(run: TaskHistoryItem) {
+  closeComparison()
+  workspace.prepareTaskContinuation(run)
+  router.push('/tasks')
 }
 
 function flowStillAvailable(snapshot: FlowRunSnapshotType) {

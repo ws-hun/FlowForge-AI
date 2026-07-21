@@ -61,6 +61,9 @@
             <button v-if="workspace.taskSourceFlowId" type="button" class="ghost-button" @click="returnToFlow">
               回到 Flow
             </button>
+            <button v-else-if="workspace.taskSourceRunId" type="button" class="ghost-button" @click="returnToHistory">
+              查看 History
+            </button>
             <button v-else type="button" class="ghost-button" @click="openPromptLibrary">
               查看 Prompt
             </button>
@@ -140,18 +143,34 @@ import { useWorkspaceStore } from '@/stores/workspace'
 const router = useRouter()
 const workspace = useWorkspaceStore()
 const providerReadyToRun = computed(() => Boolean(workspace.activeProvider))
-const hasTaskSource = computed(() => Boolean(workspace.taskSourceFlowTitle || workspace.taskSourcePromptTitle))
-const sourceLabel = computed(() => (workspace.taskSourceFlowTitle ? 'Flow context' : 'Prompt context'))
-const sourceTitle = computed(() => workspace.taskSourceFlowTitle || workspace.taskSourcePromptTitle)
+const hasTaskSource = computed(() =>
+  Boolean(workspace.taskSourceFlowTitle || workspace.taskSourcePromptTitle || workspace.taskSourceRunId)
+)
+const sourceLabel = computed(() => {
+  if (workspace.taskSourceFlowTitle) return 'Flow context'
+  if (workspace.taskSourceRunId) return 'Historical result'
+  return 'Prompt context'
+})
+const sourceTitle = computed(
+  () => workspace.taskSourceFlowTitle || workspace.taskSourceRunSummary || workspace.taskSourcePromptTitle
+)
 const taskInputPlaceholder = computed(() => {
-  return workspace.taskSourceFlowId
-    ? '可选：补充本次运行说明、目标用户、输出格式或约束条件...'
-    : '描述你希望 AI 完成的任务...'
+  if (workspace.taskSourceFlowId) {
+    return '可选：补充本次运行说明、目标用户、输出格式或约束条件...'
+  }
+  if (workspace.taskSourceRunId) {
+    return '描述下一步要如何修改、深化或转化这个结果...'
+  }
+  return '描述你希望 AI 完成的任务...'
 })
 const sourceDescription = computed(() => {
-  return workspace.taskSourceFlowTitle
-    ? 'Flow 将按已保存的节点和 Prompt 执行。这里的内容会作为本次运行简报固定保存。'
-    : '这次执行会保留与原 Prompt 的关联，方便把有效工作方式沉淀为资产。'
+  if (workspace.taskSourceFlowTitle) {
+    return 'Flow 将按已保存的节点和 Prompt 执行。这里的内容会作为本次运行简报固定保存。'
+  }
+  if (workspace.taskSourceRunId) {
+    return '后端会读取已保存的完整结果，并将这里的新方向编译为下一次可追溯执行。'
+  }
+  return '这次执行会保留与原 Prompt 的关联，方便把有效工作方式沉淀为资产。'
 })
 
 function goToApiKeys() {
@@ -167,6 +186,10 @@ function returnToFlow() {
 
 function openPromptLibrary() {
   router.push('/prompts')
+}
+
+function returnToHistory() {
+  router.push('/history')
 }
 
 function detachTaskSource() {

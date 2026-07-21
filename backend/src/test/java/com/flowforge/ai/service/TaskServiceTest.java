@@ -234,6 +234,7 @@ class TaskServiceTest {
     void returnsStoredExecutionProvenanceInTaskHistory() {
         LocalDateTime createdAt = LocalDateTime.of(2026, 7, 20, 10, 15);
         UUID rerunOfTaskId = UUID.randomUUID();
+        UUID continuedFromTaskId = UUID.randomUUID();
         Task task = Task.builder()
                 .id(UUID.randomUUID())
                 .input("Prepare a launch brief")
@@ -245,6 +246,7 @@ class TaskServiceTest {
                 .outputTokens(360)
                 .totalTokens(1000)
                 .rerunOfTaskId(rerunOfTaskId)
+                .continuedFromTaskId(continuedFromTaskId)
                 .createdAt(createdAt)
                 .build();
         when(taskRepository.findAll(any(Sort.class))).thenReturn(List.of(task));
@@ -258,14 +260,76 @@ class TaskServiceTest {
             assertThat(item.outputTokens()).isEqualTo(360);
             assertThat(item.totalTokens()).isEqualTo(1000);
             assertThat(item.rerunOfTaskId()).isEqualTo(rerunOfTaskId);
+            assertThat(item.continuedFromTaskId()).isEqualTo(continuedFromTaskId);
             assertThat(item.createdAt()).isEqualTo(createdAt);
         });
+    }
+
+    @Test
+    void continuesFromTheStoredResultAndPreservesItsCreativeSource() throws Exception {
+        UUID sourceTaskId = UUID.randomUUID();
+        UUID sourceFlowId = UUID.randomUUID();
+        FlowRunSnapshotResponse snapshot = new FlowRunSnapshotResponse(
+                sourceFlowId,
+                "Product direction",
+                "Shape a product direction",
+                List.of(),
+                LocalDateTime.of(2026, 7, 19, 11, 20),
+                "Prioritize a calm first release.",
+                Map.of()
+        );
+        String snapshotJson = new ObjectMapper().findAndRegisterModules().writeValueAsString(snapshot);
+        Task sourceTask = Task.builder()
+                .id(sourceTaskId)
+                .input("Original execution input")
+                .summary("A focused product direction")
+                .result("The first release should solve one clear workflow problem.")
+                .sourceFlowId(sourceFlowId)
+                .sourceFlowTitle("Product direction")
+                .sourceFlowSnapshotJson(snapshotJson)
+                .createdAt(LocalDateTime.now().minusHours(2))
+                .build();
+        when(taskRepository.findById(sourceTaskId)).thenReturn(Optional.of(sourceTask));
+        when(openAiService.processTask(any()))
+                .thenReturn(new OpenAiTaskResult("Risk review", "Updated direction", "{}"));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
+            Task task = invocation.getArgument(0);
+            task.setId(UUID.randomUUID());
+            return task;
+        });
+
+        TaskRunResponse response = taskService.runTask(new RunTaskRequest(
+                "补充主要风险和一周验证计划",
+                null,
+                null,
+                null,
+                null,
+                sourceTaskId
+        ));
+
+        verify(openAiService).processTask(executionInputCaptor.capture());
+        verify(taskRepository).save(taskCaptor.capture());
+        String executionInput = executionInputCaptor.getValue();
+        Task continuedTask = taskCaptor.getValue();
+        assertThat(executionInput)
+                .contains("A focused product direction")
+                .contains("The first release should solve one clear workflow problem.")
+                .contains("补充主要风险和一周验证计划")
+                .doesNotContain("Original execution input");
+        assertThat(continuedTask.getContinuedFromTaskId()).isEqualTo(sourceTaskId);
+        assertThat(continuedTask.getRerunOfTaskId()).isNull();
+        assertThat(continuedTask.getSourceFlowId()).isEqualTo(sourceFlowId);
+        assertThat(continuedTask.getSourceFlowSnapshotJson()).contains("Prioritize a calm first release.");
+        assertThat(response.continuedFromTaskId()).isEqualTo(sourceTaskId);
+        assertThat(response.flowRunSnapshot()).isEqualTo(snapshot);
+        verifyNoInteractions(promptRepository, workflowRepository);
     }
 
     @Test
     void rerunsTheExactStoredExecutionInputAndPreservesItsSourceSnapshot() throws Exception {
         UUID sourceTaskId = UUID.randomUUID();
         UUID flowId = UUID.randomUUID();
+        UUID continuationAncestorId = UUID.randomUUID();
         LocalDateTime flowUpdatedAt = LocalDateTime.of(2026, 7, 18, 9, 30);
         FlowRunSnapshotResponse snapshot = new FlowRunSnapshotResponse(
                 flowId,
@@ -295,6 +359,7 @@ class TaskServiceTest {
                 .sourceFlowId(flowId)
                 .sourceFlowTitle("Launch decision")
                 .sourceFlowSnapshotJson(snapshotJson)
+                .continuedFromTaskId(continuationAncestorId)
                 .createdAt(LocalDateTime.now().minusDays(1))
                 .build();
         when(taskRepository.findById(sourceTaskId)).thenReturn(Optional.of(sourceTask));
@@ -326,10 +391,12 @@ class TaskServiceTest {
         assertThat(rerun.getSourceFlowTitle()).isEqualTo("Launch decision");
         assertThat(rerun.getSourceFlowSnapshotJson()).contains("Keep the first release focused.");
         assertThat(rerun.getRerunOfTaskId()).isEqualTo(sourceTaskId);
+        assertThat(rerun.getContinuedFromTaskId()).isEqualTo(continuationAncestorId);
         assertThat(rerun.getProvider()).isEqualTo("openai");
         assertThat(rerun.getModel()).isEqualTo("gpt-4.1");
         assertThat(response.executionInput()).isEqualTo(sourceTask.getInput());
         assertThat(response.rerunOfTaskId()).isEqualTo(sourceTaskId);
+        assertThat(response.continuedFromTaskId()).isEqualTo(continuationAncestorId);
         assertThat(response.flowRunSnapshot()).isEqualTo(snapshot);
         assertThat(response.totalTokens()).isEqualTo(750);
         verifyNoInteractions(promptRepository, workflowRepository);

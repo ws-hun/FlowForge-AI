@@ -35,12 +35,15 @@
           compact
           :show-raw="false"
         />
+        <div class="run-comparison-pane-actions">
+          <button type="button" class="secondary-button" @click="emit('continue', sourceRun)">用此结果继续</button>
+        </div>
       </section>
 
       <section class="run-comparison-pane current">
         <div class="run-comparison-pane-header">
           <div>
-            <span class="badge">本次重跑</span>
+            <span class="badge">{{ targetLabel }}</span>
             <time>{{ formatDate(targetRun.createdAt) }}</time>
           </div>
           <span class="run-provenance">
@@ -58,25 +61,35 @@
           compact
           :show-raw="false"
         />
+        <div class="run-comparison-pane-actions">
+          <button type="button" class="secondary-button" @click="emit('continue', targetRun)">用此结果继续</button>
+        </div>
       </section>
     </div>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import { formatExecutionSource } from '@/utils/aiProvider'
 import type { TaskHistoryItem } from '@/types'
 
-defineProps<{
+const props = withDefaults(defineProps<{
   open: boolean
   sourceRun: TaskHistoryItem | null
   targetRun: TaskHistoryItem | null
-}>()
+  mode?: 'rerun' | 'continuation'
+}>(), {
+  mode: 'rerun'
+})
 
 const emit = defineEmits<{
   close: []
+  continue: [run: TaskHistoryItem]
 }>()
+
+const targetLabel = computed(() => (props.mode === 'continuation' ? '继续结果' : '本次重跑'))
 
 function handleOpenChange(value: boolean) {
   if (!value) {

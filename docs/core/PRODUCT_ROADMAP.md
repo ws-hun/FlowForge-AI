@@ -89,7 +89,7 @@ Current Stage 3 capabilities:
 - Flow variables with preflight validation and atomic rename.
 - Server-compiled execution previews.
 - Immutable run snapshots with source, Provider, model, and token usage.
-- Reuse through run settings, snapshot branching, result-to-Prompt, exact historical reruns, and run comparison.
+- Reuse through run settings, snapshot branching, result-to-Prompt, exact historical reruns, run comparison, and result continuation.
 
 Current Stage 3 priorities:
 

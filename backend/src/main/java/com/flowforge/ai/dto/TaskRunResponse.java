@@ -12,6 +12,7 @@ public record TaskRunResponse(
         Integer outputTokens,
         Integer totalTokens,
         UUID rerunOfTaskId,
+        UUID continuedFromTaskId,
         String executionInput,
         UUID taskId,
         FlowRunSnapshotResponse flowRunSnapshot
