@@ -11,6 +11,7 @@ import com.flowforge.ai.dto.TaskHistoryResponse;
 import com.flowforge.ai.dto.TaskRunResponse;
 import com.flowforge.ai.entity.Task;
 import com.flowforge.ai.entity.Workflow;
+import com.flowforge.ai.exception.AiExecutionException;
 import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.repository.PromptRepository;
 import com.flowforge.ai.repository.TaskRepository;
@@ -35,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -52,6 +54,9 @@ class TaskServiceTest {
     @Mock
     private WorkflowRepository workflowRepository;
 
+    @Mock
+    private TaskFailureRecorder taskFailureRecorder;
+
     @Captor
     private ArgumentCaptor<Task> taskCaptor;
 
@@ -68,7 +73,8 @@ class TaskServiceTest {
                 taskRepository,
                 promptRepository,
                 workflowRepository,
-                objectMapper
+                objectMapper,
+                taskFailureRecorder
         );
     }
 
@@ -167,6 +173,7 @@ class TaskServiceTest {
         assertThat(savedTask.getInput()).isEqualTo(executionInput);
         assertThat(savedTask.getProvider()).isEqualTo("deepseek");
         assertThat(savedTask.getModel()).isEqualTo("deepseek-chat");
+        assertThat(savedTask.getStatus()).isEqualTo(Task.STATUS_COMPLETED);
         assertThat(savedTask.getInputTokens()).isEqualTo(820);
         assertThat(savedTask.getOutputTokens()).isEqualTo(430);
         assertThat(savedTask.getTotalTokens()).isEqualTo(1250);
@@ -261,8 +268,42 @@ class TaskServiceTest {
             assertThat(item.totalTokens()).isEqualTo(1000);
             assertThat(item.rerunOfTaskId()).isEqualTo(rerunOfTaskId);
             assertThat(item.continuedFromTaskId()).isEqualTo(continuedFromTaskId);
+            assertThat(item.status()).isEqualTo(Task.STATUS_COMPLETED);
+            assertThat(item.errorMessage()).isNull();
             assertThat(item.createdAt()).isEqualTo(createdAt);
         });
+    }
+
+    @Test
+    void recordsAProviderFailureWithoutLosingTheExecutionContext() {
+        AiExecutionException failure = new AiExecutionException(
+                "deepseek",
+                "deepseek-chat",
+                "AI API error: rate limit exceeded",
+                new IllegalStateException("rate limit exceeded")
+        );
+        when(openAiService.processTask("Prepare a release plan")).thenThrow(failure);
+
+        assertThatThrownBy(() -> taskService.runTask(new RunTaskRequest(
+                "Prepare a release plan",
+                null,
+                null,
+                null,
+                null
+        )))
+                .isSameAs(failure);
+
+        verify(taskFailureRecorder).record(taskCaptor.capture());
+        Task failedTask = taskCaptor.getValue();
+        assertThat(failedTask.getInput()).isEqualTo("Prepare a release plan");
+        assertThat(failedTask.getSummary()).isEqualTo("AI 执行失败");
+        assertThat(failedTask.getResult()).isEqualTo("AI API error: rate limit exceeded");
+        assertThat(failedTask.getProvider()).isEqualTo("deepseek");
+        assertThat(failedTask.getModel()).isEqualTo("deepseek-chat");
+        assertThat(failedTask.getStatus()).isEqualTo(Task.STATUS_FAILED);
+        assertThat(failedTask.getErrorMessage()).isEqualTo("AI API error: rate limit exceeded");
+        verify(taskRepository, never()).save(any(Task.class));
+        verifyNoInteractions(promptRepository, workflowRepository);
     }
 
     @Test

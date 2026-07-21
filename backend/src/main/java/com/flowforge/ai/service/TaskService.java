@@ -13,6 +13,7 @@ import com.flowforge.ai.dto.TaskRunResponse;
 import com.flowforge.ai.entity.Prompt;
 import com.flowforge.ai.entity.Task;
 import com.flowforge.ai.entity.Workflow;
+import com.flowforge.ai.exception.AiExecutionException;
 import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.repository.PromptRepository;
 import com.flowforge.ai.repository.TaskRepository;
@@ -44,6 +45,7 @@ public class TaskService {
     private final PromptRepository promptRepository;
     private final WorkflowRepository workflowRepository;
     private final ObjectMapper objectMapper;
+    private final TaskFailureRecorder taskFailureRecorder;
 
     @Transactional
     public TaskRunResponse runTask(RunTaskRequest request) {
@@ -124,10 +126,15 @@ public class TaskService {
     }
 
     private TaskRunResponse executeAndSave(String executionInput, TaskExecutionSource source) {
-        OpenAiTaskResult aiResult = openAiService.processTask(executionInput);
+        OpenAiTaskResult aiResult;
+        try {
+            aiResult = openAiService.processTask(executionInput);
+        } catch (RuntimeException ex) {
+            recordFailedExecution(executionInput, source, ex);
+            throw ex;
+        }
 
-        Task task = Task.builder()
-                .input(executionInput)
+        Task task = createTaskBuilder(executionInput, source)
                 .summary(aiResult.summary())
                 .result(aiResult.result())
                 .provider(aiResult.provider())
@@ -135,13 +142,7 @@ public class TaskService {
                 .inputTokens(aiResult.inputTokens())
                 .outputTokens(aiResult.outputTokens())
                 .totalTokens(aiResult.totalTokens())
-                .rerunOfTaskId(source.rerunOfTaskId())
-                .continuedFromTaskId(source.continuedFromTaskId())
-                .sourcePromptId(source.promptId())
-                .sourcePromptTitle(source.promptTitle())
-                .sourceFlowId(source.flowId())
-                .sourceFlowTitle(source.flowTitle())
-                .sourceFlowSnapshotJson(serializeFlowRunSnapshot(source.flowRunSnapshot()))
+                .status(Task.STATUS_COMPLETED)
                 .build();
 
         Task savedTask = taskRepository.save(task);
@@ -161,6 +162,43 @@ public class TaskService {
                 savedTask.getId(),
                 source.flowRunSnapshot()
         );
+    }
+
+    private void recordFailedExecution(String executionInput, TaskExecutionSource source, RuntimeException exception) {
+        String errorMessage = StringUtils.hasText(exception.getMessage())
+                ? exception.getMessage()
+                : "AI Provider execution failed";
+        String provider = exception instanceof AiExecutionException aiException
+                ? aiException.getProvider()
+                : null;
+        String model = exception instanceof AiExecutionException aiException
+                ? aiException.getModel()
+                : null;
+        Task failedTask = createTaskBuilder(executionInput, source)
+                .summary("AI 执行失败")
+                .result(errorMessage)
+                .provider(provider)
+                .model(model)
+                .status(Task.STATUS_FAILED)
+                .errorMessage(errorMessage)
+                .build();
+        try {
+            taskFailureRecorder.record(failedTask);
+        } catch (RuntimeException persistenceFailure) {
+            exception.addSuppressed(persistenceFailure);
+        }
+    }
+
+    private Task.TaskBuilder createTaskBuilder(String executionInput, TaskExecutionSource source) {
+        return Task.builder()
+                .input(executionInput)
+                .rerunOfTaskId(source.rerunOfTaskId())
+                .continuedFromTaskId(source.continuedFromTaskId())
+                .sourcePromptId(source.promptId())
+                .sourcePromptTitle(source.promptTitle())
+                .sourceFlowId(source.flowId())
+                .sourceFlowTitle(source.flowTitle())
+                .sourceFlowSnapshotJson(serializeFlowRunSnapshot(source.flowRunSnapshot()));
     }
 
     @Transactional(readOnly = true)
@@ -435,6 +473,8 @@ public class TaskService {
                 task.getTotalTokens(),
                 task.getRerunOfTaskId(),
                 task.getContinuedFromTaskId(),
+                StringUtils.hasText(task.getStatus()) ? task.getStatus() : Task.STATUS_COMPLETED,
+                task.getErrorMessage(),
                 task.getSourcePromptId(),
                 task.getSourcePromptTitle(),
                 task.getSourceFlowId(),

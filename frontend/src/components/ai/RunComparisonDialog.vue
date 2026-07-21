@@ -35,7 +35,7 @@
           compact
           :show-raw="false"
         />
-        <div class="run-comparison-pane-actions">
+        <div v-if="sourceRun.status !== 'failed'" class="run-comparison-pane-actions">
           <button type="button" class="secondary-button" @click="emit('continue', sourceRun)">用此结果继续</button>
         </div>
       </section>
@@ -61,7 +61,7 @@
           compact
           :show-raw="false"
         />
-        <div class="run-comparison-pane-actions">
+        <div v-if="targetRun.status !== 'failed'" class="run-comparison-pane-actions">
           <button type="button" class="secondary-button" @click="emit('continue', targetRun)">用此结果继续</button>
         </div>
       </section>

@@ -3,9 +3,13 @@ package com.flowforge.ai.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowforge.ai.dto.OpenAiTaskResult;
 import com.flowforge.ai.entity.AiApiKey;
+import com.flowforge.ai.exception.AiExecutionException;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class OpenAiServiceTest {
 
@@ -66,5 +70,23 @@ class OpenAiServiceTest {
         assertThat(enriched.inputTokens()).isNull();
         assertThat(enriched.outputTokens()).isNull();
         assertThat(enriched.totalTokens()).isNull();
+    }
+
+    @Test
+    void preservesProviderAndModelWhenExecutionFails() {
+        AiApiKeyService apiKeyService = mock(AiApiKeyService.class);
+        AiApiKey config = AiApiKey.builder()
+                .provider("unsupported")
+                .model("custom-model")
+                .build();
+        when(apiKeyService.getActiveKey()).thenReturn(config);
+        OpenAiService service = new OpenAiService(null, apiKeyService, new ObjectMapper());
+
+        assertThatThrownBy(() -> service.processTask("Execute this task"))
+                .isInstanceOfSatisfying(AiExecutionException.class, error -> {
+                    assertThat(error.getProvider()).isEqualTo("unsupported");
+                    assertThat(error.getModel()).isEqualTo("custom-model");
+                    assertThat(error.getMessage()).isEqualTo("Unsupported AI provider: unsupported");
+                });
     }
 }

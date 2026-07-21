@@ -141,6 +141,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       await loadTasks()
     } catch (error: any) {
       ElMessage.error(error.response?.data?.message || '任务执行失败')
+      await loadTasks()
     } finally {
       running.value = false
     }
@@ -165,6 +166,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       return data
     } catch (error: any) {
       ElMessage.error(error.response?.data?.message || '历史任务重新执行失败')
+      await loadTasks()
       return null
     } finally {
       running.value = false
@@ -716,6 +718,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       return data
     } catch (error: any) {
       ElMessage.error(error.response?.data?.message || 'Flow 执行失败')
+      await loadTasks()
       return null
     } finally {
       running.value = false

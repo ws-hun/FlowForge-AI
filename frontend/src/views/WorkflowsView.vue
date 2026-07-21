@@ -626,18 +626,20 @@
               :key="run.id"
               type="button"
               class="run-item"
-              :class="{ active: selectedFlowRun?.id === run.id }"
+              :class="{ active: selectedFlowRun?.id === run.id, failed: run.status === 'failed' }"
+              :disabled="run.status === 'failed'"
               @click="selectFlowRun(run)"
             >
               <time>{{ formatDate(run.createdAt) }}</time>
               <div class="run-item-heading">
                 <strong>{{ run.summary }}</strong>
-                <span v-if="run.flowRunSnapshot">已固定快照</span>
+                <span v-if="run.status === 'failed'" class="error">执行失败</span>
+                <span v-else-if="run.flowRunSnapshot">已固定快照</span>
               </div>
               <span v-if="formatExecutionSource(run.provider, run.model, run.totalTokens)" class="run-provenance">
                 {{ formatExecutionSource(run.provider, run.model, run.totalTokens) }}
               </span>
-              <p>{{ run.result }}</p>
+              <p>{{ run.status === 'failed' ? run.errorMessage || run.result : run.result }}</p>
             </button>
           </div>
           <p v-else class="quiet-note">

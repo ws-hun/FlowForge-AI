@@ -8,11 +8,14 @@
 
     <div class="timeline">
       <article v-for="task in workspace.tasks" :key="task.id" class="timeline-item">
-        <span class="timeline-dot"></span>
-        <div class="timeline-content soft-card">
+        <span class="timeline-dot" :class="{ failed: isFailed(task) }"></span>
+        <div class="timeline-content soft-card" :class="{ failed: isFailed(task) }">
           <div class="row-between">
             <strong>{{ task.input }}</strong>
-            <small>{{ new Date(task.createdAt).toLocaleString() }}</small>
+            <div class="history-run-meta">
+              <span v-if="isFailed(task)" class="history-status failed">执行失败</span>
+              <small>{{ new Date(task.createdAt).toLocaleString() }}</small>
+            </div>
           </div>
           <div v-if="task.sourceFlowTitle || task.sourcePromptTitle" class="history-source-row">
             <span class="badge">{{ task.sourceFlowTitle ? 'Flow' : 'Prompt' }}</span>
@@ -31,14 +34,16 @@
               }}
             </strong>
           </div>
-          <p class="muted">{{ task.summary }}</p>
+          <p class="muted" :class="{ 'error-copy': isFailed(task) }">
+            {{ isFailed(task) ? task.errorMessage || task.result : task.summary }}
+          </p>
           <div class="history-reuse-row">
             <span class="run-provenance">
               {{ formatExecutionSource(task.provider, task.model, task.totalTokens) || '已保存服务端执行输入' }}
             </span>
             <div class="history-reuse-actions">
               <button
-                v-if="lineageSource(task)"
+                v-if="canCompareWithSource(task)"
                 type="button"
                 class="ghost-button"
                 @click="compareWithSource(task)"
@@ -56,8 +61,14 @@
             </div>
           </div>
           <el-collapse>
-            <el-collapse-item title="查看结果" :name="task.id">
+            <el-collapse-item :title="isFailed(task) ? '查看失败详情' : '查看结果'" :name="task.id">
+              <div v-if="isFailed(task)" class="failed-run-detail">
+                <span class="section-kicker">Execution Error</span>
+                <strong>{{ task.errorMessage || task.result }}</strong>
+                <p>执行输入、来源和 Flow 快照已保留，可以使用当前 Provider 重新运行。</p>
+              </div>
               <AiResultDocument
+                v-else
                 :summary="task.summary"
                 :result="task.result"
                 :provider="task.provider"
@@ -140,6 +151,15 @@ function lineageSource(task: TaskHistoryItem) {
 
 function lineageLabel(task: TaskHistoryItem) {
   return task.rerunOfTaskId ? '重跑自' : '继续自'
+}
+
+function isFailed(task: TaskHistoryItem) {
+  return task.status === 'failed'
+}
+
+function canCompareWithSource(task: TaskHistoryItem) {
+  const sourceRun = lineageSource(task)
+  return Boolean(sourceRun && !isFailed(sourceRun) && !isFailed(task))
 }
 
 function lineageMode(task: TaskHistoryItem): 'rerun' | 'continuation' {

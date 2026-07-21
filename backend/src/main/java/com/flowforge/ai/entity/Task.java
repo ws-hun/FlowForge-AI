@@ -23,6 +23,9 @@ import java.util.UUID;
 @AllArgsConstructor
 public class Task {
 
+    public static final String STATUS_COMPLETED = "completed";
+    public static final String STATUS_FAILED = "failed";
+
     @Id
     @Column(nullable = false, updatable = false)
     private UUID id;
@@ -57,6 +60,12 @@ public class Task {
     @Column(name = "continued_from_task_id")
     private UUID continuedFromTaskId;
 
+    @Column(length = 20)
+    private String status;
+
+    @Column(name = "error_message", columnDefinition = "TEXT")
+    private String errorMessage;
+
     @Column(name = "source_prompt_id")
     private UUID sourcePromptId;
 
@@ -82,6 +91,9 @@ public class Task {
         }
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
+        }
+        if (status == null || status.isBlank()) {
+            status = STATUS_COMPLETED;
         }
     }
 }

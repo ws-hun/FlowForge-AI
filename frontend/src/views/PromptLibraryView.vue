@@ -195,13 +195,13 @@
             <article v-for="item in 2" :key="item" class="run-item skeleton-run"></article>
           </div>
           <div v-else-if="promptRuns.length" class="run-timeline">
-            <article v-for="run in promptRuns" :key="run.id" class="run-item">
+            <article v-for="run in promptRuns" :key="run.id" class="run-item" :class="{ failed: run.status === 'failed' }">
               <time>{{ formatDate(run.createdAt) }}</time>
               <strong>{{ run.summary }}</strong>
               <span v-if="formatExecutionSource(run.provider, run.model, run.totalTokens)" class="run-provenance">
                 {{ formatExecutionSource(run.provider, run.model, run.totalTokens) }}
               </span>
-              <p>{{ run.result }}</p>
+              <p>{{ run.status === 'failed' ? run.errorMessage || run.result : run.result }}</p>
             </article>
           </div>
           <div v-else class="quiet-empty">

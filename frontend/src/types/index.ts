@@ -28,6 +28,8 @@ export interface TaskHistoryItem {
   totalTokens?: number | null
   rerunOfTaskId?: string | null
   continuedFromTaskId?: string | null
+  status?: 'completed' | 'failed' | null
+  errorMessage?: string | null
   sourcePromptId?: string | null
   sourcePromptTitle?: string | null
   sourceFlowId?: string | null

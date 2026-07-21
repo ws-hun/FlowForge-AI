@@ -94,6 +94,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Exact Historical Rerun | Done | 使用历史中固化的服务端执行输入与 Flow 快照，通过当前 Provider 创建一次新的可比较运行 |
 | Stage 3 | Run Lineage & Comparison | Done | 重跑记录保留来源运行关系，并在 History 中并排比较 Provider、Token、摘要与结果 |
 | Stage 3 | Historical Result Continuation | Done | 从任意历史结果继续创作，服务端读取固定结果编译新输入并保留继续关系 |
+| Stage 3 | Failed Run Recovery | Done | Provider 调用失败时独立保存执行输入、来源、快照和错误信息，并支持从 History 精确重跑 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
 | Future | Knowledge Base | Preview UI | 产品预留界面，暂未接入向量检索 |
 | Future | Analytics | Preview UI | 轻量洞察预留，暂未做完整数据分析系统 |
@@ -116,6 +117,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | 历史运行精确重跑 | Done |
 | 重跑来源追踪与结果对比 | Done |
 | 历史结果继续创作与来源追踪 | Done |
+| 失败执行保存与恢复重跑 | Done |
 | 从 Prompt 带入任务 | Done |
 | 从 Flow 带入任务 | Done |
 | 任务来源上下文提示 | Done |
@@ -268,6 +270,7 @@ Controller -> Service -> Repository -> Entity
 | Service | Responsibility |
 | --- | --- |
 | `TaskService` | AI 任务执行与历史记录 |
+| `TaskFailureRecorder` | 使用独立事务保存失败运行，避免随执行异常回滚 |
 | `OpenAiService` | OpenAI-compatible HTTP 调用 |
 | `AiApiKeyService` | Provider Key 管理 |
 | `PromptService` | Prompt 资产、收藏、版本 |
@@ -499,6 +502,8 @@ Response:
 重跑生成的新 Task 会通过 `rerunOfTaskId` 指向直接来源运行。History 会基于这条运行谱系提供双文档对比，原运行与本次重跑的 Provider、模型、Token、摘要和结果都保持可见。
 
 从比较界面选择“用此结果继续”后，AI Command 只要求用户填写新的推进方向。请求通过 `continuedFromTaskId` 指向来源 Task，后端从数据库读取其 Summary、Result 和原始来源快照，再编译新的执行输入；浏览器不需要回传或复制完整历史结果。
+
+当 Provider 调用失败时，API 仍按原错误返回 `502 Bad Gateway`，同时使用独立事务在 History 中保存一条 `failed` 运行。失败记录包含服务端执行输入、Provider / Model、Prompt / Flow 来源、运行快照和错误信息，可以直接通过精确重跑恢复。
 
 ### Provider
 

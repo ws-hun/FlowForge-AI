@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowforge.ai.dto.OpenAiTaskResult;
 import com.flowforge.ai.entity.AiApiKey;
+import com.flowforge.ai.exception.AiExecutionException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -29,13 +30,20 @@ public class OpenAiService {
 
     public OpenAiTaskResult processTask(String input) {
         AiApiKey activeKey = aiApiKeyService.getActiveKey();
-        OpenAiTaskResult result = switch (activeKey.getProvider()) {
-            case "deepseek" -> processWithDeepSeek(input, activeKey);
-            case "openai" -> processWithOpenAi(input, activeKey);
-            default -> throw new IllegalStateException("Unsupported AI provider: " + activeKey.getProvider());
-        };
+        try {
+            OpenAiTaskResult result = switch (activeKey.getProvider()) {
+                case "deepseek" -> processWithDeepSeek(input, activeKey);
+                case "openai" -> processWithOpenAi(input, activeKey);
+                default -> throw new IllegalStateException("Unsupported AI provider: " + activeKey.getProvider());
+            };
 
-        return attachExecutionMetadata(activeKey, result);
+            return attachExecutionMetadata(activeKey, result);
+        } catch (RuntimeException ex) {
+            if (ex instanceof AiExecutionException executionException) {
+                throw executionException;
+            }
+            throw new AiExecutionException(activeKey.getProvider(), activeKey.getModel(), ex.getMessage(), ex);
+        }
     }
 
     OpenAiTaskResult attachExecutionMetadata(AiApiKey activeKey, OpenAiTaskResult result) {
