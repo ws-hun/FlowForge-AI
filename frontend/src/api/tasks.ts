@@ -30,6 +30,10 @@ export function listTasks() {
   return http.get<TaskHistoryItem[]>('/api/tasks')
 }
 
+export function rerunTask(id: string) {
+  return http.post<TaskRunResponse>(`/api/tasks/${id}/rerun`)
+}
+
 export function listApiKeys() {
   return http.get<ApiKeyConfig[]>('/api/settings/api-keys')
 }

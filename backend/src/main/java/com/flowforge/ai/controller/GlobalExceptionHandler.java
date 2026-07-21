@@ -1,6 +1,7 @@
 package com.flowforge.ai.controller;
 
 import com.flowforge.ai.dto.ErrorResponse;
+import com.flowforge.ai.exception.ResourceNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -41,6 +42,12 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse handleResourceNotFound(NoResourceFoundException ex) {
         return new ErrorResponse("Resource not found", LocalDateTime.now());
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleResourceNotFound(ResourceNotFoundException ex) {
+        return new ErrorResponse(ex.getMessage(), LocalDateTime.now());
     }
 
     @ExceptionHandler(Exception.class)

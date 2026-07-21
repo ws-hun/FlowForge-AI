@@ -13,6 +13,7 @@ import com.flowforge.ai.dto.TaskRunResponse;
 import com.flowforge.ai.entity.Prompt;
 import com.flowforge.ai.entity.Task;
 import com.flowforge.ai.entity.Workflow;
+import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.repository.PromptRepository;
 import com.flowforge.ai.repository.TaskRepository;
 import com.flowforge.ai.repository.WorkflowRepository;
@@ -62,6 +63,37 @@ public class TaskService {
         String executionInput = flowRunSnapshot == null
                 ? standaloneInput
                 : compileFlowExecutionInput(flowRunSnapshot);
+        return executeAndSave(
+                executionInput,
+                new TaskExecutionSource(
+                        sourcePrompt == null ? null : sourcePrompt.getId(),
+                        sourcePrompt == null ? null : sourcePrompt.getTitle(),
+                        sourceFlow == null ? null : sourceFlow.getId(),
+                        sourceFlow == null ? null : sourceFlow.getTitle(),
+                        flowRunSnapshot
+                )
+        );
+    }
+
+    @Transactional
+    public TaskRunResponse rerunTask(UUID taskId) {
+        Task sourceTask = taskRepository.findById(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Task run not found"));
+        FlowRunSnapshotResponse flowRunSnapshot = deserializeFlowRunSnapshot(sourceTask.getSourceFlowSnapshotJson());
+
+        return executeAndSave(
+                sourceTask.getInput(),
+                new TaskExecutionSource(
+                        sourceTask.getSourcePromptId(),
+                        sourceTask.getSourcePromptTitle(),
+                        sourceTask.getSourceFlowId(),
+                        sourceTask.getSourceFlowTitle(),
+                        flowRunSnapshot
+                )
+        );
+    }
+
+    private TaskRunResponse executeAndSave(String executionInput, TaskExecutionSource source) {
         OpenAiTaskResult aiResult = openAiService.processTask(executionInput);
 
         Task task = Task.builder()
@@ -73,11 +105,11 @@ public class TaskService {
                 .inputTokens(aiResult.inputTokens())
                 .outputTokens(aiResult.outputTokens())
                 .totalTokens(aiResult.totalTokens())
-                .sourcePromptId(sourcePrompt == null ? null : sourcePrompt.getId())
-                .sourcePromptTitle(sourcePrompt == null ? null : sourcePrompt.getTitle())
-                .sourceFlowId(sourceFlow == null ? null : sourceFlow.getId())
-                .sourceFlowTitle(sourceFlow == null ? null : sourceFlow.getTitle())
-                .sourceFlowSnapshotJson(serializeFlowRunSnapshot(flowRunSnapshot))
+                .sourcePromptId(source.promptId())
+                .sourcePromptTitle(source.promptTitle())
+                .sourceFlowId(source.flowId())
+                .sourceFlowTitle(source.flowTitle())
+                .sourceFlowSnapshotJson(serializeFlowRunSnapshot(source.flowRunSnapshot()))
                 .build();
 
         Task savedTask = taskRepository.save(task);
@@ -93,7 +125,7 @@ public class TaskService {
                 aiResult.totalTokens(),
                 executionInput,
                 savedTask.getId(),
-                flowRunSnapshot
+                source.flowRunSnapshot()
         );
     }
 
@@ -349,5 +381,14 @@ public class TaskService {
                 deserializeFlowRunSnapshot(task.getSourceFlowSnapshotJson()),
                 task.getCreatedAt()
         );
+    }
+
+    private record TaskExecutionSource(
+            UUID promptId,
+            String promptTitle,
+            UUID flowId,
+            String flowTitle,
+            FlowRunSnapshotResponse flowRunSnapshot
+    ) {
     }
 }

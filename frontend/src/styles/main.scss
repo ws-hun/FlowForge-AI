@@ -505,6 +505,20 @@ a {
   }
 }
 
+.history-reuse-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+
+  .ghost-button {
+    min-height: 36px;
+    background: rgba(243, 245, 247, 0.72);
+  }
+}
+
 .row-between {
   display: flex;
   align-items: center;

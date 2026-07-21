@@ -1,15 +1,17 @@
 package com.flowforge.ai.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.flowforge.ai.dto.FlowNodeDto;
 import com.flowforge.ai.dto.FlowExecutionPreviewRequest;
 import com.flowforge.ai.dto.FlowExecutionPreviewResponse;
+import com.flowforge.ai.dto.FlowNodeDto;
+import com.flowforge.ai.dto.FlowRunSnapshotResponse;
 import com.flowforge.ai.dto.OpenAiTaskResult;
 import com.flowforge.ai.dto.RunTaskRequest;
 import com.flowforge.ai.dto.TaskHistoryResponse;
 import com.flowforge.ai.dto.TaskRunResponse;
 import com.flowforge.ai.entity.Task;
 import com.flowforge.ai.entity.Workflow;
+import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.repository.PromptRepository;
 import com.flowforge.ai.repository.TaskRepository;
 import com.flowforge.ai.repository.WorkflowRepository;
@@ -255,6 +257,89 @@ class TaskServiceTest {
             assertThat(item.totalTokens()).isEqualTo(1000);
             assertThat(item.createdAt()).isEqualTo(createdAt);
         });
+    }
+
+    @Test
+    void rerunsTheExactStoredExecutionInputAndPreservesItsSourceSnapshot() throws Exception {
+        UUID sourceTaskId = UUID.randomUUID();
+        UUID flowId = UUID.randomUUID();
+        LocalDateTime flowUpdatedAt = LocalDateTime.of(2026, 7, 18, 9, 30);
+        FlowRunSnapshotResponse snapshot = new FlowRunSnapshotResponse(
+                flowId,
+                "Launch decision",
+                "Decide the first launch scope",
+                List.of(new FlowNodeDto(
+                        "input-1",
+                        "input",
+                        "Launch context",
+                        "The fixed context for this run",
+                        "Prepare the launch for product teams.",
+                        null,
+                        null
+                )),
+                flowUpdatedAt,
+                "Keep the first release focused.",
+                Map.of("audience", "product teams")
+        );
+        String snapshotJson = new ObjectMapper().findAndRegisterModules().writeValueAsString(snapshot);
+        Task sourceTask = Task.builder()
+                .id(sourceTaskId)
+                .input("Exact server-compiled execution input")
+                .summary("Original result")
+                .result("Original content")
+                .provider("deepseek")
+                .model("deepseek-chat")
+                .sourceFlowId(flowId)
+                .sourceFlowTitle("Launch decision")
+                .sourceFlowSnapshotJson(snapshotJson)
+                .createdAt(LocalDateTime.now().minusDays(1))
+                .build();
+        when(taskRepository.findById(sourceTaskId)).thenReturn(Optional.of(sourceTask));
+        when(openAiService.processTask("Exact server-compiled execution input"))
+                .thenReturn(new OpenAiTaskResult(
+                        "Current provider result",
+                        "New content",
+                        "{}",
+                        "openai",
+                        "gpt-4.1",
+                        500,
+                        250,
+                        750
+                ));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
+            Task task = invocation.getArgument(0);
+            task.setId(UUID.randomUUID());
+            return task;
+        });
+
+        TaskRunResponse response = taskService.rerunTask(sourceTaskId);
+
+        verify(openAiService).processTask("Exact server-compiled execution input");
+        verify(taskRepository).save(taskCaptor.capture());
+        Task rerun = taskCaptor.getValue();
+        assertThat(rerun).isNotSameAs(sourceTask);
+        assertThat(rerun.getInput()).isEqualTo(sourceTask.getInput());
+        assertThat(rerun.getSourceFlowId()).isEqualTo(flowId);
+        assertThat(rerun.getSourceFlowTitle()).isEqualTo("Launch decision");
+        assertThat(rerun.getSourceFlowSnapshotJson()).contains("Keep the first release focused.");
+        assertThat(rerun.getProvider()).isEqualTo("openai");
+        assertThat(rerun.getModel()).isEqualTo("gpt-4.1");
+        assertThat(response.executionInput()).isEqualTo(sourceTask.getInput());
+        assertThat(response.flowRunSnapshot()).isEqualTo(snapshot);
+        assertThat(response.totalTokens()).isEqualTo(750);
+        verifyNoInteractions(promptRepository, workflowRepository);
+    }
+
+    @Test
+    void rejectsRerunWhenTheSourceTaskDoesNotExist() {
+        UUID taskId = UUID.randomUUID();
+        when(taskRepository.findById(taskId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> taskService.rerunTask(taskId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Task run not found");
+
+        verifyNoInteractions(openAiService, promptRepository, workflowRepository);
     }
 
     @Test

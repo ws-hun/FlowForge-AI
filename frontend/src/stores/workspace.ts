@@ -6,6 +6,7 @@ import {
   deleteApiKey,
   listApiKeys,
   listTasks,
+  rerunTask as rerunTaskRequest,
   runTask,
   saveApiKey
 } from '@/api/tasks'
@@ -139,6 +140,31 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       await loadTasks()
     } catch (error: any) {
       ElMessage.error(error.response?.data?.message || '任务执行失败')
+    } finally {
+      running.value = false
+    }
+  }
+
+  async function rerunHistoricalTask(taskId: string) {
+    if (!activeProvider.value) {
+      ElMessage.warning('请先配置并激活 AI Provider')
+      return null
+    }
+
+    running.value = true
+    try {
+      const { data } = await rerunTaskRequest(taskId)
+      latestResult.value = data
+      latestTaskInput.value = data.executionInput
+      latestTaskPrompt.value = null
+      taskInput.value = ''
+      clearTaskSource()
+      ElMessage.success('已使用当前 Provider 重新执行')
+      await loadTasks()
+      return data
+    } catch (error: any) {
+      ElMessage.error(error.response?.data?.message || '历史任务重新执行失败')
+      return null
     } finally {
       running.value = false
     }
@@ -782,6 +808,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     sendFlowToTask,
     executeActiveFlow,
     executeTask,
+    rerunHistoricalTask,
     saveLatestTaskAsPrompt,
     createFlowFromLatestTask,
     prepareTask,

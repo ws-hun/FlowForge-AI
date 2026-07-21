@@ -19,6 +19,19 @@
             <strong>{{ task.sourceFlowTitle || task.sourcePromptTitle }}</strong>
           </div>
           <p class="muted">{{ task.summary }}</p>
+          <div class="history-reuse-row">
+            <span class="run-provenance">
+              {{ formatExecutionSource(task.provider, task.model, task.totalTokens) || '已保存服务端执行输入' }}
+            </span>
+            <button
+              type="button"
+              class="ghost-button"
+              :disabled="workspace.running"
+              @click="rerunHistoryTask(task.id)"
+            >
+              {{ workspace.running ? '执行中...' : '使用当前 Provider 重跑' }}
+            </button>
+          </div>
           <el-collapse>
             <el-collapse-item title="查看结果" :name="task.id">
               <AiResultDocument
@@ -56,10 +69,24 @@ import { useRouter } from 'vue-router'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
 import { useWorkspaceStore } from '@/stores/workspace'
+import { formatExecutionSource } from '@/utils/aiProvider'
 import type { FlowRunSnapshot as FlowRunSnapshotType } from '@/types'
 
 const router = useRouter()
 const workspace = useWorkspaceStore()
+
+async function rerunHistoryTask(taskId: string) {
+  if (!workspace.activeProvider) {
+    ElMessage.warning('请先配置并激活 AI Provider')
+    router.push('/api-keys')
+    return
+  }
+
+  const result = await workspace.rerunHistoricalTask(taskId)
+  if (result) {
+    router.push('/tasks')
+  }
+}
 
 function flowStillAvailable(snapshot: FlowRunSnapshotType) {
   return workspace.flowDrafts.some((flow) => flow.id === snapshot.flowId)
