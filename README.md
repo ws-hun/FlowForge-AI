@@ -79,6 +79,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Node Reuse | Done | Flow 节点可沉淀为 Prompt，也可单独带入 Task 试跑 |
 | Stage 3 | Prompt Asset Provenance | Done | 从 AI 结果或 Flow 节点沉淀的 Prompt 固化来源运行、Flow、节点与原 Prompt，并可回到来源继续创作 |
 | Stage 3 | Prompt Revision Branching | Done | 从任意 Prompt 历史版本创建带来源关系的独立变体，无需覆盖当前资产 |
+| Stage 3 | Prompt Unsaved Edit Guard | Done | 关闭编辑器、页面跳转或刷新前统一处理未保存 Prompt，避免创作内容静默丢失 |
 | Stage 3 | Flow Revisions | Done | 每次编辑前保存 Flow 快照，恢复前可预览任意创作节点及其影响范围 |
 | Stage 3 | Flow Unsaved Edit Guard | Done | 切换 Flow / 节点、预览、执行、复用或离开页面前统一处理未保存修改，避免编辑内容静默丢失或执行旧版本 |
 | Stage 3 | Reproducible Flow Runs | Done | 每次 Flow 执行由服务端根据已保存的节点、目标、Run Brief 和变量值编译；变量可注入 Input / Context / Prompt / AI Task / Output，工作区可在执行前查看同一份服务端输入，历史不受后续编辑或浏览器输入影响 |
@@ -166,6 +167,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | Result / Flow Node 来源追踪 | Done |
 | 从 Prompt 详情继续来源结果或打开来源 Flow | Done |
 | 从历史版本创建 Prompt 变体并回看来源 Prompt | Done |
+| Prompt 编辑保存状态与离开保护 | Done |
 
 ### Workflow Builder
 

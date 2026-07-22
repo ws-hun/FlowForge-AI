@@ -100,7 +100,13 @@
       </div>
     </div>
 
-    <el-dialog v-model="dialogOpen" :title="editingPrompt ? '编辑 Prompt' : '新建 Prompt'" width="680px" class="calm-dialog">
+    <el-dialog
+      v-model="dialogOpen"
+      :title="editingPrompt ? '编辑 Prompt' : '新建 Prompt'"
+      width="680px"
+      class="calm-dialog"
+      :before-close="confirmPromptEditorClose"
+    >
       <div class="prompt-form">
         <label>
           <span>名称</span>
@@ -126,12 +132,16 @@
           <span>标签</span>
           <input v-model="tagInput" class="quiet-input" placeholder="用逗号分隔，例如：产品, PRD, 拆解" />
         </label>
+        <div class="editor-save-state" :class="{ dirty: promptFormChanged }">
+          <span></span>
+          {{ promptFormChanged ? 'Prompt 修改尚未保存' : editingPrompt ? 'Prompt 内容已保存' : '等待开始创作' }}
+        </div>
       </div>
 
       <template #footer>
         <div class="dialog-footer">
-          <button type="button" class="ghost-button" @click="dialogOpen = false">取消</button>
-          <button type="button" class="primary-button" :disabled="saving" @click="savePromptAsset">
+          <button type="button" class="ghost-button" :disabled="saving" @click="requestClosePromptEditor">取消</button>
+          <button type="button" class="primary-button" :disabled="saving || !promptFormChanged" @click="savePromptAsset">
             {{ saving ? '保存中...' : '保存 Prompt' }}
           </button>
         </div>
@@ -326,8 +336,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   createPrompt,
@@ -378,6 +388,7 @@ const form = reactive<SavePromptPayload>({
   tags: [],
   favorite: false
 })
+const promptEditorBaseline = ref('')
 
 const starterPrompts: StarterPrompt[] = [
   {
@@ -543,7 +554,20 @@ const promptOriginContext = computed(() => {
   ].filter(Boolean)
 })
 
-onMounted(loadPromptAssets)
+const promptFormChanged = computed(() =>
+  dialogOpen.value && serializePromptForm() !== promptEditorBaseline.value
+)
+
+onMounted(async () => {
+  window.addEventListener('beforeunload', handleBeforeUnload)
+  await loadPromptAssets()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+})
+
+onBeforeRouteLeave(() => resolvePendingPromptEdits())
 
 async function loadPromptAssets() {
   loading.value = true
@@ -585,6 +609,7 @@ function fillForm(prompt?: PromptAsset) {
   form.tags = prompt?.tags || []
   form.favorite = prompt?.favorite || false
   tagInput.value = form.tags.join(', ')
+  promptEditorBaseline.value = serializePromptForm()
 }
 
 function buildPayload(): SavePromptPayload {
@@ -601,37 +626,108 @@ function buildPayload(): SavePromptPayload {
   }
 }
 
-async function savePromptAsset() {
+function serializePromptForm() {
+  return JSON.stringify(buildPayload())
+}
+
+async function persistPromptAsset(notify: boolean) {
+  if (!promptFormChanged.value) {
+    return true
+  }
+
   const payload = buildPayload()
   if (!payload.title || !payload.category || !payload.description || !payload.content) {
     ElMessage.warning('请补全 Prompt 信息')
-    return
+    return false
   }
 
+  const wasEditing = Boolean(editingPrompt.value)
   saving.value = true
   try {
+    let savedPrompt: PromptAsset
     if (editingPrompt.value) {
       const { data } = await updatePrompt(editingPrompt.value.id, payload)
-      replacePromptInLibrary(data)
+      savedPrompt = data
       if (selectedPrompt.value?.id === data.id) {
         selectedPrompt.value = data
         variableValues.value = buildVariableValues(data.content, true)
         await loadPromptVersions(data.id)
       }
-      ElMessage.success('Prompt 已更新')
     } else {
-      await createPrompt(payload)
-      ElMessage.success('Prompt 已保存')
+      const { data } = await createPrompt(payload)
+      savedPrompt = data
     }
-    dialogOpen.value = false
-    if (!editingPrompt.value) {
-      await loadPromptAssets()
+
+    replacePromptInLibrary(savedPrompt)
+    editingPrompt.value = savedPrompt
+    fillForm(savedPrompt)
+    if (notify) {
+      ElMessage.success(wasEditing ? 'Prompt 已更新' : 'Prompt 已保存')
     }
+    return true
   } catch (error: any) {
     ElMessage.error(error.response?.data?.message || 'Prompt 保存失败')
+    return false
   } finally {
     saving.value = false
   }
+}
+
+async function savePromptAsset() {
+  if (await persistPromptAsset(true)) {
+    dialogOpen.value = false
+  }
+}
+
+function resetPromptEditorToSavedState() {
+  fillForm(editingPrompt.value || undefined)
+}
+
+async function resolvePendingPromptEdits() {
+  if (!dialogOpen.value || !promptFormChanged.value) {
+    return true
+  }
+
+  try {
+    await ElMessageBox.confirm('当前 Prompt 还有未保存修改。', '未保存修改', {
+      confirmButtonText: '保存并继续',
+      cancelButtonText: '放弃修改',
+      distinguishCancelAndClose: true,
+      closeOnClickModal: false,
+      type: 'warning'
+    })
+    const saved = await persistPromptAsset(false)
+    if (saved) {
+      ElMessage.success('未保存 Prompt 已保存')
+    }
+    return saved
+  } catch (action) {
+    if (action === 'cancel') {
+      resetPromptEditorToSavedState()
+      return true
+    }
+    return false
+  }
+}
+
+async function confirmPromptEditorClose(done: () => void) {
+  if (!saving.value && (await resolvePendingPromptEdits())) {
+    done()
+  }
+}
+
+async function requestClosePromptEditor() {
+  if (!saving.value && (await resolvePendingPromptEdits())) {
+    dialogOpen.value = false
+  }
+}
+
+function handleBeforeUnload(event: BeforeUnloadEvent) {
+  if (!dialogOpen.value || !promptFormChanged.value) {
+    return
+  }
+  event.preventDefault()
+  event.returnValue = ''
 }
 
 async function toggleFavorite(prompt: PromptAsset) {
