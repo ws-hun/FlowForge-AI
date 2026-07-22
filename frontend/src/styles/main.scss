@@ -1634,6 +1634,62 @@ a {
   gap: 8px;
 }
 
+.prompt-version-diff {
+  display: grid;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid tokens.$border;
+}
+
+.prompt-version-diff-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+
+  strong {
+    font-size: 14px;
+  }
+
+  span {
+    color: tokens.$text-muted;
+    font-size: 12px;
+  }
+}
+
+.prompt-version-change-list {
+  display: grid;
+}
+
+.prompt-version-change {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid tokens.$border;
+
+  > span {
+    color: tokens.$primary;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  p {
+    margin: 0;
+    color: tokens.$text-secondary;
+    font-size: 13px;
+    line-height: 1.65;
+  }
+
+  &.is-restore > span {
+    color: tokens.$success;
+  }
+
+  &.is-remove > span {
+    color: tokens.$warning;
+  }
+}
+
 .quiet-empty {
   padding: 16px;
   border: 1px dashed tokens.$border;
@@ -3556,6 +3612,17 @@ a {
 
   .version-preview-actions {
     justify-content: flex-start;
+  }
+
+  .prompt-version-diff-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .prompt-version-change {
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 
   .flow-connector {

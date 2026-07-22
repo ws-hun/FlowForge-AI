@@ -296,13 +296,37 @@
                 >
                   创建变体
                 </button>
-                <button type="button" class="ghost-button" :disabled="saving" @click="restoreVersionSnapshot(selectedVersion)">
+                <button
+                  type="button"
+                  class="ghost-button"
+                  :disabled="saving || !selectedPromptVersionDiff?.hasChanges"
+                  @click="restoreVersionSnapshot(selectedVersion)"
+                >
                   恢复此版本
                 </button>
               </div>
             </div>
             <strong>{{ selectedVersion.title }}</strong>
             <p>{{ selectedVersion.description }}</p>
+            <div v-if="selectedPromptVersionDiff" class="prompt-version-diff">
+              <div class="prompt-version-diff-heading">
+                <strong>
+                  {{ selectedPromptVersionDiff.hasChanges ? `${selectedPromptVersionDiff.changeCount} 项差异` : '与当前内容一致' }}
+                </strong>
+                <span>恢复与创建变体都会使用此版本内容</span>
+              </div>
+              <div v-if="selectedPromptVersionDiff.changes.length" class="prompt-version-change-list">
+                <div
+                  v-for="change in selectedPromptVersionDiff.changes"
+                  :key="change.key"
+                  class="prompt-version-change"
+                  :class="`is-${change.kind}`"
+                >
+                  <span>{{ change.label }}</span>
+                  <p>{{ change.detail }}</p>
+                </div>
+              </div>
+            </div>
             <pre class="detail-code">{{ selectedVersion.content }}</pre>
           </div>
         </section>
@@ -351,6 +375,7 @@ import {
 } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { applyPromptVariables, extractPromptVariables } from '@/utils/promptVariables'
+import { comparePromptRevision } from '@/utils/promptRevisions'
 import { formatExecutionSource } from '@/utils/aiProvider'
 import type { PromptAsset, PromptVersion, SavePromptPayload, TaskHistoryItem } from '@/types'
 
@@ -557,6 +582,13 @@ const promptOriginContext = computed(() => {
 const promptFormChanged = computed(() =>
   dialogOpen.value && serializePromptForm() !== promptEditorBaseline.value
 )
+
+const selectedPromptVersionDiff = computed(() => {
+  if (!selectedPrompt.value || !selectedVersion.value) {
+    return null
+  }
+  return comparePromptRevision(selectedPrompt.value, selectedVersion.value)
+})
 
 onMounted(async () => {
   window.addEventListener('beforeunload', handleBeforeUnload)
