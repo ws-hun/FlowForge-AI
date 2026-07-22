@@ -148,7 +148,7 @@
                 `is-${nodeStatus(node.id)}`,
                 { active: selectedNode?.id === node.id, 'is-incomplete': nodeNeedsContent(node) }
               ]"
-              @click="selectedNodeId = node.id"
+              @click="selectFlowNode(node.id)"
             >
               <div class="flow-node-meta">
                 <span class="flow-node-type">{{ nodeLabel(node.type) }}</span>
@@ -341,6 +341,10 @@
           </div>
           <input v-model="flowTitle" class="quiet-input" placeholder="Flow 标题" />
           <textarea v-model="flowDescription" class="quiet-textarea" placeholder="Flow 目标"></textarea>
+          <div class="editor-save-state" :class="{ dirty: flowMetaChanged }">
+            <span></span>
+            {{ flowMetaChanged ? 'Flow 目标尚未保存' : 'Flow 目标已保存' }}
+          </div>
           <div class="flow-editor-actions">
             <button
               type="button"
@@ -513,6 +517,10 @@
                 :placeholder="nodeContentPlaceholder"
               ></textarea>
             </label>
+            <div class="editor-save-state" :class="{ dirty: nodeEditorChanged }">
+              <span></span>
+              {{ nodeEditorChanged ? '节点修改尚未保存' : '节点内容已保存' }}
+            </div>
             <div class="flow-node-editor-actions">
               <button
                 type="button"
@@ -653,8 +661,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { EditPen, Plus } from '@element-plus/icons-vue'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
@@ -685,6 +693,12 @@ type FlowTemplate = {
   description: string
   intent: string
   nodes: Array<Pick<FlowNode, 'title' | 'description' | 'content'>>
+}
+type PendingNodeEditorPatch = {
+  nodeId: string
+  title?: string
+  description?: string
+  content?: string
 }
 
 const router = useRouter()
@@ -1131,6 +1145,12 @@ watch([flowRunContext, flowVariableValues], () => {
   invalidateFlowExecutionPreview()
 }, { deep: true })
 
+watch([flowMetaChanged, nodeEditorChanged], ([hasFlowChanges, hasNodeChanges]) => {
+  if (hasFlowChanges || hasNodeChanges) {
+    invalidateFlowExecutionPreview()
+  }
+})
+
 watch(
   () => selectedNode.value?.id,
   () => syncSelectedNodeEditor(),
@@ -1138,8 +1158,15 @@ watch(
 )
 
 onMounted(async () => {
+  window.addEventListener('beforeunload', handleBeforeUnload)
   await Promise.all([workspace.loadFlowDrafts(), workspace.loadApiKeys(), loadPromptAssets()])
 })
+
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+})
+
+onBeforeRouteLeave(() => resolvePendingEdits())
 
 async function loadPromptAssets() {
   try {
@@ -1177,8 +1204,15 @@ function onFlowExecutionPreviewToggle(event: Event) {
 }
 
 async function loadFlowExecutionPreview() {
+  if (!workspace.activeFlow || flowExecutionPreviewLoading.value) {
+    return
+  }
+  if (!(await resolvePendingEdits())) {
+    return
+  }
+
   const flow = workspace.activeFlow
-  if (!flow || flowExecutionPreviewLoading.value) {
+  if (!flow) {
     return
   }
 
@@ -1243,7 +1277,95 @@ async function loadFlowVersions(flowId: string) {
   }
 }
 
+function resetEditorsToSavedState() {
+  flowTitle.value = workspace.activeFlow?.title || ''
+  flowDescription.value = workspace.activeFlow?.description || ''
+  syncSelectedNodeEditor()
+}
+
+function capturePendingNodeEditorPatch(): PendingNodeEditorPatch | null {
+  const node = selectedNode.value
+  if (!node || !nodeEditorChanged.value) {
+    return null
+  }
+
+  const patch: PendingNodeEditorPatch = { nodeId: node.id }
+  if (nodeTitle.value.trim() !== node.title) {
+    patch.title = nodeTitle.value
+  }
+  if (nodeDescription.value.trim() !== node.description) {
+    patch.description = nodeDescription.value
+  }
+  if (nodeCanEditContent.value && nodeContent.value.trim() !== (node.content || '')) {
+    patch.content = nodeContent.value
+  }
+  return patch
+}
+
+function rebasePendingNodeEditorPatch(patch: PendingNodeEditorPatch) {
+  const node = selectedNode.value
+  if (!node || node.id !== patch.nodeId) {
+    return false
+  }
+
+  nodeTitle.value = patch.title ?? node.title
+  nodeDescription.value = patch.description ?? node.description
+  nodeContent.value = patch.content ?? node.content ?? ''
+  return true
+}
+
+async function persistPendingEdits() {
+  const hadFlowChanges = flowMetaChanged.value
+  const hadNodeChanges = nodeEditorChanged.value
+  const pendingNodePatch = hadNodeChanges ? capturePendingNodeEditorPatch() : null
+  if (hadFlowChanges && !(await persistFlowMeta(false, pendingNodePatch))) {
+    return false
+  }
+  if (hadNodeChanges && !(await persistSelectedNode(false))) {
+    return false
+  }
+  if (hadFlowChanges || hadNodeChanges) {
+    ElMessage.success('未保存修改已保存')
+  }
+  return true
+}
+
+async function resolvePendingEdits() {
+  if (!flowMetaChanged.value && !nodeEditorChanged.value) {
+    return true
+  }
+
+  try {
+    await ElMessageBox.confirm('当前 Flow 或节点还有未保存修改。', '未保存修改', {
+      confirmButtonText: '保存并继续',
+      cancelButtonText: '放弃修改',
+      distinguishCancelAndClose: true,
+      closeOnClickModal: false,
+      type: 'warning'
+    })
+    return await persistPendingEdits()
+  } catch (action) {
+    if (action === 'cancel') {
+      resetEditorsToSavedState()
+      return true
+    }
+    return false
+  }
+}
+
+function handleBeforeUnload(event: BeforeUnloadEvent) {
+  if (!flowMetaChanged.value && !nodeEditorChanged.value) {
+    return
+  }
+  event.preventDefault()
+  event.returnValue = ''
+}
+
 async function restoreFlowVersionSnapshot(version: FlowVersion) {
+  if (!(await resolvePendingEdits())) {
+    return
+  }
+
   const flow = workspace.activeFlow
   if (!flow) {
     return
@@ -1275,6 +1397,10 @@ async function restoreFlowVersionSnapshot(version: FlowVersion) {
 }
 
 async function createFlow() {
+  if (!(await resolvePendingEdits())) {
+    return
+  }
+
   const template = selectedFlowTemplate.value
     ? flowTemplates.find((item) => item.title === selectedFlowTemplate.value)
     : null
@@ -1291,6 +1417,10 @@ async function createFlow() {
 }
 
 async function duplicateActiveFlow() {
+  if (!(await resolvePendingEdits())) {
+    return
+  }
+
   const flow = await workspace.duplicateActiveFlowDraft()
   if (!flow) {
     return
@@ -1301,6 +1431,10 @@ async function duplicateActiveFlow() {
 }
 
 async function createFlowFromSnapshot(snapshot: FlowRunSnapshotType) {
+  if (!(await resolvePendingEdits())) {
+    return
+  }
+
   const flow = await workspace.createFlowFromRunSnapshot(snapshot)
   if (!flow) {
     return
@@ -1310,9 +1444,20 @@ async function createFlowFromSnapshot(snapshot: FlowRunSnapshotType) {
   ElMessage.success('已创建新的 Flow，并带入本次运行上下文')
 }
 
-function selectFlow(id: string) {
+async function selectFlow(id: string) {
+  if (id === workspace.activeFlowId || !(await resolvePendingEdits())) {
+    return
+  }
+
   workspace.selectFlowDraft(id)
   selectedNodeId.value = workspace.activeFlow?.nodes[0]?.id || ''
+}
+
+async function selectFlowNode(nodeId: string) {
+  if (nodeId === selectedNode.value?.id || !(await resolvePendingEdits())) {
+    return
+  }
+  selectedNodeId.value = nodeId
 }
 
 function useFlowTemplate(intent: string) {
@@ -1322,6 +1467,10 @@ function useFlowTemplate(intent: string) {
 }
 
 async function addPromptNode(prompt: PromptAsset) {
+  if (!(await resolvePendingEdits())) {
+    return
+  }
+
   const addedNode = await workspace.addPromptToActiveFlow(prompt)
   selectedNodeId.value = addedNode?.id || selectedNodeId.value
   resetFlowRunState()
@@ -1331,6 +1480,10 @@ async function addPromptNode(prompt: PromptAsset) {
 }
 
 async function addContextNode() {
+  if (!(await resolvePendingEdits())) {
+    return
+  }
+
   const addedNode = await workspace.addContextToActiveFlow()
   if (!addedNode) {
     return
@@ -1345,14 +1498,20 @@ async function removeSelectedNode() {
   if (!selectedNode.value || !canRemoveSelectedNode.value) {
     return
   }
+  if (!(await resolvePendingEdits())) {
+    return
+  }
   await workspace.removeFlowNode(selectedNode.value.id)
   selectedNodeId.value = workspace.activeFlow?.nodes[0]?.id || ''
   resetFlowRunState()
 }
 
-async function saveSelectedNode() {
+async function persistSelectedNode(notify: boolean) {
   if (!selectedNode.value) {
-    return
+    return true
+  }
+  if (!nodeEditorChanged.value) {
+    return true
   }
 
   const updatedFlow = await workspace.updateFlowNode(selectedNode.value.id, {
@@ -1362,15 +1521,26 @@ async function saveSelectedNode() {
   })
 
   if (!updatedFlow) {
-    return
+    return false
   }
 
   resetFlowRunState()
   syncSelectedNodeEditor()
-  ElMessage.success('节点已保存')
+  if (notify) {
+    ElMessage.success('节点已保存')
+  }
+  return true
+}
+
+async function saveSelectedNode() {
+  await persistSelectedNode(true)
 }
 
 async function renameFlowVariable(variable: string) {
+  if (!(await resolvePendingEdits())) {
+    return
+  }
+
   try {
     const { value } = await ElMessageBox.prompt(
       `当前变量会同步更新 ${flowVariableNodeMap.value[variable]?.length || 0} 个节点。`,
@@ -1417,13 +1587,21 @@ async function moveSelectedPromptNode(direction: 'up' | 'down') {
   if (!selectedNode.value || selectedNode.value.type !== 'prompt') {
     return
   }
+  if (!(await resolvePendingEdits())) {
+    return
+  }
 
-  const movedFlow = await workspace.moveFlowPromptNode(selectedNode.value.id, direction)
+  const nodeId = selectedNode.value?.type === 'prompt' ? selectedNode.value.id : ''
+  if (!nodeId) {
+    return
+  }
+
+  const movedFlow = await workspace.moveFlowPromptNode(nodeId, direction)
   if (!movedFlow) {
     return
   }
 
-  selectedNodeId.value = selectedNode.value.id
+  selectedNodeId.value = nodeId
   resetFlowRunState()
   ElMessage.success('Prompt 顺序已调整')
 }
@@ -1432,13 +1610,21 @@ async function moveSelectedContextNode(direction: 'up' | 'down') {
   if (!selectedNode.value || selectedNode.value.type !== 'input') {
     return
   }
+  if (!(await resolvePendingEdits())) {
+    return
+  }
 
-  const movedFlow = await workspace.moveFlowContextNode(selectedNode.value.id, direction)
+  const nodeId = selectedNode.value?.type === 'input' ? selectedNode.value.id : ''
+  if (!nodeId) {
+    return
+  }
+
+  const movedFlow = await workspace.moveFlowContextNode(nodeId, direction)
   if (!movedFlow) {
     return
   }
 
-  selectedNodeId.value = selectedNode.value.id
+  selectedNodeId.value = nodeId
   resetFlowRunState()
   ElMessage.success('上下文顺序已调整')
 }
@@ -1447,8 +1633,16 @@ async function duplicateSelectedPromptNode() {
   if (!selectedNode.value || selectedNode.value.type !== 'prompt') {
     return
   }
+  if (!(await resolvePendingEdits())) {
+    return
+  }
 
-  const duplicatedNode = await workspace.duplicateFlowPromptNode(selectedNode.value.id)
+  const nodeId = selectedNode.value?.type === 'prompt' ? selectedNode.value.id : ''
+  if (!nodeId) {
+    return
+  }
+
+  const duplicatedNode = await workspace.duplicateFlowPromptNode(nodeId)
   if (!duplicatedNode) {
     return
   }
@@ -1519,6 +1713,10 @@ async function saveLatestResultAsPrompt() {
 }
 
 async function saveLatestResultAndAddToFlow() {
+  if (!(await resolvePendingEdits())) {
+    return
+  }
+
   const prompt = await ensureLatestResultPrompt()
   if (!prompt) {
     return
@@ -1593,15 +1791,34 @@ async function ensureLatestResultPrompt() {
   }
 }
 
-async function saveFlowMeta() {
+async function persistFlowMeta(notify: boolean, pendingNodePatch: PendingNodeEditorPatch | null) {
+  if (!flowMetaChanged.value) {
+    return true
+  }
+
   const updatedFlow = await workspace.updateFlowMeta(flowTitle.value, flowDescription.value)
   if (!updatedFlow) {
-    return
+    return false
   }
   flowTitle.value = updatedFlow.title
   flowDescription.value = updatedFlow.description
+  if (pendingNodePatch) {
+    if (!rebasePendingNodeEditorPatch(pendingNodePatch)) {
+      ElMessage.error('节点编辑状态已变化，请重新确认修改')
+      return false
+    }
+  } else {
+    syncSelectedNodeEditor()
+  }
   resetFlowRunState()
-  ElMessage.success('Flow 已保存')
+  if (notify) {
+    ElMessage.success('Flow 已保存')
+  }
+  return true
+}
+
+async function saveFlowMeta() {
+  await persistFlowMeta(true, capturePendingNodeEditorPatch())
 }
 
 async function confirmDeleteFlow() {
@@ -1629,17 +1846,25 @@ async function confirmDeleteFlow() {
   }
 }
 
-function sendFlowToTaskWorkspace() {
+async function sendFlowToTaskWorkspace() {
+  if (!(await resolvePendingEdits())) {
+    return
+  }
+
   if (hasIncompleteFlowNodes.value) {
     ElMessage.warning(`请先完善 Flow 节点：${incompleteFlowNodes.value.map((node) => node.title).join('、')}`)
     return
   }
 
   workspace.sendFlowToTask(flowRunContext.value, flowVariableValues.value)
-  router.push('/tasks')
+  await router.push('/tasks')
 }
 
-function selectFirstIncompleteNode() {
+async function selectFirstIncompleteNode() {
+  if (!(await resolvePendingEdits())) {
+    return
+  }
+
   const firstIncompleteNode = incompleteFlowNodes.value[0]
   if (!firstIncompleteNode) {
     return
@@ -1652,7 +1877,11 @@ function buildFlowVariableValues(variables: string[], currentValues: Record<stri
   return Object.fromEntries(variables.map((variable) => [variable, currentValues[variable] || '']))
 }
 
-function sendSelectedNodeToTaskWorkspace() {
+async function sendSelectedNodeToTaskWorkspace() {
+  if (!(await resolvePendingEdits())) {
+    return
+  }
+
   if (!selectedNode.value || !nodeCanSendToTask.value) {
     return
   }
@@ -1663,7 +1892,7 @@ function sendSelectedNodeToTaskWorkspace() {
       : null
 
   workspace.prepareTask(buildNodeTaskInput(), promptSource)
-  router.push('/tasks')
+  await router.push('/tasks')
 }
 
 function goToApiKeys() {
@@ -1675,9 +1904,13 @@ function goToPromptLibrary() {
 }
 
 async function executeFlowNow() {
+  if (!workspace.activeFlow || !(await resolvePendingEdits())) {
+    return
+  }
+
   const flow = workspace.activeFlow
-  const flowId = flow?.id
-  if (!flow || !flowId) {
+  const flowId = flow.id
+  if (!flowId) {
     return
   }
 
@@ -1689,7 +1922,7 @@ async function executeFlowNow() {
 
   if (hasIncompleteFlowNodes.value) {
     ElMessage.warning(`请先完善 Flow 节点：${incompleteFlowNodes.value.map((node) => node.title).join('、')}`)
-    selectFirstIncompleteNode()
+    await selectFirstIncompleteNode()
     return
   }
 

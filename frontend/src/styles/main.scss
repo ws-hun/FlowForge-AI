@@ -2743,6 +2743,30 @@ a {
   gap: 8px;
 }
 
+.editor-save-state {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 8px;
+  color: tokens.$text-muted;
+  font-size: 12px;
+
+  span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: tokens.$success;
+  }
+
+  &.dirty {
+    color: tokens.$warning;
+  }
+
+  &.dirty span {
+    background: tokens.$warning;
+  }
+}
+
 .flow-node-content-editor {
   min-height: 180px;
   font-family: tokens.$mono;
