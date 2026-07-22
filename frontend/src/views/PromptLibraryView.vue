@@ -153,6 +153,37 @@
           <span v-for="tag in selectedPrompt.tags" :key="tag">#{{ tag }}</span>
         </div>
 
+        <section v-if="promptOriginTitle" class="prompt-origin">
+          <div class="prompt-origin-heading">
+            <div>
+              <span class="section-kicker">Origin</span>
+              <strong>{{ promptOriginTitle }}</strong>
+            </div>
+            <div class="prompt-origin-actions">
+              <button
+                v-if="selectedPrompt.sourceTaskId"
+                type="button"
+                class="ghost-button"
+                @click="continueFromPromptSource"
+              >
+                继续来源结果
+              </button>
+              <button
+                v-if="selectedPrompt.sourceFlowId"
+                type="button"
+                class="ghost-button"
+                @click="openPromptSourceFlow"
+              >
+                打开来源 Flow
+              </button>
+            </div>
+          </div>
+          <p>{{ promptOriginDescription }}</p>
+          <div v-if="promptOriginContext.length" class="prompt-origin-context">
+            <span v-for="item in promptOriginContext" :key="item">{{ item }}</span>
+          </div>
+        </section>
+
         <section class="detail-section">
           <div class="section-heading compact">
             <h3>Prompt</h3>
@@ -413,7 +444,17 @@ const filteredPrompts = computed(() => {
     const favoriteMatched = !favoriteOnly.value || prompt.favorite
     const keywordMatched =
       !keyword ||
-      [prompt.title, prompt.category, prompt.description, prompt.content, ...prompt.tags]
+      [
+        prompt.title,
+        prompt.category,
+        prompt.description,
+        prompt.content,
+        prompt.sourceTaskSummary || '',
+        prompt.sourcePromptTitle || '',
+        prompt.sourceFlowTitle || '',
+        prompt.sourceNodeTitle || '',
+        ...prompt.tags
+      ]
         .join(' ')
         .toLowerCase()
         .includes(keyword)
@@ -435,6 +476,53 @@ const preparedPromptPreview = computed(() => {
   }
 
   return applyPromptVariables(selectedPrompt.value.content, variableValues.value)
+})
+
+const promptOriginTitle = computed(() => {
+  const prompt = selectedPrompt.value
+  if (!prompt) {
+    return ''
+  }
+  if (prompt.sourceTaskId) {
+    return '来自一次 AI 执行结果'
+  }
+  if (prompt.sourceNodeId) {
+    return prompt.sourceNodeTitle || '来自 Flow 节点'
+  }
+  if (prompt.sourceFlowId) {
+    return prompt.sourceFlowTitle || '来自 Flow'
+  }
+  if (prompt.sourcePromptId) {
+    return prompt.sourcePromptTitle || '来自 Prompt'
+  }
+  return ''
+})
+
+const promptOriginDescription = computed(() => {
+  const prompt = selectedPrompt.value
+  if (!prompt) {
+    return ''
+  }
+  if (prompt.sourceTaskId) {
+    return prompt.sourceTaskSummary || '这份 Prompt 由一条已完成的 AI 结果沉淀而来。'
+  }
+  if (prompt.sourceNodeId) {
+    return '这份 Prompt 保留了创建时的 Flow 与节点来源，后续编辑不会改变这条关系。'
+  }
+  return '这份 Prompt 保留了创建时的来源，便于回到原工作继续迭代。'
+})
+
+const promptOriginContext = computed(() => {
+  const prompt = selectedPrompt.value
+  if (!prompt) {
+    return []
+  }
+
+  return [
+    prompt.sourceFlowTitle ? `Flow · ${prompt.sourceFlowTitle}` : '',
+    prompt.sourceNodeTitle ? `Node · ${prompt.sourceNodeTitle}` : '',
+    prompt.sourcePromptTitle ? `Prompt · ${prompt.sourcePromptTitle}` : ''
+  ].filter(Boolean)
 })
 
 onMounted(loadPromptAssets)
@@ -668,6 +756,48 @@ async function createFlowFromSelectedPrompt() {
   detailOpen.value = false
   ElMessage.success('Flow 已从 Prompt 创建')
   router.push('/workflows')
+}
+
+async function continueFromPromptSource() {
+  const sourceTaskId = selectedPrompt.value?.sourceTaskId
+  if (!sourceTaskId) {
+    return
+  }
+
+  if (!workspace.tasks.some((task) => task.id === sourceTaskId)) {
+    await workspace.loadTasks()
+  }
+  const sourceTask = workspace.tasks.find((task) => task.id === sourceTaskId)
+  if (!sourceTask || sourceTask.status === 'failed') {
+    ElMessage.warning('来源运行已不可用，当前 Prompt 仍可独立执行')
+    return
+  }
+
+  workspace.prepareTaskContinuation(sourceTask)
+  detailOpen.value = false
+  ElMessage.success('来源结果已带入 AI Command Workspace')
+  await router.push('/tasks')
+}
+
+async function openPromptSourceFlow() {
+  const sourceFlowId = selectedPrompt.value?.sourceFlowId
+  if (!sourceFlowId) {
+    return
+  }
+
+  if (!workspace.flowDrafts.some((flow) => flow.id === sourceFlowId)) {
+    await workspace.loadFlowDrafts()
+  }
+  const sourceFlow = workspace.flowDrafts.find((flow) => flow.id === sourceFlowId)
+  if (!sourceFlow) {
+    ElMessage.warning('来源 Flow 已删除，来源快照仍保留在 Prompt 中')
+    return
+  }
+
+  workspace.selectFlowDraft(sourceFlow.id)
+  detailOpen.value = false
+  ElMessage.success(`已打开来源 Flow「${sourceFlow.title}」`)
+  await router.push('/workflows')
 }
 
 function sendToTask(content: string, prompt?: PromptAsset | null) {

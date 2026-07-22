@@ -1362,6 +1362,62 @@ a {
   }
 }
 
+.prompt-origin {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(79, 124, 255, 0.16);
+  border-radius: tokens.$radius-lg;
+  background: rgba(79, 124, 255, 0.05);
+
+  p {
+    margin: 0;
+    color: tokens.$text-secondary;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+}
+
+.prompt-origin-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+
+  > div:first-child {
+    display: grid;
+    gap: 4px;
+  }
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 15px;
+  }
+}
+
+.prompt-origin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+
+  .ghost-button {
+    min-height: 34px;
+    padding: 7px 10px;
+  }
+}
+
+.prompt-origin-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  span {
+    color: tokens.$text-muted;
+    font-size: 12px;
+  }
+}
+
 .detail-section {
   display: grid;
   gap: 12px;
@@ -3475,6 +3531,15 @@ a {
     button {
       width: 100%;
     }
+  }
+
+  .prompt-origin-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .prompt-origin-actions {
+    justify-content: flex-start;
   }
 
   .flow-connector {

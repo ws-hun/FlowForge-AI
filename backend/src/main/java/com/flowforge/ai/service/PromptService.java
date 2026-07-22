@@ -1,12 +1,21 @@
 package com.flowforge.ai.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flowforge.ai.dto.FlowNodeDto;
 import com.flowforge.ai.dto.PromptRequest;
 import com.flowforge.ai.dto.PromptResponse;
 import com.flowforge.ai.dto.PromptVersionResponse;
 import com.flowforge.ai.entity.Prompt;
 import com.flowforge.ai.entity.PromptVersion;
+import com.flowforge.ai.entity.Task;
+import com.flowforge.ai.entity.Workflow;
+import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.repository.PromptRepository;
 import com.flowforge.ai.repository.PromptVersionRepository;
+import com.flowforge.ai.repository.TaskRepository;
+import com.flowforge.ai.repository.WorkflowRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -25,9 +34,14 @@ import java.util.UUID;
 public class PromptService {
 
     private static final String TAG_SEPARATOR = ",";
+    private static final TypeReference<List<FlowNodeDto>> FLOW_NODE_LIST_TYPE = new TypeReference<>() {
+    };
 
     private final PromptRepository promptRepository;
     private final PromptVersionRepository promptVersionRepository;
+    private final TaskRepository taskRepository;
+    private final WorkflowRepository workflowRepository;
+    private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
     public List<PromptResponse> listPrompts(String query, String category, Boolean favorite) {
@@ -47,6 +61,7 @@ public class PromptService {
     public PromptResponse createPrompt(PromptRequest request) {
         Prompt prompt = Prompt.builder().build();
         applyRequest(prompt, request);
+        applySource(prompt, request);
         return toResponse(promptRepository.save(prompt));
     }
 
@@ -128,6 +143,61 @@ public class PromptService {
         prompt.setFavorite(Boolean.TRUE.equals(request.favorite()));
     }
 
+    private void applySource(Prompt prompt, PromptRequest request) {
+        boolean hasTaskSource = request.sourceTaskId() != null;
+        boolean hasFlowSource = request.sourceFlowId() != null;
+        boolean hasNodeSource = StringUtils.hasText(request.sourceNodeId());
+
+        if (hasTaskSource && (hasFlowSource || hasNodeSource)) {
+            throw new IllegalArgumentException("Prompt source must be either a Task or a Flow node");
+        }
+        if (hasNodeSource && !hasFlowSource) {
+            throw new IllegalArgumentException("sourceFlowId is required when sourceNodeId is provided");
+        }
+        if (hasFlowSource && !hasNodeSource) {
+            throw new IllegalArgumentException("sourceNodeId is required when sourceFlowId is provided");
+        }
+
+        if (hasTaskSource) {
+            applyTaskSource(prompt, request.sourceTaskId());
+            return;
+        }
+        if (hasFlowSource) {
+            applyFlowSource(prompt, request.sourceFlowId(), normalizeSourceNodeId(request.sourceNodeId()));
+        }
+    }
+
+    private void applyTaskSource(Prompt prompt, UUID taskId) {
+        Task sourceTask = taskRepository.findById(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Source Task not found"));
+        if (Task.STATUS_FAILED.equals(sourceTask.getStatus())) {
+            throw new IllegalArgumentException("Failed Task cannot be used as a Prompt source");
+        }
+
+        prompt.setSourceTaskId(sourceTask.getId());
+        prompt.setSourceTaskSummary(sourceTask.getSummary());
+        prompt.setSourcePromptId(sourceTask.getSourcePromptId());
+        prompt.setSourcePromptTitle(sourceTask.getSourcePromptTitle());
+        prompt.setSourceFlowId(sourceTask.getSourceFlowId());
+        prompt.setSourceFlowTitle(sourceTask.getSourceFlowTitle());
+    }
+
+    private void applyFlowSource(Prompt prompt, UUID flowId, String nodeId) {
+        Workflow sourceFlow = workflowRepository.findById(flowId)
+                .orElseThrow(() -> new ResourceNotFoundException("Source Flow not found"));
+
+        prompt.setSourceFlowId(sourceFlow.getId());
+        prompt.setSourceFlowTitle(sourceFlow.getTitle());
+        FlowNodeDto sourceNode = deserializeFlowNodes(sourceFlow.getNodesJson()).stream()
+                .filter(node -> node.id().equals(nodeId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Source Flow node not found"));
+        prompt.setSourceNodeId(sourceNode.id());
+        prompt.setSourceNodeTitle(sourceNode.title());
+        prompt.setSourcePromptId(sourceNode.promptId());
+        prompt.setSourcePromptTitle(sourceNode.promptTitle());
+    }
+
     private boolean matchesQuery(Prompt prompt, String query) {
         if (!StringUtils.hasText(query)) {
             return true;
@@ -137,7 +207,11 @@ public class PromptService {
                 prompt.getCategory(),
                 prompt.getDescription(),
                 prompt.getContent(),
-                prompt.getTags()
+                prompt.getTags(),
+                nullToEmpty(prompt.getSourceTaskSummary()),
+                nullToEmpty(prompt.getSourcePromptTitle()),
+                nullToEmpty(prompt.getSourceFlowTitle()),
+                nullToEmpty(prompt.getSourceNodeTitle())
         ).toLowerCase(Locale.ROOT);
         return haystack.contains(query);
     }
@@ -160,6 +234,22 @@ public class PromptService {
             return "";
         }
         return value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeSourceNodeId(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
+    }
+
+    private List<FlowNodeDto> deserializeFlowNodes(String nodesJson) {
+        try {
+            return objectMapper.readValue(nodesJson, FLOW_NODE_LIST_TYPE);
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("Failed to parse source Flow nodes", ex);
+        }
     }
 
     private String joinTags(List<String> tags) {
@@ -194,6 +284,14 @@ public class PromptService {
                 prompt.getContent(),
                 splitTags(prompt.getTags()),
                 prompt.isFavorite(),
+                prompt.getSourceTaskId(),
+                prompt.getSourceTaskSummary(),
+                prompt.getSourcePromptId(),
+                prompt.getSourcePromptTitle(),
+                prompt.getSourceFlowId(),
+                prompt.getSourceFlowTitle(),
+                prompt.getSourceNodeId(),
+                prompt.getSourceNodeTitle(),
                 prompt.getCreatedAt(),
                 prompt.getUpdatedAt()
         );

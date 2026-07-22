@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
+import java.util.UUID;
 
 public record PromptRequest(
         @NotBlank(message = "title is required")
@@ -24,6 +25,13 @@ public record PromptRequest(
 
         List<@Size(max = 32, message = "tag must be less than 32 characters") String> tags,
 
-        Boolean favorite
+        Boolean favorite,
+
+        UUID sourceTaskId,
+
+        UUID sourceFlowId,
+
+        @Size(max = 80, message = "sourceNodeId must be less than 80 characters")
+        String sourceNodeId
 ) {
 }

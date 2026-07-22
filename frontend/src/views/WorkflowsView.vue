@@ -1734,6 +1734,10 @@ async function saveLatestResultAndAddToFlow() {
 }
 
 async function saveSelectedNodeAsPrompt() {
+  if (!(await resolvePendingEdits())) {
+    return
+  }
+
   if (!workspace.activeFlow || !selectedNode.value || !nodeCanSaveAsPrompt.value) {
     return
   }
@@ -1744,7 +1748,9 @@ async function saveSelectedNodeAsPrompt() {
     description: `从 Flow「${workspace.activeFlow.title}」的「${nodeTitle.value.trim()}」节点沉淀出的可复用工作方式。`,
     content: buildNodePromptAsset(),
     tags: ['Flow', nodeLabel(selectedNode.value.type), workspace.activeFlow.title],
-    favorite: false
+    favorite: false,
+    sourceFlowId: workspace.activeFlow.id,
+    sourceNodeId: selectedNode.value.id
   }
 
   savingNodePrompt.value = true
@@ -1774,7 +1780,8 @@ async function ensureLatestResultPrompt() {
     description: `从 Flow「${workspace.activeFlow.title}」执行结果沉淀出的可复用输出模式。`,
     content: buildResultPromptAsset(),
     tags: ['Flow', 'Result', 'Reusable'],
-    favorite: false
+    favorite: false,
+    sourceTaskId: activeFlowResult.value.taskId || null
   }
 
   savingResultPrompt.value = true

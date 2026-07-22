@@ -260,7 +260,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       description: buildTaskPromptDescription(latestResult.value.summary),
       content: latestTaskInput.value.trim(),
       tags: ['AI Command', 'Task', 'Reusable'],
-      favorite: false
+      favorite: false,
+      sourceTaskId: latestResult.value.taskId || null
     }
 
     taskAssetLoading.value = true

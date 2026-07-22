@@ -90,6 +90,7 @@ Current Stage 3 capabilities:
 - Server-compiled execution previews.
 - Immutable run snapshots with source, Provider, model, token usage, and execution duration.
 - Reuse through run settings, snapshot branching, result-to-Prompt, exact historical reruns, run comparison, and result continuation.
+- Prompt assets created from results or Flow nodes preserve their immutable source and can reopen the original work.
 - Failed Provider executions preserve their context and remain recoverable from History.
 
 Current Stage 3 priorities:

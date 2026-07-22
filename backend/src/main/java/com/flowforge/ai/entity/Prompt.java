@@ -46,6 +46,30 @@ public class Prompt {
     @Column(nullable = false)
     private boolean favorite;
 
+    @Column(name = "source_task_id")
+    private UUID sourceTaskId;
+
+    @Column(name = "source_task_summary", columnDefinition = "TEXT")
+    private String sourceTaskSummary;
+
+    @Column(name = "source_prompt_id")
+    private UUID sourcePromptId;
+
+    @Column(name = "source_prompt_title", length = 120)
+    private String sourcePromptTitle;
+
+    @Column(name = "source_flow_id")
+    private UUID sourceFlowId;
+
+    @Column(name = "source_flow_title", length = 120)
+    private String sourceFlowTitle;
+
+    @Column(name = "source_node_id", length = 80)
+    private String sourceNodeId;
+
+    @Column(name = "source_node_title", length = 120)
+    private String sourceNodeTitle;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

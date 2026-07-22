@@ -66,6 +66,14 @@ export interface PromptAsset {
   content: string
   tags: string[]
   favorite: boolean
+  sourceTaskId?: string | null
+  sourceTaskSummary?: string | null
+  sourcePromptId?: string | null
+  sourcePromptTitle?: string | null
+  sourceFlowId?: string | null
+  sourceFlowTitle?: string | null
+  sourceNodeId?: string | null
+  sourceNodeTitle?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -90,6 +98,9 @@ export interface SavePromptPayload {
   content: string
   tags: string[]
   favorite: boolean
+  sourceTaskId?: string | null
+  sourceFlowId?: string | null
+  sourceNodeId?: string | null
 }
 
 export type FlowNodeType = 'input' | 'prompt' | 'ai-task' | 'output'

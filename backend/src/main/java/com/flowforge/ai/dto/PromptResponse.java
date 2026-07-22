@@ -12,6 +12,14 @@ public record PromptResponse(
         String content,
         List<String> tags,
         boolean favorite,
+        UUID sourceTaskId,
+        String sourceTaskSummary,
+        UUID sourcePromptId,
+        String sourcePromptTitle,
+        UUID sourceFlowId,
+        String sourceFlowTitle,
+        String sourceNodeId,
+        String sourceNodeTitle,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
