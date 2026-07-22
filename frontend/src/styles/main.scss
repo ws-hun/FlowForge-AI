@@ -1627,6 +1627,13 @@ a {
   }
 }
 
+.version-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .quiet-empty {
   padding: 16px;
   border: 1px dashed tokens.$border;
@@ -3539,6 +3546,15 @@ a {
   }
 
   .prompt-origin-actions {
+    justify-content: flex-start;
+  }
+
+  .version-preview .row-between {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .version-preview-actions {
     justify-content: flex-start;
   }
 

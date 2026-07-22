@@ -99,6 +99,7 @@ export interface SavePromptPayload {
   tags: string[]
   favorite: boolean
   sourceTaskId?: string | null
+  sourcePromptId?: string | null
   sourceFlowId?: string | null
   sourceNodeId?: string | null
 }

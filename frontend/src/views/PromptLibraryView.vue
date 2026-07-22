@@ -176,6 +176,14 @@
               >
                 打开来源 Flow
               </button>
+              <button
+                v-if="selectedPrompt.sourcePromptId && !selectedPrompt.sourceTaskId"
+                type="button"
+                class="ghost-button"
+                @click="openPromptSourcePrompt"
+              >
+                打开来源 Prompt
+              </button>
             </div>
           </div>
           <p>{{ promptOriginDescription }}</p>
@@ -269,9 +277,19 @@
           <div v-if="selectedVersion" class="version-preview">
             <div class="row-between">
               <span class="badge">v{{ selectedVersion.versionNumber }}</span>
-              <button type="button" class="ghost-button" :disabled="saving" @click="restoreVersionSnapshot(selectedVersion)">
-                恢复此版本
-              </button>
+              <div class="version-preview-actions">
+                <button
+                  type="button"
+                  class="secondary-button"
+                  :disabled="saving"
+                  @click="createVariantFromVersion(selectedVersion)"
+                >
+                  创建变体
+                </button>
+                <button type="button" class="ghost-button" :disabled="saving" @click="restoreVersionSnapshot(selectedVersion)">
+                  恢复此版本
+                </button>
+              </div>
             </div>
             <strong>{{ selectedVersion.title }}</strong>
             <p>{{ selectedVersion.description }}</p>
@@ -800,6 +818,25 @@ async function openPromptSourceFlow() {
   await router.push('/workflows')
 }
 
+async function openPromptSourcePrompt() {
+  const sourcePromptId = selectedPrompt.value?.sourcePromptId
+  if (!sourcePromptId) {
+    return
+  }
+
+  let sourcePrompt = prompts.value.find((prompt) => prompt.id === sourcePromptId)
+  if (!sourcePrompt) {
+    await loadPromptAssets()
+    sourcePrompt = prompts.value.find((prompt) => prompt.id === sourcePromptId)
+  }
+  if (!sourcePrompt) {
+    ElMessage.warning('来源 Prompt 已删除，来源标题快照仍然保留')
+    return
+  }
+
+  openPromptDetail(sourcePrompt)
+}
+
 function sendToTask(content: string, prompt?: PromptAsset | null) {
   workspace.prepareTask(content, prompt ? { id: prompt.id, title: prompt.title } : null)
   ElMessage.success('Prompt 已带入 AI Command Workspace')
@@ -860,6 +897,39 @@ async function restoreVersionSnapshot(version: PromptVersion) {
   }
 }
 
+async function createVariantFromVersion(version: PromptVersion) {
+  const sourcePrompt = selectedPrompt.value
+  if (!sourcePrompt) {
+    return
+  }
+
+  const payload: SavePromptPayload = {
+    title: buildPromptVariantTitle(version.title),
+    category: version.category,
+    description: version.description,
+    content: version.content,
+    tags: [...version.tags],
+    favorite: false,
+    sourcePromptId: sourcePrompt.id
+  }
+
+  saving.value = true
+  try {
+    const { data } = await createPrompt(payload)
+    replacePromptInLibrary(data)
+    selectedPrompt.value = data
+    selectedVersion.value = null
+    promptRuns.value = []
+    promptVersions.value = []
+    variableValues.value = buildVariableValues(data.content)
+    ElMessage.success('已从历史版本创建 Prompt 变体')
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || 'Prompt 变体创建失败')
+  } finally {
+    saving.value = false
+  }
+}
+
 function replacePromptInLibrary(prompt: PromptAsset) {
   const index = prompts.value.findIndex((item) => item.id === prompt.id)
   if (index >= 0) {
@@ -894,6 +964,12 @@ function findExistingPrompt(prompt: Pick<SavePromptPayload, 'title'>) {
 
 function normalizeTitle(title: string) {
   return title.trim().toLowerCase()
+}
+
+function buildPromptVariantTitle(title: string) {
+  const suffix = ' 变体'
+  const cleanTitle = title.trim()
+  return `${cleanTitle.slice(0, 120 - suffix.length)}${suffix}`
 }
 
 function toSavePayload(prompt: SavePromptPayload): SavePromptPayload {

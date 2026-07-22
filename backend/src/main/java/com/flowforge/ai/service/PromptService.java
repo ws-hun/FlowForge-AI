@@ -145,11 +145,15 @@ public class PromptService {
 
     private void applySource(Prompt prompt, PromptRequest request) {
         boolean hasTaskSource = request.sourceTaskId() != null;
+        boolean hasPromptSource = request.sourcePromptId() != null;
         boolean hasFlowSource = request.sourceFlowId() != null;
         boolean hasNodeSource = StringUtils.hasText(request.sourceNodeId());
 
-        if (hasTaskSource && (hasFlowSource || hasNodeSource)) {
-            throw new IllegalArgumentException("Prompt source must be either a Task or a Flow node");
+        int sourceModeCount = (hasTaskSource ? 1 : 0)
+                + (hasPromptSource ? 1 : 0)
+                + (hasFlowSource || hasNodeSource ? 1 : 0);
+        if (sourceModeCount > 1) {
+            throw new IllegalArgumentException("Prompt source must be one of Task, Prompt, or Flow node");
         }
         if (hasNodeSource && !hasFlowSource) {
             throw new IllegalArgumentException("sourceFlowId is required when sourceNodeId is provided");
@@ -160,6 +164,10 @@ public class PromptService {
 
         if (hasTaskSource) {
             applyTaskSource(prompt, request.sourceTaskId());
+            return;
+        }
+        if (hasPromptSource) {
+            applyPromptSource(prompt, request.sourcePromptId());
             return;
         }
         if (hasFlowSource) {
@@ -180,6 +188,13 @@ public class PromptService {
         prompt.setSourcePromptTitle(sourceTask.getSourcePromptTitle());
         prompt.setSourceFlowId(sourceTask.getSourceFlowId());
         prompt.setSourceFlowTitle(sourceTask.getSourceFlowTitle());
+    }
+
+    private void applyPromptSource(Prompt prompt, UUID promptId) {
+        Prompt sourcePrompt = promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Source Prompt not found"));
+        prompt.setSourcePromptId(sourcePrompt.getId());
+        prompt.setSourcePromptTitle(sourcePrompt.getTitle());
     }
 
     private void applyFlowSource(Prompt prompt, UUID flowId, String nodeId) {

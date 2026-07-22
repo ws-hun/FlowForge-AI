@@ -29,6 +29,8 @@ public record PromptRequest(
 
         UUID sourceTaskId,
 
+        UUID sourcePromptId,
+
         UUID sourceFlowId,
 
         @Size(max = 80, message = "sourceNodeId must be less than 80 characters")

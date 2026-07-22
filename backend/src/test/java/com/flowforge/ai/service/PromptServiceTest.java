@@ -80,7 +80,7 @@ class PromptServiceTest {
         when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
         stubPromptSave();
 
-        PromptResponse response = promptService.createPrompt(request(taskId, null, null));
+        PromptResponse response = promptService.createPrompt(request(taskId, null, null, null));
 
         assertThat(response.sourceTaskId()).isEqualTo(taskId);
         assertThat(response.sourceTaskSummary()).isEqualTo("A reusable execution result");
@@ -115,7 +115,7 @@ class PromptServiceTest {
         when(workflowRepository.findById(flowId)).thenReturn(Optional.of(workflow));
         stubPromptSave();
 
-        PromptResponse response = promptService.createPrompt(request(null, flowId, sourceNode.id()));
+        PromptResponse response = promptService.createPrompt(request(null, null, flowId, sourceNode.id()));
 
         assertThat(response.sourceFlowId()).isEqualTo(flowId);
         assertThat(response.sourceFlowTitle()).isEqualTo("Idea to MVP");
@@ -127,22 +127,46 @@ class PromptServiceTest {
 
     @Test
     void rejectsAmbiguousPromptSources() {
-        PromptRequest request = request(UUID.randomUUID(), UUID.randomUUID(), "prompt-node");
+        PromptRequest request = request(UUID.randomUUID(), null, UUID.randomUUID(), "prompt-node");
 
         assertThatThrownBy(() -> promptService.createPrompt(request))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Prompt source must be either a Task or a Flow node");
+                .hasMessage("Prompt source must be one of Task, Prompt, or Flow node");
         verify(promptRepository, never()).save(any(Prompt.class));
     }
 
     @Test
     void requiresAFlowNodeForFlowProvenance() {
-        PromptRequest request = request(null, UUID.randomUUID(), null);
+        PromptRequest request = request(null, null, UUID.randomUUID(), null);
 
         assertThatThrownBy(() -> promptService.createPrompt(request))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("sourceNodeId is required when sourceFlowId is provided");
         verify(promptRepository, never()).save(any(Prompt.class));
+    }
+
+    @Test
+    void createsPromptVariantWithDirectPromptLineage() {
+        UUID sourcePromptId = UUID.randomUUID();
+        Prompt sourcePrompt = Prompt.builder()
+                .id(sourcePromptId)
+                .title("Product brief")
+                .category("Product")
+                .description("Source description")
+                .content("Source content")
+                .tags("Product")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        when(promptRepository.findById(sourcePromptId)).thenReturn(Optional.of(sourcePrompt));
+        stubPromptSave();
+
+        PromptResponse response = promptService.createPrompt(request(null, sourcePromptId, null, null));
+
+        assertThat(response.sourcePromptId()).isEqualTo(sourcePromptId);
+        assertThat(response.sourcePromptTitle()).isEqualTo("Product brief");
+        assertThat(response.sourceTaskId()).isNull();
+        assertThat(response.sourceFlowId()).isNull();
     }
 
     @Test
@@ -175,6 +199,7 @@ class PromptServiceTest {
                         List.of("Flow", "Reusable"),
                         true,
                         UUID.randomUUID(),
+                        UUID.randomUUID(),
                         null,
                         null
                 )
@@ -185,7 +210,7 @@ class PromptServiceTest {
         assertThat(response.sourceTaskSummary()).isEqualTo("Original run");
     }
 
-    private PromptRequest request(UUID sourceTaskId, UUID sourceFlowId, String sourceNodeId) {
+    private PromptRequest request(UUID sourceTaskId, UUID sourcePromptId, UUID sourceFlowId, String sourceNodeId) {
         return new PromptRequest(
                 "Reusable work pattern",
                 "Flow Output",
@@ -194,6 +219,7 @@ class PromptServiceTest {
                 List.of("Flow", "Reusable"),
                 false,
                 sourceTaskId,
+                sourcePromptId,
                 sourceFlowId,
                 sourceNodeId
         );
