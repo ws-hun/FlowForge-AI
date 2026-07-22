@@ -21,7 +21,10 @@
             <time>{{ formatDate(sourceRun.createdAt) }}</time>
           </div>
           <span class="run-provenance">
-            {{ formatExecutionSource(sourceRun.provider, sourceRun.model, sourceRun.totalTokens) || '来源未记录' }}
+            {{
+              formatExecutionSource(sourceRun.provider, sourceRun.model, sourceRun.totalTokens, sourceRun.durationMs) ||
+              '来源未记录'
+            }}
           </span>
         </div>
         <AiResultDocument
@@ -32,6 +35,7 @@
           :input-tokens="sourceRun.inputTokens"
           :output-tokens="sourceRun.outputTokens"
           :total-tokens="sourceRun.totalTokens"
+          :duration-ms="sourceRun.durationMs"
           compact
           :show-raw="false"
         />
@@ -47,7 +51,10 @@
             <time>{{ formatDate(targetRun.createdAt) }}</time>
           </div>
           <span class="run-provenance">
-            {{ formatExecutionSource(targetRun.provider, targetRun.model, targetRun.totalTokens) || '来源未记录' }}
+            {{
+              formatExecutionSource(targetRun.provider, targetRun.model, targetRun.totalTokens, targetRun.durationMs) ||
+              '来源未记录'
+            }}
           </span>
         </div>
         <AiResultDocument
@@ -58,6 +65,7 @@
           :input-tokens="targetRun.inputTokens"
           :output-tokens="targetRun.outputTokens"
           :total-tokens="targetRun.totalTokens"
+          :duration-ms="targetRun.durationMs"
           compact
           :show-raw="false"
         />

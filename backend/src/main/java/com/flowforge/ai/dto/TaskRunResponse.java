@@ -11,6 +11,7 @@ public record TaskRunResponse(
         Integer inputTokens,
         Integer outputTokens,
         Integer totalTokens,
+        Long durationMs,
         UUID rerunOfTaskId,
         UUID continuedFromTaskId,
         String executionInput,

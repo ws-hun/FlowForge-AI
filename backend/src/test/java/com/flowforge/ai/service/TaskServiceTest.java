@@ -177,6 +177,7 @@ class TaskServiceTest {
         assertThat(savedTask.getInputTokens()).isEqualTo(820);
         assertThat(savedTask.getOutputTokens()).isEqualTo(430);
         assertThat(savedTask.getTotalTokens()).isEqualTo(1250);
+        assertThat(savedTask.getDurationMs()).isNotNegative();
         assertThat(executionInput)
                 .contains("Flow: Idea to MVP")
                 .contains("Build a calm workspace for product leads.")
@@ -197,6 +198,7 @@ class TaskServiceTest {
         assertThat(response.inputTokens()).isEqualTo(820);
         assertThat(response.outputTokens()).isEqualTo(430);
         assertThat(response.totalTokens()).isEqualTo(1250);
+        assertThat(response.durationMs()).isEqualTo(savedTask.getDurationMs());
         assertThat(response.flowRunSnapshot()).isNotNull();
         assertThat(response.flowRunSnapshot().title()).isEqualTo("Idea to MVP");
         assertThat(response.flowRunSnapshot().flowUpdatedAt()).isEqualTo(updatedAt);
@@ -252,6 +254,7 @@ class TaskServiceTest {
                 .inputTokens(640)
                 .outputTokens(360)
                 .totalTokens(1000)
+                .durationMs(2450L)
                 .rerunOfTaskId(rerunOfTaskId)
                 .continuedFromTaskId(continuedFromTaskId)
                 .createdAt(createdAt)
@@ -266,6 +269,7 @@ class TaskServiceTest {
             assertThat(item.inputTokens()).isEqualTo(640);
             assertThat(item.outputTokens()).isEqualTo(360);
             assertThat(item.totalTokens()).isEqualTo(1000);
+            assertThat(item.durationMs()).isEqualTo(2450L);
             assertThat(item.rerunOfTaskId()).isEqualTo(rerunOfTaskId);
             assertThat(item.continuedFromTaskId()).isEqualTo(continuedFromTaskId);
             assertThat(item.status()).isEqualTo(Task.STATUS_COMPLETED);
@@ -302,6 +306,7 @@ class TaskServiceTest {
         assertThat(failedTask.getModel()).isEqualTo("deepseek-chat");
         assertThat(failedTask.getStatus()).isEqualTo(Task.STATUS_FAILED);
         assertThat(failedTask.getErrorMessage()).isEqualTo("AI API error: rate limit exceeded");
+        assertThat(failedTask.getDurationMs()).isNotNegative();
         verify(taskRepository, never()).save(any(Task.class));
         verifyNoInteractions(promptRepository, workflowRepository);
     }

@@ -101,6 +101,7 @@
             :input-tokens="workspace.latestResult.inputTokens"
             :output-tokens="workspace.latestResult.outputTokens"
             :total-tokens="workspace.latestResult.totalTokens"
+            :duration-ms="workspace.latestResult.durationMs"
           />
           <div v-if="workspace.canPromoteLatestTask" class="task-result-actions">
             <div>

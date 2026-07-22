@@ -9,6 +9,25 @@ export function formatTokenUsage(totalTokens?: number | null) {
   return `${new Intl.NumberFormat('zh-CN').format(totalTokens)} tokens`
 }
 
-export function formatExecutionSource(provider?: string | null, model?: string | null, totalTokens?: number | null) {
-  return [formatProviderName(provider), model?.trim(), formatTokenUsage(totalTokens)].filter(Boolean).join(' · ')
+export function formatExecutionDuration(durationMs?: number | null) {
+  if (typeof durationMs !== 'number' || durationMs < 0) return ''
+  if (durationMs < 1000) return `${Math.round(durationMs)} ms`
+  if (durationMs < 10000) return `${(durationMs / 1000).toFixed(1)} s`
+  return `${Math.round(durationMs / 1000)} s`
+}
+
+export function formatExecutionSource(
+  provider?: string | null,
+  model?: string | null,
+  totalTokens?: number | null,
+  durationMs?: number | null
+) {
+  return [
+    formatProviderName(provider),
+    model?.trim(),
+    formatTokenUsage(totalTokens),
+    formatExecutionDuration(durationMs)
+  ]
+    .filter(Boolean)
+    .join(' · ')
 }

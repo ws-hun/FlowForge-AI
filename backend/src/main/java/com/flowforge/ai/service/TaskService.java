@@ -126,13 +126,15 @@ public class TaskService {
     }
 
     private TaskRunResponse executeAndSave(String executionInput, TaskExecutionSource source) {
+        long startedAt = System.nanoTime();
         OpenAiTaskResult aiResult;
         try {
             aiResult = openAiService.processTask(executionInput);
         } catch (RuntimeException ex) {
-            recordFailedExecution(executionInput, source, ex);
+            recordFailedExecution(executionInput, source, ex, elapsedMillis(startedAt));
             throw ex;
         }
+        long durationMs = elapsedMillis(startedAt);
 
         Task task = createTaskBuilder(executionInput, source)
                 .summary(aiResult.summary())
@@ -142,6 +144,7 @@ public class TaskService {
                 .inputTokens(aiResult.inputTokens())
                 .outputTokens(aiResult.outputTokens())
                 .totalTokens(aiResult.totalTokens())
+                .durationMs(durationMs)
                 .status(Task.STATUS_COMPLETED)
                 .build();
 
@@ -156,6 +159,7 @@ public class TaskService {
                 aiResult.inputTokens(),
                 aiResult.outputTokens(),
                 aiResult.totalTokens(),
+                durationMs,
                 source.rerunOfTaskId(),
                 source.continuedFromTaskId(),
                 executionInput,
@@ -164,7 +168,12 @@ public class TaskService {
         );
     }
 
-    private void recordFailedExecution(String executionInput, TaskExecutionSource source, RuntimeException exception) {
+    private void recordFailedExecution(
+            String executionInput,
+            TaskExecutionSource source,
+            RuntimeException exception,
+            long durationMs
+    ) {
         String errorMessage = StringUtils.hasText(exception.getMessage())
                 ? exception.getMessage()
                 : "AI Provider execution failed";
@@ -179,6 +188,7 @@ public class TaskService {
                 .result(errorMessage)
                 .provider(provider)
                 .model(model)
+                .durationMs(durationMs)
                 .status(Task.STATUS_FAILED)
                 .errorMessage(errorMessage)
                 .build();
@@ -199,6 +209,10 @@ public class TaskService {
                 .sourceFlowId(source.flowId())
                 .sourceFlowTitle(source.flowTitle())
                 .sourceFlowSnapshotJson(serializeFlowRunSnapshot(source.flowRunSnapshot()));
+    }
+
+    private long elapsedMillis(long startedAt) {
+        return Math.max(0L, (System.nanoTime() - startedAt) / 1_000_000L);
     }
 
     @Transactional(readOnly = true)
@@ -471,6 +485,7 @@ public class TaskService {
                 task.getInputTokens(),
                 task.getOutputTokens(),
                 task.getTotalTokens(),
+                task.getDurationMs(),
                 task.getRerunOfTaskId(),
                 task.getContinuedFromTaskId(),
                 StringUtils.hasText(task.getStatus()) ? task.getStatus() : Task.STATUS_COMPLETED,

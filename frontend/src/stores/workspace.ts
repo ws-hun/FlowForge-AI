@@ -206,6 +206,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       inputTokens: sourceRun.inputTokens,
       outputTokens: sourceRun.outputTokens,
       totalTokens: sourceRun.totalTokens,
+      durationMs: sourceRun.durationMs,
       rerunOfTaskId: sourceRun.rerunOfTaskId,
       continuedFromTaskId: sourceRun.continuedFromTaskId,
       executionInput: sourceRun.input,

@@ -198,8 +198,8 @@
             <article v-for="run in promptRuns" :key="run.id" class="run-item" :class="{ failed: run.status === 'failed' }">
               <time>{{ formatDate(run.createdAt) }}</time>
               <strong>{{ run.summary }}</strong>
-              <span v-if="formatExecutionSource(run.provider, run.model, run.totalTokens)" class="run-provenance">
-                {{ formatExecutionSource(run.provider, run.model, run.totalTokens) }}
+              <span v-if="formatExecutionSource(run.provider, run.model, run.totalTokens, run.durationMs)" class="run-provenance">
+                {{ formatExecutionSource(run.provider, run.model, run.totalTokens, run.durationMs) }}
               </span>
               <p>{{ run.status === 'failed' ? run.errorMessage || run.result : run.result }}</p>
             </article>

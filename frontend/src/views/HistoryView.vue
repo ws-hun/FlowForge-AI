@@ -28,7 +28,8 @@
                 formatExecutionSource(
                   lineageSource(task)?.provider,
                   lineageSource(task)?.model,
-                  lineageSource(task)?.totalTokens
+                  lineageSource(task)?.totalTokens,
+                  lineageSource(task)?.durationMs
                 ) ||
                 '来源运行'
               }}
@@ -39,7 +40,10 @@
           </p>
           <div class="history-reuse-row">
             <span class="run-provenance">
-              {{ formatExecutionSource(task.provider, task.model, task.totalTokens) || '已保存服务端执行输入' }}
+              {{
+                formatExecutionSource(task.provider, task.model, task.totalTokens, task.durationMs) ||
+                '已保存服务端执行输入'
+              }}
             </span>
             <div class="history-reuse-actions">
               <button
@@ -84,6 +88,7 @@
                 :input-tokens="task.inputTokens"
                 :output-tokens="task.outputTokens"
                 :total-tokens="task.totalTokens"
+                :duration-ms="task.durationMs"
                 compact
                 :show-raw="false"
               />

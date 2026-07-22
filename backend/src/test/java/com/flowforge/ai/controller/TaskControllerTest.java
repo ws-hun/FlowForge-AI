@@ -43,6 +43,7 @@ class TaskControllerTest {
                         300,
                         180,
                         480,
+                        1250L,
                         null,
                         sourceTaskId,
                         "Server-compiled continuation input",
@@ -81,6 +82,7 @@ class TaskControllerTest {
                 400,
                 200,
                 600,
+                980L,
                 sourceTaskId,
                 null,
                 "Exact stored execution input",
@@ -95,6 +97,7 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.rerunOfTaskId").value(sourceTaskId.toString()))
                 .andExpect(jsonPath("$.executionInput").value("Exact stored execution input"))
                 .andExpect(jsonPath("$.provider").value("openai"))
+                .andExpect(jsonPath("$.durationMs").value(980))
                 .andExpect(jsonPath("$.totalTokens").value(600));
 
         verify(taskService).rerunTask(sourceTaskId);

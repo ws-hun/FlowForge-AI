@@ -66,6 +66,9 @@ public class Task {
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
+    @Column(name = "duration_ms")
+    private Long durationMs;
+
     @Column(name = "source_prompt_id")
     private UUID sourcePromptId;
 

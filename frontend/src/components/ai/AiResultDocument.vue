@@ -3,10 +3,11 @@
     <div class="result-doc-header">
       <div class="result-doc-meta">
         <span class="badge">AI Result</span>
-        <span v-if="providerLabel || model || tokenUsageLabel" class="execution-source">
+        <span v-if="providerLabel || model || tokenUsageLabel || durationLabel" class="execution-source">
           <strong v-if="providerLabel">{{ providerLabel }}</strong>
           <code v-if="model">{{ model }}</code>
           <span v-if="tokenUsageLabel" :title="tokenUsageDetail">{{ tokenUsageLabel }}</span>
+          <span v-if="durationLabel">{{ durationLabel }}</span>
         </span>
       </div>
       <p class="page-kicker">摘要</p>
@@ -50,7 +51,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { formatProviderName, formatTokenUsage } from '@/utils/aiProvider'
+import { formatExecutionDuration, formatProviderName, formatTokenUsage } from '@/utils/aiProvider'
 
 type ResultBlock =
   | { type: 'heading'; level: number; content: string }
@@ -68,6 +69,7 @@ const props = withDefaults(
     inputTokens?: number | null
     outputTokens?: number | null
     totalTokens?: number | null
+    durationMs?: number | null
     compact?: boolean
     showRaw?: boolean
   }>(),
@@ -78,6 +80,7 @@ const props = withDefaults(
     inputTokens: null,
     outputTokens: null,
     totalTokens: null,
+    durationMs: null,
     compact: false,
     showRaw: true
   }
@@ -85,6 +88,7 @@ const props = withDefaults(
 
 const providerLabel = computed(() => formatProviderName(props.provider))
 const tokenUsageLabel = computed(() => formatTokenUsage(props.totalTokens))
+const durationLabel = computed(() => formatExecutionDuration(props.durationMs))
 const tokenUsageDetail = computed(() =>
   [
     props.inputTokens == null ? '' : `输入 ${formatTokenUsage(props.inputTokens)}`,

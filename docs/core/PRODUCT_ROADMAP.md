@@ -88,7 +88,7 @@ Current Stage 3 capabilities:
 - Persisted Input, Context, Prompt, AI Task, and Output nodes.
 - Flow variables with preflight validation and atomic rename.
 - Server-compiled execution previews.
-- Immutable run snapshots with source, Provider, model, and token usage.
+- Immutable run snapshots with source, Provider, model, token usage, and execution duration.
 - Reuse through run settings, snapshot branching, result-to-Prompt, exact historical reruns, run comparison, and result continuation.
 - Failed Provider executions preserve their context and remain recoverable from History.
 

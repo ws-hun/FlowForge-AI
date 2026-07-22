@@ -320,6 +320,7 @@
             :input-tokens="activeFlowResult.inputTokens"
             :output-tokens="activeFlowResult.outputTokens"
             :total-tokens="activeFlowResult.totalTokens"
+            :duration-ms="activeFlowResult.durationMs"
             compact
             :show-raw="false"
           />
@@ -636,8 +637,8 @@
                 <span v-if="run.status === 'failed'" class="error">执行失败</span>
                 <span v-else-if="run.flowRunSnapshot">已固定快照</span>
               </div>
-              <span v-if="formatExecutionSource(run.provider, run.model, run.totalTokens)" class="run-provenance">
-                {{ formatExecutionSource(run.provider, run.model, run.totalTokens) }}
+              <span v-if="formatExecutionSource(run.provider, run.model, run.totalTokens, run.durationMs)" class="run-provenance">
+                {{ formatExecutionSource(run.provider, run.model, run.totalTokens, run.durationMs) }}
               </span>
               <p>{{ run.status === 'failed' ? run.errorMessage || run.result : run.result }}</p>
             </button>
@@ -888,6 +889,7 @@ const activeFlowResult = computed<TaskRunResponse | null>(() => {
       inputTokens: selectedFlowRun.value.inputTokens,
       outputTokens: selectedFlowRun.value.outputTokens,
       totalTokens: selectedFlowRun.value.totalTokens,
+      durationMs: selectedFlowRun.value.durationMs,
       executionInput: selectedFlowRun.value.input,
       taskId: selectedFlowRun.value.id,
       flowRunSnapshot: selectedFlowRun.value.flowRunSnapshot || null

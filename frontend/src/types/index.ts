@@ -9,6 +9,7 @@ export interface TaskRunResponse {
   inputTokens?: number | null
   outputTokens?: number | null
   totalTokens?: number | null
+  durationMs?: number | null
   rerunOfTaskId?: string | null
   continuedFromTaskId?: string | null
   executionInput: string
@@ -26,6 +27,7 @@ export interface TaskHistoryItem {
   inputTokens?: number | null
   outputTokens?: number | null
   totalTokens?: number | null
+  durationMs?: number | null
   rerunOfTaskId?: string | null
   continuedFromTaskId?: string | null
   status?: 'completed' | 'failed' | null
