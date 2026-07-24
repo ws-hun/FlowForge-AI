@@ -182,8 +182,11 @@ function goToApiKeys() {
 }
 
 function returnToFlow() {
-  if (workspace.taskSourceFlowId) {
-    workspace.selectFlowDraft(workspace.taskSourceFlowId)
+  const flowId = workspace.taskSourceFlowId
+  if (flowId) {
+    workspace.selectFlowDraft(flowId)
+    router.push({ path: '/workflows', query: { flow: flowId } })
+    return
   }
   router.push('/workflows')
 }
@@ -220,6 +223,6 @@ async function createFlowFromLatestTask() {
   }
 
   ElMessage.success('已从 AI Command 创建 Flow')
-  router.push('/workflows')
+  router.push({ path: '/workflows', query: { flow: flow.id } })
 }
 </script>

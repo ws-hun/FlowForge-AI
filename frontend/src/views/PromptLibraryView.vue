@@ -919,7 +919,7 @@ async function createFlowFromSelectedPrompt() {
 
   detailOpen.value = false
   ElMessage.success('Flow 已从 Prompt 创建')
-  router.push('/workflows')
+  router.push({ path: '/workflows', query: { flow: flow.id } })
 }
 
 async function continueFromPromptSource() {
@@ -961,7 +961,7 @@ async function openPromptSourceFlow() {
   workspace.selectFlowDraft(sourceFlow.id)
   detailOpen.value = false
   ElMessage.success(`已打开来源 Flow「${sourceFlow.title}」`)
-  await router.push('/workflows')
+  await router.push({ path: '/workflows', query: { flow: sourceFlow.id } })
 }
 
 async function openPromptSourcePrompt() {

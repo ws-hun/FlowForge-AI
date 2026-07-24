@@ -686,7 +686,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { onBeforeRouteLeave, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { EditPen, Plus } from '@element-plus/icons-vue'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
@@ -726,6 +726,7 @@ type PendingNodeEditorPatch = {
 }
 
 const router = useRouter()
+const route = useRoute()
 const workspace = useWorkspaceStore()
 
 const flowIntent = ref('')
@@ -762,6 +763,7 @@ const flowRunStartedAt = ref('')
 const flowRunCompletedAt = ref('')
 const nodeRunStates = ref<Record<string, FlowNodeRunState>>({})
 const selectedNodeId = ref('')
+const flowRouteReady = ref(false)
 
 const flowTemplates: FlowTemplate[] = [
   {
@@ -1147,8 +1149,18 @@ watch(
       loadFlowRuns(workspace.activeFlow.id)
       loadFlowVersions(workspace.activeFlow.id)
     }
+    syncActiveFlowRoute()
   },
   { immediate: true }
+)
+
+watch(
+  () => route.query.flow,
+  (flowId) => {
+    if (flowRouteReady.value) {
+      void openFlowFromRoute(flowId)
+    }
+  }
 )
 
 watch(
@@ -1185,6 +1197,9 @@ watch(
 onMounted(async () => {
   window.addEventListener('beforeunload', handleBeforeUnload)
   await Promise.all([workspace.loadFlowDrafts(), workspace.loadApiKeys(), loadPromptAssets()])
+  flowRouteReady.value = true
+  await openFlowFromRoute()
+  syncActiveFlowRoute()
 })
 
 onBeforeUnmount(() => {
@@ -1490,7 +1505,11 @@ async function createFlowFromSnapshot(snapshot: FlowRunSnapshotType) {
 }
 
 async function selectFlow(id: string) {
-  if (id === workspace.activeFlowId || !(await resolvePendingEdits())) {
+  if (id === workspace.activeFlowId) {
+    syncActiveFlowRoute()
+    return
+  }
+  if (!(await resolvePendingEdits())) {
     return
   }
 
@@ -1537,6 +1556,47 @@ async function openSourceFlowById(sourceFlowId: string) {
   workspace.selectFlowDraft(sourceFlow.id)
   selectedNodeId.value = sourceFlow.nodes[0]?.id || ''
   ElMessage.success(`已打开来源 Flow「${sourceFlow.title}」`)
+}
+
+async function openFlowFromRoute(value: unknown = route.query.flow) {
+  const flowId = typeof value === 'string' ? value : ''
+  if (!flowId || flowId === workspace.activeFlowId) {
+    return
+  }
+
+  const flow = workspace.flowDrafts.find((item) => item.id === flowId)
+  if (!flow) {
+    ElMessage.warning('指定的 Flow 已不存在或无法访问')
+    syncActiveFlowRoute()
+    return
+  }
+
+  if (!(await resolvePendingEdits())) {
+    syncActiveFlowRoute()
+    return
+  }
+
+  workspace.selectFlowDraft(flow.id)
+}
+
+function syncActiveFlowRoute() {
+  if (!flowRouteReady.value) {
+    return
+  }
+
+  const flowId = workspace.activeFlowId
+  const routeFlowId = typeof route.query.flow === 'string' ? route.query.flow : ''
+  if (flowId === routeFlowId) {
+    return
+  }
+
+  const query = { ...route.query }
+  if (flowId) {
+    query.flow = flowId
+  } else {
+    delete query.flow
+  }
+  void router.replace({ query })
 }
 
 async function selectFlowNode(nodeId: string) {

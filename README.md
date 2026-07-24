@@ -104,6 +104,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Historical Result Continuation | Done | 从任意历史结果继续创作，服务端读取固定结果编译新输入并保留继续关系 |
 | Stage 3 | Failed Run Recovery | Done | Provider 调用失败时独立保存执行输入、来源、快照和错误信息，并支持从 History 精确重跑 |
 | Stage 3 | Workspace Continuation Paths | Done | 首页可继续当前 Flow、最近成功 Result，并深链打开最近 Prompt，保持创作上下文连续 |
+| Stage 3 | Flow Asset Deep Links | Done | 使用 `/workflows?flow=<id>` 精确恢复目标 Flow，覆盖创建、来源返回、历史快照与运行配置复用入口 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
 | Future | Knowledge Base | Preview UI | 产品预留界面，暂未接入向量检索 |
 | Future | Analytics | Preview UI | 轻量洞察预留，暂未做完整数据分析系统 |
@@ -234,6 +235,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | Flow 节点内容运行前检查 | Done |
 | Flow / 节点保存状态提示 | Done |
 | 未保存编辑在切换、预览、执行、复用和离开页面前统一确认 | Done |
+| Flow URL 深链与浏览器前进后退恢复 | Done |
 | Flow 创作修订快照 / 恢复前影响预览 | Done |
 | 从历史修订创建 Flow 变体并返回来源 Flow | Done |
 | 运行快照保留派生 Flow 来源与修订 | Done |

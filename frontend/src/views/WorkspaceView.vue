@@ -207,7 +207,7 @@ async function useTemplate(prompt: string) {
 
 function openFlow(flowId: string) {
   workspace.selectFlowDraft(flowId)
-  router.push('/workflows')
+  router.push({ path: '/workflows', query: { flow: flowId } })
 }
 
 function continueResult() {

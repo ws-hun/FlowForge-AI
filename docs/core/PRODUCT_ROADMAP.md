@@ -98,6 +98,7 @@ Current Stage 3 capabilities:
 - Flow run snapshots preserve derived Flow lineage so historical results remain explainable after further editing.
 - Failed Provider executions preserve their context and remain recoverable from History.
 - Workspace continuation paths reopen the active Flow, continue the latest successful Result, and deep-link into recent Prompt assets without turning the home screen into a dashboard.
+- Flow asset deep links restore a specific saved Flow from Workspace, Task, Prompt, History, revision, and snapshot reuse paths while preserving unsaved-edit protection.
 
 Current Stage 3 priorities:
 

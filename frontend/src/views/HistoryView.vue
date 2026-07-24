@@ -231,7 +231,7 @@ function openFlowSnapshotSource(snapshot: FlowRunSnapshotType) {
 
   workspace.selectFlowDraft(sourceFlow.id)
   ElMessage.success(`已打开来源 Flow「${sourceFlow.title}」`)
-  router.push('/workflows')
+  router.push({ path: '/workflows', query: { flow: sourceFlow.id } })
 }
 
 function reuseFlowRunSettings(snapshot: FlowRunSnapshotType) {
@@ -241,7 +241,7 @@ function reuseFlowRunSettings(snapshot: FlowRunSnapshotType) {
   }
 
   ElMessage.success('已将本次运行配置带回原 Flow')
-  router.push('/workflows')
+  router.push({ path: '/workflows', query: { flow: snapshot.flowId } })
 }
 
 async function createFlowFromSnapshot(snapshot: FlowRunSnapshotType) {
@@ -251,6 +251,6 @@ async function createFlowFromSnapshot(snapshot: FlowRunSnapshotType) {
   }
 
   ElMessage.success('已创建新的 Flow，并带入本次运行上下文')
-  router.push('/workflows')
+  router.push({ path: '/workflows', query: { flow: flow.id } })
 }
 </script>
