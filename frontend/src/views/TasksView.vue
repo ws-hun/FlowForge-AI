@@ -192,7 +192,8 @@ function returnToFlow() {
 }
 
 function openPromptLibrary() {
-  router.push('/prompts')
+  const promptId = workspace.taskSourcePromptId
+  router.push(promptId ? { path: '/prompts', query: { prompt: promptId } } : '/prompts')
 }
 
 function returnToHistory() {

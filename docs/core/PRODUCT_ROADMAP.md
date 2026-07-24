@@ -99,6 +99,7 @@ Current Stage 3 capabilities:
 - Failed Provider executions preserve their context and remain recoverable from History.
 - Workspace continuation paths reopen the active Flow, continue the latest successful Result, and deep-link into recent Prompt assets without turning the home screen into a dashboard.
 - Flow asset deep links restore a specific saved Flow from Workspace, Task, Prompt, History, revision, and snapshot reuse paths while preserving unsaved-edit protection.
+- Prompt asset deep links keep Library cards, source Prompt navigation, AI Command return paths, revision branches, Drawer state, and browser history aligned to one saved Prompt.
 
 Current Stage 3 priorities:
 

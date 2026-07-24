@@ -148,7 +148,13 @@
       </template>
     </el-dialog>
 
-    <el-drawer v-model="detailOpen" size="560px" :with-header="false" class="prompt-detail-drawer">
+    <el-drawer
+      v-model="detailOpen"
+      size="560px"
+      :with-header="false"
+      class="prompt-detail-drawer"
+      @closed="onPromptDetailClosed"
+    >
       <aside v-if="selectedPrompt" class="prompt-detail">
         <header class="prompt-detail-header">
           <div>
@@ -156,7 +162,9 @@
             <h2>{{ selectedPrompt.title }}</h2>
             <p>{{ selectedPrompt.description }}</p>
           </div>
-          <button type="button" class="icon-button" @click="detailOpen = false">×</button>
+          <button type="button" class="icon-button" title="关闭 Prompt 详情" aria-label="关闭 Prompt 详情" @click="closePromptDetail">
+            <el-icon><Close /></el-icon>
+          </button>
         </header>
 
         <div class="tag-cloud">
@@ -363,6 +371,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Close } from '@element-plus/icons-vue'
 import {
   createPrompt,
   deletePrompt,
@@ -405,6 +414,7 @@ const promptVersions = ref<PromptVersion[]>([])
 const promptVersionsLoading = ref(false)
 const selectedVersion = ref<PromptVersion | null>(null)
 const variableValues = ref<Record<string, string>>({})
+const promptRouteReady = ref(false)
 
 const form = reactive<SavePromptPayload>({
   title: '',
@@ -594,7 +604,8 @@ const selectedPromptVersionDiff = computed(() => {
 onMounted(async () => {
   window.addEventListener('beforeunload', handleBeforeUnload)
   await loadPromptAssets()
-  openPromptFromRoute()
+  promptRouteReady.value = true
+  await openPromptFromRoute()
 })
 
 onBeforeUnmount(() => {
@@ -605,7 +616,11 @@ onBeforeRouteLeave(() => resolvePendingPromptEdits())
 
 watch(
   () => route.query.prompt,
-  () => openPromptFromRoute()
+  () => {
+    if (promptRouteReady.value) {
+      void openPromptFromRoute()
+    }
+  }
 )
 
 async function loadPromptAssets() {
@@ -620,15 +635,33 @@ async function loadPromptAssets() {
   }
 }
 
-function openPromptFromRoute() {
+async function openPromptFromRoute() {
   const promptId = typeof route.query.prompt === 'string' ? route.query.prompt : ''
   if (!promptId) {
+    if (detailSource.value === 'library') {
+      detailOpen.value = false
+    }
     return
   }
-  const prompt = prompts.value.find((item) => item.id === promptId)
-  if (prompt) {
-    openPromptDetail(prompt)
+
+  if (detailOpen.value && detailSource.value === 'library' && selectedPrompt.value?.id === promptId) {
+    return
   }
+
+  const prompt = prompts.value.find((item) => item.id === promptId)
+  if (!prompt) {
+    ElMessage.warning('指定的 Prompt 已不存在或无法访问')
+    await syncPromptRoute(null, 'replace')
+    return
+  }
+
+  if (!(await resolvePendingPromptEdits())) {
+    await syncPromptRoute(selectedPrompt.value?.id || null, 'replace')
+    return
+  }
+
+  dialogOpen.value = false
+  showPromptDetail(prompt)
 }
 
 function openCreate() {
@@ -647,7 +680,6 @@ function openEditFromDetail() {
   if (!selectedPrompt.value) {
     return
   }
-  detailOpen.value = false
   openEdit(selectedPrompt.value)
 }
 
@@ -852,6 +884,11 @@ async function importStarterPrompt(prompt: SavePromptPayload, notifyExisting = t
 }
 
 function openPromptDetail(prompt: PromptAsset) {
+  showPromptDetail(prompt)
+  void syncPromptRoute(prompt.id)
+}
+
+function showPromptDetail(prompt: PromptAsset) {
   detailSource.value = 'library'
   selectedPrompt.value = prompt
   promptRuns.value = []
@@ -876,6 +913,31 @@ function openStarterDetail(prompt: StarterPrompt) {
   }
   variableValues.value = buildVariableValues(prompt.content)
   detailOpen.value = true
+}
+
+function closePromptDetail() {
+  detailOpen.value = false
+}
+
+function onPromptDetailClosed() {
+  if (detailSource.value === 'library' && route.query.prompt) {
+    void syncPromptRoute(null)
+  }
+}
+
+function syncPromptRoute(promptId: string | null, mode: 'push' | 'replace' = 'push') {
+  const currentPromptId = typeof route.query.prompt === 'string' ? route.query.prompt : ''
+  if ((promptId || '') === currentPromptId) {
+    return Promise.resolve()
+  }
+
+  const query = { ...route.query }
+  if (promptId) {
+    query.prompt = promptId
+  } else {
+    delete query.prompt
+  }
+  return router[mode]({ query })
 }
 
 function sendPreparedPrompt() {
@@ -1068,6 +1130,7 @@ async function createVariantFromVersion(version: PromptVersion) {
     promptRuns.value = []
     promptVersions.value = []
     variableValues.value = buildVariableValues(data.content)
+    await syncPromptRoute(data.id, 'replace')
     ElMessage.success('已从历史版本创建 Prompt 变体')
   } catch (error: any) {
     ElMessage.error(error.response?.data?.message || 'Prompt 变体创建失败')
