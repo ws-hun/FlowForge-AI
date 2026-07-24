@@ -761,6 +761,147 @@ a {
   font-size: 14px;
 }
 
+.workspace-continuation,
+.workspace-recent-assets {
+  max-width: 1040px;
+  margin: 0 auto 48px;
+}
+
+.workspace-continuation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.workspace-continuation-card {
+  appearance: none;
+  display: grid;
+  min-height: 192px;
+  align-content: start;
+  gap: 12px;
+  padding: 24px;
+  border: 1px solid tokens.$border;
+  text-align: left;
+  cursor: pointer;
+
+  time {
+    color: tokens.$text-muted;
+    font-family: tokens.$mono;
+    font-size: 12px;
+  }
+
+  > strong {
+    color: tokens.$text-primary;
+    font-size: 18px;
+    line-height: 1.35;
+  }
+
+  > p {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    color: tokens.$text-secondary;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+}
+
+.workspace-card-action {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  color: tokens.$primary;
+  font-size: 13px;
+  font-weight: 700;
+
+  .el-icon {
+    font-size: 15px;
+  }
+}
+
+.workspace-asset-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 32px;
+}
+
+.workspace-asset-group {
+  display: grid;
+  align-content: start;
+  border-top: 1px solid tokens.$border;
+}
+
+.workspace-asset-group-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 48px;
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 14px;
+  }
+
+  .ghost-button {
+    min-height: 32px;
+    padding: 6px 8px;
+  }
+}
+
+.workspace-asset-row {
+  appearance: none;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+  border: 0;
+  border-top: 1px solid tokens.$border;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 200ms ease, color 200ms ease;
+
+  > span {
+    display: grid;
+    min-width: 0;
+    gap: 4px;
+  }
+
+  strong {
+    overflow: hidden;
+    color: tokens.$text-primary;
+    font-size: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    color: tokens.$text-muted;
+    font-size: 12px;
+  }
+
+  > .el-icon {
+    flex: 0 0 auto;
+    color: tokens.$text-muted;
+    font-size: 15px;
+  }
+
+  &:hover {
+    transform: translateX(2px);
+
+    > .el-icon {
+      color: tokens.$primary;
+    }
+  }
+}
+
 .template-section {
   max-width: 1040px;
   margin: 0 auto;
@@ -3564,6 +3705,15 @@ a {
   .template-grid,
   .library-toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .workspace-continuation-grid,
+  .workspace-asset-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-asset-columns {
+    gap: 24px;
   }
 
   .run-comparison-grid {

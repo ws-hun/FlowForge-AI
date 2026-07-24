@@ -360,8 +360,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { onBeforeRouteLeave, useRouter } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   createPrompt,
@@ -384,6 +384,7 @@ type StarterPrompt = SavePromptPayload & {
 }
 
 const router = useRouter()
+const route = useRoute()
 const workspace = useWorkspaceStore()
 
 const prompts = ref<PromptAsset[]>([])
@@ -593,6 +594,7 @@ const selectedPromptVersionDiff = computed(() => {
 onMounted(async () => {
   window.addEventListener('beforeunload', handleBeforeUnload)
   await loadPromptAssets()
+  openPromptFromRoute()
 })
 
 onBeforeUnmount(() => {
@@ -600,6 +602,11 @@ onBeforeUnmount(() => {
 })
 
 onBeforeRouteLeave(() => resolvePendingPromptEdits())
+
+watch(
+  () => route.query.prompt,
+  () => openPromptFromRoute()
+)
 
 async function loadPromptAssets() {
   loading.value = true
@@ -610,6 +617,17 @@ async function loadPromptAssets() {
     ElMessage.error(error.response?.data?.message || 'Prompt Library 加载失败')
   } finally {
     loading.value = false
+  }
+}
+
+function openPromptFromRoute() {
+  const promptId = typeof route.query.prompt === 'string' ? route.query.prompt : ''
+  if (!promptId) {
+    return
+  }
+  const prompt = prompts.value.find((item) => item.id === promptId)
+  if (prompt) {
+    openPromptDetail(prompt)
   }
 }
 

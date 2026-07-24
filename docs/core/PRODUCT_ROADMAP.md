@@ -97,6 +97,7 @@ Current Stage 3 capabilities:
 - Historical Flow revisions can branch into independent, source-linked Flow assets without restoring over the current draft.
 - Flow run snapshots preserve derived Flow lineage so historical results remain explainable after further editing.
 - Failed Provider executions preserve their context and remain recoverable from History.
+- Workspace continuation paths reopen the active Flow, continue the latest successful Result, and deep-link into recent Prompt assets without turning the home screen into a dashboard.
 
 Current Stage 3 priorities:
 
