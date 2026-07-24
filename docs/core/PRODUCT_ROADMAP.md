@@ -95,6 +95,7 @@ Current Stage 3 capabilities:
 - Prompt revision previews explain field, tag, variable, and content changes before restore or branching.
 - Prompt creation and editing guard unsaved work across dialog close, navigation, and browser unload.
 - Historical Flow revisions can branch into independent, source-linked Flow assets without restoring over the current draft.
+- Flow run snapshots preserve derived Flow lineage so historical results remain explainable after further editing.
 - Failed Provider executions preserve their context and remain recoverable from History.
 
 Current Stage 3 priorities:

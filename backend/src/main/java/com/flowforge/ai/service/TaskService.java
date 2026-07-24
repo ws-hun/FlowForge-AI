@@ -289,6 +289,10 @@ public class TaskService {
                 flow.getTitle(),
                 flow.getDescription(),
                 deserializeFlowNodes(flow.getNodesJson()),
+                flow.getSourceFlowId(),
+                flow.getSourceFlowTitle(),
+                flow.getSourceFlowVersionId(),
+                flow.getSourceFlowVersionNumber(),
                 flow.getUpdatedAt(),
                 cleanOptional(runtimeContext),
                 cleanVariableValues(variableValues)

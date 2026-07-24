@@ -306,9 +306,11 @@
             :snapshot="activeFlowRunSnapshot"
             can-create-flow
             can-reuse-run-settings
+            :can-open-source-flow="flowSourceStillAvailable(activeFlowRunSnapshot)"
             :creating="workspace.flowLoading"
             @create-flow="createFlowFromSnapshot"
             @reuse-run-settings="reuseFlowRunSettings"
+            @open-source-flow="openFlowSnapshotSource"
           />
           <AiResultDocument
             class="flow-execution-result"
@@ -1498,7 +1500,28 @@ async function selectFlow(id: string) {
 
 async function openActiveFlowSource() {
   const sourceFlowId = workspace.activeFlow?.sourceFlowId
-  if (!sourceFlowId || !(await resolvePendingEdits())) {
+  if (!sourceFlowId) {
+    return
+  }
+
+  await openSourceFlowById(sourceFlowId)
+}
+
+function flowSourceStillAvailable(snapshot: FlowRunSnapshotType) {
+  return Boolean(
+    snapshot.sourceFlowId && workspace.flowDrafts.some((flow) => flow.id === snapshot.sourceFlowId)
+  )
+}
+
+async function openFlowSnapshotSource(snapshot: FlowRunSnapshotType) {
+  if (!snapshot.sourceFlowId) {
+    return
+  }
+  await openSourceFlowById(snapshot.sourceFlowId)
+}
+
+async function openSourceFlowById(sourceFlowId: string) {
+  if (!(await resolvePendingEdits())) {
     return
   }
 

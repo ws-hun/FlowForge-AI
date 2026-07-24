@@ -83,6 +83,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Prompt Unsaved Edit Guard | Done | 关闭编辑器、页面跳转或刷新前统一处理未保存 Prompt，避免创作内容静默丢失 |
 | Stage 3 | Flow Revisions | Done | 每次编辑前保存 Flow 快照，恢复前可预览任意创作节点及其影响范围 |
 | Stage 3 | Flow Revision Branching | Done | 从历史修订创建带来源 Flow 与修订号的独立变体，无需覆盖当前草稿 |
+| Stage 3 | Flow Lineage Snapshots | Done | 每次派生 Flow 执行都会在运行快照中固化来源 Flow 与修订，并可从历史返回来源 |
 | Stage 3 | Flow Unsaved Edit Guard | Done | 切换 Flow / 节点、预览、执行、复用或离开页面前统一处理未保存修改，避免编辑内容静默丢失或执行旧版本 |
 | Stage 3 | Reproducible Flow Runs | Done | 每次 Flow 执行由服务端根据已保存的节点、目标、Run Brief 和变量值编译；变量可注入 Input / Context / Prompt / AI Task / Output，工作区可在执行前查看同一份服务端输入，历史不受后续编辑或浏览器输入影响 |
 | Stage 3 | Configurable AI Execution Guidance | Done | AI Task 节点可保存工作流专属的执行指令，并由服务端编译进预览与真实 AI 调用 |
@@ -221,6 +222,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | 未保存编辑在切换、预览、执行、复用和离开页面前统一确认 | Done |
 | Flow 创作修订快照 / 恢复前影响预览 | Done |
 | 从历史修订创建 Flow 变体并返回来源 Flow | Done |
+| 运行快照保留派生 Flow 来源与修订 | Done |
 | 每次 Flow 执行固定保存运行快照 | Done |
 | 快照保留节点、Flow 目标、Run Brief 和 Prompt 变量 | Done |
 | 服务端从固定快照编译实际 AI 输入 | Done |
@@ -498,6 +500,10 @@ Response:
     "title": "Idea to MVP",
     "description": "将一个产品想法拆解为可验证的 MVP。",
     "nodes": [],
+    "sourceFlowId": "a-parent-flow-uuid",
+    "sourceFlowTitle": "Product Discovery",
+    "sourceFlowVersionId": "a-flow-version-uuid",
+    "sourceFlowVersionNumber": 3,
     "flowUpdatedAt": "2026-07-14T14:30:00",
     "runtimeContext": "目标用户为早期产品团队，优先输出一周可验证的 MVP。",
     "variableValues": {
@@ -507,7 +513,7 @@ Response:
 }
 ```
 
-`flowRunSnapshot` 仅在由 `flowId` 发起的运行中返回。服务端从数据库读取当前 Flow 后创建快照，不信任浏览器传入的节点结构；后续编辑、恢复修订或删除来源 Flow 都不会改变这次历史运行的上下文。
+`flowRunSnapshot` 仅在由 `flowId` 发起的运行中返回。服务端从数据库读取当前 Flow 后创建快照，不信任浏览器传入的节点结构；快照同时固化派生 Flow 的来源 Flow 与修订信息，后续编辑、恢复修订或删除来源 Flow 都不会改变这次历史运行的上下文。
 
 `executionInput` 是服务端实际提交给 AI Provider 的输入。Flow 工作区的“查看服务端执行输入”使用同一套编译逻辑，确保用户确认的内容与真实执行一致。
 

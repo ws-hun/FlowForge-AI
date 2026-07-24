@@ -367,13 +367,15 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       return null
     }
 
+    const sourceFlow = flowDrafts.value.find((flow) => flow.id === snapshot.flowId)
     const payload: SaveFlowPayload = {
       title: buildFlowSnapshotTitle(snapshot.title),
       description,
       nodes: snapshot.nodes.map((node) => ({
         ...node,
         id: createId()
-      }))
+      })),
+      sourceFlowId: sourceFlow?.id || null
     }
 
     return persistNewFlowDraft(payload, '从运行快照创建 Flow 失败', (flow) => {

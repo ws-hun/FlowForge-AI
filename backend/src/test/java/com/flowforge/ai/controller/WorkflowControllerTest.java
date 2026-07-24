@@ -77,6 +77,10 @@ class WorkflowControllerTest {
                         "Launch brief",
                         "Prepare a focused launch",
                         List.of(new FlowNodeDto("input-1", "input", "Intent", "", "Prepare a launch.", null, null)),
+                        null,
+                        null,
+                        null,
+                        null,
                         updatedAt,
                         "Focus on the first release.",
                         Map.of("audience", "product teams")

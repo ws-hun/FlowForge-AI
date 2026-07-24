@@ -97,9 +97,11 @@
                 :snapshot="task.flowRunSnapshot"
                 can-create-flow
                 :can-reuse-run-settings="flowStillAvailable(task.flowRunSnapshot)"
+                :can-open-source-flow="flowSourceStillAvailable(task.flowRunSnapshot)"
                 :creating="workspace.flowLoading"
                 @create-flow="createFlowFromSnapshot"
                 @reuse-run-settings="reuseFlowRunSettings"
+                @open-source-flow="openFlowSnapshotSource"
               />
             </el-collapse-item>
           </el-collapse>
@@ -212,6 +214,24 @@ function continueFromRun(run: TaskHistoryItem) {
 
 function flowStillAvailable(snapshot: FlowRunSnapshotType) {
   return workspace.flowDrafts.some((flow) => flow.id === snapshot.flowId)
+}
+
+function flowSourceStillAvailable(snapshot: FlowRunSnapshotType) {
+  return Boolean(
+    snapshot.sourceFlowId && workspace.flowDrafts.some((flow) => flow.id === snapshot.sourceFlowId)
+  )
+}
+
+function openFlowSnapshotSource(snapshot: FlowRunSnapshotType) {
+  const sourceFlow = workspace.flowDrafts.find((flow) => flow.id === snapshot.sourceFlowId)
+  if (!sourceFlow) {
+    ElMessage.warning('来源 Flow 已删除，运行快照中的来源信息仍然保留')
+    return
+  }
+
+  workspace.selectFlowDraft(sourceFlow.id)
+  ElMessage.success(`已打开来源 Flow「${sourceFlow.title}」`)
+  router.push('/workflows')
 }
 
 function reuseFlowRunSettings(snapshot: FlowRunSnapshotType) {

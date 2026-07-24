@@ -13,6 +13,10 @@ public record FlowRunSnapshotResponse(
         String title,
         String description,
         List<FlowNodeDto> nodes,
+        UUID sourceFlowId,
+        String sourceFlowTitle,
+        UUID sourceFlowVersionId,
+        Integer sourceFlowVersionNumber,
         LocalDateTime flowUpdatedAt,
         String runtimeContext,
         Map<String, String> variableValues

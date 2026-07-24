@@ -2248,6 +2248,47 @@ a {
   }
 }
 
+.flow-run-snapshot-origin {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0 12px 12px;
+  border-left: 2px solid rgba(79, 124, 255, 0.28);
+
+  > div {
+    display: grid;
+    gap: 4px;
+  }
+
+  span {
+    color: tokens.$text-muted;
+    font-family: tokens.$mono;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 13px;
+
+    small {
+      margin-left: 4px;
+      color: tokens.$primary;
+      font-family: tokens.$mono;
+      font-size: 11px;
+    }
+  }
+
+  p {
+    margin: 0;
+    color: tokens.$text-secondary;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+}
+
 .flow-run-snapshot-nodes {
   display: flex;
   flex-wrap: wrap;
@@ -2333,7 +2374,8 @@ a {
 }
 
 .snapshot-create-action,
-.snapshot-reuse-action {
+.snapshot-reuse-action,
+.snapshot-source-action {
   display: inline-flex;
   width: fit-content;
   align-items: center;
@@ -2380,6 +2422,11 @@ a {
     border-color: rgba(107, 114, 128, 0.24);
     background: tokens.$surface;
   }
+}
+
+.snapshot-source-action {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .flow-map {
@@ -3609,6 +3656,15 @@ a {
   .flow-run-snapshot summary {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .flow-run-snapshot-origin {
+    align-items: stretch;
+    flex-direction: column;
+
+    .snapshot-source-action {
+      width: fit-content;
+    }
   }
 
   .flow-run-snapshot-variables {

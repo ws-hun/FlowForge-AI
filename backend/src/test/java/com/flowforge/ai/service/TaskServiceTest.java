@@ -1,6 +1,7 @@
 package com.flowforge.ai.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.flowforge.ai.dto.FlowExecutionPreviewRequest;
 import com.flowforge.ai.dto.FlowExecutionPreviewResponse;
 import com.flowforge.ai.dto.FlowNodeDto;
@@ -81,12 +82,18 @@ class TaskServiceTest {
     @Test
     void capturesTheFlowStateAndRuntimeInputsWhenRunningAFlow() throws Exception {
         UUID flowId = UUID.randomUUID();
+        UUID sourceFlowId = UUID.randomUUID();
+        UUID sourceFlowVersionId = UUID.randomUUID();
         LocalDateTime updatedAt = LocalDateTime.of(2026, 7, 14, 10, 30);
         ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
         Workflow flow = Workflow.builder()
                 .id(flowId)
                 .title("Idea to MVP")
                 .description("Turn an idea into a focused MVP")
+                .sourceFlowId(sourceFlowId)
+                .sourceFlowTitle("Product discovery")
+                .sourceFlowVersionId(sourceFlowVersionId)
+                .sourceFlowVersionNumber(3)
                 .nodesJson(objectMapper.writeValueAsString(List.of(
                         new FlowNodeDto(
                                 "input-1",
@@ -201,6 +208,10 @@ class TaskServiceTest {
         assertThat(response.durationMs()).isEqualTo(savedTask.getDurationMs());
         assertThat(response.flowRunSnapshot()).isNotNull();
         assertThat(response.flowRunSnapshot().title()).isEqualTo("Idea to MVP");
+        assertThat(response.flowRunSnapshot().sourceFlowId()).isEqualTo(sourceFlowId);
+        assertThat(response.flowRunSnapshot().sourceFlowTitle()).isEqualTo("Product discovery");
+        assertThat(response.flowRunSnapshot().sourceFlowVersionId()).isEqualTo(sourceFlowVersionId);
+        assertThat(response.flowRunSnapshot().sourceFlowVersionNumber()).isEqualTo(3);
         assertThat(response.flowRunSnapshot().flowUpdatedAt()).isEqualTo(updatedAt);
         assertThat(response.flowRunSnapshot().runtimeContext()).isEqualTo("Target early-stage product teams.");
         assertThat(response.flowRunSnapshot().variableValues()).containsEntry("audience", "product leads");
@@ -320,11 +331,23 @@ class TaskServiceTest {
                 "Product direction",
                 "Shape a product direction",
                 List.of(),
+                null,
+                null,
+                null,
+                null,
                 LocalDateTime.of(2026, 7, 19, 11, 20),
                 "Prioritize a calm first release.",
                 Map.of()
         );
-        String snapshotJson = new ObjectMapper().findAndRegisterModules().writeValueAsString(snapshot);
+        ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+        ObjectNode legacySnapshot = objectMapper.valueToTree(snapshot);
+        legacySnapshot.remove(List.of(
+                "sourceFlowId",
+                "sourceFlowTitle",
+                "sourceFlowVersionId",
+                "sourceFlowVersionNumber"
+        ));
+        String snapshotJson = objectMapper.writeValueAsString(legacySnapshot);
         Task sourceTask = Task.builder()
                 .id(sourceTaskId)
                 .input("Original execution input")
@@ -390,6 +413,10 @@ class TaskServiceTest {
                         null,
                         null
                 )),
+                null,
+                null,
+                null,
+                null,
                 flowUpdatedAt,
                 "Keep the first release focused.",
                 Map.of("audience", "product teams")

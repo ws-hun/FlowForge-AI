@@ -144,6 +144,10 @@ export interface FlowRunSnapshot {
   title: string
   description: string
   nodes: FlowNode[]
+  sourceFlowId?: string | null
+  sourceFlowTitle?: string | null
+  sourceFlowVersionId?: string | null
+  sourceFlowVersionNumber?: number | null
   flowUpdatedAt: string
   runtimeContext: string
   variableValues: Record<string, string>

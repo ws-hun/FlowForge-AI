@@ -15,6 +15,26 @@
         <p>{{ snapshot.description }}</p>
       </div>
 
+      <div v-if="snapshot.sourceFlowId" class="flow-run-snapshot-origin">
+        <div>
+          <span>Derived from</span>
+          <strong>
+            {{ snapshot.sourceFlowTitle || '来源 Flow' }}
+            <small v-if="snapshot.sourceFlowVersionNumber">v{{ snapshot.sourceFlowVersionNumber }}</small>
+          </strong>
+          <p>本次执行的 Flow 是从该来源继续创建的独立资产。</p>
+        </div>
+        <button
+          v-if="canOpenSourceFlow"
+          type="button"
+          class="snapshot-source-action"
+          @click.stop="emit('open-source-flow', snapshot)"
+        >
+          <el-icon><Back /></el-icon>
+          打开来源 Flow
+        </button>
+      </div>
+
       <div class="flow-run-snapshot-nodes" aria-label="Flow 节点顺序">
         <span v-for="(node, index) in snapshot.nodes" :key="node.id">
           <i>{{ index + 1 }}</i>
@@ -64,7 +84,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Plus, RefreshRight } from '@element-plus/icons-vue'
+import { Back, Plus, RefreshRight } from '@element-plus/icons-vue'
 import type { FlowRunSnapshot } from '@/types'
 
 const props = withDefaults(
@@ -72,11 +92,13 @@ const props = withDefaults(
     snapshot: FlowRunSnapshot
     canCreateFlow?: boolean
     canReuseRunSettings?: boolean
+    canOpenSourceFlow?: boolean
     creating?: boolean
   }>(),
   {
     canCreateFlow: false,
     canReuseRunSettings: false,
+    canOpenSourceFlow: false,
     creating: false
   }
 )
@@ -84,6 +106,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   'create-flow': [snapshot: FlowRunSnapshot]
   'reuse-run-settings': [snapshot: FlowRunSnapshot]
+  'open-source-flow': [snapshot: FlowRunSnapshot]
 }>()
 
 const variableEntries = computed(() => Object.entries(props.snapshot.variableValues || {}))
