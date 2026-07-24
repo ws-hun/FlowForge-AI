@@ -285,6 +285,14 @@
               <strong>{{ flowResultHeading }}</strong>
             </div>
             <div class="flow-result-actions">
+              <button
+                v-if="activeFlowResult?.taskId"
+                type="button"
+                class="ghost-button"
+                @click="openSelectedRunHistory"
+              >
+                在 History 打开
+              </button>
               <button type="button" class="secondary-button" @click="useLatestResultAsRunContext">
                 带入下一轮
               </button>
@@ -1808,6 +1816,14 @@ function selectFlowRun(run: TaskHistoryItem) {
   if (workspace.activeFlow) {
     nodeRunStates.value = buildNodeRunStates(workspace.activeFlow.nodes, 'completed')
   }
+}
+
+function openSelectedRunHistory() {
+  const runId = activeFlowResult.value?.taskId
+  if (!runId) {
+    return
+  }
+  router.push({ path: '/history', query: { run: runId } })
 }
 
 function useLatestResultAsRunContext() {

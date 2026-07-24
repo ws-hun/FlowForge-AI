@@ -259,6 +259,9 @@
                 {{ formatExecutionSource(run.provider, run.model, run.totalTokens, run.durationMs) }}
               </span>
               <p>{{ run.status === 'failed' ? run.errorMessage || run.result : run.result }}</p>
+              <button type="button" class="text-button run-open-link" @click="openPromptRun(run.id)">
+                打开完整结果
+              </button>
             </article>
           </div>
           <div v-else class="quiet-empty">
@@ -944,7 +947,6 @@ function sendPreparedPrompt() {
   if (!selectedPrompt.value) {
     return
   }
-  detailOpen.value = false
   sendToTask(preparedPromptPreview.value, selectedPrompt.value)
 }
 
@@ -957,7 +959,6 @@ async function importStarterAndRun() {
   if (!prompt) {
     return
   }
-  detailOpen.value = false
   sendToTask(preparedPromptPreview.value, prompt)
 }
 
@@ -979,7 +980,6 @@ async function createFlowFromSelectedPrompt() {
     return
   }
 
-  detailOpen.value = false
   ElMessage.success('Flow 已从 Prompt 创建')
   router.push({ path: '/workflows', query: { flow: flow.id } })
 }
@@ -1000,7 +1000,6 @@ async function continueFromPromptSource() {
   }
 
   workspace.prepareTaskContinuation(sourceTask)
-  detailOpen.value = false
   ElMessage.success('来源结果已带入 AI Command Workspace')
   await router.push('/tasks')
 }
@@ -1021,7 +1020,6 @@ async function openPromptSourceFlow() {
   }
 
   workspace.selectFlowDraft(sourceFlow.id)
-  detailOpen.value = false
   ElMessage.success(`已打开来源 Flow「${sourceFlow.title}」`)
   await router.push({ path: '/workflows', query: { flow: sourceFlow.id } })
 }
@@ -1049,6 +1047,10 @@ function sendToTask(content: string, prompt?: PromptAsset | null) {
   workspace.prepareTask(content, prompt ? { id: prompt.id, title: prompt.title } : null)
   ElMessage.success('Prompt 已带入 AI Command Workspace')
   router.push('/tasks')
+}
+
+function openPromptRun(runId: string) {
+  router.push({ path: '/history', query: { run: runId } })
 }
 
 async function loadPromptRuns(promptId: string) {

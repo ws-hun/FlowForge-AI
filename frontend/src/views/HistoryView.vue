@@ -7,7 +7,13 @@
     </header>
 
     <div class="timeline">
-      <article v-for="task in workspace.tasks" :key="task.id" class="timeline-item">
+      <article
+        v-for="task in workspace.tasks"
+        :id="`history-run-${task.id}`"
+        :key="task.id"
+        class="timeline-item"
+        :class="{ focused: focusedRunId === task.id }"
+      >
         <span class="timeline-dot" :class="{ failed: isFailed(task) }"></span>
         <div class="timeline-content soft-card" :class="{ failed: isFailed(task) }">
           <div class="row-between">
@@ -17,10 +23,16 @@
               <small>{{ new Date(task.createdAt).toLocaleString() }}</small>
             </div>
           </div>
-          <div v-if="task.sourceFlowTitle || task.sourcePromptTitle" class="history-source-row">
+          <button
+            v-if="task.sourceFlowTitle || task.sourcePromptTitle"
+            type="button"
+            class="history-source-row"
+            :disabled="!task.sourceFlowId && !task.sourcePromptId"
+            @click="openTaskSource(task)"
+          >
             <span class="badge">{{ task.sourceFlowTitle ? 'Flow' : 'Prompt' }}</span>
             <strong>{{ task.sourceFlowTitle || task.sourcePromptTitle }}</strong>
-          </div>
+          </button>
           <div v-if="lineageSource(task)" class="history-lineage-note">
             <span>{{ lineageLabel(task) }}</span>
             <strong>
@@ -34,6 +46,9 @@
                 '来源运行'
               }}
             </strong>
+            <button type="button" class="text-button" @click="openHistoryRun(lineageSource(task)?.id)">
+              查看来源
+            </button>
           </div>
           <p class="muted" :class="{ 'error-copy': isFailed(task) }">
             {{ isFailed(task) ? task.errorMessage || task.result : task.summary }}
@@ -72,7 +87,7 @@
               </button>
             </div>
           </div>
-          <el-collapse>
+          <el-collapse v-model="expandedRunIds" @change="onRunExpansionChange(task.id, $event)">
             <el-collapse-item :title="isFailed(task) ? '查看失败详情' : '查看结果'" :name="task.id">
               <div v-if="isFailed(task)" class="failed-run-detail">
                 <span class="section-kicker">Execution Error</span>
@@ -122,9 +137,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { nextTick, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import RunComparisonDialog from '@/components/ai/RunComparisonDialog.vue'
 import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
@@ -133,11 +148,30 @@ import { formatExecutionSource } from '@/utils/aiProvider'
 import type { FlowRunSnapshot as FlowRunSnapshotType, TaskHistoryItem } from '@/types'
 
 const router = useRouter()
+const route = useRoute()
 const workspace = useWorkspaceStore()
+const expandedRunIds = ref<string[]>([])
+const focusedRunId = ref('')
+const historyRouteReady = ref(false)
 const comparisonOpen = ref(false)
 const comparisonSource = ref<TaskHistoryItem | null>(null)
 const comparisonTarget = ref<TaskHistoryItem | null>(null)
 const comparisonMode = ref<'rerun' | 'continuation'>('rerun')
+
+onMounted(async () => {
+  await workspace.bootstrap()
+  historyRouteReady.value = true
+  await openRunFromRoute()
+})
+
+watch(
+  () => route.query.run,
+  () => {
+    if (historyRouteReady.value) {
+      void openRunFromRoute()
+    }
+  }
+)
 
 async function rerunHistoryTask(taskId: string) {
   if (!workspace.activeProvider) {
@@ -196,6 +230,65 @@ function compareWithSource(targetRun: TaskHistoryItem) {
   const sourceRun = lineageSource(targetRun)
   if (sourceRun) {
     openComparison(sourceRun, targetRun, lineageMode(targetRun))
+  }
+}
+
+async function openRunFromRoute() {
+  const runId = typeof route.query.run === 'string' ? route.query.run : ''
+  if (!runId) {
+    expandedRunIds.value = []
+    focusedRunId.value = ''
+    return
+  }
+
+  if (!workspace.tasks.some((task) => task.id === runId)) {
+    ElMessage.warning('指定的运行记录已不存在或无法访问')
+    await syncRunRoute(null, 'replace')
+    return
+  }
+
+  expandedRunIds.value = [runId]
+  focusedRunId.value = runId
+  await nextTick()
+  document.getElementById(`history-run-${runId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
+function openHistoryRun(runId?: string) {
+  if (!runId) {
+    return
+  }
+  void syncRunRoute(runId)
+}
+
+function onRunExpansionChange(taskId: string, value: string | string[]) {
+  const expanded = Array.isArray(value) ? value.includes(taskId) : value === taskId
+  expandedRunIds.value = expanded ? [taskId] : []
+  focusedRunId.value = expanded ? taskId : ''
+  void syncRunRoute(expanded ? taskId : null)
+}
+
+function syncRunRoute(runId: string | null, mode: 'push' | 'replace' = 'push') {
+  const currentRunId = typeof route.query.run === 'string' ? route.query.run : ''
+  if ((runId || '') === currentRunId) {
+    return Promise.resolve()
+  }
+
+  const query = { ...route.query }
+  if (runId) {
+    query.run = runId
+  } else {
+    delete query.run
+  }
+  return router[mode]({ query })
+}
+
+function openTaskSource(task: TaskHistoryItem) {
+  if (task.sourceFlowId) {
+    router.push({ path: '/workflows', query: { flow: task.sourceFlowId } })
+    return
+  }
+  if (task.sourcePromptId) {
+    router.push({ path: '/prompts', query: { prompt: task.sourcePromptId } })
   }
 }
 

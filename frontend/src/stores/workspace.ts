@@ -46,6 +46,8 @@ type FlowRunSeed = {
 }
 
 export const useWorkspaceStore = defineStore('workspace', () => {
+  let bootstrapPromise: Promise<void> | null = null
+  let bootstrapped = false
   const tasks = ref<TaskHistoryItem[]>([])
   const apiKeys = ref<ApiKeyConfig[]>([])
   const flowDrafts = ref<FlowDraft[]>([])
@@ -823,7 +825,19 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function bootstrap() {
-    await Promise.all([loadTasks(), loadApiKeys(), loadFlowDrafts()])
+    if (bootstrapped) {
+      return
+    }
+    if (!bootstrapPromise) {
+      bootstrapPromise = Promise.all([loadTasks(), loadApiKeys(), loadFlowDrafts()])
+        .then(() => {
+          bootstrapped = true
+        })
+        .finally(() => {
+          bootstrapPromise = null
+        })
+    }
+    await bootstrapPromise
   }
 
   return {

@@ -109,6 +109,14 @@
               <strong>让这次有效执行成为下一次创作的起点。</strong>
             </div>
             <div class="task-result-action-buttons">
+              <button
+                v-if="workspace.latestResult.taskId"
+                type="button"
+                class="ghost-button"
+                @click="openLatestResultHistory"
+              >
+                在 History 打开
+              </button>
               <button type="button" class="ghost-button" @click="continueLatestResult">
                 继续此结果
               </button>
@@ -197,7 +205,15 @@ function openPromptLibrary() {
 }
 
 function returnToHistory() {
-  router.push('/history')
+  const runId = workspace.taskSourceRunId
+  router.push(runId ? { path: '/history', query: { run: runId } } : '/history')
+}
+
+function openLatestResultHistory() {
+  const runId = workspace.latestResult?.taskId
+  if (runId) {
+    router.push({ path: '/history', query: { run: runId } })
+  }
 }
 
 function detachTaskSource() {
