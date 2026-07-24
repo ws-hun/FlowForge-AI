@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
+import java.util.UUID;
 
 public record FlowRequest(
         @NotBlank(message = "title is required")
@@ -18,6 +19,10 @@ public record FlowRequest(
 
         @NotEmpty(message = "nodes are required")
         @Size(max = 50, message = "flow can contain at most 50 nodes")
-        List<@Valid FlowNodeDto> nodes
+        List<@Valid FlowNodeDto> nodes,
+
+        UUID sourceFlowId,
+
+        UUID sourceFlowVersionId
 ) {
 }

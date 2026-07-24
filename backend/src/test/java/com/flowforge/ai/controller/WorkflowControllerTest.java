@@ -50,6 +50,10 @@ class WorkflowControllerTest {
                 "Recovered flow",
                 "A recovered creative state",
                 List.of(),
+                null,
+                null,
+                null,
+                null,
                 LocalDateTime.now(),
                 LocalDateTime.now()
         );

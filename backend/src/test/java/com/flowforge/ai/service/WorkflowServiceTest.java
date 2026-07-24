@@ -6,6 +6,7 @@ import com.flowforge.ai.dto.FlowRequest;
 import com.flowforge.ai.dto.FlowResponse;
 import com.flowforge.ai.entity.Workflow;
 import com.flowforge.ai.entity.WorkflowVersion;
+import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.repository.WorkflowRepository;
 import com.flowforge.ai.repository.WorkflowVersionRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +23,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -138,6 +140,69 @@ class WorkflowServiceTest {
         verify(workflowVersionRepository).deleteAll(eq(versions.subList(8, 9)));
     }
 
+    @Test
+    void createsFlowVariantWithRevisionLineage() {
+        Workflow sourceFlow = flow("Original flow", "Original goal", "Original input");
+        WorkflowVersion sourceVersion = WorkflowVersion.builder()
+                .id(UUID.randomUUID())
+                .flowId(sourceFlow.getId())
+                .versionNumber(4)
+                .title("Earlier flow")
+                .description("Earlier goal")
+                .nodesJson(nodesJson("Earlier input"))
+                .createdAt(LocalDateTime.now().minusMinutes(5))
+                .build();
+        FlowRequest request = new FlowRequest(
+                "Earlier flow Variant",
+                sourceVersion.getDescription(),
+                List.of(node("Earlier input")),
+                sourceFlow.getId(),
+                sourceVersion.getId()
+        );
+        when(workflowRepository.findById(sourceFlow.getId())).thenReturn(Optional.of(sourceFlow));
+        when(workflowVersionRepository.findById(sourceVersion.getId())).thenReturn(Optional.of(sourceVersion));
+        when(workflowRepository.save(any(Workflow.class))).thenAnswer(invocation -> {
+            Workflow flow = invocation.getArgument(0);
+            flow.setId(UUID.randomUUID());
+            flow.setCreatedAt(LocalDateTime.now());
+            flow.setUpdatedAt(LocalDateTime.now());
+            return flow;
+        });
+
+        FlowResponse response = workflowService.createFlow(request);
+
+        assertThat(response.sourceFlowId()).isEqualTo(sourceFlow.getId());
+        assertThat(response.sourceFlowTitle()).isEqualTo("Original flow");
+        assertThat(response.sourceFlowVersionId()).isEqualTo(sourceVersion.getId());
+        assertThat(response.sourceFlowVersionNumber()).isEqualTo(4);
+    }
+
+    @Test
+    void rejectsRevisionThatDoesNotBelongToSourceFlow() {
+        Workflow sourceFlow = flow("Original flow", "Original goal", "Original input");
+        WorkflowVersion otherVersion = WorkflowVersion.builder()
+                .id(UUID.randomUUID())
+                .flowId(UUID.randomUUID())
+                .versionNumber(2)
+                .title("Other flow")
+                .description("Other goal")
+                .nodesJson(nodesJson("Other input"))
+                .build();
+        FlowRequest request = new FlowRequest(
+                "Invalid Variant",
+                "Invalid lineage",
+                List.of(node("Input")),
+                sourceFlow.getId(),
+                otherVersion.getId()
+        );
+        when(workflowRepository.findById(sourceFlow.getId())).thenReturn(Optional.of(sourceFlow));
+        when(workflowVersionRepository.findById(otherVersion.getId())).thenReturn(Optional.of(otherVersion));
+
+        assertThatThrownBy(() -> workflowService.createFlow(request))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Source Flow revision not found");
+    }
+
     private Workflow flow(String title, String description, String input) {
         LocalDateTime now = LocalDateTime.now();
         return Workflow.builder()
@@ -151,7 +216,7 @@ class WorkflowServiceTest {
     }
 
     private FlowRequest request(String title, String description, String input) {
-        return new FlowRequest(title, description, List.of(node(input)));
+        return new FlowRequest(title, description, List.of(node(input)), null, null);
     }
 
     private String nodesJson(String input) {

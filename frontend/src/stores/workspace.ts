@@ -18,6 +18,7 @@ import type {
   FlowDraft,
   FlowNode,
   FlowRunSnapshot,
+  FlowVersion,
   PromptAsset,
   SaveApiKeyPayload,
   SaveFlowPayload,
@@ -384,6 +385,27 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     })
   }
 
+  async function createFlowFromRevision(version: FlowVersion) {
+    const sourceFlow = flowDrafts.value.find((flow) => flow.id === version.flowId)
+    if (!sourceFlow || !version.nodes.length) {
+      ElMessage.warning('这个 Flow 修订已不可用，暂时无法创建变体')
+      return null
+    }
+
+    const payload: SaveFlowPayload = {
+      title: buildFlowRevisionTitle(version.title),
+      description: version.description,
+      nodes: version.nodes.map((node) => ({
+        ...node,
+        id: createId()
+      })),
+      sourceFlowId: sourceFlow.id,
+      sourceFlowVersionId: version.id
+    }
+
+    return persistNewFlowDraft(payload, '从 Flow 修订创建变体失败')
+  }
+
   function consumeFlowRunSeed(flowId: string) {
     if (pendingFlowRunSeed.value?.flowId !== flowId) {
       return null
@@ -449,27 +471,16 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
 
     const payload: SaveFlowPayload = {
-      title: `${activeFlow.value.title} Copy`,
+      title: buildFlowCopyTitle(activeFlow.value.title),
       description: activeFlow.value.description,
       nodes: activeFlow.value.nodes.map((node) => ({
         ...node,
         id: createId()
-      }))
+      })),
+      sourceFlowId: activeFlow.value.id
     }
 
-    flowLoading.value = true
-    try {
-      const { data } = await createFlow(payload)
-      flowDrafts.value = [data, ...flowDrafts.value]
-      activeFlowId.value = data.id
-      localStorage.setItem(ACTIVE_FLOW_STORAGE_KEY, data.id)
-      return data
-    } catch (error: any) {
-      ElMessage.error(error.response?.data?.message || 'Flow 变体创建失败')
-      return null
-    } finally {
-      flowLoading.value = false
-    }
+    return persistNewFlowDraft(payload, 'Flow 变体创建失败')
   }
 
   async function addPromptToActiveFlow(prompt: PromptAsset) {
@@ -848,6 +859,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     createFlowFromTemplate,
     createFlowFromPrompt,
     createFlowFromRunSnapshot,
+    createFlowFromRevision,
     consumeFlowRunSeed,
     prepareFlowRunFromSnapshot,
     selectFlowDraft,
@@ -1003,6 +1015,18 @@ function buildPromptFlowTitle(promptTitle: string) {
 
 function buildFlowSnapshotTitle(title: string) {
   const suffix = ' 续作'
+  const cleanTitle = title.trim() || 'Untitled Flow'
+  return `${cleanTitle.slice(0, 120 - suffix.length).trim()}${suffix}`
+}
+
+function buildFlowRevisionTitle(title: string) {
+  const suffix = ' 变体'
+  const cleanTitle = title.trim() || 'Untitled Flow'
+  return `${cleanTitle.slice(0, 120 - suffix.length).trim()}${suffix}`
+}
+
+function buildFlowCopyTitle(title: string) {
+  const suffix = ' Copy'
   const cleanTitle = title.trim() || 'Untitled Flow'
   return `${cleanTitle.slice(0, 120 - suffix.length).trim()}${suffix}`
 }

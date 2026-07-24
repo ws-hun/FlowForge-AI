@@ -339,6 +339,18 @@
             <span class="section-kicker">Flow Asset</span>
             <h2>调整 Flow 目标</h2>
           </div>
+          <div v-if="workspace.activeFlow.sourceFlowId" class="flow-origin-strip">
+            <div>
+              <span class="section-kicker">Derived Flow</span>
+              <strong>{{ workspace.activeFlow.sourceFlowTitle || '来源 Flow' }}</strong>
+              <p>
+                {{ workspace.activeFlow.sourceFlowVersionNumber
+                  ? `从 v${workspace.activeFlow.sourceFlowVersionNumber} 修订创建的独立变体`
+                  : '基于来源 Flow 创建的独立变体' }}
+              </p>
+            </div>
+            <button type="button" class="ghost-button" @click="openActiveFlowSource">打开来源</button>
+          </div>
           <input v-model="flowTitle" class="quiet-input" placeholder="Flow 标题" />
           <textarea v-model="flowDescription" class="quiet-textarea" placeholder="Flow 目标"></textarea>
           <div class="editor-save-state" :class="{ dirty: flowMetaChanged }">
@@ -396,14 +408,24 @@
           <div v-if="selectedFlowVersion" class="version-preview flow-version-preview">
             <div class="row-between">
               <span class="badge">v{{ selectedFlowVersion.versionNumber }}</span>
-              <button
-                type="button"
-                class="ghost-button"
-                :disabled="restoringFlowVersion || workspace.flowLoading"
-                @click="restoreFlowVersionSnapshot(selectedFlowVersion)"
-              >
-                {{ restoringFlowVersion ? '恢复中...' : '恢复此修订' }}
-              </button>
+              <div class="flow-version-actions">
+                <button
+                  type="button"
+                  class="secondary-button"
+                  :disabled="branchingFlowVersion || restoringFlowVersion || workspace.flowLoading"
+                  @click="createFlowVariantFromVersion(selectedFlowVersion)"
+                >
+                  {{ branchingFlowVersion ? '创建中...' : '创建变体' }}
+                </button>
+                <button
+                  type="button"
+                  class="ghost-button"
+                  :disabled="restoringFlowVersion || branchingFlowVersion || workspace.flowLoading || !selectedFlowVersionDiff?.hasChanges"
+                  @click="restoreFlowVersionSnapshot(selectedFlowVersion)"
+                >
+                  {{ restoringFlowVersion ? '恢复中...' : '恢复此修订' }}
+                </button>
+              </div>
             </div>
             <strong>{{ selectedFlowVersion.title }}</strong>
             <p>{{ selectedFlowVersion.description }}</p>
@@ -728,6 +750,7 @@ const flowVersions = ref<FlowVersion[]>([])
 const flowVersionsLoading = ref(false)
 const selectedFlowVersion = ref<FlowVersion | null>(null)
 const restoringFlowVersion = ref(false)
+const branchingFlowVersion = ref(false)
 const flowExecutionVisible = ref(false)
 const savingResultPrompt = ref(false)
 const savingNodePrompt = ref(false)
@@ -1361,6 +1384,26 @@ function handleBeforeUnload(event: BeforeUnloadEvent) {
   event.returnValue = ''
 }
 
+async function createFlowVariantFromVersion(version: FlowVersion) {
+  if (!(await resolvePendingEdits())) {
+    return
+  }
+
+  branchingFlowVersion.value = true
+  try {
+    const flow = await workspace.createFlowFromRevision(version)
+    if (!flow) {
+      return
+    }
+    selectedNodeId.value = flow.nodes[0]?.id || ''
+    selectedFlowVersion.value = null
+    resetFlowRunState()
+    ElMessage.success(`已从 v${version.versionNumber} 创建 Flow 变体`)
+  } finally {
+    branchingFlowVersion.value = false
+  }
+}
+
 async function restoreFlowVersionSnapshot(version: FlowVersion) {
   if (!(await resolvePendingEdits())) {
     return
@@ -1451,6 +1494,26 @@ async function selectFlow(id: string) {
 
   workspace.selectFlowDraft(id)
   selectedNodeId.value = workspace.activeFlow?.nodes[0]?.id || ''
+}
+
+async function openActiveFlowSource() {
+  const sourceFlowId = workspace.activeFlow?.sourceFlowId
+  if (!sourceFlowId || !(await resolvePendingEdits())) {
+    return
+  }
+
+  if (!workspace.flowDrafts.some((flow) => flow.id === sourceFlowId)) {
+    await workspace.loadFlowDrafts()
+  }
+  const sourceFlow = workspace.flowDrafts.find((flow) => flow.id === sourceFlowId)
+  if (!sourceFlow) {
+    ElMessage.warning('来源 Flow 已删除，来源标题和修订信息仍然保留')
+    return
+  }
+
+  workspace.selectFlowDraft(sourceFlow.id)
+  selectedNodeId.value = sourceFlow.nodes[0]?.id || ''
+  ElMessage.success(`已打开来源 Flow「${sourceFlow.title}」`)
 }
 
 async function selectFlowNode(nodeId: string) {

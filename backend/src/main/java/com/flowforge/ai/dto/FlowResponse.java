@@ -9,6 +9,10 @@ public record FlowResponse(
         String title,
         String description,
         List<FlowNodeDto> nodes,
+        UUID sourceFlowId,
+        String sourceFlowTitle,
+        UUID sourceFlowVersionId,
+        Integer sourceFlowVersionNumber,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {

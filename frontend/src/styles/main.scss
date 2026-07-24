@@ -2986,6 +2986,38 @@ a {
   }
 }
 
+.flow-origin-strip {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0 12px 12px;
+  border-left: 2px solid rgba(79, 124, 255, 0.32);
+
+  > div {
+    display: grid;
+    gap: 4px;
+  }
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 14px;
+  }
+
+  p {
+    margin: 0;
+    color: tokens.$text-secondary;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .ghost-button {
+    min-height: 34px;
+    padding: 7px 10px;
+    white-space: nowrap;
+  }
+}
+
 .flow-revision-section {
   display: grid;
   gap: 12px;
@@ -3088,6 +3120,13 @@ a {
       background: rgba(124, 92, 255, 0.1);
     }
   }
+}
+
+.flow-version-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .flow-editor-actions {
@@ -3611,6 +3650,19 @@ a {
   }
 
   .version-preview-actions {
+    justify-content: flex-start;
+  }
+
+  .flow-origin-strip {
+    align-items: stretch;
+    flex-direction: column;
+
+    .ghost-button {
+      width: fit-content;
+    }
+  }
+
+  .flow-version-actions {
     justify-content: flex-start;
   }
 

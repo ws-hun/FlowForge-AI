@@ -121,6 +121,10 @@ export interface FlowDraft {
   title: string
   description: string
   nodes: FlowNode[]
+  sourceFlowId?: string | null
+  sourceFlowTitle?: string | null
+  sourceFlowVersionId?: string | null
+  sourceFlowVersionNumber?: number | null
   createdAt: string
   updatedAt: string
 }
@@ -159,4 +163,6 @@ export interface SaveFlowPayload {
   title: string
   description: string
   nodes: FlowNode[]
+  sourceFlowId?: string | null
+  sourceFlowVersionId?: string | null
 }

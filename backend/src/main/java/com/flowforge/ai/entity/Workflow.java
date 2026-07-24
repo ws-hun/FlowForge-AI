@@ -37,6 +37,18 @@ public class Workflow {
     @Column(name = "nodes_json", nullable = false, columnDefinition = "TEXT")
     private String nodesJson;
 
+    @Column(name = "source_flow_id")
+    private UUID sourceFlowId;
+
+    @Column(name = "source_flow_title", length = 120)
+    private String sourceFlowTitle;
+
+    @Column(name = "source_flow_version_id")
+    private UUID sourceFlowVersionId;
+
+    @Column(name = "source_flow_version_number")
+    private Integer sourceFlowVersionNumber;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

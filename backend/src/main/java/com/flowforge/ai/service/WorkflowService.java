@@ -9,6 +9,7 @@ import com.flowforge.ai.dto.FlowResponse;
 import com.flowforge.ai.dto.FlowVersionResponse;
 import com.flowforge.ai.entity.Workflow;
 import com.flowforge.ai.entity.WorkflowVersion;
+import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.repository.WorkflowRepository;
 import com.flowforge.ai.repository.WorkflowVersionRepository;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,7 @@ public class WorkflowService {
     public FlowResponse createFlow(FlowRequest request) {
         Workflow workflow = Workflow.builder().build();
         applyRequest(workflow, request);
+        applySource(workflow, request);
         return toResponse(workflowRepository.save(workflow));
     }
 
@@ -114,6 +116,29 @@ public class WorkflowService {
         workflow.setNodesJson(serializeNodes(request.nodes()));
     }
 
+    private void applySource(Workflow workflow, FlowRequest request) {
+        if (request.sourceFlowVersionId() != null && request.sourceFlowId() == null) {
+            throw new IllegalArgumentException("sourceFlowId is required when sourceFlowVersionId is provided");
+        }
+        if (request.sourceFlowId() == null) {
+            return;
+        }
+
+        Workflow sourceFlow = workflowRepository.findById(request.sourceFlowId())
+                .orElseThrow(() -> new ResourceNotFoundException("Source Flow not found"));
+        workflow.setSourceFlowId(sourceFlow.getId());
+        workflow.setSourceFlowTitle(sourceFlow.getTitle());
+
+        if (request.sourceFlowVersionId() == null) {
+            return;
+        }
+        WorkflowVersion sourceVersion = workflowVersionRepository.findById(request.sourceFlowVersionId())
+                .filter(version -> version.getFlowId().equals(sourceFlow.getId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Source Flow revision not found"));
+        workflow.setSourceFlowVersionId(sourceVersion.getId());
+        workflow.setSourceFlowVersionNumber(sourceVersion.getVersionNumber());
+    }
+
     private String serializeNodes(List<FlowNodeDto> nodes) {
         try {
             return objectMapper.writeValueAsString(nodes);
@@ -143,6 +168,10 @@ public class WorkflowService {
                 workflow.getTitle(),
                 workflow.getDescription(),
                 deserializeNodes(workflow.getNodesJson()),
+                workflow.getSourceFlowId(),
+                workflow.getSourceFlowTitle(),
+                workflow.getSourceFlowVersionId(),
+                workflow.getSourceFlowVersionNumber(),
                 workflow.getCreatedAt(),
                 workflow.getUpdatedAt()
         );
