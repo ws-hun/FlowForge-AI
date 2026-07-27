@@ -720,7 +720,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { EditPen, Plus } from '@element-plus/icons-vue'
@@ -799,6 +799,7 @@ const flowRunCompletedAt = ref('')
 const nodeRunStates = ref<Record<string, FlowNodeRunState>>({})
 const selectedNodeId = ref('')
 const flowRouteReady = ref(false)
+const routeSelectionApplying = ref(false)
 
 const flowTemplates: FlowTemplate[] = [
   {
@@ -1207,19 +1208,27 @@ watch(
       loadFlowRuns(workspace.activeFlow.id)
       loadFlowVersions(workspace.activeFlow.id)
     }
-    syncActiveFlowRoute()
+    if (!routeSelectionApplying.value) {
+      void syncActiveRouteState()
+    }
   },
   { immediate: true }
 )
 
 watch(
-  () => route.query.flow,
-  (flowId) => {
+  [() => route.query.flow, () => route.query.node],
+  ([flowId, nodeId]) => {
     if (flowRouteReady.value) {
-      void openFlowFromRoute(flowId)
+      void applyFlowRouteSelection(flowId, nodeId)
     }
   }
 )
+
+watch(selectedNodeId, (nodeId) => {
+  if (flowRouteReady.value && !routeSelectionApplying.value) {
+    void syncActiveRouteState()
+  }
+})
 
 watch(
   () => workspace.activeFlow?.updatedAt,
@@ -1256,8 +1265,7 @@ onMounted(async () => {
   window.addEventListener('beforeunload', handleBeforeUnload)
   await Promise.all([workspace.loadFlowDrafts(), workspace.loadApiKeys(), loadPromptAssets()])
   flowRouteReady.value = true
-  await openFlowFromRoute()
-  syncActiveFlowRoute()
+  await applyFlowRouteSelection()
 })
 
 onBeforeUnmount(() => {
@@ -1564,7 +1572,7 @@ async function createFlowFromSnapshot(snapshot: FlowRunSnapshotType) {
 
 async function selectFlow(id: string) {
   if (id === workspace.activeFlowId) {
-    syncActiveFlowRoute()
+    void syncActiveRouteState()
     return
   }
   if (!(await resolvePendingEdits())) {
@@ -1616,36 +1624,77 @@ async function openSourceFlowById(sourceFlowId: string) {
   ElMessage.success(`已打开来源 Flow「${sourceFlow.title}」`)
 }
 
+async function applyFlowRouteSelection(
+  flowValue: unknown = route.query.flow,
+  nodeValue: unknown = route.query.node
+) {
+  routeSelectionApplying.value = true
+  try {
+    const flowAvailable = await openFlowFromRoute(flowValue)
+    if (flowAvailable) {
+      await nextTick()
+      await openNodeFromRoute(nodeValue)
+    }
+  } finally {
+    routeSelectionApplying.value = false
+    await syncActiveRouteState()
+  }
+}
+
 async function openFlowFromRoute(value: unknown = route.query.flow) {
   const flowId = typeof value === 'string' ? value : ''
   if (!flowId || flowId === workspace.activeFlowId) {
-    return
+    return true
   }
 
   const flow = workspace.flowDrafts.find((item) => item.id === flowId)
   if (!flow) {
     ElMessage.warning('指定的 Flow 已不存在或无法访问')
-    syncActiveFlowRoute()
+    void syncActiveRouteState()
+    return false
+  }
+
+  if (!(await resolvePendingEdits())) {
+    void syncActiveRouteState()
+    return false
+  }
+
+  workspace.selectFlowDraft(flow.id)
+  return true
+}
+
+async function openNodeFromRoute(value: unknown = route.query.node) {
+  const nodeId = typeof value === 'string' ? value : ''
+  if (!nodeId || nodeId === selectedNodeId.value) {
+    return
+  }
+
+  const node = workspace.activeFlow?.nodes.find((item) => item.id === nodeId)
+  if (!node) {
+    ElMessage.warning('指定的 Flow 节点已不存在')
+    await syncActiveRouteState()
     return
   }
 
   if (!(await resolvePendingEdits())) {
-    syncActiveFlowRoute()
+    await syncActiveRouteState()
     return
   }
 
-  workspace.selectFlowDraft(flow.id)
+  selectedNodeId.value = node.id
 }
 
-function syncActiveFlowRoute() {
+function syncActiveRouteState() {
   if (!flowRouteReady.value) {
-    return
+    return Promise.resolve()
   }
 
   const flowId = workspace.activeFlowId
+  const nodeId = selectedNodeId.value
   const routeFlowId = typeof route.query.flow === 'string' ? route.query.flow : ''
-  if (flowId === routeFlowId) {
-    return
+  const routeNodeId = typeof route.query.node === 'string' ? route.query.node : ''
+  if (flowId === routeFlowId && nodeId === routeNodeId) {
+    return Promise.resolve()
   }
 
   const query = { ...route.query }
@@ -1654,7 +1703,12 @@ function syncActiveFlowRoute() {
   } else {
     delete query.flow
   }
-  void router.replace({ query })
+  if (nodeId) {
+    query.node = nodeId
+  } else {
+    delete query.node
+  }
+  return router.replace({ query })
 }
 
 async function selectFlowNode(nodeId: string) {

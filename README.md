@@ -109,6 +109,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Result Deep Links | Done | 使用 `/history?run=<id>` 聚焦固定运行，连接 AI Command、Prompt、Flow、来源运行与来源资产 |
 | Stage 3 | Historical Result Promotion | Done | 任意成功 Result 可沉淀为来源可追踪的 Prompt 结果模式，或直接创建可编辑 Flow |
 | Stage 3 | Prompt Node Source Sync | Done | Flow Prompt 节点显示 Library 来源与同步状态，可返回来源或显式采用最新 Prompt 内容 |
+| Stage 3 | Flow Node Deep Links | Done | 使用 `/workflows?flow=<id>&node=<nodeId>` 恢复具体节点，并从 Prompt 来源返回精确创作位置 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
 | Future | Knowledge Base | Preview UI | 产品预留界面，暂未接入向量检索 |
 | Future | Analytics | Preview UI | 轻量洞察预留，暂未做完整数据分析系统 |
@@ -190,7 +191,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | Prompt 版本记录 | Done |
 | 历史版本恢复 | Done |
 | Result / Flow Node 来源追踪 | Done |
-| 从 Prompt 详情继续来源结果或打开来源 Flow | Done |
+| 从 Prompt 详情查看 / 继续来源 Result，或打开精确来源 Flow Node | Done |
 | 从历史版本创建 Prompt 变体并回看来源 Prompt | Done |
 | Prompt 历史版本结构化差异预览 | Done |
 | Prompt 编辑保存状态与离开保护 | Done |
@@ -220,6 +221,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | 防止重复加入同一个 Prompt | Done |
 | Prompt 节点编辑 / 删除 / 复制 / 排序 | Done |
 | Prompt 节点来源状态 / 返回 Library / 显式同步 | Done |
+| Flow 与当前节点 URL 深链同步 | Done |
 | Provider readiness 提示 | Done |
 | Run Brief 运行上下文 | Done |
 | 服务端执行输入预览 | Done |

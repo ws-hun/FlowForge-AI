@@ -187,6 +187,14 @@
                 继续来源结果
               </button>
               <button
+                v-if="selectedPrompt.sourceTaskId"
+                type="button"
+                class="ghost-button"
+                @click="openPromptSourceRun"
+              >
+                查看来源 Result
+              </button>
+              <button
                 v-if="selectedPrompt.sourceFlowId"
                 type="button"
                 class="ghost-button"
@@ -1004,6 +1012,13 @@ async function continueFromPromptSource() {
   await router.push('/tasks')
 }
 
+function openPromptSourceRun() {
+  const sourceTaskId = selectedPrompt.value?.sourceTaskId
+  if (sourceTaskId) {
+    router.push({ path: '/history', query: { run: sourceTaskId } })
+  }
+}
+
 async function openPromptSourceFlow() {
   const sourceFlowId = selectedPrompt.value?.sourceFlowId
   if (!sourceFlowId) {
@@ -1021,7 +1036,13 @@ async function openPromptSourceFlow() {
 
   workspace.selectFlowDraft(sourceFlow.id)
   ElMessage.success(`已打开来源 Flow「${sourceFlow.title}」`)
-  await router.push({ path: '/workflows', query: { flow: sourceFlow.id } })
+  await router.push({
+    path: '/workflows',
+    query: {
+      flow: sourceFlow.id,
+      ...(selectedPrompt.value?.sourceNodeId ? { node: selectedPrompt.value.sourceNodeId } : {})
+    }
+  })
 }
 
 async function openPromptSourcePrompt() {
