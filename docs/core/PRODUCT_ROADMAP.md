@@ -105,6 +105,7 @@ Current Stage 3 capabilities:
 - Prompt-backed Flow nodes expose their Library source, distinguish synchronized snapshots from diverged content, and require explicit revision-preserving replacement to adopt the latest Prompt.
 - Flow node deep links restore a specific node together with its Flow, allowing Prompt and Result provenance paths to return to the exact creation context.
 - Run Brief drafts preserve per-Flow runtime context and variable values locally across Flow switching and browser reloads without presenting unexecuted input as server history.
+- Flow Run Brief edits remain synchronized when work moves between Flow Space and AI Command, including return, detach, and execution paths.
 
 Current Stage 3 priorities:
 

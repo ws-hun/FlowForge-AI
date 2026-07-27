@@ -135,6 +135,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       return
     }
 
+    saveTaskSourceFlowRunDraft()
+
     running.value = true
     try {
       const { data } = await runTask(
@@ -148,8 +150,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       latestResult.value = data
       latestTaskInput.value = data.executionInput
       latestTaskPrompt.value = null
-      taskInput.value = ''
       clearTaskSource()
+      taskInput.value = ''
       ElMessage.success('任务执行完成')
       await loadTasks()
     } catch (error: any) {
@@ -172,8 +174,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       latestResult.value = data
       latestTaskInput.value = data.executionInput
       latestTaskPrompt.value = null
-      taskInput.value = ''
       clearTaskSource()
+      taskInput.value = ''
       ElMessage.success('已使用当前 Provider 重新执行')
       await loadTasks()
       return data
@@ -191,6 +193,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     sourcePrompt?: { id: string; title: string } | null,
     sourceFlow?: TaskFlowSource | null
   ) {
+    saveTaskSourceFlowRunDraft()
     taskInput.value = input
     taskSourcePromptId.value = sourcePrompt?.id || null
     taskSourcePromptTitle.value = sourcePrompt?.title || ''
@@ -202,6 +205,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   function prepareTaskContinuation(sourceRun: TaskHistoryItem) {
+    saveTaskSourceFlowRunDraft()
     taskInput.value = ''
     taskSourcePromptId.value = null
     taskSourcePromptTitle.value = ''
@@ -248,6 +252,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   function clearTaskSource() {
+    saveTaskSourceFlowRunDraft()
     taskSourcePromptId.value = null
     taskSourcePromptTitle.value = ''
     taskSourceFlowId.value = null
@@ -255,6 +260,14 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     taskSourceFlowVariableValues.value = {}
     taskSourceRunId.value = null
     taskSourceRunSummary.value = ''
+  }
+
+  function saveTaskSourceFlowRunDraft() {
+    const flowId = taskSourceFlowId.value
+    if (!flowId) {
+      return
+    }
+    saveFlowRunDraft(flowId, taskInput.value, taskSourceFlowVariableValues.value)
   }
 
   async function saveLatestTaskAsPrompt() {
@@ -1036,6 +1049,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     prepareTaskContinuation,
     prepareLatestResultContinuation,
     clearTaskSource,
+    saveTaskSourceFlowRunDraft,
     saveProvider,
     activateProvider,
     removeProvider

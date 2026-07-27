@@ -111,6 +111,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Prompt Node Source Sync | Done | Flow Prompt 节点显示 Library 来源与同步状态，可返回来源或显式采用最新 Prompt 内容 |
 | Stage 3 | Flow Node Deep Links | Done | 使用 `/workflows?flow=<id>&node=<nodeId>` 恢复具体节点，并从 Prompt 来源返回精确创作位置 |
 | Stage 3 | Run Brief Draft Recovery | Done | 按 Flow 本地保存运行上下文和变量值，切换 Flow 或刷新后可继续，并支持主动清除 |
+| Stage 3 | Cross-workspace Run Brief Sync | Done | Flow 带入 AI Command 后，运行说明和变量修改会同步回对应 Flow 草稿 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
 | Future | Knowledge Base | Preview UI | 产品预留界面，暂未接入向量检索 |
 | Future | Analytics | Preview UI | 轻量洞察预留，暂未做完整数据分析系统 |
@@ -246,6 +247,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | Flow 变量跨节点原子重命名 | Done |
 | Flow 变量运行前完整性检查 | Done |
 | 带入 AI Command 后继续填写 Flow 变量 | Done |
+| AI Command 修改同步回 Flow Run Brief | Done |
 | Flow 节点内容运行前检查 | Done |
 | Flow / 节点保存状态提示 | Done |
 | 未保存编辑在切换、预览、执行、复用和离开页面前统一确认 | Done |

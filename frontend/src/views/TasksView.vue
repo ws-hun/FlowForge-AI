@@ -146,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
@@ -177,13 +177,19 @@ const taskInputPlaceholder = computed(() => {
 })
 const sourceDescription = computed(() => {
   if (workspace.taskSourceFlowTitle) {
-    return 'Flow 将按已保存的节点和 Prompt 执行。这里的内容会作为本次运行简报固定保存。'
+    return 'Flow 将按已保存的节点和 Prompt 执行。这里的调整会同步回 Flow 的 Run Brief 草稿。'
   }
   if (workspace.taskSourceRunId) {
     return '后端会读取已保存的完整结果，并将这里的新方向编译为下一次可追溯执行。'
   }
   return '这次执行会保留与原 Prompt 的关联，方便把有效工作方式沉淀为资产。'
 })
+
+watch(
+  [() => workspace.taskInput, () => workspace.taskSourceFlowVariableValues],
+  () => workspace.saveTaskSourceFlowRunDraft(),
+  { deep: true }
+)
 
 function goToApiKeys() {
   router.push('/api-keys')
@@ -192,6 +198,7 @@ function goToApiKeys() {
 function returnToFlow() {
   const flowId = workspace.taskSourceFlowId
   if (flowId) {
+    workspace.saveTaskSourceFlowRunDraft()
     workspace.selectFlowDraft(flowId)
     router.push({ path: '/workflows', query: { flow: flowId } })
     return
