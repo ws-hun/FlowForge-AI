@@ -107,6 +107,30 @@
                 compact
                 :show-raw="false"
               />
+              <section v-if="!isFailed(task)" class="history-result-reuse">
+                <div>
+                  <span class="section-kicker">Reuse Result</span>
+                  <strong>把这次有效结果沉淀为下一次创作的起点。</strong>
+                </div>
+                <div class="history-result-reuse-actions">
+                  <button
+                    type="button"
+                    class="ghost-button"
+                    :disabled="workspace.taskAssetLoading"
+                    @click="saveRunAsPrompt(task)"
+                  >
+                    {{ workspace.taskPromptsByRunId[task.id] ? '打开 Prompt' : workspace.taskAssetLoading ? '保存中...' : '保存为 Prompt' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="secondary-button"
+                    :disabled="workspace.taskAssetLoading || workspace.flowLoading"
+                    @click="createFlowFromRun(task)"
+                  >
+                    {{ workspace.flowLoading ? '创建中...' : '从 Result 创建 Flow' }}
+                  </button>
+                </div>
+              </section>
               <FlowRunSnapshot
                 v-if="task.flowRunSnapshot"
                 :snapshot="task.flowRunSnapshot"
@@ -290,6 +314,28 @@ function openTaskSource(task: TaskHistoryItem) {
   if (task.sourcePromptId) {
     router.push({ path: '/prompts', query: { prompt: task.sourcePromptId } })
   }
+}
+
+async function saveRunAsPrompt(task: TaskHistoryItem) {
+  const existingPrompt = workspace.taskPromptsByRunId[task.id]
+  if (existingPrompt) {
+    router.push({ path: '/prompts', query: { prompt: existingPrompt.id } })
+    return
+  }
+
+  const prompt = await workspace.saveHistoricalResultAsPrompt(task)
+  if (prompt) {
+    ElMessage.success('历史结果已沉淀为 Prompt')
+  }
+}
+
+async function createFlowFromRun(task: TaskHistoryItem) {
+  const flow = await workspace.createFlowFromHistoricalResult(task)
+  if (!flow) {
+    return
+  }
+  ElMessage.success('已从历史 Result 创建 Flow')
+  router.push({ path: '/workflows', query: { flow: flow.id } })
 }
 
 function closeComparison() {

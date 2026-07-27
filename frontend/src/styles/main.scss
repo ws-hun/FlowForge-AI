@@ -633,6 +633,33 @@ a {
   margin-top: 4px;
 }
 
+.history-result-reuse {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid tokens.$border;
+
+  > div:first-child {
+    display: grid;
+    gap: 4px;
+  }
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 14px;
+  }
+}
+
+.history-result-reuse-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .run-comparison-dialog {
   max-width: calc(100vw - 32px);
   border-radius: tokens.$radius-lg;
@@ -3759,6 +3786,19 @@ a {
 
   .history-reuse-actions {
     justify-content: stretch;
+
+    button {
+      flex: 1;
+    }
+  }
+
+  .history-result-reuse {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .history-result-reuse-actions {
+    width: 100%;
 
     button {
       flex: 1;

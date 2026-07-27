@@ -107,6 +107,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Flow Asset Deep Links | Done | 使用 `/workflows?flow=<id>` 精确恢复目标 Flow，覆盖创建、来源返回、历史快照与运行配置复用入口 |
 | Stage 3 | Prompt Asset Deep Links | Done | 使用 `/prompts?prompt=<id>` 恢复 Prompt 详情，并同步卡片、来源、历史分支、AI Command 返回和浏览器导航 |
 | Stage 3 | Result Deep Links | Done | 使用 `/history?run=<id>` 聚焦固定运行，连接 AI Command、Prompt、Flow、来源运行与来源资产 |
+| Stage 3 | Historical Result Promotion | Done | 任意成功 Result 可沉淀为来源可追踪的 Prompt 结果模式，或直接创建可编辑 Flow |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
 | Future | Knowledge Base | Preview UI | 产品预留界面，暂未接入向量检索 |
 | Future | Analytics | Preview UI | 轻量洞察预留，暂未做完整数据分析系统 |
@@ -153,6 +154,7 @@ Workspace 保持一个明确的创作入口，同时为已有工作提供低噪�
 | 当前执行沉淀为 Prompt | Done |
 | 当前执行创建可编辑 Flow | Done |
 | 当前结果 / 来源结果精确返回 History | Done |
+| 任意历史 Result 保存为 Prompt / 创建 Flow | Done |
 
 ### Provider Vault
 

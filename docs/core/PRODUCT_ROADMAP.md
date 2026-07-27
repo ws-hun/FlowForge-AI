@@ -101,6 +101,7 @@ Current Stage 3 capabilities:
 - Flow asset deep links restore a specific saved Flow from Workspace, Task, Prompt, History, revision, and snapshot reuse paths while preserving unsaved-edit protection.
 - Prompt asset deep links keep Library cards, source Prompt navigation, AI Command return paths, revision branches, Drawer state, and browser history aligned to one saved Prompt.
 - Result deep links restore and focus one immutable run from AI Command, Prompt, Flow, lineage, and History while keeping source Prompt and Flow assets reachable.
+- Any successful historical Result can become a source-linked reusable Prompt pattern or a new editable Flow without first replacing the current AI Command result.
 
 Current Stage 3 priorities:
 

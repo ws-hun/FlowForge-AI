@@ -55,6 +55,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const latestResult = ref<TaskRunResponse | null>(null)
   const latestTaskInput = ref('')
   const latestTaskPrompt = ref<PromptAsset | null>(null)
+  const taskPromptsByRunId = ref<Record<string, PromptAsset>>({})
   const taskInput = ref('')
   const taskSourcePromptId = ref<string | null>(null)
   const taskSourcePromptTitle = ref('')
@@ -286,6 +287,51 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       return null
     }
 
+    return createFlowFromPrompt(prompt)
+  }
+
+  async function saveHistoricalResultAsPrompt(sourceRun: TaskHistoryItem) {
+    if (sourceRun.status === 'failed') {
+      ElMessage.warning('失败运行不能沉淀为 Prompt')
+      return null
+    }
+
+    const existingPrompt = taskPromptsByRunId.value[sourceRun.id]
+    if (existingPrompt) {
+      return existingPrompt
+    }
+
+    const payload: SavePromptPayload = {
+      title: buildHistoricalResultPromptTitle(sourceRun),
+      category: sourceRun.sourceFlowId ? 'Flow Result' : 'AI Result',
+      description: buildHistoricalResultPromptDescription(sourceRun),
+      content: buildHistoricalResultPromptContent(sourceRun),
+      tags: ['Result', 'History', 'Reusable'],
+      favorite: false,
+      sourceTaskId: sourceRun.id
+    }
+
+    taskAssetLoading.value = true
+    try {
+      const { data } = await createPrompt(payload)
+      taskPromptsByRunId.value = {
+        ...taskPromptsByRunId.value,
+        [sourceRun.id]: data
+      }
+      return data
+    } catch (error: any) {
+      ElMessage.error(error.response?.data?.message || '历史结果沉淀失败')
+      return null
+    } finally {
+      taskAssetLoading.value = false
+    }
+  }
+
+  async function createFlowFromHistoricalResult(sourceRun: TaskHistoryItem) {
+    const prompt = await saveHistoricalResultAsPrompt(sourceRun)
+    if (!prompt) {
+      return null
+    }
     return createFlowFromPrompt(prompt)
   }
 
@@ -848,6 +894,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     latestResult,
     latestTaskInput,
     latestTaskPrompt,
+    taskPromptsByRunId,
     taskInput,
     taskSourcePromptId,
     taskSourcePromptTitle,
@@ -897,6 +944,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     rerunHistoricalTask,
     saveLatestTaskAsPrompt,
     createFlowFromLatestTask,
+    saveHistoricalResultAsPrompt,
+    createFlowFromHistoricalResult,
     prepareTask,
     prepareTaskContinuation,
     prepareLatestResultContinuation,
@@ -1023,6 +1072,48 @@ function buildTaskPromptDescription(summary: string) {
   return cleanSummary
     ? `从一次 AI Command 执行沉淀，用于复用「${cleanSummary}」对应的工作方式。`
     : '从一次 AI Command 执行沉淀出的可复用工作方式。'
+}
+
+function buildHistoricalResultPromptTitle(task: TaskHistoryItem) {
+  const source = task.sourceFlowTitle || task.sourcePromptTitle || task.summary || task.input
+  const cleanSource = source.replace(/[#*`_。.,，]/g, '').replace(/\s+/g, ' ').trim()
+  const suffix = ' 结果复用'
+  return `${cleanSource.slice(0, 120 - suffix.length).trim() || 'AI'}${suffix}`
+}
+
+function buildHistoricalResultPromptDescription(task: TaskHistoryItem) {
+  const summary = task.summary.replace(/\s+/g, ' ').trim().slice(0, 180)
+  return summary
+    ? `从一条已验证的历史运行沉淀，用于基于“${summary}”的结果结构继续生成同类工作。`
+    : '从一条已验证的历史运行沉淀出的可复用结果模式。'
+}
+
+function buildHistoricalResultPromptContent(task: TaskHistoryItem) {
+  const sourceLabel = task.sourceFlowTitle
+    ? `Flow: ${task.sourceFlowTitle}`
+    : task.sourcePromptTitle
+      ? `Prompt: ${task.sourcePromptTitle}`
+      : 'Source: AI Command'
+
+  return [
+    '请参考下面这次已验证的 AI 结果模式，针对新的输入生成同类高质量交付。',
+    '',
+    sourceLabel,
+    '',
+    '新的输入：',
+    '{input}',
+    '',
+    '原始执行输入：',
+    task.input.trim().slice(0, 1800),
+    '',
+    '参考 Summary：',
+    task.summary.trim().slice(0, 1200),
+    '',
+    '参考 Result：',
+    task.result.trim().slice(0, 7000),
+    '',
+    '请保持结果的结构、清晰度和行动性，但不要照抄参考内容。'
+  ].join('\n')
 }
 
 function buildPromptFlowTitle(promptTitle: string) {
