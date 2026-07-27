@@ -245,6 +245,21 @@
             placeholder="为本次运行补充上下文，例如目标用户、输出格式、约束条件或业务背景..."
           ></textarea>
 
+          <div class="flow-run-draft-state">
+            <div class="editor-save-state" :class="{ idle: !hasFlowRunDraftContent }">
+              <span></span>
+              {{ hasFlowRunDraftContent ? 'Run Brief 已自动保存' : '等待补充本次运行上下文' }}
+            </div>
+            <button
+              v-if="hasFlowRunDraftContent"
+              type="button"
+              class="text-button"
+              @click="clearCurrentFlowRunDraft"
+            >
+              清除 Run Brief
+            </button>
+          </div>
+
           <details class="flow-input-preview" @toggle="onFlowExecutionPreviewToggle">
             <summary>查看服务端执行输入</summary>
             <div v-if="flowExecutionPreviewLoading" class="flow-input-preview-status">
@@ -934,6 +949,12 @@ const missingFlowVariableLabels = computed(() =>
 const flowVariableStatusLabel = computed(() =>
   hasMissingFlowVariables.value ? `${missingFlowVariables.value.length} 项待填写` : `${flowVariables.value.length} 个变量已就绪`
 )
+const hasFlowRunDraftContent = computed(() =>
+  Boolean(
+    flowRunContext.value.trim() ||
+      Object.values(flowVariableValues.value).some((value) => value?.trim())
+  )
+)
 const providerReadyToRun = computed(() => Boolean(workspace.activeProvider))
 const flowReadyToRun = computed(() =>
   providerReadyToRun.value && !hasIncompleteFlowNodes.value && !hasMissingFlowVariables.value
@@ -1191,13 +1212,15 @@ watch(
   () => {
     const activeFlowId = workspace.activeFlow?.id
     const runSeed = activeFlowId ? workspace.consumeFlowRunSeed(activeFlowId) : null
+    const localDraft = activeFlowId ? workspace.getFlowRunDraft(activeFlowId) : null
+    const runDraft = runSeed || localDraft
     resetFlowExecutionPreview()
     resetFlowRunState()
     selectedNodeId.value = workspace.activeFlow?.nodes[0]?.id || ''
     flowTitle.value = workspace.activeFlow?.title || ''
     flowDescription.value = workspace.activeFlow?.description || ''
-    flowRunContext.value = runSeed?.runtimeContext || ''
-    flowVariableValues.value = buildFlowVariableValues(flowVariables.value, runSeed?.variableValues)
+    flowRunContext.value = runDraft?.runtimeContext || ''
+    flowVariableValues.value = buildFlowVariableValues(flowVariables.value, runDraft?.variableValues)
     flowRuns.value = []
     flowVersions.value = []
     flowExecutionVisible.value = false
@@ -1247,6 +1270,10 @@ watch(flowVariables, (variables) => {
 
 watch([flowRunContext, flowVariableValues], () => {
   invalidateFlowExecutionPreview()
+  const flowId = workspace.activeFlow?.id
+  if (flowId) {
+    workspace.saveFlowRunDraft(flowId, flowRunContext.value, flowVariableValues.value)
+  }
 }, { deep: true })
 
 watch([flowMetaChanged, nodeEditorChanged], ([hasFlowChanges, hasNodeChanges]) => {
@@ -2010,6 +2037,19 @@ function reuseFlowRunSettings(snapshot: FlowRunSnapshotType) {
 
   const variableMessage = reusedVariableCount ? `，并带入 ${reusedVariableCount} 个变量` : ''
   ElMessage.success(`已带入本次运行配置${variableMessage}`)
+}
+
+function clearCurrentFlowRunDraft() {
+  const flowId = workspace.activeFlow?.id
+  if (!flowId) {
+    return
+  }
+  flowRunContext.value = ''
+  flowVariableValues.value = buildFlowVariableValues(flowVariables.value)
+  workspace.clearFlowRunDraft(flowId)
+  resetFlowExecutionPreview()
+  resetFlowRunState()
+  ElMessage.success('Run Brief 已清除')
 }
 
 async function saveLatestResultAsPrompt() {

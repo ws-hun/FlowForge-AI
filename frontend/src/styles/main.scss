@@ -2846,6 +2846,21 @@ a {
   background: rgba(243, 245, 247, 0.78);
 }
 
+.flow-run-draft-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.editor-save-state.idle {
+  color: tokens.$text-muted;
+
+  span {
+    background: tokens.$text-muted;
+  }
+}
+
 .flow-variable-inputs {
   display: grid;
   gap: 12px;
@@ -3835,6 +3850,12 @@ a {
     button {
       flex: 1;
     }
+  }
+
+  .flow-run-draft-state {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
   }
 
   .starter-section {

@@ -28,6 +28,8 @@ import type {
 } from '@/types'
 
 const ACTIVE_FLOW_STORAGE_KEY = 'flowforge.activeFlowId'
+const FLOW_RUN_DRAFTS_STORAGE_KEY = 'flowforge.flowRunDrafts'
+const MAX_FLOW_RUN_DRAFTS = 20
 const DEFAULT_AI_TASK_EXECUTION_GUIDANCE =
   '综合上游上下文与 Prompt，给出清晰、可执行的结构化结果。\n优先保留关键判断、行动建议和必要的边界条件。'
 const DEFAULT_OUTPUT_DELIVERY_FOCUS =
@@ -43,6 +45,12 @@ type FlowRunSeed = {
   flowId: string
   runtimeContext: string
   variableValues: Record<string, string>
+}
+
+type FlowRunDraft = {
+  runtimeContext: string
+  variableValues: Record<string, string>
+  updatedAt: string
 }
 
 export const useWorkspaceStore = defineStore('workspace', () => {
@@ -65,6 +73,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const taskSourceRunId = ref<string | null>(null)
   const taskSourceRunSummary = ref('')
   const pendingFlowRunSeed = ref<FlowRunSeed | null>(null)
+  const flowRunDrafts = ref<Record<string, FlowRunDraft>>(readFlowRunDrafts())
   const running = ref(false)
   const historyLoading = ref(false)
   const settingsLoading = ref(false)
@@ -466,6 +475,63 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     return seed
   }
 
+  function getFlowRunDraft(flowId: string) {
+    const draft = flowRunDrafts.value[flowId]
+    return draft
+      ? {
+          runtimeContext: draft.runtimeContext,
+          variableValues: { ...draft.variableValues },
+          updatedAt: draft.updatedAt
+        }
+      : null
+  }
+
+  function saveFlowRunDraft(flowId: string, runtimeContext: string, variableValues: Record<string, string>) {
+    if (!flowId) {
+      return
+    }
+
+    const cleanContext = runtimeContext.trim()
+    const cleanVariableValues = sanitizeFlowRunDraftVariables(variableValues)
+    if (!cleanContext && !Object.keys(cleanVariableValues).length) {
+      clearFlowRunDraft(flowId)
+      return
+    }
+
+    const currentDraft = flowRunDrafts.value[flowId]
+    if (
+      currentDraft?.runtimeContext === cleanContext &&
+      JSON.stringify(currentDraft.variableValues) === JSON.stringify(cleanVariableValues)
+    ) {
+      return
+    }
+
+    const nextDrafts = {
+      ...flowRunDrafts.value,
+      [flowId]: {
+        runtimeContext: cleanContext,
+        variableValues: cleanVariableValues,
+        updatedAt: new Date().toISOString()
+      }
+    }
+    flowRunDrafts.value = Object.fromEntries(
+      Object.entries(nextDrafts)
+        .sort(([, left], [, right]) => right.updatedAt.localeCompare(left.updatedAt))
+        .slice(0, MAX_FLOW_RUN_DRAFTS)
+    )
+    persistFlowRunDrafts(flowRunDrafts.value)
+  }
+
+  function clearFlowRunDraft(flowId: string) {
+    if (!flowRunDrafts.value[flowId]) {
+      return
+    }
+    const nextDrafts = { ...flowRunDrafts.value }
+    delete nextDrafts[flowId]
+    flowRunDrafts.value = nextDrafts
+    persistFlowRunDrafts(nextDrafts)
+  }
+
   function prepareFlowRunFromSnapshot(snapshot: FlowRunSnapshot) {
     const sourceFlow = flowDrafts.value.find((flow) => flow.id === snapshot.flowId)
     if (!sourceFlow) {
@@ -758,6 +824,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     flowLoading.value = true
     try {
       await deleteFlow(id)
+      clearFlowRunDraft(id)
       flowDrafts.value = flowDrafts.value.filter((flow) => flow.id !== id)
       if (activeFlowId.value === id) {
         activeFlowId.value = flowDrafts.value[0]?.id || ''
@@ -939,6 +1006,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     createFlowFromRunSnapshot,
     createFlowFromRevision,
     consumeFlowRunSeed,
+    getFlowRunDraft,
+    saveFlowRunDraft,
+    clearFlowRunDraft,
     prepareFlowRunFromSnapshot,
     selectFlowDraft,
     replaceFlowDraft,
@@ -1159,6 +1229,73 @@ function toSaveFlowPayload(flow: FlowDraft): SaveFlowPayload {
     title: flow.title,
     description: flow.description,
     nodes: flow.nodes
+  }
+}
+
+function readFlowRunDrafts(): Record<string, FlowRunDraft> {
+  if (typeof window === 'undefined') {
+    return {}
+  }
+
+  try {
+    const value = JSON.parse(window.localStorage.getItem(FLOW_RUN_DRAFTS_STORAGE_KEY) || '{}')
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return {}
+    }
+
+    const drafts = Object.fromEntries(
+      Object.entries(value).flatMap(([flowId, draft]) => {
+        if (!flowId) {
+          return []
+        }
+        if (!draft || typeof draft !== 'object' || Array.isArray(draft)) {
+          return []
+        }
+        const candidate = draft as Record<string, unknown>
+        const runtimeContext = typeof candidate.runtimeContext === 'string' ? candidate.runtimeContext : ''
+        const variableValues = sanitizeFlowRunDraftVariables(candidate.variableValues)
+        if (!runtimeContext.trim() && !Object.keys(variableValues).length) {
+          return []
+        }
+        return [[
+          flowId,
+          {
+            runtimeContext,
+            variableValues,
+            updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : new Date(0).toISOString()
+          }
+        ]]
+      })
+    )
+    return Object.fromEntries(
+      Object.entries(drafts)
+        .sort(([, left], [, right]) => right.updatedAt.localeCompare(left.updatedAt))
+        .slice(0, MAX_FLOW_RUN_DRAFTS)
+    )
+  } catch {
+    return {}
+  }
+}
+
+function sanitizeFlowRunDraftVariables(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, variableValue]) => typeof variableValue === 'string' && variableValue.trim())
+      .map(([name, variableValue]) => [name, (variableValue as string).trim()])
+  )
+}
+
+function persistFlowRunDrafts(drafts: Record<string, FlowRunDraft>) {
+  if (typeof window === 'undefined') {
+    return
+  }
+  try {
+    window.localStorage.setItem(FLOW_RUN_DRAFTS_STORAGE_KEY, JSON.stringify(drafts))
+  } catch {
+    // The active in-memory draft remains available when browser storage is unavailable.
   }
 }
 
