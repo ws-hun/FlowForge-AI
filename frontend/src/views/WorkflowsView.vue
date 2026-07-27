@@ -483,6 +483,33 @@
             </p>
           </div>
 
+          <section v-if="selectedNode.type === 'prompt' && selectedNode.promptId" class="flow-node-prompt-source">
+            <div>
+              <span class="section-kicker">Linked Prompt</span>
+              <strong>{{ selectedNodeSourcePrompt?.title || selectedNode.promptTitle || '来源 Prompt' }}</strong>
+              <p>{{ selectedNodePromptSourceDescription }}</p>
+            </div>
+            <div class="flow-node-prompt-source-actions">
+              <button
+                type="button"
+                class="ghost-button"
+                :disabled="!selectedNodeSourcePrompt"
+                @click="openSelectedNodePrompt"
+              >
+                打开 Prompt
+              </button>
+              <button
+                v-if="selectedNodeSourcePrompt && !selectedNodePromptInSync"
+                type="button"
+                class="secondary-button"
+                :disabled="workspace.flowLoading"
+                @click="syncSelectedNodePrompt"
+              >
+                用 Library 版本替换
+              </button>
+            </div>
+          </section>
+
           <div v-if="selectedNode.type === 'prompt'" class="flow-node-order-actions">
             <button
               type="button"
@@ -961,6 +988,29 @@ const selectedNodeState = computed<FlowNodeRunState>(() => {
   return nodeStatus(selectedNode.value.id)
 })
 const selectedNodeIncomplete = computed(() => Boolean(selectedNode.value && nodeNeedsContent(selectedNode.value)))
+const selectedNodeSourcePrompt = computed(() => {
+  const promptId = selectedNode.value?.type === 'prompt' ? selectedNode.value.promptId : null
+  return promptId ? prompts.value.find((prompt) => prompt.id === promptId) || null : null
+})
+const selectedNodePromptInSync = computed(() => {
+  const node = selectedNode.value
+  const prompt = selectedNodeSourcePrompt.value
+  return Boolean(
+    node &&
+      prompt &&
+      node.title === prompt.title &&
+      node.description === prompt.description &&
+      (node.content || '') === prompt.content
+  )
+})
+const selectedNodePromptSourceDescription = computed(() => {
+  if (!selectedNodeSourcePrompt.value) {
+    return '来源 Prompt 已不可用，当前节点快照仍可独立编辑和执行。'
+  }
+  return selectedNodePromptInSync.value
+    ? '当前节点与 Prompt Library 中的内容一致。'
+    : '当前节点与 Library 版本不同。替换前会保留 Flow 修订快照。'
+})
 
 const primaryInputNodeId = computed(() => {
   return workspace.activeFlow?.nodes.find((node) => node.type === 'input')?.id || ''
@@ -1688,6 +1738,47 @@ async function persistSelectedNode(notify: boolean) {
 
 async function saveSelectedNode() {
   await persistSelectedNode(true)
+}
+
+async function openSelectedNodePrompt() {
+  const prompt = selectedNodeSourcePrompt.value
+  if (!prompt || !(await resolvePendingEdits())) {
+    return
+  }
+  await router.push({ path: '/prompts', query: { prompt: prompt.id } })
+}
+
+async function syncSelectedNodePrompt() {
+  const node = selectedNode.value
+  const prompt = selectedNodeSourcePrompt.value
+  if (!node || !prompt || selectedNodePromptInSync.value || !(await resolvePendingEdits())) {
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      '这会用 Prompt Library 当前的名称、说明和内容替换节点。Flow 修订历史会保留替换前状态。',
+      '同步 Prompt 节点',
+      {
+        confirmButtonText: '替换节点',
+        cancelButtonText: '取消',
+        closeOnClickModal: false,
+        type: 'warning'
+      }
+    )
+  } catch {
+    return
+  }
+
+  const updatedFlow = await workspace.syncFlowPromptNode(node.id, prompt)
+  if (!updatedFlow) {
+    return
+  }
+
+  selectedNodeId.value = node.id
+  resetFlowRunState()
+  syncSelectedNodeEditor()
+  ElMessage.success('Prompt 节点已同步到 Library 版本')
 }
 
 async function renameFlowVariable(variable: string) {

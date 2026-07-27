@@ -617,6 +617,21 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     })
   }
 
+  async function syncFlowPromptNode(nodeId: string, prompt: PromptAsset) {
+    return updateActiveFlow((flow) => {
+      const targetNode = flow.nodes.find((node) => node.id === nodeId && node.type === 'prompt')
+      if (!targetNode) {
+        return
+      }
+
+      targetNode.title = prompt.title
+      targetNode.description = prompt.description
+      targetNode.content = prompt.content
+      targetNode.promptId = prompt.id
+      targetNode.promptTitle = prompt.title
+    })
+  }
+
   async function renameFlowVariable(currentName: string, nextName: string) {
     const sourceName = currentName.trim()
     const targetName = nextName.trim()
@@ -932,6 +947,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     addContextToActiveFlow,
     removeFlowNode,
     updateFlowNode,
+    syncFlowPromptNode,
     renameFlowVariable,
     moveFlowPromptNode,
     moveFlowContextNode,

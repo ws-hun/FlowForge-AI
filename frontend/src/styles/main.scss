@@ -3154,6 +3154,38 @@ a {
   }
 }
 
+.flow-node-prompt-source {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid tokens.$border;
+  border-radius: tokens.$radius-lg;
+  background: rgba(243, 245, 247, 0.72);
+
+  > div:first-child {
+    display: grid;
+    gap: 4px;
+  }
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 14px;
+  }
+
+  p {
+    margin: 0;
+    color: tokens.$text-secondary;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+}
+
+.flow-node-prompt-source-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .node-status-card {
   display: grid;
   gap: 8px;

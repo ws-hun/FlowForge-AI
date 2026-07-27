@@ -108,6 +108,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Prompt Asset Deep Links | Done | 使用 `/prompts?prompt=<id>` 恢复 Prompt 详情，并同步卡片、来源、历史分支、AI Command 返回和浏览器导航 |
 | Stage 3 | Result Deep Links | Done | 使用 `/history?run=<id>` 聚焦固定运行，连接 AI Command、Prompt、Flow、来源运行与来源资产 |
 | Stage 3 | Historical Result Promotion | Done | 任意成功 Result 可沉淀为来源可追踪的 Prompt 结果模式，或直接创建可编辑 Flow |
+| Stage 3 | Prompt Node Source Sync | Done | Flow Prompt 节点显示 Library 来源与同步状态，可返回来源或显式采用最新 Prompt 内容 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
 | Future | Knowledge Base | Preview UI | 产品预留界面，暂未接入向量检索 |
 | Future | Analytics | Preview UI | 轻量洞察预留，暂未做完整数据分析系统 |
@@ -218,6 +219,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | Prompt 分类 / 收藏过滤 | Done |
 | 防止重复加入同一个 Prompt | Done |
 | Prompt 节点编辑 / 删除 / 复制 / 排序 | Done |
+| Prompt 节点来源状态 / 返回 Library / 显式同步 | Done |
 | Provider readiness 提示 | Done |
 | Run Brief 运行上下文 | Done |
 | 服务端执行输入预览 | Done |
