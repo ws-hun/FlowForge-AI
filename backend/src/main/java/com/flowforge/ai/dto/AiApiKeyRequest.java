@@ -9,6 +9,7 @@ public record AiApiKeyRequest(
         String provider,
 
         @NotBlank(message = "apiKey is required")
+        @Size(max = 12000, message = "apiKey must be less than 12000 characters")
         String apiKey,
 
         @NotBlank(message = "baseUrl is required")

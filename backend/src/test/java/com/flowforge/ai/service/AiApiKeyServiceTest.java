@@ -75,6 +75,30 @@ class AiApiKeyServiceTest {
     }
 
     @Test
+    void normalizesAValidCustomCompatibleBaseUrl() {
+        when(repository.findAll()).thenReturn(List.of());
+        when(repository.findByProviderIgnoreCase("openai")).thenReturn(Optional.empty());
+        when(repository.save(org.mockito.ArgumentMatchers.any(AiApiKey.class))).thenAnswer(invocation -> {
+            AiApiKey key = invocation.getArgument(0);
+            key.setId(UUID.randomUUID());
+            key.setUpdatedAt(LocalDateTime.now());
+            return key;
+        });
+
+        service.saveKey(new AiApiKeyRequest(
+                "openai",
+                "sk-custom-compatible-key",
+                "https://models.example.com/v1/",
+                "custom-model",
+                true
+        ));
+
+        ArgumentCaptor<AiApiKey> keyCaptor = ArgumentCaptor.forClass(AiApiKey.class);
+        verify(repository).save(keyCaptor.capture());
+        assertThat(keyCaptor.getValue().getBaseUrl()).isEqualTo("https://models.example.com/v1");
+    }
+
+    @Test
     void savingAnInactiveProviderDoesNotDeactivateTheCurrentProvider() {
         AiApiKey currentProvider = AiApiKey.builder()
                 .id(UUID.randomUUID())
@@ -122,6 +146,29 @@ class AiApiKeyServiceTest {
         )))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Unsupported AI provider: claude");
+    }
+
+    @Test
+    void rejectsUnsafeOrMalformedBaseUrlsAsClientInput() {
+        assertThatThrownBy(() -> service.saveKey(new AiApiKeyRequest(
+                "openai",
+                "secret-key",
+                "file:///tmp/provider",
+                "custom-model",
+                true
+        )))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("baseUrl must be an absolute HTTP or HTTPS URL");
+
+        assertThatThrownBy(() -> service.saveKey(new AiApiKeyRequest(
+                "openai",
+                "secret-key",
+                "https://user:password@models.example.com/v1?debug=true",
+                "custom-model",
+                true
+        )))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("baseUrl cannot contain credentials, query parameters, or fragments");
     }
 
     @Test

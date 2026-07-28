@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -42,7 +44,7 @@ public class AiApiKeyService {
                 .orElseGet(() -> AiApiKey.builder().provider(provider).build());
 
         key.setApiKey(request.apiKey().trim());
-        key.setBaseUrl(request.baseUrl().trim());
+        key.setBaseUrl(normalizeBaseUrl(request.baseUrl()));
         key.setModel(request.model().trim());
         key.setActive(active);
 
@@ -95,6 +97,28 @@ public class AiApiKeyService {
                 key.isActive(),
                 key.getUpdatedAt()
         );
+    }
+
+    private String normalizeBaseUrl(String baseUrl) {
+        String value = baseUrl == null ? "" : baseUrl.trim();
+        try {
+            URI uri = new URI(value);
+            String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
+            if ((!"http".equals(scheme) && !"https".equals(scheme)) || !StringUtils.hasText(uri.getHost())) {
+                throw new IllegalArgumentException("baseUrl must be an absolute HTTP or HTTPS URL");
+            }
+            if (uri.getUserInfo() != null || uri.getQuery() != null || uri.getFragment() != null) {
+                throw new IllegalArgumentException("baseUrl cannot contain credentials, query parameters, or fragments");
+            }
+            URI normalized = uri.normalize();
+            if (!normalized.equals(uri)) {
+                throw new IllegalArgumentException("baseUrl cannot contain relative path segments");
+            }
+            String result = normalized.toString();
+            return result.endsWith("/") ? result.substring(0, result.length() - 1) : result;
+        } catch (URISyntaxException ex) {
+            throw new IllegalArgumentException("baseUrl is not a valid URL", ex);
+        }
     }
 
     private String maskKey(String apiKey) {
