@@ -500,6 +500,27 @@ a {
   }
 }
 
+.history-run-title {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+
+  > span {
+    color: tokens.$primary;
+    font-family: tokens.$mono;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  > strong {
+    overflow-wrap: anywhere;
+    color: tokens.$text-primary;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+}
+
 .history-run-meta {
   display: flex;
   flex-wrap: wrap;
@@ -702,6 +723,101 @@ a {
     max-height: min(62vh, 680px);
     margin-top: 12px;
   }
+}
+
+.execution-input-archive {
+  overflow: hidden;
+  margin-top: 12px;
+  border: 1px solid tokens.$border;
+  border-radius: tokens.$radius-md;
+  background: rgba(243, 245, 247, 0.66);
+
+  summary {
+    display: flex;
+    min-height: 48px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 14px;
+    cursor: pointer;
+    list-style: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    > span {
+      display: grid;
+      gap: 2px;
+    }
+
+    strong {
+      color: tokens.$text-primary;
+      font-size: 12px;
+    }
+
+    small {
+      color: tokens.$text-muted;
+      font-family: tokens.$mono;
+      font-size: 10px;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  &.compact summary {
+    min-height: 42px;
+  }
+}
+
+.execution-input-archive-icon {
+  width: 16px;
+  height: 16px;
+  color: tokens.$text-muted;
+}
+
+.execution-input-archive-body {
+  border-top: 1px solid tokens.$border;
+
+  pre {
+    max-height: 320px;
+    margin: 0;
+    overflow: auto;
+    padding: 16px;
+    color: tokens.$text-secondary;
+    font-family: tokens.$mono;
+    font-size: 11px;
+    line-height: 1.75;
+    white-space: pre-wrap;
+  }
+}
+
+.execution-input-archive-toolbar {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 14px;
+  border-bottom: 1px solid tokens.$border;
+  background: rgba(255, 255, 255, 0.52);
+
+  > span {
+    color: tokens.$text-muted;
+    font-family: tokens.$mono;
+    font-size: 10px;
+    text-transform: uppercase;
+  }
+
+  .text-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+}
+
+.execution-input-archive-action-icon {
+  width: 13px;
+  height: 13px;
 }
 
 .run-comparison-pane-header {
@@ -4091,6 +4207,15 @@ a {
 
   .run-comparison-grid {
     grid-template-columns: 1fr;
+  }
+
+  .timeline-content > .row-between {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .history-run-meta {
+    justify-content: flex-start;
   }
 
   .history-reuse-row {

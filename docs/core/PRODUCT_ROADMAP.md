@@ -110,6 +110,7 @@ Current Stage 3 capabilities:
 - Execution previews expose the ordered Flow contributions, readiness issues, and final Raw input while remaining one deterministic Provider request.
 - Every node-backed execution section can reopen its exact Flow node from Flow Space or AI Command, keeping inspection connected to editing.
 - Preview readiness issues are actionable: missing variables focus their Run Brief field and incomplete nodes reopen their exact Inspector context.
+- History uses readable run titles while preserving the exact stored server input for inspection, copying, failed-run recovery, and run comparison.
 
 Current Stage 3 priorities:
 

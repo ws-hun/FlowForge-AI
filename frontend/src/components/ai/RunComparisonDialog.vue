@@ -27,6 +27,7 @@
             }}
           </span>
         </div>
+        <ExecutionInputArchive :input="sourceRun.input" title="来源执行输入" compact />
         <AiResultDocument
           :summary="sourceRun.summary"
           :result="sourceRun.result"
@@ -57,6 +58,7 @@
             }}
           </span>
         </div>
+        <ExecutionInputArchive :input="targetRun.input" title="本次执行输入" compact />
         <AiResultDocument
           :summary="targetRun.summary"
           :result="targetRun.result"
@@ -80,6 +82,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
+import ExecutionInputArchive from '@/components/ai/ExecutionInputArchive.vue'
 import { formatExecutionSource } from '@/utils/aiProvider'
 import type { TaskHistoryItem } from '@/types'
 

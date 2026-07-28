@@ -17,7 +17,10 @@
         <span class="timeline-dot" :class="{ failed: isFailed(task) }"></span>
         <div class="timeline-content soft-card" :class="{ failed: isFailed(task) }">
           <div class="row-between">
-            <strong>{{ task.input }}</strong>
+            <div class="history-run-title">
+              <span>{{ historyRunKind(task) }}</span>
+              <strong>{{ historyRunTitle(task) }}</strong>
+            </div>
             <div class="history-run-meta">
               <span v-if="isFailed(task)" class="history-status failed">执行失败</span>
               <small>{{ new Date(task.createdAt).toLocaleString() }}</small>
@@ -107,6 +110,10 @@
                 compact
                 :show-raw="false"
               />
+              <ExecutionInputArchive
+                :input="task.input"
+                :title="task.flowRunSnapshot ? '固定 Flow 执行输入' : '固定执行输入'"
+              />
               <section v-if="!isFailed(task)" class="history-result-reuse">
                 <div>
                   <span class="section-kicker">Reuse Result</span>
@@ -165,6 +172,7 @@ import { nextTick, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
+import ExecutionInputArchive from '@/components/ai/ExecutionInputArchive.vue'
 import RunComparisonDialog from '@/components/ai/RunComparisonDialog.vue'
 import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
 import { useWorkspaceStore } from '@/stores/workspace'
@@ -228,6 +236,34 @@ function lineageLabel(task: TaskHistoryItem) {
 
 function isFailed(task: TaskHistoryItem) {
   return task.status === 'failed'
+}
+
+function historyRunKind(task: TaskHistoryItem) {
+  if (task.continuedFromTaskId) return 'Continuation'
+  if (task.rerunOfTaskId) return 'Rerun'
+  if (task.sourceFlowId) return 'Flow Run'
+  if (task.sourcePromptId) return 'Prompt Run'
+  return 'AI Task'
+}
+
+function historyRunTitle(task: TaskHistoryItem) {
+  if (task.sourceFlowTitle) return task.sourceFlowTitle
+  if (task.sourcePromptTitle) return task.sourcePromptTitle
+
+  const sourceRun = lineageSource(task)
+  if (sourceRun?.summary) {
+    return sourceRun.summary
+  }
+
+  return compactExecutionInput(task.input)
+}
+
+function compactExecutionInput(input: string) {
+  const firstLine = input
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find(Boolean) || '未命名 AI 任务'
+  return firstLine.length > 120 ? `${firstLine.slice(0, 120)}…` : firstLine
 }
 
 function canCompareWithSource(task: TaskHistoryItem) {
