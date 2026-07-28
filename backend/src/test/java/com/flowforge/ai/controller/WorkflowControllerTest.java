@@ -2,6 +2,7 @@ package com.flowforge.ai.controller;
 
 import com.flowforge.ai.dto.FlowExecutionPreviewRequest;
 import com.flowforge.ai.dto.FlowExecutionPreviewResponse;
+import com.flowforge.ai.dto.FlowExecutionSectionResponse;
 import com.flowforge.ai.dto.FlowNodeDto;
 import com.flowforge.ai.dto.FlowResponse;
 import com.flowforge.ai.dto.FlowRunSnapshotResponse;
@@ -84,7 +85,16 @@ class WorkflowControllerTest {
                         updatedAt,
                         "Focus on the first release.",
                         Map.of("audience", "product teams")
-                )
+                ),
+                List.of(new FlowExecutionSectionResponse(
+                        "objective",
+                        null,
+                        "Launch brief",
+                        "Prepare a focused launch"
+                )),
+                true,
+                List.of(),
+                List.of()
         );
         when(taskService.previewFlowExecution(eq(flowId), any(FlowExecutionPreviewRequest.class))).thenReturn(response);
 
@@ -100,7 +110,12 @@ class WorkflowControllerTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.executionInput").value("Flow: Launch brief\n本次运行上下文:\nFocus on the first release."))
                 .andExpect(jsonPath("$.flowRunSnapshot.flowId").value(flowId.toString()))
-                .andExpect(jsonPath("$.flowRunSnapshot.variableValues.audience").value("product teams"));
+                .andExpect(jsonPath("$.flowRunSnapshot.variableValues.audience").value("product teams"))
+                .andExpect(jsonPath("$.sections[0].kind").value("objective"))
+                .andExpect(jsonPath("$.sections[0].title").value("Launch brief"))
+                .andExpect(jsonPath("$.executable").value(true))
+                .andExpect(jsonPath("$.missingVariables").isEmpty())
+                .andExpect(jsonPath("$.incompleteNodes").isEmpty());
 
         verify(taskService).previewFlowExecution(
                 eq(flowId),

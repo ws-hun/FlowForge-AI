@@ -3057,13 +3057,190 @@ a {
   line-height: 1.5;
 }
 
-.flow-input-preview-content pre {
+.flow-input-preview-state,
+.flow-input-preview-actions,
+.flow-input-preview-viewbar,
+.flow-input-preview-tabs {
+  display: flex;
+  align-items: center;
+}
+
+.flow-input-preview-state {
+  gap: 8px;
+
+  &.is-ready {
+    color: tokens.$success;
+  }
+
+  &.is-warning {
+    color: tokens.$warning;
+  }
+}
+
+.flow-input-preview-state-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.flow-input-preview-actions {
+  gap: 12px;
+}
+
+.flow-input-preview-action-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.flow-input-preview-actions .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.flow-input-preview-readiness {
+  display: grid;
+  gap: 4px;
+  margin: 0 16px 12px;
+  padding: 12px;
+  border: 1px solid rgba(tokens.$warning, 0.24);
+  border-radius: tokens.$radius-md;
+  background: rgba(tokens.$warning, 0.06);
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 13px;
+  }
+
+  p {
+    margin: 0;
+    color: tokens.$text-secondary;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+}
+
+.flow-input-preview-viewbar {
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
   border-top: 1px solid tokens.$border;
+  border-bottom: 1px solid tokens.$border;
+  background: rgba(255, 255, 255, 0.52);
+
+  > span {
+    color: tokens.$text-muted;
+    font-family: tokens.$mono;
+    font-size: 11px;
+  }
+}
+
+.flow-input-preview-tabs {
+  gap: 4px;
+  padding: 4px;
+  border-radius: tokens.$radius-sm;
+  background: tokens.$surface-secondary;
+
+  button {
+    min-height: 28px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: tokens.$radius-sm;
+    background: transparent;
+    color: tokens.$text-muted;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 650;
+    transition: background 180ms ease-out, color 180ms ease-out, box-shadow 180ms ease-out;
+
+    &.is-active {
+      background: tokens.$surface;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      color: tokens.$text-primary;
+    }
+  }
+}
+
+.flow-input-preview-sections {
+  max-height: 360px;
+  overflow: auto;
+
+  &.is-stale {
+    opacity: 0.56;
+  }
+}
+
+.flow-input-preview-section {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.34fr) minmax(0, 1fr);
+  gap: 16px;
+  padding: 16px;
+  border-top: 1px solid tokens.$border;
+
+  &:first-child {
+    border-top: 0;
+  }
+
+  header {
+    display: grid;
+    align-content: start;
+    gap: 4px;
+
+    span {
+      color: tokens.$primary;
+      font-family: tokens.$mono;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    strong {
+      color: tokens.$text-primary;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+  }
+
+  p {
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: tokens.$text-secondary;
+    font-size: 13px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+  }
+}
+
+.flow-input-preview-content > pre {
+  max-height: 360px;
+  border-top: 0;
+
+  &.is-stale {
+    opacity: 0.56;
+  }
 }
 
 .flow-input-preview-status .text-button,
 .flow-input-preview-meta .text-button {
   flex: 0 0 auto;
+}
+
+@media (max-width: 768px) {
+  .flow-input-preview-meta,
+  .flow-input-preview-viewbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .flow-input-preview-section {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .flow-empty-state {

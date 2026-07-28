@@ -158,9 +158,29 @@ export interface FlowExecutionPreviewRequest {
   variableValues?: Record<string, string>
 }
 
+export type FlowExecutionSectionKind =
+  | 'objective'
+  | 'input-context'
+  | 'runtime-context'
+  | 'prompt'
+  | 'execution-guidance'
+  | 'delivery-focus'
+  | 'response-contract'
+
+export interface FlowExecutionSection {
+  kind: FlowExecutionSectionKind
+  nodeId?: string | null
+  title: string
+  content: string
+}
+
 export interface FlowExecutionPreviewResponse {
   executionInput: string
   flowRunSnapshot: FlowRunSnapshot
+  sections: FlowExecutionSection[]
+  executable: boolean
+  missingVariables: string[]
+  incompleteNodes: string[]
 }
 
 export interface SaveFlowPayload {

@@ -2,9 +2,10 @@ package com.flowforge.ai.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.flowforge.ai.dto.FlowNodeDto;
 import com.flowforge.ai.dto.FlowExecutionPreviewRequest;
 import com.flowforge.ai.dto.FlowExecutionPreviewResponse;
+import com.flowforge.ai.dto.FlowExecutionSectionResponse;
+import com.flowforge.ai.dto.FlowNodeDto;
 import com.flowforge.ai.dto.FlowRunSnapshotResponse;
 import com.flowforge.ai.dto.OpenAiTaskResult;
 import com.flowforge.ai.dto.RunTaskRequest;
@@ -90,7 +91,7 @@ public class TaskService {
 
         String executionInput = flowRunSnapshot == null
                 ? standaloneInput
-                : compileFlowExecutionInput(flowRunSnapshot);
+                : compileFlowExecution(flowRunSnapshot).executionInput();
         return executeAndSave(
                 executionInput,
                 new TaskExecutionSource(
@@ -225,9 +226,17 @@ public class TaskService {
                 request.variableValues()
         );
 
+        CompiledFlowExecution compiledExecution = compileFlowExecution(flowRunSnapshot);
+        List<String> missingVariables = findMissingFlowVariables(flowRunSnapshot);
+        List<String> incompleteNodes = findIncompleteFlowNodes(flowRunSnapshot);
+
         return new FlowExecutionPreviewResponse(
-                compileFlowExecutionInput(flowRunSnapshot),
-                flowRunSnapshot
+                compiledExecution.executionInput(),
+                flowRunSnapshot,
+                compiledExecution.sections(),
+                missingVariables.isEmpty() && incompleteNodes.isEmpty(),
+                missingVariables,
+                incompleteNodes
         );
     }
 
@@ -302,56 +311,98 @@ public class TaskService {
     /**
      * A Flow run must execute the persisted Flow state, not an equivalent-looking client payload.
      */
-    private String compileFlowExecutionInput(FlowRunSnapshotResponse snapshot) {
-        String inputBlocks = snapshot.nodes().stream()
+    private CompiledFlowExecution compileFlowExecution(FlowRunSnapshotResponse snapshot) {
+        List<FlowExecutionSectionResponse> inputSections = snapshot.nodes().stream()
                 .filter(node -> "input".equals(node.type()))
                 .filter(node -> StringUtils.hasText(node.content()))
                 .filter(node -> !node.content().trim().equals(snapshot.description()))
-                .map(node -> formatNodeBlock(node.title(), applyFlowVariables(node.content(), snapshot.variableValues())))
-                .reduce((first, second) -> first + "\n\n" + second)
-                .orElse("");
-        String promptBlocks = snapshot.nodes().stream()
+                .map(node -> compileNodeSection(node, "input-context", snapshot.variableValues()))
+                .toList();
+        List<FlowExecutionSectionResponse> promptSections = snapshot.nodes().stream()
                 .filter(node -> "prompt".equals(node.type()))
                 .filter(node -> StringUtils.hasText(node.content()))
-                .map(node -> formatNodeBlock(node.title(), applyFlowVariables(node.content(), snapshot.variableValues())))
-                .reduce((first, second) -> first + "\n\n" + second)
-                .orElse("");
-        String executionGuidanceBlocks = snapshot.nodes().stream()
+                .map(node -> compileNodeSection(node, "prompt", snapshot.variableValues()))
+                .toList();
+        List<FlowExecutionSectionResponse> executionGuidanceSections = snapshot.nodes().stream()
                 .filter(node -> "ai-task".equals(node.type()))
                 .filter(node -> StringUtils.hasText(node.content()))
-                .map(node -> formatNodeBlock(node.title(), applyFlowVariables(node.content(), snapshot.variableValues())))
-                .reduce((first, second) -> first + "\n\n" + second)
-                .orElse("");
-        String deliveryFocusBlocks = snapshot.nodes().stream()
+                .map(node -> compileNodeSection(node, "execution-guidance", snapshot.variableValues()))
+                .toList();
+        List<FlowExecutionSectionResponse> deliveryFocusSections = snapshot.nodes().stream()
                 .filter(node -> "output".equals(node.type()))
                 .filter(node -> StringUtils.hasText(node.content()))
-                .map(node -> formatNodeBlock(node.title(), applyFlowVariables(node.content(), snapshot.variableValues())))
-                .reduce((first, second) -> first + "\n\n" + second)
-                .orElse("");
+                .map(node -> compileNodeSection(node, "delivery-focus", snapshot.variableValues()))
+                .toList();
 
-        List<String> sections = new ArrayList<>();
-        sections.add("请按下面的 Flow 目标执行 AI 工作流。");
-        sections.add("");
-        sections.add("Flow: " + snapshot.title());
-        sections.add("目标: " + snapshot.description());
-        if (StringUtils.hasText(inputBlocks)) {
-            sections.add("\n输入节点上下文:\n" + inputBlocks);
+        List<FlowExecutionSectionResponse> sections = new ArrayList<>();
+        sections.add(new FlowExecutionSectionResponse(
+                "objective",
+                null,
+                snapshot.title(),
+                snapshot.description()
+        ));
+        sections.addAll(inputSections);
+        if (StringUtils.hasText(snapshot.runtimeContext())) {
+            sections.add(new FlowExecutionSectionResponse(
+                    "runtime-context",
+                    null,
+                    "本次运行说明",
+                    snapshot.runtimeContext()
+            ));
+        }
+        sections.addAll(promptSections);
+        sections.addAll(executionGuidanceSections);
+        sections.addAll(deliveryFocusSections);
+        sections.add(new FlowExecutionSectionResponse(
+                "response-contract",
+                null,
+                "结构化输出",
+                "Summary · Key Points · Result · Next Actions"
+        ));
+
+        List<String> executionInput = new ArrayList<>();
+        executionInput.add("请按下面的 Flow 目标执行 AI 工作流。");
+        executionInput.add("");
+        executionInput.add("Flow: " + snapshot.title());
+        executionInput.add("目标: " + snapshot.description());
+        if (!inputSections.isEmpty()) {
+            executionInput.add("\n输入节点上下文:\n" + renderNodeSections(inputSections));
         }
         if (StringUtils.hasText(snapshot.runtimeContext())) {
-            sections.add("\n本次运行上下文:\n" + snapshot.runtimeContext());
+            executionInput.add("\n本次运行上下文:\n" + snapshot.runtimeContext());
         }
-        if (StringUtils.hasText(promptBlocks)) {
-            sections.add("\n可复用 Prompt 节点:\n" + promptBlocks);
+        if (!promptSections.isEmpty()) {
+            executionInput.add("\n可复用 Prompt 节点:\n" + renderNodeSections(promptSections));
         }
-        if (StringUtils.hasText(executionGuidanceBlocks)) {
-            sections.add("\n执行指令:\n" + executionGuidanceBlocks);
+        if (!executionGuidanceSections.isEmpty()) {
+            executionInput.add("\n执行指令:\n" + renderNodeSections(executionGuidanceSections));
         }
-        if (StringUtils.hasText(deliveryFocusBlocks)) {
-            sections.add("\n交付重点:\n" + deliveryFocusBlocks);
+        if (!deliveryFocusSections.isEmpty()) {
+            executionInput.add("\n交付重点:\n" + renderNodeSections(deliveryFocusSections));
         }
-        sections.add("");
-        sections.add("请输出：1. Summary 2. Key Points 3. Result 4. Next Actions");
-        return String.join("\n", sections);
+        executionInput.add("");
+        executionInput.add("请输出：1. Summary 2. Key Points 3. Result 4. Next Actions");
+        return new CompiledFlowExecution(String.join("\n", executionInput), List.copyOf(sections));
+    }
+
+    private FlowExecutionSectionResponse compileNodeSection(
+            FlowNodeDto node,
+            String kind,
+            Map<String, String> variableValues
+    ) {
+        return new FlowExecutionSectionResponse(
+                kind,
+                node.id(),
+                node.title(),
+                applyFlowVariables(node.content(), variableValues)
+        );
+    }
+
+    private String renderNodeSections(List<FlowExecutionSectionResponse> sections) {
+        return sections.stream()
+                .map(section -> formatNodeBlock(section.title(), section.content()))
+                .reduce((first, second) -> first + "\n\n" + second)
+                .orElse("");
     }
 
     private String compileContinuationInput(Task sourceTask, String direction) {
@@ -393,6 +444,13 @@ public class TaskService {
     }
 
     private void requireFlowVariableValues(FlowRunSnapshotResponse snapshot) {
+        List<String> missingVariables = findMissingFlowVariables(snapshot);
+        if (!missingVariables.isEmpty()) {
+            throw new IllegalArgumentException("请填写 Flow 变量: " + String.join(", ", missingVariables));
+        }
+    }
+
+    private List<String> findMissingFlowVariables(FlowRunSnapshotResponse snapshot) {
         Set<String> requiredVariables = new LinkedHashSet<>();
         snapshot.nodes().stream()
                 .map(FlowNodeDto::content)
@@ -404,22 +462,23 @@ public class TaskService {
                     }
                 });
 
-        List<String> missingVariables = requiredVariables.stream()
+        return requiredVariables.stream()
                 .filter(variable -> !StringUtils.hasText(snapshot.variableValues().get(variable)))
                 .toList();
-        if (!missingVariables.isEmpty()) {
-            throw new IllegalArgumentException("请填写 Flow 变量: " + String.join(", ", missingVariables));
-        }
     }
 
     private void requireFlowNodeContents(FlowRunSnapshotResponse snapshot) {
-        List<String> incompleteNodes = snapshot.nodes().stream()
-                .filter(node -> !StringUtils.hasText(node.content()))
-                .map(FlowNodeDto::title)
-                .toList();
+        List<String> incompleteNodes = findIncompleteFlowNodes(snapshot);
         if (!incompleteNodes.isEmpty()) {
             throw new IllegalArgumentException("请完善 Flow 节点: " + String.join(", ", incompleteNodes));
         }
+    }
+
+    private List<String> findIncompleteFlowNodes(FlowRunSnapshotResponse snapshot) {
+        return snapshot.nodes().stream()
+                .filter(node -> !StringUtils.hasText(node.content()))
+                .map(FlowNodeDto::title)
+                .toList();
     }
 
     private String serializeFlowRunSnapshot(FlowRunSnapshotResponse snapshot) {
@@ -511,6 +570,12 @@ public class TaskService {
             FlowRunSnapshotResponse flowRunSnapshot,
             UUID rerunOfTaskId,
             UUID continuedFromTaskId
+    ) {
+    }
+
+    private record CompiledFlowExecution(
+            String executionInput,
+            List<FlowExecutionSectionResponse> sections
     ) {
     }
 }

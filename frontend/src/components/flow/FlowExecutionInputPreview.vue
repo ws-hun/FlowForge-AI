@@ -6,12 +6,66 @@
     </div>
     <div v-else-if="preview" class="flow-input-preview-content">
       <div class="flow-input-preview-meta">
-        <span>{{ stale ? '执行上下文已更新' : '与本次执行保持一致' }}</span>
-        <button v-if="stale" type="button" class="text-button" @click="loadPreview">
-          刷新输入
-        </button>
+        <span class="flow-input-preview-state" :class="{ 'is-ready': preview.executable && !stale, 'is-warning': !preview.executable || stale }">
+          <span class="flow-input-preview-state-dot"></span>
+          {{ stale ? '执行上下文已更新' : readinessLabel }}
+        </span>
+        <div class="flow-input-preview-actions">
+          <button v-if="stale" type="button" class="text-button" @click="loadPreview">
+            <RefreshRight class="flow-input-preview-action-icon" />
+            刷新
+          </button>
+          <button type="button" class="text-button" :disabled="stale" @click="copyExecutionInput">
+            <CopyDocument class="flow-input-preview-action-icon" />
+            复制完整输入
+          </button>
+        </div>
       </div>
-      <pre>{{ preview.executionInput }}</pre>
+
+      <div v-if="!preview.executable && !stale" class="flow-input-preview-readiness">
+        <strong>执行前还有内容需要补全</strong>
+        <p v-if="preview.missingVariables.length">
+          变量：{{ preview.missingVariables.join('、') }}
+        </p>
+        <p v-if="preview.incompleteNodes.length">
+          节点：{{ preview.incompleteNodes.join('、') }}
+        </p>
+      </div>
+
+      <div class="flow-input-preview-viewbar">
+        <div class="flow-input-preview-tabs" role="tablist" aria-label="执行输入预览方式">
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="activeView === 'outline'"
+            :class="{ 'is-active': activeView === 'outline' }"
+            @click="activeView = 'outline'"
+          >
+            执行结构
+          </button>
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="activeView === 'raw'"
+            :class="{ 'is-active': activeView === 'raw' }"
+            @click="activeView = 'raw'"
+          >
+            Raw 输入
+          </button>
+        </div>
+        <span>{{ preview.sections.length }} 个执行段 · 1 次 Provider 调用</span>
+      </div>
+
+      <div v-if="activeView === 'outline'" class="flow-input-preview-sections" :class="{ 'is-stale': stale }">
+        <article v-for="section in preview.sections" :key="`${section.kind}-${section.nodeId || section.title}`" class="flow-input-preview-section">
+          <header>
+            <span>{{ sectionKindLabel(section.kind) }}</span>
+            <strong>{{ section.title }}</strong>
+          </header>
+          <p>{{ section.content }}</p>
+        </article>
+      </div>
+      <pre v-else :class="{ 'is-stale': stale }">{{ preview.executionInput }}</pre>
     </div>
     <div v-else class="flow-input-preview-status">
       <span>{{ error || (stale ? '执行上下文已更新，请刷新执行输入。' : '展开后将从服务端生成执行输入。') }}</span>
@@ -23,9 +77,11 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
+import { CopyDocument, RefreshRight } from '@element-plus/icons-vue'
 import { previewFlowExecution } from '@/api/flows'
-import type { FlowExecutionPreviewResponse } from '@/types'
+import type { FlowExecutionPreviewResponse, FlowExecutionSectionKind } from '@/types'
 
 const props = withDefaults(
   defineProps<{
@@ -50,6 +106,19 @@ const loading = ref(false)
 const stale = ref(false)
 const error = ref('')
 const requestVersion = ref(0)
+const activeView = ref<'outline' | 'raw'>('outline')
+
+const readinessLabel = computed(() => preview.value?.executable ? '本次执行输入已就绪' : '本次执行仍需补全')
+
+const sectionKindLabels: Record<FlowExecutionSectionKind, string> = {
+  objective: 'Flow 目标',
+  'input-context': '输入上下文',
+  'runtime-context': 'Run Brief',
+  prompt: 'Prompt',
+  'execution-guidance': '执行指令',
+  'delivery-focus': '交付重点',
+  'response-contract': '输出协议'
+}
 
 watch(() => props.flowId, resetPreview)
 
@@ -75,6 +144,7 @@ function resetPreview() {
   loading.value = false
   stale.value = false
   error.value = ''
+  activeView.value = 'outline'
 }
 
 function onToggle(event: Event) {
@@ -115,6 +185,23 @@ async function loadPreview() {
     if (props.flowId === flowId && requestVersion.value === version) {
       loading.value = false
     }
+  }
+}
+
+function sectionKindLabel(kind: FlowExecutionSectionKind) {
+  return sectionKindLabels[kind]
+}
+
+async function copyExecutionInput() {
+  if (!preview.value || stale.value) {
+    return
+  }
+
+  try {
+    await navigator.clipboard.writeText(preview.value.executionInput)
+    ElMessage.success('完整执行输入已复制')
+  } catch {
+    ElMessage.error('复制失败，请在 Raw 输入中手动复制')
   }
 }
 </script>

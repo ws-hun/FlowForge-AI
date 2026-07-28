@@ -107,6 +107,7 @@ Current Stage 3 capabilities:
 - Run Brief drafts preserve per-Flow runtime context and variable values locally across Flow switching and browser reloads without presenting unexecuted input as server history.
 - Flow Run Brief edits remain synchronized when work moves between Flow Space and AI Command, including return, detach, and execution paths.
 - Flow Space and AI Command share one server-compiled execution preview, so users can inspect the exact Provider input from either workspace before running.
+- Execution previews expose the ordered Flow contributions, readiness issues, and final Raw input while remaining one deterministic Provider request.
 
 Current Stage 3 priorities:
 

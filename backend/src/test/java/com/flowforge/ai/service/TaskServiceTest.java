@@ -590,6 +590,66 @@ class TaskServiceTest {
         assertThat(response.flowRunSnapshot().flowUpdatedAt()).isEqualTo(updatedAt);
         assertThat(response.flowRunSnapshot().nodes()).extracting(FlowNodeDto::title)
                 .containsExactly("Product context", "Audience lens", "Launch execution guidance", "Release delivery focus");
+        assertThat(response.executable()).isTrue();
+        assertThat(response.missingVariables()).isEmpty();
+        assertThat(response.incompleteNodes()).isEmpty();
+        assertThat(response.sections())
+                .extracting(section -> section.kind() + ":" + section.title())
+                .containsExactly(
+                        "objective:Release Brief",
+                        "input-context:Product context",
+                        "runtime-context:本次运行说明",
+                        "prompt:Audience lens",
+                        "execution-guidance:Launch execution guidance",
+                        "delivery-focus:Release delivery focus",
+                        "response-contract:结构化输出"
+                );
+        assertThat(response.sections().get(3).content())
+                .isEqualTo("Write for product teams and include a release checklist.");
+        verifyNoInteractions(openAiService, taskRepository);
+    }
+
+    @Test
+    void reportsFlowPreviewReadinessWithoutCallingTheProvider() throws Exception {
+        UUID flowId = UUID.randomUUID();
+        Workflow flow = Workflow.builder()
+                .id(flowId)
+                .title("Regional launch")
+                .description("Prepare a regional launch brief")
+                .nodesJson(new ObjectMapper().writeValueAsString(List.of(
+                        new FlowNodeDto(
+                                "input-1",
+                                "input",
+                                "Audience context",
+                                "The audience and region for this run",
+                                "Prepare this for {audience} in {region}.",
+                                null,
+                                null
+                        ),
+                        new FlowNodeDto(
+                                "prompt-1",
+                                "prompt",
+                                "Pending launch pattern",
+                                "A reusable pattern that still needs content",
+                                "   ",
+                                null,
+                                null
+                        )
+                )))
+                .createdAt(LocalDateTime.now().minusMinutes(1))
+                .updatedAt(LocalDateTime.now())
+                .build();
+        when(workflowRepository.findById(flowId)).thenReturn(Optional.of(flow));
+
+        FlowExecutionPreviewResponse response = taskService.previewFlowExecution(
+                flowId,
+                new FlowExecutionPreviewRequest(null, Map.of("audience", "product teams"))
+        );
+
+        assertThat(response.executable()).isFalse();
+        assertThat(response.missingVariables()).containsExactly("region");
+        assertThat(response.incompleteNodes()).containsExactly("Pending launch pattern");
+        assertThat(response.executionInput()).contains("{region}");
         verifyNoInteractions(openAiService, taskRepository);
     }
 
