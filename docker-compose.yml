@@ -30,8 +30,12 @@ services:
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-flowforge}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-flowforge}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      FLOWFORGE_ENCRYPTION_KEY: ${FLOWFORGE_ENCRYPTION_KEY:-}
+      FLOWFORGE_KEY_FILE: /app/data/master.key
     ports:
       - "8080:8080"
+    volumes:
+      - backend-secrets:/app/data
 
   frontend:
     build:
@@ -46,3 +50,4 @@ services:
 
 volumes:
   postgres-data:
+  backend-secrets:

@@ -68,7 +68,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage | Module | Status | Description |
 | --- | --- | --- | --- |
 | Stage 1 | AI Task Execution | Done | 自然语言任务输入、AI 调用、结构化结果、历史保存 |
-| Stage 1 | Provider Vault | Done | 在 UI 中管理 DeepSeek / OpenAI API Key，密钥不写入源码 |
+| Stage 1 | Provider Vault | Done | 在 UI 中管理 DeepSeek / OpenAI API Key，密钥不写入源码，并使用 AES-256-GCM 加密后存入数据库 |
 | Stage 2 | Prompt Library | Done | Prompt 创建、编辑、收藏、搜索、变量填充、Starter Pack |
 | Stage 2 | Prompt Versioning | Done | Prompt 编辑产生版本快照，支持历史版本恢复 |
 | Stage 2 | Prompt Run History | Done | Prompt 关联执行记录可回看 |
@@ -209,6 +209,7 @@ API Key 不放在配置文件里，避免上传 GitHub 时泄露密钥。
 | Base URL / Model 配置 | Done |
 | 激活当前 Provider | Done |
 | Masked Key 回显 | Done |
+| AES-256-GCM 数据库静态加密 | Done |
 | 保存失败时保留待提交 Key | Done |
 | Provider 更新时间展示 | Done |
 | 删除 Provider 前风险确认 | Done |
@@ -373,7 +374,8 @@ Controller -> Service -> Repository -> Entity
 | `TaskService` | AI 任务执行与历史记录 |
 | `TaskFailureRecorder` | 使用独立事务保存失败运行，避免随执行异常回滚 |
 | `OpenAiService` | OpenAI-compatible HTTP 调用 |
-| `AiApiKeyService` | Provider Key 管理 |
+| `AiApiKeyService` | Provider Key 管理与解密边界 |
+| `ApiKeyCipher` | AES-256-GCM 密钥静态加密与主密钥管理 |
 | `PromptService` | Prompt 资产、收藏、版本 |
 | `WorkflowService` | Flow 草稿和节点结构 |
 | `HealthService` | 应用与 PostgreSQL 就绪探针 |
@@ -536,7 +538,15 @@ SPRING_DATASOURCE_PASSWORD=flowforge
 FRONTEND_URL=http://localhost:5173
 ```
 
-AI Provider Key is managed from the Provider Vault UI and stored in PostgreSQL.
+AI Provider Key 由 Provider Vault UI 管理，并以 AES-256-GCM 密文存入 PostgreSQL。本地开发首次启动会生成 Git 忽略的 `.flowforge/master.key`；Docker 使用独立 `backend-secrets` volume 保存主密钥。
+
+正式或多实例部署建议显式生成并注入主密钥：
+
+```bash
+openssl rand -base64 32
+```
+
+将结果设置为 `FLOWFORGE_ENCRYPTION_KEY`。主密钥一旦更换或丢失，已有密文无法解密，因此备份 PostgreSQL 时必须同时备份 `backend-secrets` volume，或妥善保存注入的环境密钥。
 
 ## API Overview
 
@@ -735,6 +745,12 @@ FlowForge avoids storing real AI API keys in source code.
 | API Key managed from UI | Done |
 | Masked Key returned to frontend | Done |
 | Provider activation stored in DB | Done |
+| API Key encrypted at rest with AES-256-GCM | Done |
+| Random nonce per encryption | Done |
+| Local master key excluded from Git | Done |
+| Docker master key persisted outside PostgreSQL | Done |
+
+已有明文数据库记录仍可读取和使用；打开 Provider Vault 或首次使用该 Provider 执行任务时，记录会自动迁移为加密格式。FlowForge 不会在 API 响应中返回明文 Key。
 
 If GitHub Push Protection reports a leaked key, do not bypass it. Remove the secret from Git history, revoke the old key from the provider, and create a new key.
 

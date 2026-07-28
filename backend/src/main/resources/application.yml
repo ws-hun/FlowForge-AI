@@ -24,3 +24,6 @@ spring:
 
 flowforge:
   frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  security:
+    encryption-key: ${FLOWFORGE_ENCRYPTION_KEY:}
+    key-file: ${FLOWFORGE_KEY_FILE:.flowforge/master.key}

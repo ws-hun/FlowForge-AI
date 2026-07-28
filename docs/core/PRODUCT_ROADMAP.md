@@ -106,6 +106,7 @@ Current Stage 3 capabilities:
 - The global shell surfaces one calm readiness signal that combines backend/database health with active Provider availability and remains actionable without dashboard noise.
 - Provider Vault protects destructive actions with explicit confirmation, preserves unsaved key input when a save request fails, and returns client-correct `400` / `404` errors for invalid or missing configurations.
 - Provider Base URLs are normalized and validated as safe absolute HTTP/HTTPS endpoints while preserving legitimate custom OpenAI-compatible hosts.
+- Provider API Keys are encrypted at rest with AES-256-GCM, using a Git-ignored local key file or an injected production key while preserving legacy plaintext readability during migration.
 - Prompt and Flow mutation endpoints preserve REST semantics by separating missing assets (`404`) and invalid input (`400`) from actual Provider gateway failures (`502`).
 - Global error handling isolates `AiExecutionException` as `502`, reports internal state failures as non-leaking `500` responses, and keeps missing Task execution sources on `404`.
 - Flow asset deep links restore a specific saved Flow from Workspace, Task, Prompt, History, revision, and snapshot reuse paths while preserving unsaved-edit protection.

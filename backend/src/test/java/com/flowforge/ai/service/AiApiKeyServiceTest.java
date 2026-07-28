@@ -5,14 +5,17 @@ import com.flowforge.ai.dto.AiApiKeyResponse;
 import com.flowforge.ai.entity.AiApiKey;
 import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.repository.AiApiKeyRepository;
+import com.flowforge.ai.security.ApiKeyCipher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,10 +33,15 @@ class AiApiKeyServiceTest {
     private AiApiKeyRepository repository;
 
     private AiApiKeyService service;
+    private ApiKeyCipher apiKeyCipher;
+
+    @TempDir
+    private Path tempDir;
 
     @BeforeEach
     void setUp() {
-        service = new AiApiKeyService(repository);
+        apiKeyCipher = new ApiKeyCipher("", tempDir.resolve("master.key").toString());
+        service = new AiApiKeyService(repository, apiKeyCipher);
     }
 
     @Test
@@ -67,7 +75,8 @@ class AiApiKeyServiceTest {
         verify(repository).save(keyCaptor.capture());
         assertThat(previousActiveKey.isActive()).isFalse();
         assertThat(keyCaptor.getValue().getProvider()).isEqualTo("deepseek");
-        assertThat(keyCaptor.getValue().getApiKey()).isEqualTo("sk-1234567890abcdef");
+        assertThat(keyCaptor.getValue().getApiKey()).startsWith("enc:v1:");
+        assertThat(apiKeyCipher.decrypt(keyCaptor.getValue().getApiKey())).isEqualTo("sk-1234567890abcdef");
         assertThat(keyCaptor.getValue().getBaseUrl()).isEqualTo("https://api.deepseek.com");
         assertThat(keyCaptor.getValue().getModel()).isEqualTo("deepseek-chat");
         assertThat(keyCaptor.getValue().isActive()).isTrue();
@@ -192,5 +201,53 @@ class AiApiKeyServiceTest {
         assertThatThrownBy(service::getActiveKey)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("No active AI API key configured");
+    }
+
+    @Test
+    void decryptsTheActiveProviderWithoutMutatingTheStoredEntity() {
+        String encryptedKey = apiKeyCipher.encrypt("sk-active-provider-key");
+        AiApiKey storedKey = AiApiKey.builder()
+                .id(UUID.randomUUID())
+                .provider("openai")
+                .apiKey(encryptedKey)
+                .baseUrl("https://api.openai.com/v1")
+                .model("gpt-4.1-mini")
+                .active(true)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        when(repository.findFirstByActiveTrue()).thenReturn(Optional.of(storedKey));
+
+        AiApiKey activeKey = service.getActiveKey();
+
+        assertThat(activeKey).isNotSameAs(storedKey);
+        assertThat(activeKey.getApiKey()).isEqualTo("sk-active-provider-key");
+        assertThat(storedKey.getApiKey()).isEqualTo(encryptedKey);
+        verify(repository, never()).save(storedKey);
+    }
+
+    @Test
+    void migratesLegacyPlaintextKeysWhenTheVaultIsListed() {
+        AiApiKey legacyKey = AiApiKey.builder()
+                .id(UUID.randomUUID())
+                .provider("deepseek")
+                .apiKey("sk-legacy-plaintext-key")
+                .baseUrl("https://api.deepseek.com")
+                .model("deepseek-chat")
+                .active(true)
+                .updatedAt(LocalDateTime.now())
+                .build();
+        when(repository.findAll(org.springframework.data.domain.Sort.by(
+                org.springframework.data.domain.Sort.Direction.ASC,
+                "provider"
+        ))).thenReturn(List.of(legacyKey));
+        when(repository.saveAll(List.of(legacyKey))).thenReturn(List.of(legacyKey));
+
+        List<AiApiKeyResponse> response = service.listKeys();
+
+        assertThat(response).singleElement().extracting(AiApiKeyResponse::maskedKey)
+                .isEqualTo("sk-le...-key");
+        assertThat(legacyKey.getApiKey()).startsWith("enc:v1:");
+        verify(repository).saveAll(List.of(legacyKey));
     }
 }

@@ -5,6 +5,7 @@ import com.flowforge.ai.dto.AiApiKeyResponse;
 import com.flowforge.ai.entity.AiApiKey;
 import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.repository.AiApiKeyRepository;
+import com.flowforge.ai.security.ApiKeyCipher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -22,10 +23,18 @@ import java.util.UUID;
 public class AiApiKeyService {
 
     private final AiApiKeyRepository aiApiKeyRepository;
+    private final ApiKeyCipher apiKeyCipher;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<AiApiKeyResponse> listKeys() {
-        return aiApiKeyRepository.findAll(Sort.by(Sort.Direction.ASC, "provider"))
+        List<AiApiKey> keys = aiApiKeyRepository.findAll(Sort.by(Sort.Direction.ASC, "provider"));
+        List<AiApiKey> migratedKeys = keys.stream()
+                .filter(this::migrateLegacyKey)
+                .toList();
+        if (!migratedKeys.isEmpty()) {
+            aiApiKeyRepository.saveAll(migratedKeys);
+        }
+        return keys
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -43,7 +52,7 @@ public class AiApiKeyService {
         AiApiKey key = aiApiKeyRepository.findByProviderIgnoreCase(provider)
                 .orElseGet(() -> AiApiKey.builder().provider(provider).build());
 
-        key.setApiKey(request.apiKey().trim());
+        key.setApiKey(apiKeyCipher.encrypt(request.apiKey().trim()));
         key.setBaseUrl(normalizeBaseUrl(request.baseUrl()));
         key.setModel(request.model().trim());
         key.setActive(active);
@@ -70,10 +79,24 @@ public class AiApiKeyService {
         aiApiKeyRepository.deleteById(id);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AiApiKey getActiveKey() {
-        return aiApiKeyRepository.findFirstByActiveTrue()
+        AiApiKey storedKey = aiApiKeyRepository.findFirstByActiveTrue()
                 .orElseThrow(() -> new IllegalStateException("No active AI API key configured"));
+        String plaintextKey = apiKeyCipher.decrypt(storedKey.getApiKey());
+        if (migrateLegacyKey(storedKey)) {
+            aiApiKeyRepository.save(storedKey);
+        }
+        return AiApiKey.builder()
+                .id(storedKey.getId())
+                .provider(storedKey.getProvider())
+                .apiKey(plaintextKey)
+                .baseUrl(storedKey.getBaseUrl())
+                .model(storedKey.getModel())
+                .active(storedKey.isActive())
+                .createdAt(storedKey.getCreatedAt())
+                .updatedAt(storedKey.getUpdatedAt())
+                .build();
     }
 
     private String normalizeProvider(String provider) {
@@ -91,12 +114,20 @@ public class AiApiKeyService {
         return new AiApiKeyResponse(
                 key.getId(),
                 key.getProvider(),
-                maskKey(key.getApiKey()),
+                maskKey(apiKeyCipher.decrypt(key.getApiKey())),
                 key.getBaseUrl(),
                 key.getModel(),
                 key.isActive(),
                 key.getUpdatedAt()
         );
+    }
+
+    private boolean migrateLegacyKey(AiApiKey key) {
+        if (!StringUtils.hasText(key.getApiKey()) || apiKeyCipher.isEncrypted(key.getApiKey())) {
+            return false;
+        }
+        key.setApiKey(apiKeyCipher.encrypt(key.getApiKey().trim()));
+        return true;
     }
 
     private String normalizeBaseUrl(String baseUrl) {
