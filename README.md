@@ -208,6 +208,9 @@ API Key 不放在配置文件里，避免上传 GitHub 时泄露密钥。
 | Base URL / Model 配置 | Done |
 | 激活当前 Provider | Done |
 | Masked Key 回显 | Done |
+| 保存失败时保留待提交 Key | Done |
+| Provider 更新时间展示 | Done |
+| 删除 Provider 前风险确认 | Done |
 | 删除 Provider | Done |
 
 ### Prompt Library

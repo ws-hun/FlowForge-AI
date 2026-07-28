@@ -980,8 +980,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       await saveApiKey(payload)
       ElMessage.success('API 密钥已保存')
       await loadApiKeys()
+      return true
     } catch (error: any) {
       ElMessage.error(error.response?.data?.message || 'API 密钥保存失败')
+      return false
     } finally {
       settingsLoading.value = false
     }
@@ -993,8 +995,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       await activateApiKey(id)
       ElMessage.success('Provider 已激活')
       await loadApiKeys()
+      return true
     } catch (error: any) {
       ElMessage.error(error.response?.data?.message || 'Provider 激活失败')
+      return false
     } finally {
       settingsLoading.value = false
     }
@@ -1006,8 +1010,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       await deleteApiKey(id)
       ElMessage.success('API 密钥已删除')
       await loadApiKeys()
+      return true
     } catch (error: any) {
       ElMessage.error(error.response?.data?.message || 'API 密钥删除失败')
+      return false
     } finally {
       settingsLoading.value = false
     }

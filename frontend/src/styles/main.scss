@@ -4906,6 +4906,13 @@ a {
   padding: 18px;
 }
 
+.provider-updated-at {
+  color: tokens.$text-muted;
+  font-family: tokens.$mono;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
 .profile-card {
   display: flex;
   align-items: center;

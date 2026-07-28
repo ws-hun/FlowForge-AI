@@ -27,7 +27,9 @@
           <span>API Key</span>
           <input v-model="form.apiKey" type="password" class="quiet-input mono" placeholder="粘贴 API Key" />
         </label>
-        <button class="primary-button" :disabled="!canSubmit" @click="submit">保存并激活</button>
+        <button class="primary-button" :disabled="!canSubmit || workspace.settingsLoading" @click="submit">
+          {{ workspace.settingsLoading ? '保存中...' : '保存并激活' }}
+        </button>
       </section>
 
       <section class="provider-list">
@@ -38,9 +40,22 @@
           </div>
           <p class="mono">{{ item.maskedKey }}</p>
           <p class="muted">{{ item.model }} · {{ item.baseUrl }}</p>
+          <small class="provider-updated-at">更新于 {{ formatDate(item.updatedAt) }}</small>
           <div class="row-between">
-            <button class="secondary-button" :disabled="item.active" @click="workspace.activateProvider(item.id)">激活</button>
-            <button class="danger-button" @click="workspace.removeProvider(item.id)">删除</button>
+            <button
+              class="secondary-button"
+              :disabled="item.active || workspace.settingsLoading"
+              @click="activate(item.id)"
+            >
+              {{ pendingProviderId === item.id && pendingAction === 'activate' ? '激活中...' : '激活' }}
+            </button>
+            <button
+              class="danger-button"
+              :disabled="workspace.settingsLoading"
+              @click="confirmRemove(item)"
+            >
+              {{ pendingProviderId === item.id && pendingAction === 'remove' ? '删除中...' : '删除' }}
+            </button>
           </div>
         </article>
         <div v-if="!workspace.apiKeys.length" class="empty-state">暂无 Provider</div>
@@ -50,9 +65,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive } from 'vue'
+import { computed, reactive, ref } from 'vue'
+import { ElMessageBox } from 'element-plus'
 import { useWorkspaceStore } from '@/stores/workspace'
-import type { Provider } from '@/types'
+import type { ApiKeyConfig, Provider } from '@/types'
 
 const workspace = useWorkspaceStore()
 const defaults = {
@@ -66,6 +82,8 @@ const form = reactive({
   baseUrl: defaults.deepseek.baseUrl,
   model: defaults.deepseek.model
 })
+const pendingProviderId = ref('')
+const pendingAction = ref<'activate' | 'remove' | ''>('')
 
 const canSubmit = computed(() => form.provider && form.apiKey && form.baseUrl && form.model)
 
@@ -75,7 +93,56 @@ function applyDefaults() {
 }
 
 async function submit() {
-  await workspace.saveProvider({ ...form, active: true })
-  form.apiKey = ''
+  if (await workspace.saveProvider({ ...form, active: true })) {
+    form.apiKey = ''
+  }
+}
+
+async function activate(id: string) {
+  pendingProviderId.value = id
+  pendingAction.value = 'activate'
+  try {
+    await workspace.activateProvider(id)
+  } finally {
+    pendingProviderId.value = ''
+    pendingAction.value = ''
+  }
+}
+
+async function confirmRemove(item: ApiKeyConfig) {
+  try {
+    await ElMessageBox.confirm(
+      item.active
+        ? `删除当前激活的 ${item.provider} 后，AI Command 和 Flow 将暂停执行。`
+        : `删除 ${item.provider} 配置后，需要重新填写完整 API Key 才能恢复。`,
+      '删除 Provider',
+      {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+  } catch {
+    return
+  }
+
+  pendingProviderId.value = item.id
+  pendingAction.value = 'remove'
+  try {
+    await workspace.removeProvider(item.id)
+  } finally {
+    pendingProviderId.value = ''
+    pendingAction.value = ''
+  }
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(new Date(value))
 }
 </script>
