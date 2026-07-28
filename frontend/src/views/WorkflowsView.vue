@@ -268,6 +268,8 @@
             :source-version="workspace.activeFlow.updatedAt"
             :dirty="flowMetaChanged || nodeEditorChanged"
             :before-load="resolvePendingEdits"
+            node-action-label="定位节点"
+            @open-node="openExecutionPreviewNode"
           />
         </section>
 
@@ -462,7 +464,7 @@
         </section>
 
         <template v-if="workspace.activeFlow && selectedNode">
-          <div class="panel-heading">
+          <div ref="nodeInspector" class="panel-heading">
             <span class="section-kicker">Inspector</span>
             <h2>{{ selectedNode.title }}</h2>
             <p>{{ selectedNode.description }}</p>
@@ -786,6 +788,7 @@ const flowRunStartedAt = ref('')
 const flowRunCompletedAt = ref('')
 const nodeRunStates = ref<Record<string, FlowNodeRunState>>({})
 const selectedNodeId = ref('')
+const nodeInspector = ref<HTMLElement | null>(null)
 const flowRouteReady = ref(false)
 const routeSelectionApplying = ref(false)
 
@@ -1645,6 +1648,21 @@ async function selectFlowNode(nodeId: string) {
     return
   }
   selectedNodeId.value = nodeId
+}
+
+async function openExecutionPreviewNode(nodeId: string) {
+  if (!workspace.activeFlow?.nodes.some((node) => node.id === nodeId)) {
+    ElMessage.warning('这个执行段对应的节点已不存在，请刷新预览')
+    return
+  }
+
+  await selectFlowNode(nodeId)
+  if (selectedNodeId.value !== nodeId) {
+    return
+  }
+
+  await nextTick()
+  nodeInspector.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
 }
 
 function useFlowTemplate(intent: string) {

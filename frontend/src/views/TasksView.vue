@@ -58,7 +58,7 @@
             <p>{{ sourceDescription }}</p>
           </div>
           <div class="task-source-context-actions">
-            <button v-if="workspace.taskSourceFlowId" type="button" class="ghost-button" @click="returnToFlow">
+            <button v-if="workspace.taskSourceFlowId" type="button" class="ghost-button" @click="returnToFlow()">
               回到 Flow
             </button>
             <button v-else-if="workspace.taskSourceRunId" type="button" class="ghost-button" @click="returnToHistory">
@@ -77,6 +77,8 @@
           :runtime-context="workspace.taskInput"
           :variable-values="workspace.taskSourceFlowVariableValues"
           :source-version="taskSourceFlow?.updatedAt"
+          node-action-label="在 Flow 中打开"
+          @open-node="returnToFlow"
         />
         <div v-if="!providerReadyToRun" class="command-readiness-note">
           <span class="flow-run-dot warning"></span>
@@ -209,12 +211,12 @@ function goToApiKeys() {
   router.push('/api-keys')
 }
 
-function returnToFlow() {
+function returnToFlow(nodeId?: string) {
   const flowId = workspace.taskSourceFlowId
   if (flowId) {
     workspace.saveTaskSourceFlowRunDraft()
     workspace.selectFlowDraft(flowId)
-    router.push({ path: '/workflows', query: { flow: flowId } })
+    router.push({ path: '/workflows', query: { flow: flowId, ...(nodeId ? { node: nodeId } : {}) } })
     return
   }
   router.push('/workflows')

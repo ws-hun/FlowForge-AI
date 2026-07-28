@@ -108,6 +108,7 @@ Current Stage 3 capabilities:
 - Flow Run Brief edits remain synchronized when work moves between Flow Space and AI Command, including return, detach, and execution paths.
 - Flow Space and AI Command share one server-compiled execution preview, so users can inspect the exact Provider input from either workspace before running.
 - Execution previews expose the ordered Flow contributions, readiness issues, and final Raw input while remaining one deterministic Provider request.
+- Every node-backed execution section can reopen its exact Flow node from Flow Space or AI Command, keeping inspection connected to editing.
 
 Current Stage 3 priorities:
 

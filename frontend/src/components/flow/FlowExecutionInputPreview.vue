@@ -61,6 +61,17 @@
           <header>
             <span>{{ sectionKindLabel(section.kind) }}</span>
             <strong>{{ section.title }}</strong>
+            <button
+              v-if="section.nodeId && nodeActionLabel"
+              type="button"
+              class="flow-input-preview-node-link"
+              :disabled="stale"
+              :aria-label="`${nodeActionLabel}：${section.title}`"
+              @click="openSectionNode(section.nodeId)"
+            >
+              {{ nodeActionLabel }}
+              <Right class="flow-input-preview-node-link-icon" />
+            </button>
           </header>
           <p>{{ section.content }}</p>
         </article>
@@ -79,7 +90,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { CopyDocument, RefreshRight } from '@element-plus/icons-vue'
+import { CopyDocument, RefreshRight, Right } from '@element-plus/icons-vue'
 import { previewFlowExecution } from '@/api/flows'
 import type { FlowExecutionPreviewResponse, FlowExecutionSectionKind } from '@/types'
 
@@ -91,15 +102,21 @@ const props = withDefaults(
     sourceVersion?: string
     dirty?: boolean
     beforeLoad?: () => boolean | Promise<boolean>
+    nodeActionLabel?: string
   }>(),
   {
     runtimeContext: '',
     variableValues: () => ({}),
     sourceVersion: '',
     dirty: false,
-    beforeLoad: undefined
+    beforeLoad: undefined,
+    nodeActionLabel: ''
   }
 )
+
+const emit = defineEmits<{
+  openNode: [nodeId: string]
+}>()
 
 const preview = ref<FlowExecutionPreviewResponse | null>(null)
 const loading = ref(false)
@@ -190,6 +207,12 @@ async function loadPreview() {
 
 function sectionKindLabel(kind: FlowExecutionSectionKind) {
   return sectionKindLabels[kind]
+}
+
+function openSectionNode(nodeId: string | null | undefined) {
+  if (nodeId) {
+    emit('openNode', nodeId)
+  }
 }
 
 async function copyExecutionInput() {
