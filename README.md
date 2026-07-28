@@ -121,6 +121,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Historical Execution Input Archive | Done | History 使用可读运行标题，并可在历史详情与运行对比中核对、复制精确保存的服务端输入 |
 | Stage 3 | Editable Historical Input Variants | Done | 任意固定执行输入可带入 AI Command 编辑，新运行保留来源 Task 谱系但不冒充原 Flow 快照 |
 | Stage 3 | Local Workspace Preferences | Done | 工作区名称和个人显示名保存在当前浏览器，并同步到 Settings、Profile 与顶部身份入口 |
+| Foundation | Frontend Bundle Splitting | Done | 页面按路由懒加载，Element Plus 仅注册实际组件，入口 JS 与 CSS 不再包含整套页面和 UI 库 |
 | Future | Agents | Future Boundary | 不展示虚构 Agent 状态，用户可回到 Flow / Prompt 沉淀真实可执行资产 |
 | Future | Knowledge Base | Future Boundary | 不展示虚构索引来源，用户可先通过 Flow Context 固定真实上下文 |
 | Future | Analytics | Future Boundary | 不使用 KPI 占位，用户可回到真实 History 搜索、比较和恢复运行 |
@@ -703,7 +704,6 @@ Current known non-blocking frontend build warnings:
 
 - Sass legacy JS API deprecation
 - Rollup PURE annotation warning from `@vueuse/core`
-- Vite chunk size warning
 
 ## Security
 

@@ -101,6 +101,7 @@ Current Stage 3 capabilities:
 - Global creation search provides one calm entry point for AI Command, Flow Space, Prompt assets, and immutable Results without introducing dense navigation.
 - Local workspace identity preferences keep Settings, Profile, and the global shell consistent without pretending that team accounts or remote synchronization already exist.
 - Future modules remain outside the primary navigation and use honest workspace boundaries that route users back to currently executable creation paths instead of presenting fake Agent, Knowledge, or Analytics state.
+- Route-level code splitting and scoped Element Plus registration keep the calm workspace shell lightweight while loading complex creation surfaces only when opened.
 - Flow asset deep links restore a specific saved Flow from Workspace, Task, Prompt, History, revision, and snapshot reuse paths while preserving unsaved-edit protection.
 - Prompt asset deep links keep Library cards, source Prompt navigation, AI Command return paths, revision branches, Drawer state, and browser history aligned to one saved Prompt.
 - Result deep links restore and focus one immutable run from AI Command, Prompt, Flow, lineage, and History while keeping source Prompt and Flow assets reachable.
