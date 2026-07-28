@@ -5,7 +5,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.flowforge.ai.dto.FlowExecutionPreviewRequest;
 import com.flowforge.ai.dto.FlowExecutionPreviewResponse;
 import com.flowforge.ai.dto.FlowNodeDto;
+import com.flowforge.ai.dto.FlowNodeRunTraceResponse;
 import com.flowforge.ai.dto.FlowRunSnapshotResponse;
+import com.flowforge.ai.dto.FlowRunTraceResponse;
 import com.flowforge.ai.dto.OpenAiTaskResult;
 import com.flowforge.ai.dto.RunTaskRequest;
 import com.flowforge.ai.dto.TaskHistoryResponse;
@@ -177,6 +179,7 @@ class TaskServiceTest {
         String executionInput = executionInputCaptor.getValue();
         assertThat(savedTask.getSourceFlowId()).isEqualTo(flowId);
         assertThat(savedTask.getSourceFlowSnapshotJson()).contains("Idea to MVP");
+        assertThat(savedTask.getFlowRunTraceJson()).contains("\"providerCallCount\":1");
         assertThat(savedTask.getInput()).isEqualTo(executionInput);
         assertThat(savedTask.getProvider()).isEqualTo("deepseek");
         assertThat(savedTask.getModel()).isEqualTo("deepseek-chat");
@@ -223,6 +226,21 @@ class TaskServiceTest {
                         "AI execution guidance",
                         "Delivery focus"
                 );
+        assertThat(response.flowRunTrace()).isNotNull();
+        assertThat(response.flowRunTrace().flowId()).isEqualTo(flowId);
+        assertThat(response.flowRunTrace().status()).isEqualTo(Task.STATUS_COMPLETED);
+        assertThat(response.flowRunTrace().providerCallCount()).isEqualTo(1);
+        assertThat(response.flowRunTrace().nodes())
+                .extracting(node -> node.title() + ":" + node.status())
+                .containsExactly(
+                        "Product context:prepared",
+                        "Delivery constraints:prepared",
+                        "Define the boundary:prepared",
+                        "AI execution guidance:completed",
+                        "Delivery focus:completed"
+                );
+        assertThat(response.flowRunTrace().nodes().get(2).compiledContent())
+                .isEqualTo("Use product leads as the decision lens.");
     }
 
     @Test
@@ -248,6 +266,7 @@ class TaskServiceTest {
         assertThat(savedTask.getInput()).isEqualTo("Draft an onboarding checklist");
         assertThat(savedTask.getSourceFlowId()).isNull();
         assertThat(savedTask.getSourceFlowSnapshotJson()).isNull();
+        assertThat(savedTask.getFlowRunTraceJson()).isNull();
     }
 
     @Test
@@ -349,6 +368,7 @@ class TaskServiceTest {
         assertThat(response.inputVariantOfTaskId()).isEqualTo(sourceTaskId);
         assertThat(response.executionInput()).isEqualTo("Edited standalone execution input");
         assertThat(response.flowRunSnapshot()).isNull();
+        assertThat(response.flowRunTrace()).isNull();
         verifyNoInteractions(promptRepository, workflowRepository);
     }
 
@@ -454,7 +474,136 @@ class TaskServiceTest {
         assertThat(continuedTask.getSourceFlowSnapshotJson()).contains("Prioritize a calm first release.");
         assertThat(response.continuedFromTaskId()).isEqualTo(sourceTaskId);
         assertThat(response.flowRunSnapshot()).isEqualTo(snapshot);
+        assertThat(response.flowRunTrace()).isNull();
         verifyNoInteractions(promptRepository, workflowRepository);
+    }
+
+    @Test
+    void recordsAFailedFlowRunTraceAndSkipsTheOutputNode() throws Exception {
+        UUID flowId = UUID.randomUUID();
+        Workflow flow = Workflow.builder()
+                .id(flowId)
+                .title("Release review")
+                .description("Review release readiness")
+                .nodesJson(new ObjectMapper().writeValueAsString(List.of(
+                        new FlowNodeDto(
+                                "input-1",
+                                "input",
+                                "Release context",
+                                "The release context",
+                                "Review the release for {audience}.",
+                                null,
+                                null
+                        ),
+                        new FlowNodeDto(
+                                "ai-task-1",
+                                "ai-task",
+                                "Readiness analysis",
+                                "Analyze release readiness",
+                                "Identify blocking risks.",
+                                null,
+                                null
+                        ),
+                        new FlowNodeDto(
+                                "output-1",
+                                "output",
+                                "Release decision",
+                                "Record the decision",
+                                "Return a go or no-go decision.",
+                                null,
+                                null
+                        )
+                )))
+                .createdAt(LocalDateTime.now().minusMinutes(2))
+                .updatedAt(LocalDateTime.now())
+                .build();
+        AiExecutionException failure = new AiExecutionException(
+                "deepseek",
+                "deepseek-chat",
+                "AI API error: provider unavailable",
+                new IllegalStateException("provider unavailable")
+        );
+        when(workflowRepository.findById(flowId)).thenReturn(Optional.of(flow));
+        when(openAiService.processTask(any())).thenThrow(failure);
+
+        assertThatThrownBy(() -> taskService.runTask(new RunTaskRequest(
+                "",
+                null,
+                flowId,
+                "",
+                Map.of("audience", "product teams")
+        )))
+                .isSameAs(failure);
+
+        verify(taskFailureRecorder).record(taskCaptor.capture());
+        Task failedTask = taskCaptor.getValue();
+        assertThat(failedTask.getFlowRunTraceJson()).isNotBlank();
+        FlowRunTraceResponse trace = new ObjectMapper()
+                .findAndRegisterModules()
+                .readValue(failedTask.getFlowRunTraceJson(), FlowRunTraceResponse.class);
+        assertThat(trace.status()).isEqualTo(Task.STATUS_FAILED);
+        assertThat(trace.providerCallCount()).isEqualTo(1);
+        assertThat(trace.nodes())
+                .extracting(node -> node.title() + ":" + node.status())
+                .containsExactly(
+                        "Release context:prepared",
+                        "Readiness analysis:failed",
+                        "Release decision:skipped"
+                );
+        assertThat(trace.nodes().get(1).errorMessage()).isEqualTo("AI API error: provider unavailable");
+        verify(taskRepository, never()).save(any(Task.class));
+    }
+
+    @Test
+    void rebuildsAFlowRunTraceWhenRerunningAnOlderDirectFlowRecord() throws Exception {
+        UUID sourceTaskId = UUID.randomUUID();
+        UUID flowId = UUID.randomUUID();
+        FlowRunSnapshotResponse snapshot = new FlowRunSnapshotResponse(
+                flowId,
+                "Decision brief",
+                "Prepare a decision brief",
+                List.of(
+                        new FlowNodeDto("input-1", "input", "Decision context", "Context", "Assess option A.", null, null),
+                        new FlowNodeDto("ai-task-1", "ai-task", "Decision analysis", "Analysis", "Compare tradeoffs.", null, null),
+                        new FlowNodeDto("output-1", "output", "Decision output", "Output", "Recommend one option.", null, null)
+                ),
+                null,
+                null,
+                null,
+                null,
+                LocalDateTime.of(2026, 7, 22, 10, 0),
+                "",
+                Map.of()
+        );
+        String snapshotJson = new ObjectMapper().findAndRegisterModules().writeValueAsString(snapshot);
+        Task sourceTask = Task.builder()
+                .id(sourceTaskId)
+                .input("Stored direct Flow input")
+                .summary("Original decision")
+                .result("Original result")
+                .sourceFlowId(flowId)
+                .sourceFlowTitle("Decision brief")
+                .sourceFlowSnapshotJson(snapshotJson)
+                .createdAt(LocalDateTime.now().minusDays(2))
+                .build();
+        when(taskRepository.findById(sourceTaskId)).thenReturn(Optional.of(sourceTask));
+        when(openAiService.processTask("Stored direct Flow input"))
+                .thenReturn(new OpenAiTaskResult("Updated decision", "Updated result", "{}"));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
+            Task task = invocation.getArgument(0);
+            task.setId(UUID.randomUUID());
+            return task;
+        });
+
+        TaskRunResponse response = taskService.rerunTask(sourceTaskId);
+
+        assertThat(response.flowRunTrace()).isNotNull();
+        assertThat(response.flowRunTrace().providerCallCount()).isEqualTo(1);
+        assertThat(response.flowRunTrace().nodes())
+                .extracting(FlowNodeRunTraceResponse::status)
+                .containsExactly("prepared", "completed", "completed");
+        verify(taskRepository).save(taskCaptor.capture());
+        assertThat(taskCaptor.getValue().getFlowRunTraceJson()).contains("Updated decision");
     }
 
     @Test

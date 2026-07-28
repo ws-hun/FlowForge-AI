@@ -24,6 +24,7 @@ public record TaskHistoryResponse(
         UUID sourceFlowId,
         String sourceFlowTitle,
         FlowRunSnapshotResponse flowRunSnapshot,
+        FlowRunTraceResponse flowRunTrace,
         LocalDateTime createdAt
 ) {
 }

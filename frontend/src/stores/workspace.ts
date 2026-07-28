@@ -236,7 +236,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       inputVariantOfTaskId: sourceRun.inputVariantOfTaskId,
       executionInput: sourceRun.input,
       taskId: sourceRun.id,
-      flowRunSnapshot: sourceRun.flowRunSnapshot || null
+      flowRunSnapshot: sourceRun.flowRunSnapshot || null,
+      flowRunTrace: sourceRun.flowRunTrace || null
     }
     latestTaskInput.value = sourceRun.input
     latestTaskPrompt.value = null

@@ -17,6 +17,7 @@ public record TaskRunResponse(
         UUID inputVariantOfTaskId,
         String executionInput,
         UUID taskId,
-        FlowRunSnapshotResponse flowRunSnapshot
+        FlowRunSnapshotResponse flowRunSnapshot,
+        FlowRunTraceResponse flowRunTrace
 ) {
 }

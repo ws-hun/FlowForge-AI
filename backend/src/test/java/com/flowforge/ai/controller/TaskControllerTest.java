@@ -49,6 +49,7 @@ class TaskControllerTest {
                         null,
                         "Server-compiled continuation input",
                         newTaskId,
+                        null,
                         null
                 ));
 
@@ -90,6 +91,7 @@ class TaskControllerTest {
                         sourceTaskId,
                         "Edited historical execution input",
                         newTaskId,
+                        null,
                         null
                 ));
 
@@ -130,6 +132,7 @@ class TaskControllerTest {
                 null,
                 "Exact stored execution input",
                 newTaskId,
+                null,
                 null
         ));
 

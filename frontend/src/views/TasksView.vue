@@ -110,6 +110,13 @@
 
       <section class="result-document">
         <template v-if="workspace.latestResult">
+          <FlowRunTrace
+            v-if="workspace.latestResult.flowRunTrace"
+            :trace="workspace.latestResult.flowRunTrace"
+            node-action-label="在 Flow 中打开"
+            :navigable-node-ids="latestTraceNavigableNodeIds"
+            @open-node="openLatestTraceNode"
+          />
           <AiResultDocument
             :summary="workspace.latestResult.summary"
             :result="workspace.latestResult.result"
@@ -169,6 +176,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import FlowExecutionInputPreview from '@/components/flow/FlowExecutionInputPreview.vue'
+import FlowRunTrace from '@/components/flow/FlowRunTrace.vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 
 const router = useRouter()
@@ -187,6 +195,11 @@ const taskSourceFlow = computed(() =>
     ? workspace.flowDrafts.find((flow) => flow.id === workspace.taskSourceFlowId) || null
     : null
 )
+const latestTraceNavigableNodeIds = computed(() => {
+  const trace = workspace.latestResult?.flowRunTrace
+  const flow = trace ? workspace.flowDrafts.find((item) => item.id === trace.flowId) : null
+  return flow ? trace?.nodes.filter((node) => flow.nodes.some((item) => item.id === node.nodeId)).map((node) => node.nodeId) || [] : []
+})
 const sourceLabel = computed(() => {
   if (workspace.taskSourceFlowTitle) return 'Flow context'
   if (workspace.taskSourceRunId) return 'Historical result'
@@ -274,6 +287,17 @@ function openLatestResultHistory() {
   if (runId) {
     router.push({ path: '/history', query: { run: runId } })
   }
+}
+
+function openLatestTraceNode(nodeId: string) {
+  const trace = workspace.latestResult?.flowRunTrace
+  const flow = trace ? workspace.flowDrafts.find((item) => item.id === trace.flowId) : null
+  if (!flow || !flow.nodes.some((node) => node.id === nodeId)) {
+    ElMessage.warning('这个运行节点已不在当前 Flow 中')
+    return
+  }
+  workspace.selectFlowDraft(flow.id)
+  router.push({ path: '/workflows', query: { flow: flow.id, node: nodeId } })
 }
 
 function detachTaskSource() {

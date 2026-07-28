@@ -26,6 +26,7 @@ export interface TaskRunResponse {
   executionInput: string
   taskId?: string | null
   flowRunSnapshot?: FlowRunSnapshot | null
+  flowRunTrace?: FlowRunTrace | null
 }
 
 export interface TaskHistoryItem {
@@ -49,6 +50,7 @@ export interface TaskHistoryItem {
   sourceFlowId?: string | null
   sourceFlowTitle?: string | null
   flowRunSnapshot?: FlowRunSnapshot | null
+  flowRunTrace?: FlowRunTrace | null
   createdAt: string
 }
 
@@ -163,6 +165,25 @@ export interface FlowRunSnapshot {
   flowUpdatedAt: string
   runtimeContext: string
   variableValues: Record<string, string>
+}
+
+export type FlowNodeRunTraceStatus = 'prepared' | 'completed' | 'failed' | 'skipped'
+
+export interface FlowNodeRunTrace {
+  nodeId: string
+  nodeType: FlowNodeType
+  title: string
+  status: FlowNodeRunTraceStatus
+  compiledContent: string
+  outputSummary?: string | null
+  errorMessage?: string | null
+}
+
+export interface FlowRunTrace {
+  flowId: string
+  status: 'completed' | 'failed'
+  providerCallCount: number
+  nodes: FlowNodeRunTrace[]
 }
 
 export interface FlowExecutionPreviewRequest {

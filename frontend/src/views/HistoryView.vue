@@ -116,6 +116,13 @@
                 can-create-variant
                 @create-variant="createInputVariant(task)"
               />
+              <FlowRunTrace
+                v-if="task.flowRunTrace"
+                :trace="task.flowRunTrace"
+                node-action-label="在 Flow 中打开"
+                :navigable-node-ids="traceNavigableNodeIds(task)"
+                @open-node="openFlowTraceNode(task, $event)"
+              />
               <section v-if="!isFailed(task)" class="history-result-reuse">
                 <div>
                   <span class="section-kicker">Reuse Result</span>
@@ -177,6 +184,7 @@ import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import ExecutionInputArchive from '@/components/ai/ExecutionInputArchive.vue'
 import RunComparisonDialog from '@/components/ai/RunComparisonDialog.vue'
 import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
+import FlowRunTrace from '@/components/flow/FlowRunTrace.vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { formatExecutionSource } from '@/utils/aiProvider'
 import type { FlowRunSnapshot as FlowRunSnapshotType, TaskHistoryItem } from '@/types'
@@ -384,6 +392,25 @@ async function createFlowFromRun(task: TaskHistoryItem) {
 function createInputVariant(task: TaskHistoryItem) {
   workspace.prepareTaskInputVariant(task)
   router.push('/tasks')
+}
+
+function traceNavigableNodeIds(task: TaskHistoryItem) {
+  const trace = task.flowRunTrace
+  const flow = trace ? workspace.flowDrafts.find((item) => item.id === trace.flowId) : null
+  return flow
+    ? trace?.nodes.filter((node) => flow.nodes.some((item) => item.id === node.nodeId)).map((node) => node.nodeId) || []
+    : []
+}
+
+function openFlowTraceNode(task: TaskHistoryItem, nodeId: string) {
+  const trace = task.flowRunTrace
+  const flow = trace ? workspace.flowDrafts.find((item) => item.id === trace.flowId) : null
+  if (!flow || !flow.nodes.some((node) => node.id === nodeId)) {
+    ElMessage.warning('这个历史节点已不在当前 Flow 中')
+    return
+  }
+  workspace.selectFlowDraft(flow.id)
+  router.push({ path: '/workflows', query: { flow: flow.id, node: nodeId } })
 }
 
 function closeComparison() {

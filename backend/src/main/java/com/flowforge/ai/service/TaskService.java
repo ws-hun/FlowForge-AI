@@ -6,6 +6,8 @@ import com.flowforge.ai.dto.FlowExecutionPreviewRequest;
 import com.flowforge.ai.dto.FlowExecutionPreviewResponse;
 import com.flowforge.ai.dto.FlowExecutionSectionResponse;
 import com.flowforge.ai.dto.FlowNodeDto;
+import com.flowforge.ai.dto.FlowNodeRunTraceResponse;
+import com.flowforge.ai.dto.FlowRunTraceResponse;
 import com.flowforge.ai.dto.FlowRunSnapshotResponse;
 import com.flowforge.ai.dto.OpenAiTaskResult;
 import com.flowforge.ai.dto.RunTaskRequest;
@@ -90,7 +92,8 @@ public class TaskService {
                             flowRunSnapshot,
                             null,
                             continuedFromTask.getId(),
-                            null
+                            null,
+                            false
                     )
             );
         }
@@ -108,7 +111,8 @@ public class TaskService {
                         flowRunSnapshot,
                         null,
                         null,
-                        inputVariantSourceTask == null ? null : inputVariantSourceTask.getId()
+                        inputVariantSourceTask == null ? null : inputVariantSourceTask.getId(),
+                        sourceFlow != null
                 )
         );
     }
@@ -129,7 +133,10 @@ public class TaskService {
                         flowRunSnapshot,
                         sourceTask.getId(),
                         sourceTask.getContinuedFromTaskId(),
-                        sourceTask.getInputVariantOfTaskId()
+                        sourceTask.getInputVariantOfTaskId(),
+                        flowRunSnapshot != null
+                                && sourceTask.getContinuedFromTaskId() == null
+                                && sourceTask.getInputVariantOfTaskId() == null
                 )
         );
     }
@@ -144,8 +151,9 @@ public class TaskService {
             throw ex;
         }
         long durationMs = elapsedMillis(startedAt);
+        FlowRunTraceResponse flowRunTrace = buildFlowRunTrace(source, aiResult, null);
 
-        Task task = createTaskBuilder(executionInput, source)
+        Task task = createTaskBuilder(executionInput, source, flowRunTrace)
                 .summary(aiResult.summary())
                 .result(aiResult.result())
                 .provider(aiResult.provider())
@@ -174,7 +182,8 @@ public class TaskService {
                 source.inputVariantOfTaskId(),
                 executionInput,
                 savedTask.getId(),
-                source.flowRunSnapshot()
+                source.flowRunSnapshot(),
+                flowRunTrace
         );
     }
 
@@ -193,7 +202,8 @@ public class TaskService {
         String model = exception instanceof AiExecutionException aiException
                 ? aiException.getModel()
                 : null;
-        Task failedTask = createTaskBuilder(executionInput, source)
+        FlowRunTraceResponse flowRunTrace = buildFlowRunTrace(source, null, errorMessage);
+        Task failedTask = createTaskBuilder(executionInput, source, flowRunTrace)
                 .summary("AI 执行失败")
                 .result(errorMessage)
                 .provider(provider)
@@ -209,7 +219,11 @@ public class TaskService {
         }
     }
 
-    private Task.TaskBuilder createTaskBuilder(String executionInput, TaskExecutionSource source) {
+    private Task.TaskBuilder createTaskBuilder(
+            String executionInput,
+            TaskExecutionSource source,
+            FlowRunTraceResponse flowRunTrace
+    ) {
         return Task.builder()
                 .input(executionInput)
                 .rerunOfTaskId(source.rerunOfTaskId())
@@ -219,7 +233,8 @@ public class TaskService {
                 .sourcePromptTitle(source.promptTitle())
                 .sourceFlowId(source.flowId())
                 .sourceFlowTitle(source.flowTitle())
-                .sourceFlowSnapshotJson(serializeFlowRunSnapshot(source.flowRunSnapshot()));
+                .sourceFlowSnapshotJson(serializeFlowRunSnapshot(source.flowRunSnapshot()))
+                .flowRunTraceJson(serializeFlowRunTrace(flowRunTrace));
     }
 
     private long elapsedMillis(long startedAt) {
@@ -523,6 +538,79 @@ public class TaskService {
         }
     }
 
+    private FlowRunTraceResponse buildFlowRunTrace(
+            TaskExecutionSource source,
+            OpenAiTaskResult result,
+            String errorMessage
+    ) {
+        FlowRunSnapshotResponse snapshot = source.flowRunSnapshot();
+        if (!source.flowExecution() || snapshot == null) {
+            return null;
+        }
+
+        boolean completed = result != null;
+        List<FlowNodeRunTraceResponse> nodes = snapshot.nodes().stream()
+                .map(node -> buildFlowNodeRunTrace(node, snapshot.variableValues(), result, errorMessage))
+                .toList();
+        return new FlowRunTraceResponse(
+                snapshot.flowId(),
+                completed ? Task.STATUS_COMPLETED : Task.STATUS_FAILED,
+                1,
+                nodes
+        );
+    }
+
+    private FlowNodeRunTraceResponse buildFlowNodeRunTrace(
+            FlowNodeDto node,
+            Map<String, String> variableValues,
+            OpenAiTaskResult result,
+            String errorMessage
+    ) {
+        boolean completed = result != null;
+        String status = switch (node.type()) {
+            case "ai-task" -> completed ? "completed" : "failed";
+            case "output" -> completed ? "completed" : "skipped";
+            default -> "prepared";
+        };
+        String outputSummary = completed && ("ai-task".equals(node.type()) || "output".equals(node.type()))
+                ? result.summary()
+                : null;
+        String nodeError = "ai-task".equals(node.type()) && !completed ? errorMessage : null;
+        return new FlowNodeRunTraceResponse(
+                node.id(),
+                node.type(),
+                node.title(),
+                status,
+                applyFlowVariables(node.content(), variableValues),
+                outputSummary,
+                nodeError
+        );
+    }
+
+    private String serializeFlowRunTrace(FlowRunTraceResponse trace) {
+        if (trace == null) {
+            return null;
+        }
+
+        try {
+            return objectMapper.writeValueAsString(trace);
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("Failed to save Flow run trace", ex);
+        }
+    }
+
+    private FlowRunTraceResponse deserializeFlowRunTrace(String traceJson) {
+        if (traceJson == null || traceJson.isBlank()) {
+            return null;
+        }
+
+        try {
+            return objectMapper.readValue(traceJson, FlowRunTraceResponse.class);
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("Failed to read Flow run trace", ex);
+        }
+    }
+
     private List<FlowNodeDto> deserializeFlowNodes(String nodesJson) {
         try {
             return objectMapper.readValue(
@@ -577,6 +665,7 @@ public class TaskService {
                 task.getSourceFlowId(),
                 task.getSourceFlowTitle(),
                 deserializeFlowRunSnapshot(task.getSourceFlowSnapshotJson()),
+                deserializeFlowRunTrace(task.getFlowRunTraceJson()),
                 task.getCreatedAt()
         );
     }
@@ -589,7 +678,8 @@ public class TaskService {
             FlowRunSnapshotResponse flowRunSnapshot,
             UUID rerunOfTaskId,
             UUID continuedFromTaskId,
-            UUID inputVariantOfTaskId
+            UUID inputVariantOfTaskId,
+            boolean flowExecution
     ) {
     }
 

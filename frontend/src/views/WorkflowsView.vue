@@ -306,6 +306,13 @@
               </button>
             </div>
           </div>
+          <FlowRunTrace
+            v-if="activeFlowResult.flowRunTrace"
+            :trace="activeFlowResult.flowRunTrace"
+            node-action-label="定位节点"
+            :navigable-node-ids="workspace.activeFlow.nodes.map((node) => node.id)"
+            @open-node="openExecutionPreviewNode"
+          />
           <FlowRunSnapshot
             v-if="activeFlowRunSnapshot"
             :snapshot="activeFlowRunSnapshot"
@@ -723,6 +730,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { EditPen, Plus } from '@element-plus/icons-vue'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import FlowExecutionInputPreview from '@/components/flow/FlowExecutionInputPreview.vue'
+import FlowRunTrace from '@/components/flow/FlowRunTrace.vue'
 import { formatExecutionSource } from '@/utils/aiProvider'
 import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
 import { listFlowRuns, listFlowVersions, restoreFlowVersion } from '@/api/flows'

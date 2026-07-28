@@ -108,6 +108,7 @@ Current Stage 3 capabilities:
 - Flow Run Brief edits remain synchronized when work moves between Flow Space and AI Command, including return, detach, and execution paths.
 - Flow Space and AI Command share one server-compiled execution preview, so users can inspect the exact Provider input from either workspace before running.
 - Execution previews expose the ordered Flow contributions, readiness issues, and final Raw input while remaining one deterministic Provider request.
+- Persisted Flow Run Traces preserve the server-authored state of every saved node for successful and failed direct Flow runs, while explicitly recording that the current runtime uses one shared Provider call.
 - Every node-backed execution section can reopen its exact Flow node from Flow Space or AI Command, keeping inspection connected to editing.
 - Preview readiness issues are actionable: missing variables focus their Run Brief field and incomplete nodes reopen their exact Inspector context.
 - History uses readable run titles while preserving the exact stored server input for inspection, copying, failed-run recovery, and run comparison.

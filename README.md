@@ -116,6 +116,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Structured Execution Preview | Done | 按 Flow 目标、上下文、Prompt、执行指令和交付重点拆解输入，并显示运行就绪状态与完整 Raw 输入 |
 | Stage 3 | Execution Preview Node Navigation | Done | 从结构化执行段直接定位对应 Flow 节点，AI Command 可通过深链返回准确编辑位置 |
 | Stage 3 | Actionable Execution Readiness | Done | 服务端预检发现缺失变量或空节点时，可直接聚焦对应 Run Brief 字段或节点 Inspector |
+| Stage 3 | Persisted Flow Run Trace | Done | 服务端为直接 Flow 运行固化节点准备、完成、失败与跳过状态，并明确当前运行时共享一次 Provider 调用 |
 | Stage 3 | Historical Execution Input Archive | Done | History 使用可读运行标题，并可在历史详情与运行对比中核对、复制精确保存的服务端输入 |
 | Stage 3 | Editable Historical Input Variants | Done | 任意固定执行输入可带入 AI Command 编辑，新运行保留来源 Task 谱系但不冒充原 Flow 快照 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
@@ -163,6 +164,7 @@ Workspace 保持一个明确的创作入口，同时为已有工作提供低噪�
 | 执行结构 / Raw 输入切换与完整输入复制 | Done |
 | 从执行段返回来源 Flow 节点 | Done |
 | 从预检问题直接填写变量或完善节点 | Done |
+| 查看服务端固化的 Flow 节点运行轨迹 | Done |
 | 任务来源上下文提示 | Done |
 | 返回来源 Flow / Prompt | Done |
 | 脱离来源作为独立任务执行 | Done |
@@ -182,6 +184,7 @@ History 以时间线保留每一次可追溯运行，不使用表格作为核心
 | 固定服务端执行输入查看 / 复制 | Done |
 | 固定执行输入带入 AI Command 创建变体 | Done |
 | Flow 运行快照与变量回看 | Done |
+| 成功 / 失败 Flow 节点运行轨迹回看 | Done |
 | 精确重跑与来源运行对比 | Done |
 | 失败运行上下文保留与恢复 | Done |
 | 历史 Result 继续创作 / 保存 Prompt / 创建 Flow | Done |
@@ -263,6 +266,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | Output 交付重点编辑与持久化 | Done |
 | 交付重点参与服务端预览与真实运行 | Done |
 | 真实 Flow 运行生命周期反馈（上下文准备 / 单次 AI 调用 / Output 记录） | Done |
+| 服务端持久化 Flow Run Trace（prepared / completed / failed / skipped） | Done |
 | Flow 执行结果展示 | Done |
 | Flow 执行历史回看 | Done |
 | Flow 历史运行深链打开完整 Result | Done |
@@ -573,11 +577,40 @@ Response:
     "variableValues": {
       "audience": "产品负责人"
     }
+  },
+  "flowRunTrace": {
+    "flowId": "a-flow-uuid",
+    "status": "completed",
+    "providerCallCount": 1,
+    "nodes": [
+      {
+        "nodeId": "an-input-node-uuid",
+        "nodeType": "input",
+        "title": "Intent",
+        "status": "prepared",
+        "compiledContent": "将一个产品想法拆解为可验证的 MVP。",
+        "outputSummary": null,
+        "errorMessage": null
+      },
+      {
+        "nodeId": "an-ai-task-node-uuid",
+        "nodeType": "ai-task",
+        "title": "AI Execution",
+        "status": "completed",
+        "compiledContent": "基于已编译的完整 Flow 输入执行任务。",
+        "outputSummary": "Provider 调用完成并返回结构化结果。",
+        "errorMessage": null
+      }
+    ]
   }
 }
 ```
 
 `flowRunSnapshot` 仅在由 `flowId` 发起的运行中返回。服务端从数据库读取当前 Flow 后创建快照，不信任浏览器传入的节点结构；快照同时固化派生 Flow 的来源 Flow 与修订信息，后续编辑、恢复修订或删除来源 Flow 都不会改变这次历史运行的上下文。
+
+`flowRunTrace` 仅为直接 Flow 运行生成，并由服务端随 Task 不可变保存。它记录每个快照节点在本次运行中的 `prepared`、`completed`、`failed` 或 `skipped` 状态；成功与失败记录都会保留，历史精确重跑会为新 Task 生成新的轨迹。Continuation 与手工编辑的历史输入变体不会继承轨迹，以免被误认为原 Flow 执行。
+
+当前 Flow Runtime 仍把所有已保存节点编译成一个确定性输入，并执行 **一次共享 Provider 调用**。因此 `providerCallCount` 当前固定为 `1`，Flow Run Trace 是可解释的服务端运行记录，不代表每个节点都进行了独立模型调用。
 
 `executionInput` 是服务端实际提交给 AI Provider 的输入。Flow 工作区的“查看服务端执行输入”使用同一套编译逻辑，确保用户确认的内容与真实执行一致。
 
@@ -720,7 +753,7 @@ Check:
 ### Near Term
 
 - Workflow Builder node experience polish
-- 面向多步执行引擎的真实节点追踪
+- 从当前单次 Provider Runtime 演进到真实独立的 node-level execution engine
 - Prompt / Flow 复用闭环细化
 - More complete onboarding and empty states
 
