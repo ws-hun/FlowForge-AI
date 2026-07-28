@@ -23,13 +23,42 @@
       </div>
 
       <div v-if="!preview.executable && !stale" class="flow-input-preview-readiness">
-        <strong>执行前还有内容需要补全</strong>
-        <p v-if="preview.missingVariables.length">
-          变量：{{ preview.missingVariables.join('、') }}
-        </p>
-        <p v-if="preview.incompleteNodes.length">
-          节点：{{ preview.incompleteNodes.join('、') }}
-        </p>
+        <div class="flow-input-preview-readiness-heading">
+          <strong>执行前还有内容需要补全</strong>
+          <span>{{ readinessIssueCount }} 项待处理</span>
+        </div>
+        <div v-if="preview.missingVariables.length" class="flow-input-preview-issue-group">
+          <span>待填写变量</span>
+          <div class="flow-input-preview-issue-actions">
+            <button
+              v-for="variable in preview.missingVariables"
+              :key="variable"
+              type="button"
+              :disabled="!variableActionLabel"
+              :aria-label="`${variableActionLabel || '填写变量'}：${variable}`"
+              @click="focusVariable(variable)"
+            >
+              {{ '{' + variable + '}' }}
+              <Right class="flow-input-preview-node-link-icon" />
+            </button>
+          </div>
+        </div>
+        <div v-if="incompleteNodeIssues.length" class="flow-input-preview-issue-group">
+          <span>待完善节点</span>
+          <div class="flow-input-preview-issue-actions">
+            <button
+              v-for="node in incompleteNodeIssues"
+              :key="node.id"
+              type="button"
+              :disabled="!nodeActionLabel"
+              :aria-label="`${nodeActionLabel || '打开节点'}：${node.title}`"
+              @click="openSectionNode(node.id)"
+            >
+              {{ node.title }}
+              <Right class="flow-input-preview-node-link-icon" />
+            </button>
+          </div>
+        </div>
       </div>
 
       <div class="flow-input-preview-viewbar">
@@ -103,6 +132,7 @@ const props = withDefaults(
     dirty?: boolean
     beforeLoad?: () => boolean | Promise<boolean>
     nodeActionLabel?: string
+    variableActionLabel?: string
   }>(),
   {
     runtimeContext: '',
@@ -110,12 +140,14 @@ const props = withDefaults(
     sourceVersion: '',
     dirty: false,
     beforeLoad: undefined,
-    nodeActionLabel: ''
+    nodeActionLabel: '',
+    variableActionLabel: ''
   }
 )
 
 const emit = defineEmits<{
   openNode: [nodeId: string]
+  focusVariable: [variable: string]
 }>()
 
 const preview = ref<FlowExecutionPreviewResponse | null>(null)
@@ -126,6 +158,12 @@ const requestVersion = ref(0)
 const activeView = ref<'outline' | 'raw'>('outline')
 
 const readinessLabel = computed(() => preview.value?.executable ? '本次执行输入已就绪' : '本次执行仍需补全')
+const incompleteNodeIssues = computed(() =>
+  preview.value?.flowRunSnapshot.nodes.filter((node) => !node.content?.trim()) || []
+)
+const readinessIssueCount = computed(() =>
+  (preview.value?.missingVariables.length || 0) + incompleteNodeIssues.value.length
+)
 
 const sectionKindLabels: Record<FlowExecutionSectionKind, string> = {
   objective: 'Flow 目标',
@@ -212,6 +250,12 @@ function sectionKindLabel(kind: FlowExecutionSectionKind) {
 function openSectionNode(nodeId: string | null | undefined) {
   if (nodeId) {
     emit('openNode', nodeId)
+  }
+}
+
+function focusVariable(variable: string) {
+  if (props.variableActionLabel) {
+    emit('focusVariable', variable)
   }
 }
 

@@ -115,6 +115,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Cross-workspace Execution Preview | Done | Flow Space 与 AI Command 复用同一服务端编译预览，可在执行前核对真实 Provider 输入 |
 | Stage 3 | Structured Execution Preview | Done | 按 Flow 目标、上下文、Prompt、执行指令和交付重点拆解输入，并显示运行就绪状态与完整 Raw 输入 |
 | Stage 3 | Execution Preview Node Navigation | Done | 从结构化执行段直接定位对应 Flow 节点，AI Command 可通过深链返回准确编辑位置 |
+| Stage 3 | Actionable Execution Readiness | Done | 服务端预检发现缺失变量或空节点时，可直接聚焦对应 Run Brief 字段或节点 Inspector |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
 | Future | Knowledge Base | Preview UI | 产品预留界面，暂未接入向量检索 |
 | Future | Analytics | Preview UI | 轻量洞察预留，暂未做完整数据分析系统 |
@@ -158,6 +159,7 @@ Workspace 保持一个明确的创作入口，同时为已有工作提供低噪�
 | Flow 来源任务的服务端执行输入预览 | Done |
 | 执行结构 / Raw 输入切换与完整输入复制 | Done |
 | 从执行段返回来源 Flow 节点 | Done |
+| 从预检问题直接填写变量或完善节点 | Done |
 | 任务来源上下文提示 | Done |
 | 返回来源 Flow / Prompt | Done |
 | 脱离来源作为独立任务执行 | Done |
@@ -237,6 +239,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | Flow Space / AI Command 共享执行预览 | Done |
 | 结构化执行段 / 就绪检查 / Raw 输入复制 | Done |
 | 从执行预览定位对应创作节点 | Done |
+| 从执行预检直接定位缺失变量与空节点 | Done |
 | AI Task 执行指令编辑与持久化 | Done |
 | AI Task 执行指令参与服务端预览与真实运行 | Done |
 | Output 交付重点编辑与持久化 | Done |

@@ -28,13 +28,14 @@
           </div>
           <div class="flow-variable-grid">
             <label
-              v-for="variable in workspace.taskSourceFlowVariables"
+              v-for="(variable, index) in workspace.taskSourceFlowVariables"
               :key="variable"
               class="flow-variable-field"
               :class="{ 'is-missing': !workspace.taskSourceFlowVariableValues[variable]?.trim() }"
             >
               <span>{{ '{' + variable + '}' }}</span>
               <textarea
+                :id="`task-flow-variable-${index}`"
                 v-model="workspace.taskSourceFlowVariableValues[variable]"
                 class="quiet-textarea"
                 :placeholder="`填写 ${variable}`"
@@ -78,7 +79,9 @@
           :variable-values="workspace.taskSourceFlowVariableValues"
           :source-version="taskSourceFlow?.updatedAt"
           node-action-label="在 Flow 中打开"
+          variable-action-label="填写变量"
           @open-node="returnToFlow"
+          @focus-variable="focusTaskFlowVariable"
         />
         <div v-if="!providerReadyToRun" class="command-readiness-note">
           <span class="flow-run-dot warning"></span>
@@ -156,7 +159,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
@@ -209,6 +212,19 @@ watch(
 
 function goToApiKeys() {
   router.push('/api-keys')
+}
+
+async function focusTaskFlowVariable(variable: string) {
+  const variableIndex = workspace.taskSourceFlowVariables.indexOf(variable)
+  if (variableIndex < 0) {
+    ElMessage.warning('这个变量已不存在，请刷新预览')
+    return
+  }
+
+  await nextTick()
+  const input = document.getElementById(`task-flow-variable-${variableIndex}`) as HTMLTextAreaElement | null
+  input?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  input?.focus({ preventScroll: true })
 }
 
 function returnToFlow(nodeId?: string) {

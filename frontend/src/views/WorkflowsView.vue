@@ -269,7 +269,9 @@
             :dirty="flowMetaChanged || nodeEditorChanged"
             :before-load="resolvePendingEdits"
             node-action-label="定位节点"
+            variable-action-label="填写变量"
             @open-node="openExecutionPreviewNode"
+            @focus-variable="focusExecutionPreviewVariable"
           />
         </section>
 
@@ -1663,6 +1665,19 @@ async function openExecutionPreviewNode(nodeId: string) {
 
   await nextTick()
   nodeInspector.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+}
+
+async function focusExecutionPreviewVariable(variable: string) {
+  const variableIndex = flowVariables.value.indexOf(variable)
+  if (variableIndex < 0) {
+    ElMessage.warning('这个变量已不存在，请刷新预览')
+    return
+  }
+
+  await nextTick()
+  const input = document.getElementById(`flow-variable-${variableIndex}`) as HTMLTextAreaElement | null
+  input?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  input?.focus({ preventScroll: true })
 }
 
 function useFlowTemplate(intent: string) {
