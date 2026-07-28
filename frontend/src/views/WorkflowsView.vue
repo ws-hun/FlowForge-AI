@@ -1243,10 +1243,10 @@ watch(
 )
 
 watch(
-  [() => route.query.flow, () => route.query.node],
-  ([flowId, nodeId]) => {
+  [() => route.query.flow, () => route.query.node, () => route.query.run],
+  ([flowId, nodeId, runId]) => {
     if (flowRouteReady.value) {
-      void applyFlowRouteSelection(flowId, nodeId)
+      void applyFlowRouteSelection(flowId, nodeId, runId)
     }
   }
 )
@@ -1256,6 +1256,15 @@ watch(selectedNodeId, (nodeId) => {
     void syncActiveRouteState()
   }
 })
+
+watch(
+  () => selectedFlowRun.value?.id,
+  () => {
+    if (flowRouteReady.value && !routeSelectionApplying.value) {
+      void syncActiveRouteState()
+    }
+  }
+)
 
 watch(
   () => workspace.activeFlow?.updatedAt,
@@ -1286,7 +1295,7 @@ watch(
 
 onMounted(async () => {
   window.addEventListener('beforeunload', handleBeforeUnload)
-  await Promise.all([workspace.loadFlowDrafts(), workspace.loadApiKeys(), loadPromptAssets()])
+  await Promise.all([workspace.bootstrap(), loadPromptAssets()])
   flowRouteReady.value = true
   await applyFlowRouteSelection()
 })
@@ -1311,8 +1320,14 @@ async function loadFlowRuns(flowId: string) {
   try {
     const { data } = await listFlowRuns(flowId)
     if (workspace.activeFlow?.id === flowId) {
-      flowRuns.value = data
-      if (selectedFlowRun.value && !data.some((run) => run.id === selectedFlowRun.value?.id)) {
+      const selectedRun = selectedFlowRun.value
+      const preserveSelectedRun = Boolean(
+        selectedRun && selectedRun.sourceFlowId === flowId && !data.some((run) => run.id === selectedRun.id)
+      )
+      flowRuns.value = preserveSelectedRun && selectedRun
+        ? [selectedRun, ...data]
+        : data
+      if (selectedRun && selectedRun.sourceFlowId !== flowId) {
         selectedFlowRun.value = null
       }
     }
@@ -1587,7 +1602,8 @@ async function openSourceFlowById(sourceFlowId: string) {
 
 async function applyFlowRouteSelection(
   flowValue: unknown = route.query.flow,
-  nodeValue: unknown = route.query.node
+  nodeValue: unknown = route.query.node,
+  runValue: unknown = route.query.run
 ) {
   routeSelectionApplying.value = true
   try {
@@ -1595,6 +1611,7 @@ async function applyFlowRouteSelection(
     if (flowAvailable) {
       await nextTick()
       await openNodeFromRoute(nodeValue)
+      openFlowRunFromRoute(runValue)
     }
   } finally {
     routeSelectionApplying.value = false
@@ -1645,6 +1662,29 @@ async function openNodeFromRoute(value: unknown = route.query.node) {
   selectedNodeId.value = node.id
 }
 
+function openFlowRunFromRoute(value: unknown = route.query.run) {
+  const runId = typeof value === 'string' ? value : ''
+  if (!runId) {
+    selectedFlowRun.value = null
+    return
+  }
+  if (runId === selectedFlowRun.value?.id) {
+    return
+  }
+
+  const run = workspace.tasks.find((item) => item.id === runId)
+  if (!run || run.sourceFlowId !== workspace.activeFlowId) {
+    selectedFlowRun.value = null
+    ElMessage.warning('指定的 Flow 运行已不存在或不属于当前 Flow')
+    return
+  }
+
+  if (!flowRuns.value.some((item) => item.id === run.id)) {
+    flowRuns.value = [run, ...flowRuns.value]
+  }
+  selectFlowRun(run)
+}
+
 function syncActiveRouteState() {
   if (!flowRouteReady.value) {
     return Promise.resolve()
@@ -1652,9 +1692,11 @@ function syncActiveRouteState() {
 
   const flowId = workspace.activeFlowId
   const nodeId = selectedNodeId.value
+  const runId = selectedFlowRun.value?.id || ''
   const routeFlowId = typeof route.query.flow === 'string' ? route.query.flow : ''
   const routeNodeId = typeof route.query.node === 'string' ? route.query.node : ''
-  if (flowId === routeFlowId && nodeId === routeNodeId) {
+  const routeRunId = typeof route.query.run === 'string' ? route.query.run : ''
+  if (flowId === routeFlowId && nodeId === routeNodeId && runId === routeRunId) {
     return Promise.resolve()
   }
 
@@ -1668,6 +1710,11 @@ function syncActiveRouteState() {
     query.node = nodeId
   } else {
     delete query.node
+  }
+  if (runId) {
+    query.run = runId
+  } else {
+    delete query.run
   }
   return router.replace({ query })
 }
@@ -2004,6 +2051,7 @@ function useLatestResultAsRunContext() {
     ? `${flowRunContext.value.trim()}\n\n---\n\n${continuationContext}`
     : continuationContext
   flowExecutionVisible.value = false
+  selectedFlowRun.value = null
   resetFlowRunState()
   ElMessage.success('已带入 Run Brief')
 }

@@ -110,6 +110,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Historical Result Promotion | Done | 任意成功 Result 可沉淀为来源可追踪的 Prompt 结果模式，或直接创建可编辑 Flow |
 | Stage 3 | Prompt Node Source Sync | Done | Flow Prompt 节点显示 Library 来源与同步状态，可返回来源或显式采用最新 Prompt 内容 |
 | Stage 3 | Flow Node Deep Links | Done | 使用 `/workflows?flow=<id>&node=<nodeId>` 恢复具体节点，并从 Prompt 来源返回精确创作位置 |
+| Stage 3 | Flow Run Deep Links | Done | 使用 `/workflows?flow=<id>&node=<nodeId>&run=<taskId>` 同时恢复 Flow、节点和不可变历史运行，支持旧运行并与浏览器导航保持一致 |
 | Stage 3 | Run Brief Draft Recovery | Done | 按 Flow 本地保存运行上下文和变量值，切换 Flow 或刷新后可继续，并支持主动清除 |
 | Stage 3 | Cross-workspace Run Brief Sync | Done | Flow 带入 AI Command 后，运行说明和变量修改会同步回对应 Flow 草稿 |
 | Stage 3 | Cross-workspace Execution Preview | Done | Flow Space 与 AI Command 复用同一服务端编译预览，可在执行前核对真实 Provider 输入 |
@@ -254,6 +255,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | Prompt 节点编辑 / 删除 / 复制 / 排序 | Done |
 | Prompt 节点来源状态 / 返回 Library / 显式同步 | Done |
 | Flow 与当前节点 URL 深链同步 | Done |
+| Flow / 节点 / 历史运行 URL 深链同步 | Done |
 | Provider readiness 提示 | Done |
 | Run Brief 运行上下文 | Done |
 | Run Brief 按 Flow 自动保存 / 恢复 / 清除 | Done |

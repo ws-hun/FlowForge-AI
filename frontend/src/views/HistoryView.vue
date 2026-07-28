@@ -416,7 +416,7 @@ function openFlowTraceNode(task: TaskHistoryItem, nodeId: string) {
     return
   }
   workspace.selectFlowDraft(flow.id)
-  router.push({ path: '/workflows', query: { flow: flow.id, node: nodeId } })
+  router.push({ path: '/workflows', query: { flow: flow.id, node: nodeId, run: task.id } })
 }
 
 function closeComparison() {

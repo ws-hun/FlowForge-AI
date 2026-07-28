@@ -297,7 +297,10 @@ function openLatestTraceNode(nodeId: string) {
     return
   }
   workspace.selectFlowDraft(flow.id)
-  router.push({ path: '/workflows', query: { flow: flow.id, node: nodeId } })
+  router.push({
+    path: '/workflows',
+    query: { flow: flow.id, node: nodeId, ...(workspace.latestResult?.taskId ? { run: workspace.latestResult.taskId } : {}) }
+  })
 }
 
 function detachTaskSource() {
