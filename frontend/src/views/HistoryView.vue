@@ -6,9 +6,30 @@
       <p>保留每一次 AI 工作流执行的上下文、摘要和结果。</p>
     </header>
 
+    <div class="history-explorer">
+      <label class="history-search-field">
+        <Search class="history-search-icon" />
+        <input v-model="historyQuery" type="search" placeholder="搜索运行、来源或结果..." />
+      </label>
+      <div class="history-scope-tabs" role="tablist" aria-label="历史运行范围">
+        <button
+          v-for="scope in historyScopes"
+          :key="scope.value"
+          type="button"
+          role="tab"
+          :aria-selected="historyScope === scope.value"
+          :class="{ active: historyScope === scope.value }"
+          @click="historyScope = scope.value"
+        >
+          {{ scope.label }}
+        </button>
+      </div>
+      <span class="history-result-count">{{ filteredTasks.length }} / {{ workspace.tasks.length }}</span>
+    </div>
+
     <div class="timeline">
       <article
-        v-for="task in workspace.tasks"
+        v-for="task in filteredTasks"
         :id="`history-run-${task.id}`"
         :key="task.id"
         class="timeline-item"
@@ -171,6 +192,13 @@
         </div>
       </article>
       <div v-if="!workspace.tasks.length" class="empty-state">暂无历史记录</div>
+      <div v-else-if="!filteredTasks.length" class="empty-state history-filter-empty">
+        <div>
+          <strong>没有匹配的运行</strong>
+          <p>当前历史仍然保留，清除搜索或切换范围即可重新查看。</p>
+          <button type="button" class="ghost-button" @click="resetHistoryExplorer">清除筛选</button>
+        </div>
+      </div>
     </div>
 
     <RunComparisonDialog
@@ -185,8 +213,9 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import ExecutionInputArchive from '@/components/ai/ExecutionInputArchive.vue'
@@ -207,6 +236,40 @@ const comparisonOpen = ref(false)
 const comparisonSource = ref<TaskHistoryItem | null>(null)
 const comparisonTarget = ref<TaskHistoryItem | null>(null)
 const comparisonMode = ref<'rerun' | 'continuation' | 'input-variant'>('rerun')
+type HistoryScope = 'all' | 'flow' | 'prompt' | 'failed'
+const historyQuery = ref('')
+const historyScope = ref<HistoryScope>('all')
+const historyScopes: Array<{ label: string; value: HistoryScope }> = [
+  { label: '全部', value: 'all' },
+  { label: 'Flow', value: 'flow' },
+  { label: 'Prompt', value: 'prompt' },
+  { label: '失败', value: 'failed' }
+]
+const filteredTasks = computed(() => {
+  const query = historyQuery.value.trim().toLowerCase()
+  return workspace.tasks.filter((task) => {
+    if (historyScope.value === 'flow' && !task.sourceFlowId) return false
+    if (historyScope.value === 'prompt' && !task.sourcePromptId) return false
+    if (historyScope.value === 'failed' && !isFailed(task)) return false
+    if (!query) return true
+
+    return [
+      task.input,
+      task.summary,
+      task.result,
+      task.errorMessage,
+      task.sourceFlowTitle,
+      task.sourcePromptTitle,
+      task.provider,
+      task.model,
+      historyRunKind(task)
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .includes(query)
+  })
+})
 
 onMounted(async () => {
   await workspace.bootstrap()
@@ -330,16 +393,26 @@ async function openRunFromRoute() {
     return
   }
 
-  if (!workspace.tasks.some((task) => task.id === runId)) {
+  const targetRun = workspace.tasks.find((task) => task.id === runId)
+  if (!targetRun) {
     ElMessage.warning('指定的运行记录已不存在或无法访问')
     await syncRunRoute(null, 'replace')
     return
+  }
+
+  if (!filteredTasks.value.some((task) => task.id === runId)) {
+    resetHistoryExplorer()
   }
 
   expandedRunIds.value = [runId]
   focusedRunId.value = runId
   await nextTick()
   document.getElementById(`history-run-${runId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
+function resetHistoryExplorer() {
+  historyQuery.value = ''
+  historyScope.value = 'all'
 }
 
 function openHistoryRun(runId?: string) {

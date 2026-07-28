@@ -182,6 +182,8 @@ History 以时间线保留每一次可追溯运行，不使用表格作为核心
 | --- | --- |
 | 可读运行标题与来源类型 | Done |
 | Result URL 深链与自动聚焦 | Done |
+| 按运行内容、来源资产与 Provider 搜索 | Done |
+| 全部 / Flow / Prompt / 失败时间线范围切换 | Done |
 | 固定服务端执行输入查看 / 复制 | Done |
 | 固定执行输入带入 AI Command 创建变体 | Done |
 | Flow 运行快照与变量回看 | Done |
