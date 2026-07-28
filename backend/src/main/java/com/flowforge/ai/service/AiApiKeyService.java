@@ -3,6 +3,7 @@ package com.flowforge.ai.service;
 import com.flowforge.ai.dto.AiApiKeyRequest;
 import com.flowforge.ai.dto.AiApiKeyResponse;
 import com.flowforge.ai.entity.AiApiKey;
+import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.repository.AiApiKeyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -51,7 +52,7 @@ public class AiApiKeyService {
     @Transactional
     public AiApiKeyResponse activate(UUID id) {
         AiApiKey selected = aiApiKeyRepository.findById(id)
-                .orElseThrow(() -> new IllegalStateException("API key config not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("API key config not found"));
 
         aiApiKeyRepository.findAll().forEach(key -> key.setActive(false));
         selected.setActive(true);
@@ -61,6 +62,9 @@ public class AiApiKeyService {
 
     @Transactional
     public void delete(UUID id) {
+        if (!aiApiKeyRepository.existsById(id)) {
+            throw new ResourceNotFoundException("API key config not found");
+        }
         aiApiKeyRepository.deleteById(id);
     }
 
@@ -72,11 +76,11 @@ public class AiApiKeyService {
 
     private String normalizeProvider(String provider) {
         if (!StringUtils.hasText(provider)) {
-            throw new IllegalStateException("provider is required");
+            throw new IllegalArgumentException("provider is required");
         }
         String normalized = provider.trim().toLowerCase(Locale.ROOT);
         if (!normalized.equals("openai") && !normalized.equals("deepseek")) {
-            throw new IllegalStateException("Unsupported AI provider: " + provider);
+            throw new IllegalArgumentException("Unsupported AI provider: " + provider);
         }
         return normalized;
     }

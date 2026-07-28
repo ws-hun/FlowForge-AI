@@ -1,0 +1,149 @@
+package com.flowforge.ai.service;
+
+import com.flowforge.ai.dto.AiApiKeyRequest;
+import com.flowforge.ai.dto.AiApiKeyResponse;
+import com.flowforge.ai.entity.AiApiKey;
+import com.flowforge.ai.exception.ResourceNotFoundException;
+import com.flowforge.ai.repository.AiApiKeyRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class AiApiKeyServiceTest {
+
+    @Mock
+    private AiApiKeyRepository repository;
+
+    private AiApiKeyService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new AiApiKeyService(repository);
+    }
+
+    @Test
+    void savesAndActivatesANormalizedProviderWhileMaskingTheKey() {
+        AiApiKey previousActiveKey = AiApiKey.builder()
+                .id(UUID.randomUUID())
+                .provider("openai")
+                .apiKey("sk-existing-openai-key")
+                .baseUrl("https://api.openai.com/v1")
+                .model("gpt-4o-mini")
+                .active(true)
+                .build();
+        when(repository.findAll()).thenReturn(List.of(previousActiveKey));
+        when(repository.findByProviderIgnoreCase("deepseek")).thenReturn(Optional.empty());
+        when(repository.save(org.mockito.ArgumentMatchers.any(AiApiKey.class))).thenAnswer(invocation -> {
+            AiApiKey key = invocation.getArgument(0);
+            key.setId(UUID.randomUUID());
+            key.setUpdatedAt(LocalDateTime.of(2026, 7, 28, 16, 0));
+            return key;
+        });
+
+        AiApiKeyResponse response = service.saveKey(new AiApiKeyRequest(
+                " DeepSeek ",
+                " sk-1234567890abcdef ",
+                " https://api.deepseek.com ",
+                " deepseek-chat ",
+                true
+        ));
+
+        ArgumentCaptor<AiApiKey> keyCaptor = ArgumentCaptor.forClass(AiApiKey.class);
+        verify(repository).save(keyCaptor.capture());
+        assertThat(previousActiveKey.isActive()).isFalse();
+        assertThat(keyCaptor.getValue().getProvider()).isEqualTo("deepseek");
+        assertThat(keyCaptor.getValue().getApiKey()).isEqualTo("sk-1234567890abcdef");
+        assertThat(keyCaptor.getValue().getBaseUrl()).isEqualTo("https://api.deepseek.com");
+        assertThat(keyCaptor.getValue().getModel()).isEqualTo("deepseek-chat");
+        assertThat(keyCaptor.getValue().isActive()).isTrue();
+        assertThat(response.maskedKey()).isEqualTo("sk-12...cdef");
+    }
+
+    @Test
+    void savingAnInactiveProviderDoesNotDeactivateTheCurrentProvider() {
+        AiApiKey currentProvider = AiApiKey.builder()
+                .id(UUID.randomUUID())
+                .provider("openai")
+                .apiKey("sk-existing-openai-key")
+                .baseUrl("https://api.openai.com/v1")
+                .model("gpt-4o-mini")
+                .active(true)
+                .updatedAt(LocalDateTime.now())
+                .build();
+        AiApiKey inactiveProvider = AiApiKey.builder()
+                .id(UUID.randomUUID())
+                .provider("deepseek")
+                .apiKey("sk-existing-deepseek-key")
+                .baseUrl("https://api.deepseek.com")
+                .model("deepseek-chat")
+                .active(false)
+                .updatedAt(LocalDateTime.now())
+                .build();
+        when(repository.findByProviderIgnoreCase("deepseek")).thenReturn(Optional.of(inactiveProvider));
+        when(repository.save(inactiveProvider)).thenReturn(inactiveProvider);
+
+        service.saveKey(new AiApiKeyRequest(
+                "deepseek",
+                "sk-replacement-deepseek-key",
+                "https://api.deepseek.com",
+                "deepseek-reasoner",
+                false
+        ));
+
+        verify(repository, never()).findAll();
+        assertThat(currentProvider.isActive()).isTrue();
+        assertThat(inactiveProvider.isActive()).isFalse();
+        assertThat(inactiveProvider.getModel()).isEqualTo("deepseek-reasoner");
+    }
+
+    @Test
+    void rejectsUnsupportedProvidersAsClientInput() {
+        assertThatThrownBy(() -> service.saveKey(new AiApiKeyRequest(
+                "claude",
+                "secret-key",
+                "https://api.anthropic.com",
+                "claude-sonnet",
+                true
+        )))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Unsupported AI provider: claude");
+    }
+
+    @Test
+    void reportsMissingProviderConfigWhenActivatingOrDeleting() {
+        UUID id = UUID.randomUUID();
+        when(repository.findById(id)).thenReturn(Optional.empty());
+        when(repository.existsById(id)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.activate(id))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("API key config not found");
+        assertThatThrownBy(() -> service.delete(id))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("API key config not found");
+    }
+
+    @Test
+    void keepsMissingActiveProviderAsAnExecutionFailure() {
+        when(repository.findFirstByActiveTrue()).thenReturn(Optional.empty());
+
+        assertThatThrownBy(service::getActiveKey)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("No active AI API key configured");
+    }
+}

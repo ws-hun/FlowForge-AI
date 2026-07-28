@@ -212,6 +212,7 @@ API Key 不放在配置文件里，避免上传 GitHub 时泄露密钥。
 | Provider 更新时间展示 | Done |
 | 删除 Provider 前风险确认 | Done |
 | 删除 Provider | Done |
+| 非法 Provider 返回 400 / 不存在配置返回 404 | Done |
 
 ### Prompt Library
 
