@@ -65,6 +65,14 @@
             </span>
             <div class="history-reuse-actions">
               <button
+                v-if="taskFlowStillAvailable(task)"
+                type="button"
+                class="ghost-button"
+                @click="inspectTaskInFlow(task)"
+              >
+                在 Flow 中检查
+              </button>
+              <button
                 v-if="!isFailed(task)"
                 type="button"
                 class="secondary-button"
@@ -371,6 +379,28 @@ function openTaskSource(task: TaskHistoryItem) {
   if (task.sourcePromptId) {
     router.push({ path: '/prompts', query: { prompt: task.sourcePromptId } })
   }
+}
+
+function taskFlowStillAvailable(task: TaskHistoryItem) {
+  return Boolean(task.sourceFlowId && workspace.flowDrafts.some((flow) => flow.id === task.sourceFlowId))
+}
+
+function inspectTaskInFlow(task: TaskHistoryItem) {
+  const flow = workspace.flowDrafts.find((item) => item.id === task.sourceFlowId)
+  if (!flow) {
+    ElMessage.warning('这个运行对应的 Flow 已不存在，历史快照仍可在当前页面查看')
+    return
+  }
+
+  const historicalNodeIds = task.flowRunTrace?.nodes.map((node) => node.nodeId)
+    || task.flowRunSnapshot?.nodes.map((node) => node.id)
+    || []
+  const nodeId = historicalNodeIds.find((id) => flow.nodes.some((node) => node.id === id))
+  workspace.selectFlowDraft(flow.id)
+  router.push({
+    path: '/workflows',
+    query: { flow: flow.id, run: task.id, ...(nodeId ? { node: nodeId } : {}) }
+  })
 }
 
 async function saveRunAsPrompt(task: TaskHistoryItem) {
