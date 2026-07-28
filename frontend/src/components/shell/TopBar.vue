@@ -26,7 +26,7 @@
       <button type="button" class="search-pill" title="搜索" aria-label="打开全局搜索" @click="searchOpen = true">
         <Search />
       </button>
-      <RouterLink to="/profile" class="user-avatar">A</RouterLink>
+      <RouterLink to="/profile" class="user-avatar" :title="workspace.profileName">{{ workspace.profileInitial }}</RouterLink>
     </div>
 
     <GlobalSearchDialog :open="searchOpen" @close="searchOpen = false" />
@@ -38,8 +38,10 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import GlobalSearchDialog from '@/components/shell/GlobalSearchDialog.vue'
 import logo from '@/assets/icons/logo.png'
+import { useWorkspaceStore } from '@/stores/workspace'
 
 const searchOpen = ref(false)
+const workspace = useWorkspaceStore()
 
 function handleSearchShortcut(event: KeyboardEvent) {
   const target = event.target
