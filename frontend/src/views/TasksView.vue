@@ -70,6 +70,14 @@
             <button type="button" class="ghost-button" @click="detachTaskSource">脱离来源</button>
           </div>
         </div>
+        <FlowExecutionInputPreview
+          v-if="workspace.taskSourceFlowId"
+          :key="workspace.taskSourceFlowId"
+          :flow-id="workspace.taskSourceFlowId"
+          :runtime-context="workspace.taskInput"
+          :variable-values="workspace.taskSourceFlowVariableValues"
+          :source-version="taskSourceFlow?.updatedAt"
+        />
         <div v-if="!providerReadyToRun" class="command-readiness-note">
           <span class="flow-run-dot warning"></span>
           <div>
@@ -150,6 +158,7 @@ import { computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
+import FlowExecutionInputPreview from '@/components/flow/FlowExecutionInputPreview.vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 
 const router = useRouter()
@@ -157,6 +166,11 @@ const workspace = useWorkspaceStore()
 const providerReadyToRun = computed(() => Boolean(workspace.activeProvider))
 const hasTaskSource = computed(() =>
   Boolean(workspace.taskSourceFlowTitle || workspace.taskSourcePromptTitle || workspace.taskSourceRunId)
+)
+const taskSourceFlow = computed(() =>
+  workspace.taskSourceFlowId
+    ? workspace.flowDrafts.find((flow) => flow.id === workspace.taskSourceFlowId) || null
+    : null
 )
 const sourceLabel = computed(() => {
   if (workspace.taskSourceFlowTitle) return 'Flow context'

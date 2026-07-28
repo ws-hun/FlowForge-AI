@@ -112,6 +112,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Flow Node Deep Links | Done | 使用 `/workflows?flow=<id>&node=<nodeId>` 恢复具体节点，并从 Prompt 来源返回精确创作位置 |
 | Stage 3 | Run Brief Draft Recovery | Done | 按 Flow 本地保存运行上下文和变量值，切换 Flow 或刷新后可继续，并支持主动清除 |
 | Stage 3 | Cross-workspace Run Brief Sync | Done | Flow 带入 AI Command 后，运行说明和变量修改会同步回对应 Flow 草稿 |
+| Stage 3 | Cross-workspace Execution Preview | Done | Flow Space 与 AI Command 复用同一服务端编译预览，可在执行前核对真实 Provider 输入 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
 | Future | Knowledge Base | Preview UI | 产品预留界面，暂未接入向量检索 |
 | Future | Analytics | Preview UI | 轻量洞察预留，暂未做完整数据分析系统 |
@@ -152,6 +153,7 @@ Workspace 保持一个明确的创作入口，同时为已有工作提供低噪�
 | 失败执行保存与恢复重跑 | Done |
 | 从 Prompt 带入任务 | Done |
 | 从 Flow 带入任务 | Done |
+| Flow 来源任务的服务端执行输入预览 | Done |
 | 任务来源上下文提示 | Done |
 | 返回来源 Flow / Prompt | Done |
 | 脱离来源作为独立任务执行 | Done |
@@ -228,6 +230,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | Run Brief 运行上下文 | Done |
 | Run Brief 按 Flow 自动保存 / 恢复 / 清除 | Done |
 | 服务端执行输入预览 | Done |
+| Flow Space / AI Command 共享执行预览 | Done |
 | AI Task 执行指令编辑与持久化 | Done |
 | AI Task 执行指令参与服务端预览与真实运行 | Done |
 | Output 交付重点编辑与持久化 | Done |

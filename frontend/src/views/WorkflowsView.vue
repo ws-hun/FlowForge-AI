@@ -260,37 +260,15 @@
             </button>
           </div>
 
-          <details class="flow-input-preview" @toggle="onFlowExecutionPreviewToggle">
-            <summary>查看服务端执行输入</summary>
-            <div v-if="flowExecutionPreviewLoading" class="flow-input-preview-status">
-              正在按保存的 Flow 编译本次输入...
-            </div>
-            <div v-else-if="flowExecutionPreview" class="flow-input-preview-content">
-              <div class="flow-input-preview-meta">
-                <span>{{ flowExecutionPreviewStale ? 'Run Brief 已更新' : '与本次执行保持一致' }}</span>
-                <button
-                  v-if="flowExecutionPreviewStale"
-                  type="button"
-                  class="text-button"
-                  @click="loadFlowExecutionPreview"
-                >
-                  刷新输入
-                </button>
-              </div>
-              <pre>{{ flowExecutionPreview.executionInput }}</pre>
-            </div>
-            <div v-else class="flow-input-preview-status">
-              <span>{{ flowExecutionPreviewError || (flowExecutionPreviewStale ? 'Run Brief 已更新，请刷新执行输入。' : '展开后将从服务端生成执行输入。') }}</span>
-              <button
-                v-if="flowExecutionPreviewError || flowExecutionPreviewStale"
-                type="button"
-                class="text-button"
-                @click="loadFlowExecutionPreview"
-              >
-                {{ flowExecutionPreviewError ? '重试' : '刷新输入' }}
-              </button>
-            </div>
-          </details>
+          <FlowExecutionInputPreview
+            :key="workspace.activeFlow.id"
+            :flow-id="workspace.activeFlow.id"
+            :runtime-context="flowRunContext"
+            :variable-values="flowVariableValues"
+            :source-version="workspace.activeFlow.updatedAt"
+            :dirty="flowMetaChanged || nodeEditorChanged"
+            :before-load="resolvePendingEdits"
+          />
         </section>
 
         <section v-if="workspace.activeFlow && flowExecutionVisible && activeFlowResult" class="flow-result-loop">
@@ -740,9 +718,10 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { EditPen, Plus } from '@element-plus/icons-vue'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
+import FlowExecutionInputPreview from '@/components/flow/FlowExecutionInputPreview.vue'
 import { formatExecutionSource } from '@/utils/aiProvider'
 import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
-import { listFlowRuns, listFlowVersions, previewFlowExecution, restoreFlowVersion } from '@/api/flows'
+import { listFlowRuns, listFlowVersions, restoreFlowVersion } from '@/api/flows'
 import { createPrompt, listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { compareFlowRevision } from '@/utils/flowRevisions'
@@ -750,7 +729,6 @@ import { extractPromptVariables, isValidPromptVariableName } from '@/utils/promp
 import type {
   FlowNode,
   FlowNodeType,
-  FlowExecutionPreviewResponse,
   FlowRunSnapshot as FlowRunSnapshotType,
   FlowVersion,
   PromptAsset,
@@ -785,11 +763,6 @@ const flowTitle = ref('')
 const flowDescription = ref('')
 const flowRunContext = ref('')
 const flowVariableValues = ref<Record<string, string>>({})
-const flowExecutionPreview = ref<FlowExecutionPreviewResponse | null>(null)
-const flowExecutionPreviewLoading = ref(false)
-const flowExecutionPreviewStale = ref(false)
-const flowExecutionPreviewError = ref('')
-const flowExecutionPreviewRequestVersion = ref(0)
 const nodeTitle = ref('')
 const nodeDescription = ref('')
 const nodeContent = ref('')
@@ -1214,7 +1187,6 @@ watch(
     const runSeed = activeFlowId ? workspace.consumeFlowRunSeed(activeFlowId) : null
     const localDraft = activeFlowId ? workspace.getFlowRunDraft(activeFlowId) : null
     const runDraft = runSeed || localDraft
-    resetFlowExecutionPreview()
     resetFlowRunState()
     selectedNodeId.value = workspace.activeFlow?.nodes[0]?.id || ''
     flowTitle.value = workspace.activeFlow?.title || ''
@@ -1258,7 +1230,6 @@ watch(
   (updatedAt, previousUpdatedAt) => {
     const flowId = workspace.activeFlow?.id
     if (flowId && updatedAt && updatedAt !== previousUpdatedAt) {
-      invalidateFlowExecutionPreview()
       loadFlowVersions(flowId)
     }
   }
@@ -1269,18 +1240,11 @@ watch(flowVariables, (variables) => {
 })
 
 watch([flowRunContext, flowVariableValues], () => {
-  invalidateFlowExecutionPreview()
   const flowId = workspace.activeFlow?.id
   if (flowId) {
     workspace.saveFlowRunDraft(flowId, flowRunContext.value, flowVariableValues.value)
   }
 }, { deep: true })
-
-watch([flowMetaChanged, nodeEditorChanged], ([hasFlowChanges, hasNodeChanges]) => {
-  if (hasFlowChanges || hasNodeChanges) {
-    invalidateFlowExecutionPreview()
-  }
-})
 
 watch(
   () => selectedNode.value?.id,
@@ -1307,67 +1271,6 @@ async function loadPromptAssets() {
     prompts.value = data
   } catch (error: any) {
     ElMessage.error(error.response?.data?.message || 'Prompt Library 加载失败')
-  }
-}
-
-function invalidateFlowExecutionPreview() {
-  flowExecutionPreviewRequestVersion.value += 1
-  if (flowExecutionPreview.value) {
-    flowExecutionPreviewStale.value = true
-  }
-  if (flowExecutionPreviewLoading.value) {
-    flowExecutionPreviewStale.value = true
-  }
-  flowExecutionPreviewError.value = ''
-}
-
-function resetFlowExecutionPreview() {
-  flowExecutionPreviewRequestVersion.value += 1
-  flowExecutionPreview.value = null
-  flowExecutionPreviewLoading.value = false
-  flowExecutionPreviewStale.value = false
-  flowExecutionPreviewError.value = ''
-}
-
-function onFlowExecutionPreviewToggle(event: Event) {
-  const details = event.currentTarget as HTMLDetailsElement
-  if (details.open && (!flowExecutionPreview.value || flowExecutionPreviewStale.value)) {
-    void loadFlowExecutionPreview()
-  }
-}
-
-async function loadFlowExecutionPreview() {
-  if (!workspace.activeFlow || flowExecutionPreviewLoading.value) {
-    return
-  }
-  if (!(await resolvePendingEdits())) {
-    return
-  }
-
-  const flow = workspace.activeFlow
-  if (!flow) {
-    return
-  }
-
-  const flowId = flow.id
-  const requestVersion = flowExecutionPreviewRequestVersion.value
-  flowExecutionPreviewLoading.value = true
-  flowExecutionPreviewError.value = ''
-  try {
-    const { data } = await previewFlowExecution(flowId, {
-      runtimeContext: flowRunContext.value,
-      variableValues: flowVariableValues.value
-    })
-    if (workspace.activeFlow?.id === flowId && flowExecutionPreviewRequestVersion.value === requestVersion) {
-      flowExecutionPreview.value = data
-      flowExecutionPreviewStale.value = false
-    }
-  } catch (error: any) {
-    if (workspace.activeFlow?.id === flowId && flowExecutionPreviewRequestVersion.value === requestVersion) {
-      flowExecutionPreviewError.value = error.response?.data?.message || '执行输入生成失败'
-    }
-  } finally {
-    flowExecutionPreviewLoading.value = false
   }
 }
 
@@ -1534,7 +1437,6 @@ async function restoreFlowVersionSnapshot(version: FlowVersion) {
     syncSelectedNodeEditor()
     flowRunContext.value = ''
     flowVariableValues.value = buildFlowVariableValues(flowVariables.value)
-    invalidateFlowExecutionPreview()
     selectedFlowRun.value = null
     flowExecutionVisible.value = false
     savedResultPrompt.value = null
@@ -2047,7 +1949,6 @@ function clearCurrentFlowRunDraft() {
   flowRunContext.value = ''
   flowVariableValues.value = buildFlowVariableValues(flowVariables.value)
   workspace.clearFlowRunDraft(flowId)
-  resetFlowExecutionPreview()
   resetFlowRunState()
   ElMessage.success('Run Brief 已清除')
 }
