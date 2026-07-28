@@ -141,6 +141,7 @@ Workspace 保持一个明确的创作入口，同时为已有工作提供低噪�
 | 打开最近 Flow 资产 | Done |
 | 深链打开最近 Prompt 详情 | Done |
 | 全局搜索 Flow / Prompt / Result 并恢复对应工作空间 | Done |
+| 顶部 Ready / Provider / Offline 应用状态 | Done |
 
 ### AI Command Workspace
 

@@ -1,5 +1,11 @@
 export type Provider = 'deepseek' | 'openai'
 
+export interface HealthResponse {
+  status: 'up'
+  database: 'reachable'
+  timestamp: string
+}
+
 export interface RunTaskPayload {
   input: string
   promptId?: string | null

@@ -103,6 +103,7 @@ Current Stage 3 capabilities:
 - Future modules remain outside the primary navigation and use honest workspace boundaries that route users back to currently executable creation paths instead of presenting fake Agent, Knowledge, or Analytics state.
 - Route-level code splitting and scoped Element Plus registration keep the calm workspace shell lightweight while loading complex creation surfaces only when opened.
 - Docker readiness follows the real dependency chain from PostgreSQL to the backend database probe and then to the Nginx frontend proxy.
+- The global shell surfaces one calm readiness signal that combines backend/database health with active Provider availability and remains actionable without dashboard noise.
 - Provider Vault protects destructive actions with explicit confirmation, preserves unsaved key input when a save request fails, and returns client-correct `400` / `404` errors for invalid or missing configurations.
 - Provider Base URLs are normalized and validated as safe absolute HTTP/HTTPS endpoints while preserving legitimate custom OpenAI-compatible hosts.
 - Prompt and Flow mutation endpoints preserve REST semantics by separating missing assets (`404`) and invalid input (`400`) from actual Provider gateway failures (`502`).

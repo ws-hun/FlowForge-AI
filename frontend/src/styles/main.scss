@@ -126,6 +126,63 @@ a {
   gap: 10px;
 }
 
+.workspace-status {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px;
+  border: 1px solid tokens.$border;
+  border-radius: tokens.$radius-md;
+  background: tokens.$surface;
+  color: tokens.$text-secondary;
+  font-family: tokens.$mono;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  transition: border-color 200ms ease, background 200ms ease, color 200ms ease;
+
+  i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: tokens.$text-muted;
+  }
+
+  &.ready {
+    color: tokens.$success;
+
+    i {
+      background: tokens.$success;
+    }
+  }
+
+  &.provider {
+    color: tokens.$warning;
+
+    i {
+      background: tokens.$warning;
+    }
+  }
+
+  &.offline {
+    color: tokens.$error;
+
+    i {
+      background: tokens.$error;
+    }
+  }
+
+  &:hover {
+    border-color: rgba(79, 124, 255, 0.22);
+    background: tokens.$surface-secondary;
+  }
+}
+
+.top-mobile-status {
+  display: none;
+}
+
 .search-pill,
 .user-avatar,
 .primary-button,
@@ -5039,6 +5096,10 @@ a {
   }
 
   .top-mobile-search {
+    display: inline-flex;
+  }
+
+  .top-mobile-status {
     display: inline-flex;
   }
 

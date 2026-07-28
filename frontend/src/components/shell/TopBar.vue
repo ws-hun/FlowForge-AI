@@ -10,6 +10,15 @@
       <RouterLink to="/prompts">提示词库</RouterLink>
       <RouterLink to="/history">历史</RouterLink>
       <RouterLink to="/settings">设置</RouterLink>
+      <RouterLink
+        to="/api-keys"
+        class="workspace-status top-mobile-status"
+        :class="systemStatus"
+        :title="systemStatusTitle"
+      >
+        <i></i>
+        <span>{{ systemStatusLabel }}</span>
+      </RouterLink>
       <button
         type="button"
         class="top-mobile-search"
@@ -22,6 +31,10 @@
     </nav>
 
     <div class="top-actions">
+      <RouterLink to="/api-keys" class="workspace-status" :class="systemStatus" :title="systemStatusTitle">
+        <i></i>
+        <span>{{ systemStatusLabel }}</span>
+      </RouterLink>
       <button type="button" class="search-pill" title="搜索" aria-label="打开全局搜索" @click="searchOpen = true">
         <Search />
       </button>
@@ -33,14 +46,37 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import GlobalSearchDialog from '@/components/shell/GlobalSearchDialog.vue'
 import logo from '@/assets/icons/logo.png'
+import { getHealth } from '@/api/system'
 import { useWorkspaceStore } from '@/stores/workspace'
 
 const searchOpen = ref(false)
 const workspace = useWorkspaceStore()
+const healthState = ref<'checking' | 'ready' | 'offline'>('checking')
+let healthTimer: number | null = null
+const systemStatus = computed(() => {
+  if (healthState.value === 'offline') return 'offline'
+  if (healthState.value === 'checking') return 'checking'
+  return workspace.activeProvider ? 'ready' : 'provider'
+})
+const systemStatusLabel = computed(() => {
+  const labels = {
+    checking: 'Checking',
+    ready: 'Ready',
+    provider: 'Provider',
+    offline: 'Offline'
+  }
+  return labels[systemStatus.value]
+})
+const systemStatusTitle = computed(() => {
+  if (systemStatus.value === 'ready') return '应用、数据库和 AI Provider 已就绪'
+  if (systemStatus.value === 'provider') return '应用已就绪，请配置或激活 AI Provider'
+  if (systemStatus.value === 'offline') return '后端或数据库当前不可用'
+  return '正在检查应用状态'
+})
 
 function handleSearchShortcut(event: KeyboardEvent) {
   const target = event.target
@@ -54,6 +90,37 @@ function handleSearchShortcut(event: KeyboardEvent) {
   searchOpen.value = true
 }
 
-onMounted(() => window.addEventListener('keydown', handleSearchShortcut))
-onBeforeUnmount(() => window.removeEventListener('keydown', handleSearchShortcut))
+async function refreshHealth() {
+  if (!navigator.onLine) {
+    healthState.value = 'offline'
+    return
+  }
+  try {
+    const { data } = await getHealth()
+    healthState.value = data.status === 'up' && data.database === 'reachable' ? 'ready' : 'offline'
+  } catch {
+    healthState.value = 'offline'
+  }
+}
+
+function handleOffline() {
+  healthState.value = 'offline'
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleSearchShortcut)
+  window.addEventListener('online', refreshHealth)
+  window.addEventListener('offline', handleOffline)
+  void refreshHealth()
+  healthTimer = window.setInterval(refreshHealth, 30_000)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleSearchShortcut)
+  window.removeEventListener('online', refreshHealth)
+  window.removeEventListener('offline', handleOffline)
+  if (healthTimer !== null) {
+    window.clearInterval(healthTimer)
+  }
+})
 </script>
