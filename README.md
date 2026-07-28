@@ -687,6 +687,8 @@ DELETE /api/flows/{id}
 
 创建 Flow 时可选传入 `sourceFlowId`，并可同时传入 `sourceFlowVersionId`。服务端会验证修订真实属于来源 Flow，并固化来源标题和版本号；后续编辑不会改变这条来源关系。
 
+Prompt / Flow 更新、收藏、恢复或删除不存在的资产时返回 `404 Not Found`；请求内容不合法时返回 `400 Bad Request`。只有真实 AI Provider 调用或响应处理失败才使用 `502 Bad Gateway`。
+
 ## Validation
 
 Frontend:

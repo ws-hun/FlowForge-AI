@@ -53,7 +53,7 @@ public class WorkflowService {
     @Transactional
     public FlowResponse updateFlow(UUID id, FlowRequest request) {
         Workflow workflow = workflowRepository.findById(id)
-                .orElseThrow(() -> new IllegalStateException("Flow not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Flow not found"));
         saveVersionSnapshot(workflow);
         applyRequest(workflow, request);
         return toResponse(workflowRepository.saveAndFlush(workflow));
@@ -61,6 +61,9 @@ public class WorkflowService {
 
     @Transactional
     public void deleteFlow(UUID id) {
+        if (!workflowRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Flow not found");
+        }
         workflowVersionRepository.deleteByFlowId(id);
         workflowRepository.deleteById(id);
     }
@@ -76,10 +79,10 @@ public class WorkflowService {
     @Transactional
     public FlowResponse restoreVersion(UUID flowId, UUID versionId) {
         Workflow workflow = workflowRepository.findById(flowId)
-                .orElseThrow(() -> new IllegalStateException("Flow not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Flow not found"));
         WorkflowVersion version = workflowVersionRepository.findById(versionId)
                 .filter(item -> item.getFlowId().equals(flowId))
-                .orElseThrow(() -> new IllegalStateException("Flow version not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Flow version not found"));
 
         saveVersionSnapshot(workflow);
         workflow.setTitle(version.getTitle());
@@ -157,7 +160,7 @@ public class WorkflowService {
 
     private String cleanRequired(String value, String field) {
         if (!StringUtils.hasText(value)) {
-            throw new IllegalStateException(field + " is required");
+            throw new IllegalArgumentException(field + " is required");
         }
         return value.trim();
     }

@@ -203,6 +203,36 @@ class WorkflowServiceTest {
                 .hasMessage("Source Flow revision not found");
     }
 
+    @Test
+    void reportsMissingFlowResourcesAsNotFound() {
+        UUID flowId = UUID.randomUUID();
+        UUID versionId = UUID.randomUUID();
+        when(workflowRepository.findById(flowId)).thenReturn(Optional.empty());
+        when(workflowRepository.existsById(flowId)).thenReturn(false);
+
+        assertThatThrownBy(() -> workflowService.updateFlow(flowId, request("Flow", "Goal", "Input")))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Flow not found");
+        assertThatThrownBy(() -> workflowService.restoreVersion(flowId, versionId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Flow not found");
+        assertThatThrownBy(() -> workflowService.deleteFlow(flowId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Flow not found");
+    }
+
+    @Test
+    void reportsAMissingFlowVersionAsNotFound() {
+        Workflow flow = flow("Current flow", "Current goal", "Current input");
+        UUID versionId = UUID.randomUUID();
+        when(workflowRepository.findById(flow.getId())).thenReturn(Optional.of(flow));
+        when(workflowVersionRepository.findById(versionId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> workflowService.restoreVersion(flow.getId(), versionId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Flow version not found");
+    }
+
     private Workflow flow(String title, String description, String input) {
         LocalDateTime now = LocalDateTime.now();
         return Workflow.builder()

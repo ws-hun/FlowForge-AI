@@ -8,6 +8,7 @@ import com.flowforge.ai.entity.Prompt;
 import com.flowforge.ai.entity.PromptVersion;
 import com.flowforge.ai.entity.Task;
 import com.flowforge.ai.entity.Workflow;
+import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.repository.PromptRepository;
 import com.flowforge.ai.repository.PromptVersionRepository;
 import com.flowforge.ai.repository.TaskRepository;
@@ -208,6 +209,40 @@ class PromptServiceTest {
         assertThat(response.title()).isEqualTo("Refined title");
         assertThat(response.sourceTaskId()).isEqualTo(sourceTaskId);
         assertThat(response.sourceTaskSummary()).isEqualTo("Original run");
+    }
+
+    @Test
+    void reportsMissingPromptResourcesAsNotFound() {
+        UUID promptId = UUID.randomUUID();
+        UUID versionId = UUID.randomUUID();
+        when(promptRepository.findById(promptId)).thenReturn(Optional.empty());
+        when(promptRepository.existsById(promptId)).thenReturn(false);
+
+        assertThatThrownBy(() -> promptService.updatePrompt(promptId, request(null, null, null, null)))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Prompt not found");
+        assertThatThrownBy(() -> promptService.toggleFavorite(promptId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Prompt not found");
+        assertThatThrownBy(() -> promptService.restoreVersion(promptId, versionId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Prompt not found");
+        assertThatThrownBy(() -> promptService.deletePrompt(promptId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Prompt not found");
+    }
+
+    @Test
+    void reportsAMissingPromptVersionAsNotFound() {
+        UUID promptId = UUID.randomUUID();
+        UUID versionId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder().id(promptId).build();
+        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(promptVersionRepository.findById(versionId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> promptService.restoreVersion(promptId, versionId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Prompt version not found");
     }
 
     private PromptRequest request(UUID sourceTaskId, UUID sourcePromptId, UUID sourceFlowId, String sourceNodeId) {

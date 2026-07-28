@@ -68,7 +68,7 @@ public class PromptService {
     @Transactional
     public PromptResponse updatePrompt(UUID id, PromptRequest request) {
         Prompt prompt = promptRepository.findById(id)
-                .orElseThrow(() -> new IllegalStateException("Prompt not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
         saveVersionSnapshot(prompt);
         applyRequest(prompt, request);
         return toResponse(prompt);
@@ -77,13 +77,16 @@ public class PromptService {
     @Transactional
     public PromptResponse toggleFavorite(UUID id) {
         Prompt prompt = promptRepository.findById(id)
-                .orElseThrow(() -> new IllegalStateException("Prompt not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
         prompt.setFavorite(!prompt.isFavorite());
         return toResponse(prompt);
     }
 
     @Transactional
     public void deletePrompt(UUID id) {
+        if (!promptRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Prompt not found");
+        }
         promptVersionRepository.deleteByPromptId(id);
         promptRepository.deleteById(id);
     }
@@ -99,10 +102,10 @@ public class PromptService {
     @Transactional
     public PromptResponse restoreVersion(UUID promptId, UUID versionId) {
         Prompt prompt = promptRepository.findById(promptId)
-                .orElseThrow(() -> new IllegalStateException("Prompt not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
         PromptVersion version = promptVersionRepository.findById(versionId)
                 .filter(item -> item.getPromptId().equals(promptId))
-                .orElseThrow(() -> new IllegalStateException("Prompt version not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt version not found"));
 
         saveVersionSnapshot(prompt);
         prompt.setTitle(version.getTitle());
@@ -239,7 +242,7 @@ public class PromptService {
 
     private String cleanRequired(String value, String field) {
         if (!StringUtils.hasText(value)) {
-            throw new IllegalStateException(field + " is required");
+            throw new IllegalArgumentException(field + " is required");
         }
         return value.trim();
     }
