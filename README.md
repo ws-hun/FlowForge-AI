@@ -375,6 +375,7 @@ Controller -> Service -> Repository -> Entity
 | `AiApiKeyService` | Provider Key 管理 |
 | `PromptService` | Prompt 资产、收藏、版本 |
 | `WorkflowService` | Flow 草稿和节点结构 |
+| `HealthService` | 应用与 PostgreSQL 就绪探针 |
 
 核心实体：
 
@@ -433,6 +434,8 @@ Frontend  http://localhost:5173
 Backend   http://localhost:8080
 Postgres  localhost:5432
 ```
+
+容器启动顺序使用真实健康状态：PostgreSQL 就绪后启动 Backend，`GET /api/health` 确认应用与数据库可用后再启动 Frontend。
 
 Default database:
 
@@ -535,6 +538,14 @@ FRONTEND_URL=http://localhost:5173
 AI Provider Key is managed from the Provider Vault UI and stored in PostgreSQL.
 
 ## API Overview
+
+### Health
+
+```http
+GET /api/health
+```
+
+该端点执行真实 PostgreSQL `SELECT 1`，只有应用和数据库同时就绪时返回 `status: up`。
 
 ### Task
 
