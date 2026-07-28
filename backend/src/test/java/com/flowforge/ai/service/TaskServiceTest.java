@@ -255,6 +255,7 @@ class TaskServiceTest {
         LocalDateTime createdAt = LocalDateTime.of(2026, 7, 20, 10, 15);
         UUID rerunOfTaskId = UUID.randomUUID();
         UUID continuedFromTaskId = UUID.randomUUID();
+        UUID inputVariantOfTaskId = UUID.randomUUID();
         Task task = Task.builder()
                 .id(UUID.randomUUID())
                 .input("Prepare a launch brief")
@@ -268,6 +269,7 @@ class TaskServiceTest {
                 .durationMs(2450L)
                 .rerunOfTaskId(rerunOfTaskId)
                 .continuedFromTaskId(continuedFromTaskId)
+                .inputVariantOfTaskId(inputVariantOfTaskId)
                 .createdAt(createdAt)
                 .build();
         when(taskRepository.findAll(any(Sort.class))).thenReturn(List.of(task));
@@ -283,10 +285,71 @@ class TaskServiceTest {
             assertThat(item.durationMs()).isEqualTo(2450L);
             assertThat(item.rerunOfTaskId()).isEqualTo(rerunOfTaskId);
             assertThat(item.continuedFromTaskId()).isEqualTo(continuedFromTaskId);
+            assertThat(item.inputVariantOfTaskId()).isEqualTo(inputVariantOfTaskId);
             assertThat(item.status()).isEqualTo(Task.STATUS_COMPLETED);
             assertThat(item.errorMessage()).isNull();
             assertThat(item.createdAt()).isEqualTo(createdAt);
         });
+    }
+
+    @Test
+    void runsAnEditedInputVariantWithoutClaimingTheOriginalFlowSnapshot() throws Exception {
+        UUID sourceTaskId = UUID.randomUUID();
+        UUID sourceFlowId = UUID.randomUUID();
+        FlowRunSnapshotResponse snapshot = new FlowRunSnapshotResponse(
+                sourceFlowId,
+                "Launch plan",
+                "Prepare a launch plan",
+                List.of(),
+                null,
+                null,
+                null,
+                null,
+                LocalDateTime.of(2026, 7, 21, 9, 30),
+                "Original Flow run brief",
+                Map.of()
+        );
+        String snapshotJson = new ObjectMapper().findAndRegisterModules().writeValueAsString(snapshot);
+        Task sourceTask = Task.builder()
+                .id(sourceTaskId)
+                .input("Original server-compiled Flow input")
+                .summary("Original launch plan")
+                .result("Original result")
+                .sourceFlowId(sourceFlowId)
+                .sourceFlowTitle("Launch plan")
+                .sourceFlowSnapshotJson(snapshotJson)
+                .createdAt(LocalDateTime.now().minusHours(1))
+                .build();
+        when(taskRepository.findById(sourceTaskId)).thenReturn(Optional.of(sourceTask));
+        when(openAiService.processTask("Edited standalone execution input"))
+                .thenReturn(new OpenAiTaskResult("Variant result", "Variant content", "{}"));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
+            Task task = invocation.getArgument(0);
+            task.setId(UUID.randomUUID());
+            return task;
+        });
+
+        TaskRunResponse response = taskService.runTask(new RunTaskRequest(
+                "Edited standalone execution input",
+                null,
+                null,
+                null,
+                null,
+                null,
+                sourceTaskId
+        ));
+
+        verify(openAiService).processTask("Edited standalone execution input");
+        verify(taskRepository).save(taskCaptor.capture());
+        Task inputVariant = taskCaptor.getValue();
+        assertThat(inputVariant.getInputVariantOfTaskId()).isEqualTo(sourceTaskId);
+        assertThat(inputVariant.getInput()).isEqualTo("Edited standalone execution input");
+        assertThat(inputVariant.getSourceFlowId()).isNull();
+        assertThat(inputVariant.getSourceFlowSnapshotJson()).isNull();
+        assertThat(response.inputVariantOfTaskId()).isEqualTo(sourceTaskId);
+        assertThat(response.executionInput()).isEqualTo("Edited standalone execution input");
+        assertThat(response.flowRunSnapshot()).isNull();
+        verifyNoInteractions(promptRepository, workflowRepository);
     }
 
     @Test
@@ -399,6 +462,7 @@ class TaskServiceTest {
         UUID sourceTaskId = UUID.randomUUID();
         UUID flowId = UUID.randomUUID();
         UUID continuationAncestorId = UUID.randomUUID();
+        UUID inputVariantAncestorId = UUID.randomUUID();
         LocalDateTime flowUpdatedAt = LocalDateTime.of(2026, 7, 18, 9, 30);
         FlowRunSnapshotResponse snapshot = new FlowRunSnapshotResponse(
                 flowId,
@@ -433,6 +497,7 @@ class TaskServiceTest {
                 .sourceFlowTitle("Launch decision")
                 .sourceFlowSnapshotJson(snapshotJson)
                 .continuedFromTaskId(continuationAncestorId)
+                .inputVariantOfTaskId(inputVariantAncestorId)
                 .createdAt(LocalDateTime.now().minusDays(1))
                 .build();
         when(taskRepository.findById(sourceTaskId)).thenReturn(Optional.of(sourceTask));
@@ -465,11 +530,13 @@ class TaskServiceTest {
         assertThat(rerun.getSourceFlowSnapshotJson()).contains("Keep the first release focused.");
         assertThat(rerun.getRerunOfTaskId()).isEqualTo(sourceTaskId);
         assertThat(rerun.getContinuedFromTaskId()).isEqualTo(continuationAncestorId);
+        assertThat(rerun.getInputVariantOfTaskId()).isEqualTo(inputVariantAncestorId);
         assertThat(rerun.getProvider()).isEqualTo("openai");
         assertThat(rerun.getModel()).isEqualTo("gpt-4.1");
         assertThat(response.executionInput()).isEqualTo(sourceTask.getInput());
         assertThat(response.rerunOfTaskId()).isEqualTo(sourceTaskId);
         assertThat(response.continuedFromTaskId()).isEqualTo(continuationAncestorId);
+        assertThat(response.inputVariantOfTaskId()).isEqualTo(inputVariantAncestorId);
         assertThat(response.flowRunSnapshot()).isEqualTo(snapshot);
         assertThat(response.totalTokens()).isEqualTo(750);
         verifyNoInteractions(promptRepository, workflowRepository);

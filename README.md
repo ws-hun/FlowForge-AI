@@ -117,6 +117,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Execution Preview Node Navigation | Done | 从结构化执行段直接定位对应 Flow 节点，AI Command 可通过深链返回准确编辑位置 |
 | Stage 3 | Actionable Execution Readiness | Done | 服务端预检发现缺失变量或空节点时，可直接聚焦对应 Run Brief 字段或节点 Inspector |
 | Stage 3 | Historical Execution Input Archive | Done | History 使用可读运行标题，并可在历史详情与运行对比中核对、复制精确保存的服务端输入 |
+| Stage 3 | Editable Historical Input Variants | Done | 任意固定执行输入可带入 AI Command 编辑，新运行保留来源 Task 谱系但不冒充原 Flow 快照 |
 | Future | Agents | Preview UI | 产品预留界面，暂未接入真实 Agent Runtime |
 | Future | Knowledge Base | Preview UI | 产品预留界面，暂未接入向量检索 |
 | Future | Analytics | Preview UI | 轻量洞察预留，暂未做完整数据分析系统 |
@@ -153,6 +154,7 @@ Workspace 保持一个明确的创作入口，同时为已有工作提供低噪�
 | 历史运行精确重跑 | Done |
 | 重跑来源追踪与结果对比 | Done |
 | 历史结果继续创作与来源追踪 | Done |
+| 历史执行输入创建可编辑变体 | Done |
 | 当前结果 / 任意成功历史结果直接进入下一轮 | Done |
 | 失败执行保存与恢复重跑 | Done |
 | 从 Prompt 带入任务 | Done |
@@ -178,6 +180,7 @@ History 以时间线保留每一次可追溯运行，不使用表格作为核心
 | 可读运行标题与来源类型 | Done |
 | Result URL 深链与自动聚焦 | Done |
 | 固定服务端执行输入查看 / 复制 | Done |
+| 固定执行输入带入 AI Command 创建变体 | Done |
 | Flow 运行快照与变量回看 | Done |
 | 精确重跑与来源运行对比 | Done |
 | 失败运行上下文保留与恢复 | Done |
@@ -533,7 +536,8 @@ Request:
   "flowVariableValues": {
     "audience": "产品负责人"
   },
-  "continuedFromTaskId": null
+  "continuedFromTaskId": null,
+  "inputVariantOfTaskId": null
 }
 ```
 
@@ -552,6 +556,7 @@ Response:
   "durationMs": 1840,
   "rerunOfTaskId": null,
   "continuedFromTaskId": null,
+  "inputVariantOfTaskId": null,
   "executionInput": "服务端实际发送给 AI Provider 的完整输入",
   "taskId": "a-task-uuid",
   "flowRunSnapshot": {
@@ -585,6 +590,8 @@ Response:
 `POST /api/tasks/{id}/rerun` 不会读取或重新编译当前 Flow，而是复用历史 Task 已固化的服务端执行输入、来源信息和 Flow 快照，再通过当前激活的 Provider 创建一条新运行。这样即使 Flow 后续被编辑，也能对同一份输入进行可比较执行。
 
 History 与运行对比中的“固定执行输入”直接展示 Task 保存的 `input`，不会使用当前 Flow 重新生成，因此可以核对或复制当时实际提交给 Provider 的完整文本。
+
+从固定执行输入创建变体时，AI Command 会提交编辑后的 `input` 与 `inputVariantOfTaskId`。新 Task 只保留来源运行关系，不复制原运行的 Prompt、Flow 或 `flowRunSnapshot`，避免编辑后的独立输入被错误解释为原 Flow 执行。
 
 重跑生成的新 Task 会通过 `rerunOfTaskId` 指向直接来源运行。History 会基于这条运行谱系提供双文档对比，原运行与本次重跑的 Provider、模型、Token、摘要和结果都保持可见。
 

@@ -113,6 +113,8 @@
               <ExecutionInputArchive
                 :input="task.input"
                 :title="task.flowRunSnapshot ? '固定 Flow 执行输入' : '固定执行输入'"
+                can-create-variant
+                @create-variant="createInputVariant(task)"
               />
               <section v-if="!isFailed(task)" class="history-result-reuse">
                 <div>
@@ -188,7 +190,7 @@ const historyRouteReady = ref(false)
 const comparisonOpen = ref(false)
 const comparisonSource = ref<TaskHistoryItem | null>(null)
 const comparisonTarget = ref<TaskHistoryItem | null>(null)
-const comparisonMode = ref<'rerun' | 'continuation'>('rerun')
+const comparisonMode = ref<'rerun' | 'continuation' | 'input-variant'>('rerun')
 
 onMounted(async () => {
   await workspace.bootstrap()
@@ -223,7 +225,7 @@ async function rerunHistoryTask(taskId: string) {
 }
 
 function lineageSource(task: TaskHistoryItem) {
-  const sourceTaskId = task.rerunOfTaskId || task.continuedFromTaskId
+  const sourceTaskId = task.rerunOfTaskId || task.continuedFromTaskId || task.inputVariantOfTaskId
   if (!sourceTaskId) {
     return null
   }
@@ -231,7 +233,9 @@ function lineageSource(task: TaskHistoryItem) {
 }
 
 function lineageLabel(task: TaskHistoryItem) {
-  return task.rerunOfTaskId ? '重跑自' : '继续自'
+  if (task.rerunOfTaskId) return '重跑自'
+  if (task.continuedFromTaskId) return '继续自'
+  return '输入变体自'
 }
 
 function isFailed(task: TaskHistoryItem) {
@@ -241,6 +245,7 @@ function isFailed(task: TaskHistoryItem) {
 function historyRunKind(task: TaskHistoryItem) {
   if (task.continuedFromTaskId) return 'Continuation'
   if (task.rerunOfTaskId) return 'Rerun'
+  if (task.inputVariantOfTaskId) return 'Input Variant'
   if (task.sourceFlowId) return 'Flow Run'
   if (task.sourcePromptId) return 'Prompt Run'
   return 'AI Task'
@@ -271,14 +276,16 @@ function canCompareWithSource(task: TaskHistoryItem) {
   return Boolean(sourceRun && !isFailed(sourceRun) && !isFailed(task))
 }
 
-function lineageMode(task: TaskHistoryItem): 'rerun' | 'continuation' {
-  return task.rerunOfTaskId ? 'rerun' : 'continuation'
+function lineageMode(task: TaskHistoryItem): 'rerun' | 'continuation' | 'input-variant' {
+  if (task.rerunOfTaskId) return 'rerun'
+  if (task.continuedFromTaskId) return 'continuation'
+  return 'input-variant'
 }
 
 function openComparison(
   sourceRun: TaskHistoryItem,
   targetRun: TaskHistoryItem,
-  mode: 'rerun' | 'continuation'
+  mode: 'rerun' | 'continuation' | 'input-variant'
 ) {
   comparisonSource.value = sourceRun
   comparisonTarget.value = targetRun
@@ -372,6 +379,11 @@ async function createFlowFromRun(task: TaskHistoryItem) {
   }
   ElMessage.success('已从历史 Result 创建 Flow')
   router.push({ path: '/workflows', query: { flow: flow.id } })
+}
+
+function createInputVariant(task: TaskHistoryItem) {
+  workspace.prepareTaskInputVariant(task)
+  router.push('/tasks')
 }
 
 function closeComparison() {

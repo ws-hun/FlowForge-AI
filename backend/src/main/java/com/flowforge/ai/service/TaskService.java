@@ -53,8 +53,13 @@ public class TaskService {
         Prompt sourcePrompt = resolveSourcePrompt(request);
         Workflow sourceFlow = resolveSourceFlow(request);
         Task continuedFromTask = resolveContinuedFromTask(request);
-        if (continuedFromTask != null && (sourcePrompt != null || sourceFlow != null)) {
-            throw new IllegalArgumentException("A continuation cannot also start from a Prompt or Flow");
+        Task inputVariantSourceTask = resolveInputVariantSourceTask(request);
+        int sourceCount = (sourcePrompt == null ? 0 : 1)
+                + (sourceFlow == null ? 0 : 1)
+                + (continuedFromTask == null ? 0 : 1)
+                + (inputVariantSourceTask == null ? 0 : 1);
+        if (sourceCount > 1) {
+            throw new IllegalArgumentException("A task run can only use one source");
         }
         String standaloneInput = cleanOptional(request.input());
         if (sourceFlow == null && continuedFromTask == null && !StringUtils.hasText(standaloneInput)) {
@@ -84,7 +89,8 @@ public class TaskService {
                             continuedFromTask.getSourceFlowTitle(),
                             flowRunSnapshot,
                             null,
-                            continuedFromTask.getId()
+                            continuedFromTask.getId(),
+                            null
                     )
             );
         }
@@ -101,7 +107,8 @@ public class TaskService {
                         sourceFlow == null ? null : sourceFlow.getTitle(),
                         flowRunSnapshot,
                         null,
-                        null
+                        null,
+                        inputVariantSourceTask == null ? null : inputVariantSourceTask.getId()
                 )
         );
     }
@@ -121,7 +128,8 @@ public class TaskService {
                         sourceTask.getSourceFlowTitle(),
                         flowRunSnapshot,
                         sourceTask.getId(),
-                        sourceTask.getContinuedFromTaskId()
+                        sourceTask.getContinuedFromTaskId(),
+                        sourceTask.getInputVariantOfTaskId()
                 )
         );
     }
@@ -163,6 +171,7 @@ public class TaskService {
                 durationMs,
                 source.rerunOfTaskId(),
                 source.continuedFromTaskId(),
+                source.inputVariantOfTaskId(),
                 executionInput,
                 savedTask.getId(),
                 source.flowRunSnapshot()
@@ -205,6 +214,7 @@ public class TaskService {
                 .input(executionInput)
                 .rerunOfTaskId(source.rerunOfTaskId())
                 .continuedFromTaskId(source.continuedFromTaskId())
+                .inputVariantOfTaskId(source.inputVariantOfTaskId())
                 .sourcePromptId(source.promptId())
                 .sourcePromptTitle(source.promptTitle())
                 .sourceFlowId(source.flowId())
@@ -286,6 +296,14 @@ public class TaskService {
         }
         return taskRepository.findById(request.continuedFromTaskId())
                 .orElseThrow(() -> new ResourceNotFoundException("Continuation source task not found"));
+    }
+
+    private Task resolveInputVariantSourceTask(RunTaskRequest request) {
+        if (request.inputVariantOfTaskId() == null) {
+            return null;
+        }
+        return taskRepository.findById(request.inputVariantOfTaskId())
+                .orElseThrow(() -> new ResourceNotFoundException("Input variant source task not found"));
     }
 
     private FlowRunSnapshotResponse createFlowRunSnapshot(
@@ -551,6 +569,7 @@ public class TaskService {
                 task.getDurationMs(),
                 task.getRerunOfTaskId(),
                 task.getContinuedFromTaskId(),
+                task.getInputVariantOfTaskId(),
                 StringUtils.hasText(task.getStatus()) ? task.getStatus() : Task.STATUS_COMPLETED,
                 task.getErrorMessage(),
                 task.getSourcePromptId(),
@@ -569,7 +588,8 @@ public class TaskService {
             String flowTitle,
             FlowRunSnapshotResponse flowRunSnapshot,
             UUID rerunOfTaskId,
-            UUID continuedFromTaskId
+            UUID continuedFromTaskId,
+            UUID inputVariantOfTaskId
     ) {
     }
 

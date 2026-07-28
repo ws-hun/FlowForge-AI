@@ -72,6 +72,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const taskSourceFlowVariableValues = ref<Record<string, string>>({})
   const taskSourceRunId = ref<string | null>(null)
   const taskSourceRunSummary = ref('')
+  const taskInputVariantOfTaskId = ref<string | null>(null)
+  const taskInputVariantSourceTitle = ref('')
   const pendingFlowRunSeed = ref<FlowRunSeed | null>(null)
   const flowRunDrafts = ref<Record<string, FlowRunDraft>>(readFlowRunDrafts())
   const running = ref(false)
@@ -139,14 +141,15 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
     running.value = true
     try {
-      const { data } = await runTask(
+      const { data } = await runTask({
         input,
-        taskSourcePromptId.value,
-        taskSourceFlowId.value,
-        isFlowRun ? input : undefined,
-        taskSourceFlowVariableValues.value,
-        taskSourceRunId.value
-      )
+        promptId: taskSourcePromptId.value,
+        flowId: taskSourceFlowId.value,
+        flowRunContext: isFlowRun ? input : undefined,
+        flowVariableValues: taskSourceFlowVariableValues.value,
+        continuedFromTaskId: taskSourceRunId.value,
+        inputVariantOfTaskId: taskInputVariantOfTaskId.value
+      })
       latestResult.value = data
       latestTaskInput.value = data.executionInput
       latestTaskPrompt.value = null
@@ -202,6 +205,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     taskSourceFlowVariableValues.value = { ...(sourceFlow?.variableValues || {}) }
     taskSourceRunId.value = null
     taskSourceRunSummary.value = ''
+    taskInputVariantOfTaskId.value = null
+    taskInputVariantSourceTitle.value = ''
   }
 
   function prepareTaskContinuation(sourceRun: TaskHistoryItem) {
@@ -214,6 +219,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     taskSourceFlowVariableValues.value = {}
     taskSourceRunId.value = sourceRun.id
     taskSourceRunSummary.value = sourceRun.summary
+    taskInputVariantOfTaskId.value = null
+    taskInputVariantSourceTitle.value = ''
     latestResult.value = {
       summary: sourceRun.summary,
       result: sourceRun.result,
@@ -226,11 +233,30 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       durationMs: sourceRun.durationMs,
       rerunOfTaskId: sourceRun.rerunOfTaskId,
       continuedFromTaskId: sourceRun.continuedFromTaskId,
+      inputVariantOfTaskId: sourceRun.inputVariantOfTaskId,
       executionInput: sourceRun.input,
       taskId: sourceRun.id,
       flowRunSnapshot: sourceRun.flowRunSnapshot || null
     }
     latestTaskInput.value = sourceRun.input
+    latestTaskPrompt.value = null
+  }
+
+  function prepareTaskInputVariant(sourceRun: TaskHistoryItem) {
+    saveTaskSourceFlowRunDraft()
+    taskInput.value = sourceRun.input
+    taskSourcePromptId.value = null
+    taskSourcePromptTitle.value = ''
+    taskSourceFlowId.value = null
+    taskSourceFlowTitle.value = ''
+    taskSourceFlowVariableValues.value = {}
+    taskSourceRunId.value = null
+    taskSourceRunSummary.value = ''
+    taskInputVariantOfTaskId.value = sourceRun.id
+    taskInputVariantSourceTitle.value =
+      sourceRun.sourceFlowTitle || sourceRun.sourcePromptTitle || sourceRun.summary || 'Historical input'
+    latestResult.value = null
+    latestTaskInput.value = ''
     latestTaskPrompt.value = null
   }
 
@@ -260,6 +286,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     taskSourceFlowVariableValues.value = {}
     taskSourceRunId.value = null
     taskSourceRunSummary.value = ''
+    taskInputVariantOfTaskId.value = null
+    taskInputVariantSourceTitle.value = ''
   }
 
   function saveTaskSourceFlowRunDraft() {
@@ -879,14 +907,12 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
     running.value = true
     try {
-      const { data } = await runTask(
-        runtimeContext.trim(),
-        null,
-        activeFlow.value.id,
-        runtimeContext.trim(),
-        variableValues,
-        null
-      )
+      const { data } = await runTask({
+        input: runtimeContext.trim(),
+        flowId: activeFlow.value.id,
+        flowRunContext: runtimeContext.trim(),
+        flowVariableValues: variableValues
+      })
       latestResult.value = data
       ElMessage.success('Flow 执行完成')
       await loadTasks()
@@ -998,6 +1024,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     taskSourceFlowVariableValues,
     taskSourceRunId,
     taskSourceRunSummary,
+    taskInputVariantOfTaskId,
+    taskInputVariantSourceTitle,
     running,
     historyLoading,
     settingsLoading,
@@ -1047,6 +1075,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     createFlowFromHistoricalResult,
     prepareTask,
     prepareTaskContinuation,
+    prepareTaskInputVariant,
     prepareLatestResultContinuation,
     clearTaskSource,
     saveTaskSourceFlowRunDraft,

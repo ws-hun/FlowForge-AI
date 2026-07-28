@@ -60,6 +60,9 @@ public class Task {
     @Column(name = "continued_from_task_id")
     private UUID continuedFromTaskId;
 
+    @Column(name = "input_variant_of_task_id")
+    private UUID inputVariantOfTaskId;
+
     @Column(length = 20)
     private String status;
 

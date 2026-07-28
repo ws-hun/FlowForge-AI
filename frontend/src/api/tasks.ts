@@ -1,25 +1,17 @@
 import http from './client'
 import type {
   ApiKeyConfig,
+  RunTaskPayload,
   SaveApiKeyPayload,
   TaskHistoryItem,
   TaskRunResponse
 } from '@/types'
 
-export function runTask(
-  input: string,
-  promptId?: string | null,
-  flowId?: string | null,
-  flowRunContext?: string,
-  flowVariableValues?: Record<string, string>,
-  continuedFromTaskId?: string | null
-) {
+export function runTask(payload: RunTaskPayload) {
+  const { flowRunContext, flowVariableValues, ...request } = payload
   return http.post<TaskRunResponse>('/api/tasks/run', {
-    input,
-    promptId,
-    flowId,
-    continuedFromTaskId,
-    ...(flowId
+    ...request,
+    ...(payload.flowId
       ? {
           flowRunContext: flowRunContext || '',
           flowVariableValues: flowVariableValues || {}

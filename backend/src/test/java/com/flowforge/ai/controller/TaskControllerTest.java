@@ -46,6 +46,7 @@ class TaskControllerTest {
                         1250L,
                         null,
                         sourceTaskId,
+                        null,
                         "Server-compiled continuation input",
                         newTaskId,
                         null
@@ -70,6 +71,47 @@ class TaskControllerTest {
     }
 
     @Test
+    void startsAnEditableInputVariantFromAStoredTask() throws Exception {
+        UUID sourceTaskId = UUID.randomUUID();
+        UUID newTaskId = UUID.randomUUID();
+        when(taskService.runTask(argThat(request -> sourceTaskId.equals(request.inputVariantOfTaskId()))))
+                .thenReturn(new TaskRunResponse(
+                        "Variant result",
+                        "Variant content",
+                        "{}",
+                        "openai",
+                        "gpt-4.1",
+                        420,
+                        210,
+                        630,
+                        1040L,
+                        null,
+                        null,
+                        sourceTaskId,
+                        "Edited historical execution input",
+                        newTaskId,
+                        null
+                ));
+
+        mockMvc.perform(post("/api/tasks/run")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "input": "Edited historical execution input",
+                                  "inputVariantOfTaskId": "%s"
+                                }
+                                """.formatted(sourceTaskId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.inputVariantOfTaskId").value(sourceTaskId.toString()))
+                .andExpect(jsonPath("$.executionInput").value("Edited historical execution input"));
+
+        verify(taskService).runTask(argThat(request ->
+                request.input().equals("Edited historical execution input")
+                        && sourceTaskId.equals(request.inputVariantOfTaskId())
+        ));
+    }
+
+    @Test
     void rerunsAStoredTaskThroughTheRestEndpoint() throws Exception {
         UUID sourceTaskId = UUID.randomUUID();
         UUID newTaskId = UUID.randomUUID();
@@ -84,6 +126,7 @@ class TaskControllerTest {
                 600,
                 980L,
                 sourceTaskId,
+                null,
                 null,
                 "Exact stored execution input",
                 newTaskId,

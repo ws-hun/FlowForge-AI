@@ -14,6 +14,7 @@ public record TaskRunResponse(
         Long durationMs,
         UUID rerunOfTaskId,
         UUID continuedFromTaskId,
+        UUID inputVariantOfTaskId,
         String executionInput,
         UUID taskId,
         FlowRunSnapshotResponse flowRunSnapshot

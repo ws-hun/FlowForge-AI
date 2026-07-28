@@ -90,7 +90,7 @@ const props = withDefaults(defineProps<{
   open: boolean
   sourceRun: TaskHistoryItem | null
   targetRun: TaskHistoryItem | null
-  mode?: 'rerun' | 'continuation'
+  mode?: 'rerun' | 'continuation' | 'input-variant'
 }>(), {
   mode: 'rerun'
 })
@@ -100,7 +100,11 @@ const emit = defineEmits<{
   continue: [run: TaskHistoryItem]
 }>()
 
-const targetLabel = computed(() => (props.mode === 'continuation' ? '继续结果' : '本次重跑'))
+const targetLabel = computed(() => {
+  if (props.mode === 'continuation') return '继续结果'
+  if (props.mode === 'input-variant') return '输入变体'
+  return '本次重跑'
+})
 
 function handleOpenChange(value: boolean) {
   if (!value) {

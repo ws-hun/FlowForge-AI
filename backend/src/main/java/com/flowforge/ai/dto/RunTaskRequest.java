@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public record RunTaskRequest(
-        @Size(max = 8000, message = "input must be less than 8000 characters")
+        @Size(max = 50000, message = "input must be less than 50000 characters")
         String input,
         UUID promptId,
         UUID flowId,
@@ -14,7 +14,8 @@ public record RunTaskRequest(
         String flowRunContext,
         @Size(max = 50, message = "flow variables must contain at most 50 entries")
         Map<String, String> flowVariableValues,
-        UUID continuedFromTaskId
+        UUID continuedFromTaskId,
+        UUID inputVariantOfTaskId
 ) {
 
     public RunTaskRequest(
@@ -24,6 +25,17 @@ public record RunTaskRequest(
             String flowRunContext,
             Map<String, String> flowVariableValues
     ) {
-        this(input, promptId, flowId, flowRunContext, flowVariableValues, null);
+        this(input, promptId, flowId, flowRunContext, flowVariableValues, null, null);
+    }
+
+    public RunTaskRequest(
+            String input,
+            UUID promptId,
+            UUID flowId,
+            String flowRunContext,
+            Map<String, String> flowVariableValues,
+            UUID continuedFromTaskId
+    ) {
+        this(input, promptId, flowId, flowRunContext, flowVariableValues, continuedFromTaskId, null);
     }
 }

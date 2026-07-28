@@ -111,6 +111,7 @@ Current Stage 3 capabilities:
 - Every node-backed execution section can reopen its exact Flow node from Flow Space or AI Command, keeping inspection connected to editing.
 - Preview readiness issues are actionable: missing variables focus their Run Brief field and incomplete nodes reopen their exact Inspector context.
 - History uses readable run titles while preserving the exact stored server input for inspection, copying, failed-run recovery, and run comparison.
+- Any historical server input can branch into an editable AI Command variant with explicit run lineage and without inheriting a stale Flow snapshot.
 
 Current Stage 3 priorities:
 

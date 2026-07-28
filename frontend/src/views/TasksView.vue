@@ -62,7 +62,12 @@
             <button v-if="workspace.taskSourceFlowId" type="button" class="ghost-button" @click="returnToFlow()">
               回到 Flow
             </button>
-            <button v-else-if="workspace.taskSourceRunId" type="button" class="ghost-button" @click="returnToHistory">
+            <button
+              v-else-if="workspace.taskSourceRunId || workspace.taskInputVariantOfTaskId"
+              type="button"
+              class="ghost-button"
+              @click="returnToHistory"
+            >
               查看 History
             </button>
             <button v-else type="button" class="ghost-button" @click="openPromptLibrary">
@@ -170,7 +175,12 @@ const router = useRouter()
 const workspace = useWorkspaceStore()
 const providerReadyToRun = computed(() => Boolean(workspace.activeProvider))
 const hasTaskSource = computed(() =>
-  Boolean(workspace.taskSourceFlowTitle || workspace.taskSourcePromptTitle || workspace.taskSourceRunId)
+  Boolean(
+    workspace.taskSourceFlowTitle ||
+      workspace.taskSourcePromptTitle ||
+      workspace.taskSourceRunId ||
+      workspace.taskInputVariantOfTaskId
+  )
 )
 const taskSourceFlow = computed(() =>
   workspace.taskSourceFlowId
@@ -180,10 +190,15 @@ const taskSourceFlow = computed(() =>
 const sourceLabel = computed(() => {
   if (workspace.taskSourceFlowTitle) return 'Flow context'
   if (workspace.taskSourceRunId) return 'Historical result'
+  if (workspace.taskInputVariantOfTaskId) return 'Historical input'
   return 'Prompt context'
 })
 const sourceTitle = computed(
-  () => workspace.taskSourceFlowTitle || workspace.taskSourceRunSummary || workspace.taskSourcePromptTitle
+  () =>
+    workspace.taskSourceFlowTitle ||
+    workspace.taskSourceRunSummary ||
+    workspace.taskInputVariantSourceTitle ||
+    workspace.taskSourcePromptTitle
 )
 const taskInputPlaceholder = computed(() => {
   if (workspace.taskSourceFlowId) {
@@ -191,6 +206,9 @@ const taskInputPlaceholder = computed(() => {
   }
   if (workspace.taskSourceRunId) {
     return '描述下一步要如何修改、深化或转化这个结果...'
+  }
+  if (workspace.taskInputVariantOfTaskId) {
+    return '调整这份固定执行输入，然后创建一个独立变体...'
   }
   return '描述你希望 AI 完成的任务...'
 })
@@ -200,6 +218,9 @@ const sourceDescription = computed(() => {
   }
   if (workspace.taskSourceRunId) {
     return '后端会读取已保存的完整结果，并将这里的新方向编译为下一次可追溯执行。'
+  }
+  if (workspace.taskInputVariantOfTaskId) {
+    return '独立输入变体 · 保留来源运行 · 不继承原 Flow 快照'
   }
   return '这次执行会保留与原 Prompt 的关联，方便把有效工作方式沉淀为资产。'
 })
@@ -244,7 +265,7 @@ function openPromptLibrary() {
 }
 
 function returnToHistory() {
-  const runId = workspace.taskSourceRunId
+  const runId = workspace.taskSourceRunId || workspace.taskInputVariantOfTaskId
   router.push(runId ? { path: '/history', query: { run: runId } } : '/history')
 }
 

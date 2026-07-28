@@ -16,6 +16,7 @@ public record TaskHistoryResponse(
         Long durationMs,
         UUID rerunOfTaskId,
         UUID continuedFromTaskId,
+        UUID inputVariantOfTaskId,
         String status,
         String errorMessage,
         UUID sourcePromptId,

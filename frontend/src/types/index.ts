@@ -1,5 +1,15 @@
 export type Provider = 'deepseek' | 'openai'
 
+export interface RunTaskPayload {
+  input: string
+  promptId?: string | null
+  flowId?: string | null
+  flowRunContext?: string
+  flowVariableValues?: Record<string, string>
+  continuedFromTaskId?: string | null
+  inputVariantOfTaskId?: string | null
+}
+
 export interface TaskRunResponse {
   summary: string
   result: string
@@ -12,6 +22,7 @@ export interface TaskRunResponse {
   durationMs?: number | null
   rerunOfTaskId?: string | null
   continuedFromTaskId?: string | null
+  inputVariantOfTaskId?: string | null
   executionInput: string
   taskId?: string | null
   flowRunSnapshot?: FlowRunSnapshot | null
@@ -30,6 +41,7 @@ export interface TaskHistoryItem {
   durationMs?: number | null
   rerunOfTaskId?: string | null
   continuedFromTaskId?: string | null
+  inputVariantOfTaskId?: string | null
   status?: 'completed' | 'failed' | null
   errorMessage?: string | null
   sourcePromptId?: string | null

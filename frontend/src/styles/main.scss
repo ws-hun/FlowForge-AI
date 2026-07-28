@@ -815,6 +815,13 @@ a {
   }
 }
 
+.execution-input-archive-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
 .execution-input-archive-action-icon {
   width: 13px;
   height: 13px;
@@ -4215,6 +4222,16 @@ a {
   }
 
   .history-run-meta {
+    justify-content: flex-start;
+  }
+
+  .execution-input-archive-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 12px 14px;
+  }
+
+  .execution-input-archive-actions {
     justify-content: flex-start;
   }
 
