@@ -98,6 +98,7 @@ Current Stage 3 capabilities:
 - Flow run snapshots preserve derived Flow lineage so historical results remain explainable after further editing.
 - Failed Provider executions preserve their context and remain recoverable from History.
 - Workspace continuation paths reopen the active Flow, continue the latest successful Result, and deep-link into recent Prompt assets without turning the home screen into a dashboard.
+- Global creation search provides one calm entry point for AI Command, Flow Space, Prompt assets, and immutable Results without introducing dense navigation.
 - Flow asset deep links restore a specific saved Flow from Workspace, Task, Prompt, History, revision, and snapshot reuse paths while preserving unsaved-edit protection.
 - Prompt asset deep links keep Library cards, source Prompt navigation, AI Command return paths, revision branches, Drawer state, and browser history aligned to one saved Prompt.
 - Result deep links restore and focus one immutable run from AI Command, Prompt, Flow, lineage, and History while keeping source Prompt and Flow assets reachable.
