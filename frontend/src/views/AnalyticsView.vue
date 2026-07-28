@@ -1,30 +1,17 @@
 <template>
-  <section>
-    <header class="quiet-header">
-      <p class="page-kicker">洞察</p>
-      <h1>安静地理解你的 AI 工作。</h1>
-      <p>用轻量洞察理解工作流质量、Provider 状态和下一步创作方向。</p>
-    </header>
-
-    <div class="quiet-list">
-      <article class="soft-card quiet-row">
-        <strong>最近任务</strong>
-        <span>{{ workspace.tasks.length }} 条执行记录</span>
-      </article>
-      <article class="soft-card quiet-row">
-        <strong>当前 Provider</strong>
-        <span>{{ workspace.activeProvider?.provider || '尚未配置' }}</span>
-      </article>
-      <article class="soft-card quiet-row">
-        <strong>建议</strong>
-        <span>先沉淀高频 Prompt，再将它们编排为 Flow。</span>
-      </article>
-    </div>
-  </section>
+  <FutureWorkspaceBoundary
+    kicker="Insights"
+    title="先保留可解释运行，再形成洞察。"
+    description="独立 Analytics Workspace 尚未接入。当前版本优先保证每次执行的输入、来源、结果和节点轨迹可信。"
+    next-step-title="从真实运行历史开始"
+    next-step-description="History 已支持搜索、来源范围、失败恢复、结果对比和不可变 Flow Run Trace。"
+    primary-label="打开 History"
+    primary-to="/history"
+    secondary-label="继续创建 Flow"
+    secondary-to="/workflows"
+  />
 </template>
 
 <script setup lang="ts">
-import { useWorkspaceStore } from '@/stores/workspace'
-
-const workspace = useWorkspaceStore()
+import FutureWorkspaceBoundary from '@/components/workspace/FutureWorkspaceBoundary.vue'
 </script>

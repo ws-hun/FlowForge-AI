@@ -1,20 +1,17 @@
 <template>
-  <section>
-    <header class="quiet-header">
-      <p class="page-kicker">知识库</p>
-      <h1>让工作流拥有上下文。</h1>
-      <p>知识库用于承载文档、规则和团队语境。当前版本保留轻量结构。</p>
-    </header>
-
-    <div class="quiet-list">
-      <article v-for="source in sources" :key="source" class="soft-card quiet-row">
-        <strong>{{ source }}</strong>
-        <span>已准备同步，未来可接入检索和向量化状态。</span>
-      </article>
-    </div>
-  </section>
+  <FutureWorkspaceBoundary
+    kicker="Knowledge"
+    title="上下文必须真实进入执行。"
+    description="独立 Knowledge Runtime 尚未接入。当前版本不会把静态文档名称伪装成已经索引的知识来源。"
+    next-step-title="先使用 Flow Context"
+    next-step-description="在 Flow 中添加 Context 节点，把背景、规则和已有材料固定到服务端执行输入。"
+    primary-label="为 Flow 添加 Context"
+    primary-to="/workflows"
+    secondary-label="打开 Prompt Library"
+    secondary-to="/prompts"
+  />
 </template>
 
 <script setup lang="ts">
-const sources = ['产品需求文档', 'API 设计规范', '团队知识库', '研发周报']
+import FutureWorkspaceBoundary from '@/components/workspace/FutureWorkspaceBoundary.vue'
 </script>

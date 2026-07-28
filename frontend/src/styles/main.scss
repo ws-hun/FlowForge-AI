@@ -4951,6 +4951,61 @@ a {
   font-weight: 760;
 }
 
+.future-workspace-boundary {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.future-workspace-next-step {
+  display: grid;
+  max-width: 720px;
+  justify-items: start;
+  gap: 12px;
+  margin: 0 auto;
+  padding: 32px 0;
+  border-top: 1px solid tokens.$border;
+  border-bottom: 1px solid tokens.$border;
+
+  h2 {
+    margin: 0;
+    color: tokens.$text-primary;
+    font-size: 28px;
+  }
+
+  > p {
+    max-width: 640px;
+    margin: 0;
+    color: tokens.$text-secondary;
+    font-size: 14px;
+    line-height: 1.75;
+  }
+}
+
+.future-workspace-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: tokens.$text-muted;
+  font-family: tokens.$mono;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+
+  i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: tokens.$warning;
+  }
+}
+
+.future-workspace-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
 .el-collapse {
   border: 0;
   --el-collapse-header-bg-color: transparent;
@@ -5108,6 +5163,18 @@ a {
 
   .appearance-choice em {
     width: fit-content;
+  }
+
+  .future-workspace-next-step {
+    padding: 24px 0;
+  }
+
+  .future-workspace-actions {
+    width: 100%;
+
+    a {
+      flex: 1;
+    }
   }
 
   .history-run-meta {
