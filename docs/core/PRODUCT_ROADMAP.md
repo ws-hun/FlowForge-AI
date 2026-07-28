@@ -104,6 +104,7 @@ Current Stage 3 capabilities:
 - Route-level code splitting and scoped Element Plus registration keep the calm workspace shell lightweight while loading complex creation surfaces only when opened.
 - Provider Vault protects destructive actions with explicit confirmation, preserves unsaved key input when a save request fails, and returns client-correct `400` / `404` errors for invalid or missing configurations.
 - Prompt and Flow mutation endpoints preserve REST semantics by separating missing assets (`404`) and invalid input (`400`) from actual Provider gateway failures (`502`).
+- Global error handling isolates `AiExecutionException` as `502`, reports internal state failures as non-leaking `500` responses, and keeps missing Task execution sources on `404`.
 - Flow asset deep links restore a specific saved Flow from Workspace, Task, Prompt, History, revision, and snapshot reuse paths while preserving unsaved-edit protection.
 - Prompt asset deep links keep Library cards, source Prompt navigation, AI Command return paths, revision branches, Drawer state, and browser history aligned to one saved Prompt.
 - Result deep links restore and focus one immutable run from AI Command, Prompt, Flow, lineage, and History while keeping source Prompt and Flow assets reachable.

@@ -1,6 +1,7 @@
 package com.flowforge.ai.controller;
 
 import com.flowforge.ai.dto.TaskRunResponse;
+import com.flowforge.ai.exception.AiExecutionException;
 import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.service.TaskService;
 import org.junit.jupiter.api.Test;
@@ -13,6 +14,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -157,5 +161,35 @@ class TaskControllerTest {
         mockMvc.perform(post("/api/tasks/{id}/rerun", taskId))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Task run not found"));
+    }
+
+    @Test
+    void separatesProviderFailuresFromInternalApplicationFailures() throws Exception {
+        doThrow(new AiExecutionException(
+                "deepseek",
+                "deepseek-chat",
+                "AI API error: provider unavailable",
+                new IllegalStateException("provider unavailable")
+        )).when(taskService).runTask(any());
+
+        mockMvc.perform(post("/api/tasks/run")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "input": "Generate a release brief" }
+                                """))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.message").value("AI API error: provider unavailable"));
+
+        reset(taskService);
+        doThrow(new IllegalStateException("database payload is corrupt"))
+                .when(taskService).runTask(any());
+
+        mockMvc.perform(post("/api/tasks/run")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "input": "Generate another release brief" }
+                                """))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").value("Internal server error"));
     }
 }

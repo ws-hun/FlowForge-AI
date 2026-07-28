@@ -959,7 +959,7 @@ class TaskServiceTest {
                 flowId,
                 new FlowExecutionPreviewRequest(null, Map.of())
         ))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Flow not found");
 
         verifyNoInteractions(openAiService, taskRepository);

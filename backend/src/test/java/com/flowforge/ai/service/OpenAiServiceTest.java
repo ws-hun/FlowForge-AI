@@ -89,4 +89,18 @@ class OpenAiServiceTest {
                     assertThat(error.getMessage()).isEqualTo("Unsupported AI provider: unsupported");
                 });
     }
+
+    @Test
+    void wrapsAMissingActiveProviderAsAnAiExecutionFailure() {
+        AiApiKeyService apiKeyService = mock(AiApiKeyService.class);
+        when(apiKeyService.getActiveKey()).thenThrow(new IllegalStateException("No active AI API key configured"));
+        OpenAiService service = new OpenAiService(null, apiKeyService, new ObjectMapper());
+
+        assertThatThrownBy(() -> service.processTask("Execute this task"))
+                .isInstanceOfSatisfying(AiExecutionException.class, error -> {
+                    assertThat(error.getProvider()).isNull();
+                    assertThat(error.getModel()).isNull();
+                    assertThat(error.getMessage()).isEqualTo("No active AI API key configured");
+                });
+    }
 }

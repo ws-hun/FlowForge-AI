@@ -1,6 +1,7 @@
 package com.flowforge.ai.controller;
 
 import com.flowforge.ai.dto.ErrorResponse;
+import com.flowforge.ai.exception.AiExecutionException;
 import com.flowforge.ai.exception.ResourceNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -26,10 +27,17 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(message, LocalDateTime.now());
     }
 
-    @ExceptionHandler(IllegalStateException.class)
+    @ExceptionHandler(AiExecutionException.class)
     @ResponseStatus(HttpStatus.BAD_GATEWAY)
-    public ErrorResponse handleIllegalState(IllegalStateException ex) {
+    public ErrorResponse handleAiExecution(AiExecutionException ex) {
         return new ErrorResponse(ex.getMessage(), LocalDateTime.now());
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ErrorResponse handleIllegalState(IllegalStateException ex) {
+        log.error("Internal application state failure", ex);
+        return new ErrorResponse("Internal server error", LocalDateTime.now());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

@@ -29,8 +29,9 @@ public class OpenAiService {
     private final ObjectMapper objectMapper;
 
     public OpenAiTaskResult processTask(String input) {
-        AiApiKey activeKey = aiApiKeyService.getActiveKey();
+        AiApiKey activeKey = null;
         try {
+            activeKey = aiApiKeyService.getActiveKey();
             OpenAiTaskResult result = switch (activeKey.getProvider()) {
                 case "deepseek" -> processWithDeepSeek(input, activeKey);
                 case "openai" -> processWithOpenAi(input, activeKey);
@@ -42,7 +43,12 @@ public class OpenAiService {
             if (ex instanceof AiExecutionException executionException) {
                 throw executionException;
             }
-            throw new AiExecutionException(activeKey.getProvider(), activeKey.getModel(), ex.getMessage(), ex);
+            throw new AiExecutionException(
+                    activeKey == null ? null : activeKey.getProvider(),
+                    activeKey == null ? null : activeKey.getModel(),
+                    ex.getMessage(),
+                    ex
+            );
         }
     }
 

@@ -244,7 +244,7 @@ public class TaskService {
     @Transactional(readOnly = true)
     public FlowExecutionPreviewResponse previewFlowExecution(UUID flowId, FlowExecutionPreviewRequest request) {
         Workflow flow = workflowRepository.findById(flowId)
-                .orElseThrow(() -> new IllegalStateException("Flow not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Flow not found"));
         FlowRunSnapshotResponse flowRunSnapshot = createFlowRunSnapshot(
                 flow,
                 request.runtimeContext(),
@@ -294,7 +294,7 @@ public class TaskService {
             return null;
         }
         return promptRepository.findById(request.promptId())
-                .orElseThrow(() -> new IllegalStateException("Prompt not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
     }
 
     private Workflow resolveSourceFlow(RunTaskRequest request) {
@@ -302,7 +302,7 @@ public class TaskService {
             return null;
         }
         return workflowRepository.findById(request.flowId())
-                .orElseThrow(() -> new IllegalStateException("Flow not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Flow not found"));
     }
 
     private Task resolveContinuedFromTask(RunTaskRequest request) {
