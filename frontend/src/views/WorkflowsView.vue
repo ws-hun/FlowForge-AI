@@ -290,20 +290,31 @@
               >
                 在 History 打开
               </button>
-              <button type="button" class="secondary-button" @click="useLatestResultAsRunContext">
-                带入下一轮
-              </button>
-              <button type="button" class="ghost-button" :disabled="savingResultPrompt" @click="saveLatestResultAsPrompt">
-                {{ savingResultPrompt ? '保存中...' : '保存为 Prompt' }}
-              </button>
               <button
+                v-if="activeFlowResultFailed"
                 type="button"
-                class="ghost-button"
-                :disabled="savingResultPrompt || workspace.flowLoading"
-                @click="saveLatestResultAndAddToFlow"
+                class="secondary-button"
+                :disabled="workspace.running"
+                @click="rerunSelectedFlowRun"
               >
-                保存并加入 Flow
+                {{ workspace.running ? '重跑中...' : '使用当前 Provider 重跑' }}
               </button>
+              <template v-else>
+                <button type="button" class="secondary-button" @click="useLatestResultAsRunContext">
+                  带入下一轮
+                </button>
+                <button type="button" class="ghost-button" :disabled="savingResultPrompt" @click="saveLatestResultAsPrompt">
+                  {{ savingResultPrompt ? '保存中...' : '保存为 Prompt' }}
+                </button>
+                <button
+                  type="button"
+                  class="ghost-button"
+                  :disabled="savingResultPrompt || workspace.flowLoading"
+                  @click="saveLatestResultAndAddToFlow"
+                >
+                  保存并加入 Flow
+                </button>
+              </template>
             </div>
           </div>
           <FlowRunTrace
@@ -324,7 +335,13 @@
             @reuse-run-settings="reuseFlowRunSettings"
             @open-source-flow="openFlowSnapshotSource"
           />
+          <div v-if="activeFlowResultFailed" class="failed-run-detail flow-run-failure-detail">
+            <span class="section-kicker">Execution Error</span>
+            <strong>{{ selectedFlowRun?.errorMessage || activeFlowResult.result }}</strong>
+            <p>节点准备状态与固定执行输入已保留。使用当前 Provider 重跑会创建一条新的可比较运行，不会覆盖这次失败记录。</p>
+          </div>
           <AiResultDocument
+            v-else
             class="flow-execution-result"
             :summary="activeFlowResult.summary"
             :result="activeFlowResult.result"
@@ -699,13 +716,12 @@
               type="button"
               class="run-item"
               :class="{ active: selectedFlowRun?.id === run.id, failed: run.status === 'failed' }"
-              :disabled="run.status === 'failed'"
               @click="selectFlowRun(run)"
             >
               <time>{{ formatDate(run.createdAt) }}</time>
               <div class="run-item-heading">
                 <strong>{{ run.summary }}</strong>
-                <span v-if="run.status === 'failed'" class="error">执行失败</span>
+                <span v-if="run.status === 'failed'" class="error">执行失败 · 可检查</span>
                 <span v-else-if="run.flowRunSnapshot">已固定快照</span>
               </div>
               <span v-if="formatExecutionSource(run.provider, run.model, run.totalTokens, run.durationMs)" class="run-provenance">
@@ -976,7 +992,8 @@ const activeFlowResult = computed<TaskRunResponse | null>(() => {
       durationMs: selectedFlowRun.value.durationMs,
       executionInput: selectedFlowRun.value.input,
       taskId: selectedFlowRun.value.id,
-      flowRunSnapshot: selectedFlowRun.value.flowRunSnapshot || null
+      flowRunSnapshot: selectedFlowRun.value.flowRunSnapshot || null,
+      flowRunTrace: selectedFlowRun.value.flowRunTrace || null
     }
   }
 
@@ -984,8 +1001,10 @@ const activeFlowResult = computed<TaskRunResponse | null>(() => {
 })
 
 const activeFlowRunSnapshot = computed(() => activeFlowResult.value?.flowRunSnapshot || null)
+const activeFlowResultFailed = computed(() => selectedFlowRun.value?.status === 'failed')
 
 const flowResultHeading = computed(() => {
+  if (activeFlowResultFailed.value) return '检查失败节点并恢复执行'
   return selectedFlowRun.value ? '基于历史结果继续推进' : '基于这次结果继续推进'
 })
 
@@ -1926,10 +1945,34 @@ function selectFlowRun(run: TaskHistoryItem) {
   selectedFlowRun.value = run
   savedResultPrompt.value = null
   flowExecutionVisible.value = true
-  flowRunPhase.value = 'completed'
+  flowRunPhase.value = run.status === 'failed' ? 'error' : 'completed'
   flowRunCompletedAt.value = run.createdAt
   if (workspace.activeFlow) {
-    nodeRunStates.value = buildNodeRunStates(workspace.activeFlow.nodes, 'completed')
+    nodeRunStates.value = run.flowRunTrace
+      ? buildNodeRunStatesFromTrace(workspace.activeFlow.nodes, run)
+      : buildNodeRunStates(workspace.activeFlow.nodes, run.status === 'failed' ? 'error' : 'completed')
+  }
+}
+
+async function rerunSelectedFlowRun() {
+  const sourceRun = selectedFlowRun.value
+  const flowId = workspace.activeFlow?.id
+  if (!sourceRun || !flowId) {
+    return
+  }
+  if (!workspace.activeProvider) {
+    ElMessage.warning('请先配置并激活 AI Provider')
+    goToApiKeys()
+    return
+  }
+
+  const result = await workspace.rerunHistoricalTask(sourceRun.id)
+  await loadFlowRuns(flowId)
+  const rerun = result?.taskId
+    ? flowRuns.value.find((run) => run.id === result.taskId)
+    : flowRuns.value.find((run) => run.rerunOfTaskId === sourceRun.id)
+  if (rerun) {
+    selectFlowRun(rerun)
   }
 }
 
@@ -2239,6 +2282,14 @@ async function executeFlowNow() {
   }
 
   failFlowRun()
+  await loadFlowRuns(flowId)
+  const runStartedAt = Date.parse(flowRunStartedAt.value)
+  const failedRun = flowRuns.value.find(
+    (run) => run.status === 'failed' && Date.parse(run.createdAt) >= runStartedAt
+  )
+  if (failedRun) {
+    selectFlowRun(failedRun)
+  }
 }
 
 function nodeLabel(type: FlowNodeType) {
@@ -2336,6 +2387,23 @@ function buildNodeRunStates(nodes: FlowNode[], phase: Exclude<FlowRunPhase, 'idl
     }
 
     states[node.id] = phase === 'completed' ? 'completed' : 'idle'
+    return states
+  }, {})
+}
+
+function buildNodeRunStatesFromTrace(nodes: FlowNode[], run: TaskHistoryItem) {
+  const traceStateByNodeId = new Map(
+    (run.flowRunTrace?.nodes || []).map((node) => [node.nodeId, node.status])
+  )
+  return nodes.reduce<Record<string, FlowNodeRunState>>((states, node) => {
+    const traceState = traceStateByNodeId.get(node.id)
+    states[node.id] = traceState === 'failed'
+      ? 'error'
+      : traceState === 'completed'
+        ? 'completed'
+        : traceState === 'prepared'
+          ? 'prepared'
+          : 'idle'
     return states
   }, {})
 }

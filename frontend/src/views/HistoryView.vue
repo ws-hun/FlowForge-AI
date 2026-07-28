@@ -281,7 +281,13 @@ function compactExecutionInput(input: string) {
 
 function canCompareWithSource(task: TaskHistoryItem) {
   const sourceRun = lineageSource(task)
-  return Boolean(sourceRun && !isFailed(sourceRun) && !isFailed(task))
+  if (!sourceRun) {
+    return false
+  }
+  if (task.rerunOfTaskId) {
+    return true
+  }
+  return !isFailed(sourceRun) && !isFailed(task)
 }
 
 function lineageMode(task: TaskHistoryItem): 'rerun' | 'continuation' | 'input-variant' {

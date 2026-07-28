@@ -102,7 +102,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Exact Historical Rerun | Done | 使用历史中固化的服务端执行输入与 Flow 快照，通过当前 Provider 创建一次新的可比较运行 |
 | Stage 3 | Run Lineage & Comparison | Done | 重跑记录保留来源运行关系，并在 History 中并排比较 Provider、Token、摘要与结果 |
 | Stage 3 | Historical Result Continuation | Done | 从任意历史结果继续创作，服务端读取固定结果编译新输入并保留继续关系 |
-| Stage 3 | Failed Run Recovery | Done | Provider 调用失败时独立保存执行输入、来源、快照和错误信息，并支持从 History 精确重跑 |
+| Stage 3 | Failed Run Recovery | Done | Provider 调用失败时独立保存执行输入、来源、快照、节点轨迹和错误信息，可从 Flow Space 或 History 精确重跑并对比恢复结果 |
 | Stage 3 | Workspace Continuation Paths | Done | 首页可继续当前 Flow、最近成功 Result，并深链打开最近 Prompt，保持创作上下文连续 |
 | Stage 3 | Flow Asset Deep Links | Done | 使用 `/workflows?flow=<id>` 精确恢复目标 Flow，覆盖创建、来源返回、历史快照与运行配置复用入口 |
 | Stage 3 | Prompt Asset Deep Links | Done | 使用 `/prompts?prompt=<id>` 恢复 Prompt 详情，并同步卡片、来源、历史分支、AI Command 返回和浏览器导航 |
@@ -186,6 +186,7 @@ History 以时间线保留每一次可追溯运行，不使用表格作为核心
 | Flow 运行快照与变量回看 | Done |
 | 成功 / 失败 Flow 节点运行轨迹回看 | Done |
 | 精确重跑与来源运行对比 | Done |
+| 失败来源与恢复重跑的节点轨迹对比 | Done |
 | 失败运行上下文保留与恢复 | Done |
 | 历史 Result 继续创作 / 保存 Prompt / 创建 Flow | Done |
 
@@ -267,6 +268,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | 交付重点参与服务端预览与真实运行 | Done |
 | 真实 Flow 运行生命周期反馈（上下文准备 / 单次 AI 调用 / Output 记录） | Done |
 | 服务端持久化 Flow Run Trace（prepared / completed / failed / skipped） | Done |
+| 失败运行在 Flow Space 中检查节点状态并使用固定输入重跑 | Done |
 | Flow 执行结果展示 | Done |
 | Flow 执行历史回看 | Done |
 | Flow 历史运行深链打开完整 Result | Done |

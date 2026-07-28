@@ -28,7 +28,14 @@
           </span>
         </div>
         <ExecutionInputArchive :input="sourceRun.input" title="来源执行输入" compact />
+        <FlowRunTrace v-if="sourceRun.flowRunTrace" :trace="sourceRun.flowRunTrace" />
+        <div v-if="sourceRun.status === 'failed'" class="failed-run-detail run-comparison-failure">
+          <span class="section-kicker">Execution Error</span>
+          <strong>{{ sourceRun.errorMessage || sourceRun.result }}</strong>
+          <p>这次失败记录及其节点状态保持不变，可与后续重跑结果直接核对。</p>
+        </div>
         <AiResultDocument
+          v-else
           :summary="sourceRun.summary"
           :result="sourceRun.result"
           :provider="sourceRun.provider"
@@ -59,7 +66,14 @@
           </span>
         </div>
         <ExecutionInputArchive :input="targetRun.input" title="本次执行输入" compact />
+        <FlowRunTrace v-if="targetRun.flowRunTrace" :trace="targetRun.flowRunTrace" />
+        <div v-if="targetRun.status === 'failed'" class="failed-run-detail run-comparison-failure">
+          <span class="section-kicker">Execution Error</span>
+          <strong>{{ targetRun.errorMessage || targetRun.result }}</strong>
+          <p>重跑仍未完成，固定输入、Provider 来源和节点失败位置已经保留。</p>
+        </div>
         <AiResultDocument
+          v-else
           :summary="targetRun.summary"
           :result="targetRun.result"
           :provider="targetRun.provider"
@@ -83,6 +97,7 @@
 import { computed } from 'vue'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import ExecutionInputArchive from '@/components/ai/ExecutionInputArchive.vue'
+import FlowRunTrace from '@/components/flow/FlowRunTrace.vue'
 import { formatExecutionSource } from '@/utils/aiProvider'
 import type { TaskHistoryItem } from '@/types'
 

@@ -723,6 +723,14 @@ a {
     max-height: min(62vh, 680px);
     margin-top: 12px;
   }
+
+  .flow-run-trace {
+    margin-top: 12px;
+  }
+}
+
+.run-comparison-failure {
+  margin-top: 12px;
 }
 
 .execution-input-archive {
