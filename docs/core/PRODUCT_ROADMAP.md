@@ -135,6 +135,7 @@ Current Stage 3 capabilities:
 - History remains a calm timeline while supporting local discovery across run content, source assets, Provider metadata, Flow runs, Prompt runs, and failures.
 - Any historical server input can branch into an editable AI Command variant with explicit run lineage and without inheriting a stale Flow snapshot.
 - Flow mutations use server revisions and row-level serialization so concurrent browser sessions cannot silently overwrite a newer Flow, restore an old revision over fresh work, or delete an unseen update.
+- Pending Flow metadata and node edits are committed as one complete mutation before navigation, preview, or execution, so one user decision produces one predictable revision instead of intermediate snapshots.
 
 Current Stage 3 priorities:
 

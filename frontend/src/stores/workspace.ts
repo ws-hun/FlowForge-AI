@@ -744,18 +744,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       return null
     }
 
-    return updateActiveFlow((flow) => {
-      const targetNode = flow.nodes.find((node) => node.id === nodeId)
-      if (!targetNode) {
-        return
-      }
-
-      targetNode.title = cleanTitle
-      targetNode.description = cleanDescription
-      if (typeof patch.content === 'string') {
-        targetNode.content = patch.content.trim()
-      }
-    })
+    return updateActiveFlow((flow) => applyFlowNodePatch(flow, nodeId, cleanTitle, cleanDescription, patch.content))
   }
 
   async function syncFlowPromptNode(nodeId: string, prompt: PromptAsset) {
@@ -884,14 +873,36 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       return null
     }
 
+    return updateActiveFlow((flow) => applyFlowMetaPatch(flow, cleanTitle, cleanDescription))
+  }
+
+  async function updateFlowMetaAndNode(
+    title: string,
+    description: string,
+    nodeId: string,
+    nodePatch: Pick<FlowNode, 'title' | 'description'> & { content?: string }
+  ) {
+    const cleanTitle = title.trim()
+    const cleanDescription = description.trim()
+    const cleanNodeTitle = nodePatch.title.trim()
+    const cleanNodeDescription = nodePatch.description.trim()
+
+    if (!cleanTitle || !cleanDescription) {
+      ElMessage.warning('请补全 Flow 标题和目标')
+      return null
+    }
+    if (!cleanNodeTitle || !cleanNodeDescription) {
+      ElMessage.warning('请补全节点标题和说明')
+      return null
+    }
+    if (!activeFlow.value?.nodes.some((node) => node.id === nodeId)) {
+      ElMessage.error('当前节点已变化，请重新确认修改')
+      return null
+    }
+
     return updateActiveFlow((flow) => {
-      flow.title = cleanTitle
-      flow.description = cleanDescription
-      const intentNode = flow.nodes.find((node) => node.type === 'input')
-      if (intentNode) {
-        intentNode.content = cleanDescription
-        intentNode.description = '用户想完成的 AI 工作'
-      }
+      applyFlowMetaPatch(flow, cleanTitle, cleanDescription)
+      applyFlowNodePatch(flow, nodeId, cleanNodeTitle, cleanNodeDescription, nodePatch.content)
     })
   }
 
@@ -1182,6 +1193,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     moveFlowContextNode,
     duplicateFlowPromptNode,
     updateFlowMeta,
+    updateFlowMetaAndNode,
     deleteFlowDraft,
     restoreActiveFlowVersion,
     sendFlowToTask,
@@ -1393,6 +1405,35 @@ function toSaveFlowPayload(flow: FlowDraft): SaveFlowPayload {
     description: flow.description,
     nodes: flow.nodes,
     revision: flow.revision
+  }
+}
+
+function applyFlowMetaPatch(flow: FlowDraft, title: string, description: string) {
+  flow.title = title
+  flow.description = description
+  const intentNode = flow.nodes.find((node) => node.type === 'input')
+  if (intentNode) {
+    intentNode.content = description
+    intentNode.description = '用户想完成的 AI 工作'
+  }
+}
+
+function applyFlowNodePatch(
+  flow: FlowDraft,
+  nodeId: string,
+  title: string,
+  description: string,
+  content?: string
+) {
+  const targetNode = flow.nodes.find((node) => node.id === nodeId)
+  if (!targetNode) {
+    return
+  }
+
+  targetNode.title = title
+  targetNode.description = description
+  if (typeof content === 'string') {
+    targetNode.content = content.trim()
   }
 }
 

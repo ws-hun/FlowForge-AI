@@ -123,6 +123,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Editable Historical Input Variants | Done | 任意固定执行输入可带入 AI Command 编辑，新运行保留来源 Task 谱系但不冒充原 Flow 快照 |
 | Stage 3 | Local Workspace Preferences | Done | 工作区名称和个人显示名保存在当前浏览器，并同步到 Settings、Profile 与顶部身份入口 |
 | Stage 3 | Flow Edit Conflict Protection | Done | Flow 更新、修订恢复和删除基于服务端修订号执行，多个窗口同时创作时拒绝静默覆盖并重新载入最新状态 |
+| Stage 3 | Atomic Pending Flow Edits | Done | 切换、预览或执行前同时保存 Flow 目标与节点修改时只提交一次完整更新，避免一次创作决策产生多个中间修订 |
 | Foundation | Frontend Bundle Splitting | Done | 页面按路由懒加载，Element Plus 仅注册实际组件，入口 JS 与 CSS 不再包含整套页面和 UI 库 |
 | Future | Agents | Future Boundary | 不展示虚构 Agent 状态，用户可回到 Flow / Prompt 沉淀真实可执行资产 |
 | Future | Knowledge Base | Future Boundary | 不展示虚构索引来源，用户可先通过 Flow Context 固定真实上下文 |

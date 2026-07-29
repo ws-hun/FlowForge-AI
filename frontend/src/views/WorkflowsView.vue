@@ -1411,6 +1411,27 @@ async function persistPendingEdits() {
   const hadFlowChanges = flowMetaChanged.value
   const hadNodeChanges = nodeEditorChanged.value
   const pendingNodePatch = hadNodeChanges ? capturePendingNodeEditorPatch() : null
+  if (hadFlowChanges && hadNodeChanges && pendingNodePatch) {
+    const updatedFlow = await workspace.updateFlowMetaAndNode(
+      flowTitle.value,
+      flowDescription.value,
+      pendingNodePatch.nodeId,
+      {
+        title: nodeTitle.value,
+        description: nodeDescription.value,
+        content: nodeCanEditContent.value ? nodeContent.value : selectedNode.value?.content
+      }
+    )
+    if (!updatedFlow) {
+      return false
+    }
+    flowTitle.value = updatedFlow.title
+    flowDescription.value = updatedFlow.description
+    syncSelectedNodeEditor()
+    resetFlowRunState()
+    ElMessage.success('未保存修改已保存')
+    return true
+  }
   if (hadFlowChanges && !(await persistFlowMeta(false, pendingNodePatch))) {
     return false
   }
