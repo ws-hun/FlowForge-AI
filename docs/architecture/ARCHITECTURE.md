@@ -7,6 +7,7 @@ FlowForge is a modular AI workspace platform built with:
 - Frontend: Vue 3 + TypeScript
 - Backend: Spring Boot + Java 17
 - Database: PostgreSQL
+- Schema migrations: Flyway
 - AI Layer: OpenAI-compatible APIs
 
 ---
@@ -81,6 +82,8 @@ config/
 - Avoid over-normalization in early stage
 - Optimize for iteration speed
 - Keep schema flexible
+- Version every PostgreSQL schema change with an immutable Flyway migration
+- Keep Hibernate in validation mode; application startup must never mutate schema implicitly
 
 ---
 
