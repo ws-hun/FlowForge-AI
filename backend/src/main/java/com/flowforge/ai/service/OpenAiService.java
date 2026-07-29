@@ -181,13 +181,33 @@ public class OpenAiService {
                 throw new IllegalStateException("Failed to serialize AI response", e);
             }
         } catch (RestClientResponseException e) {
-            throw new IllegalStateException("AI API error: " + e.getResponseBodyAsString(), e);
+            throw new IllegalStateException(providerErrorMessage(e), e);
         } catch (ResourceAccessException e) {
             if (hasCause(e, HttpTimeoutException.class) || hasCause(e, SocketTimeoutException.class)) {
                 throw new IllegalStateException("AI Provider request timed out", e);
             }
             throw new IllegalStateException("AI Provider connection failed", e);
         }
+    }
+
+    private String providerErrorMessage(RestClientResponseException error) {
+        int status = error.getStatusCode().value();
+        if (status == 401 || status == 403) {
+            return "AI Provider 鉴权失败，请检查当前 API Key";
+        }
+        if (status == 408 || status == 504) {
+            return "AI Provider request timed out";
+        }
+        if (status == 429) {
+            return "AI Provider 请求频率受限，请稍后重试";
+        }
+        if (status >= 400 && status < 500) {
+            return "AI Provider 拒绝了当前请求";
+        }
+        if (status >= 500) {
+            return "AI Provider 暂时不可用";
+        }
+        return "AI Provider returned HTTP " + status;
     }
 
     private boolean hasCause(Throwable error, Class<? extends Throwable> causeType) {

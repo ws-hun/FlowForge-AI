@@ -558,6 +558,8 @@ openssl rand -base64 32
 
 Provider HTTP 连接超时默认为 `10s`，响应读取超时默认为 `120s`。可通过 `FLOWFORGE_AI_CONNECT_TIMEOUT` 和 `FLOWFORGE_AI_READ_TIMEOUT` 使用 Spring Duration 格式调整，例如 `5s`、`90s` 或 `2m`。超时和连接失败会作为可恢复的 Provider 失败保存到 History。
 
+Provider 的鉴权失败、频率限制、请求拒绝和服务不可用会转换为稳定的产品错误；原始上游错误响应体不会直接返回到浏览器或写入 History。
+
 首次升级到 Flyway 版本时，已有 Hibernate 数据库会在版本 `0` 建立基线，再执行 `V1` 兼容迁移；全新数据库会直接从 `V1` 创建。后续 schema 变更必须新增迁移文件，禁止重新启用 `ddl-auto: update`。
 
 ## API Overview

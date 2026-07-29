@@ -5,6 +5,9 @@ import com.flowforge.ai.dto.OpenAiTaskResult;
 import com.flowforge.ai.entity.AiApiKey;
 import com.flowforge.ai.exception.AiExecutionException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
@@ -17,6 +20,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 
 class OpenAiServiceTest {
 
@@ -145,6 +149,36 @@ class OpenAiServiceTest {
                     assertThat(error.getProvider()).isEqualTo("deepseek");
                     assertThat(error.getModel()).isEqualTo("deepseek-chat");
                     assertThat(error.getMessage()).isEqualTo("AI Provider connection failed");
+                });
+        server.verify();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "400,AI Provider 拒绝了当前请求",
+            "401,AI Provider 鉴权失败，请检查当前 API Key",
+            "403,AI Provider 鉴权失败，请检查当前 API Key",
+            "408,AI Provider request timed out",
+            "429,AI Provider 请求频率受限，请稍后重试",
+            "500,AI Provider 暂时不可用",
+            "503,AI Provider 暂时不可用"
+    })
+    void mapsProviderHttpFailuresWithoutExposingTheResponseBody(int status, String expectedMessage) {
+        AiApiKeyService apiKeyService = mock(AiApiKeyService.class);
+        when(apiKeyService.getActiveKey()).thenReturn(providerConfig());
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("https://api.deepseek.com/chat/completions"))
+                .andRespond(withStatus(HttpStatusCode.valueOf(status))
+                        .body("provider-internal-sensitive-body"));
+        OpenAiService service = new OpenAiService(builder.build(), apiKeyService, new ObjectMapper());
+
+        assertThatThrownBy(() -> service.processTask("Execute this task"))
+                .isInstanceOfSatisfying(AiExecutionException.class, error -> {
+                    assertThat(error.getProvider()).isEqualTo("deepseek");
+                    assertThat(error.getModel()).isEqualTo("deepseek-chat");
+                    assertThat(error.getMessage()).isEqualTo(expectedMessage);
+                    assertThat(error.getMessage()).doesNotContain("provider-internal-sensitive-body");
                 });
         server.verify();
     }
