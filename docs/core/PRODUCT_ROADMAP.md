@@ -109,6 +109,7 @@ Current Stage 3 capabilities:
 - Provider API Keys are encrypted at rest with AES-256-GCM, using a Git-ignored local key file or an injected production key while preserving legacy plaintext readability during migration.
 - PostgreSQL schema changes are versioned through Flyway while Hibernate remains in validation mode, making local and Docker upgrades deterministic without changing the workspace experience.
 - Saved Flow definitions enforce unique node identity, supported node types, and the honest single-call Input / Prompt / AI Task / Output execution shape before a revision can enter the workspace.
+- Flow execution compilation is isolated as one deterministic server module shared by preview, readiness checks, persisted traces, and the current single Provider call.
 - Prompt and Flow mutation endpoints preserve REST semantics by separating missing assets (`404`) and invalid input (`400`) from actual Provider gateway failures (`502`).
 - Global error handling isolates `AiExecutionException` as `502`, reports internal state failures as non-leaking `500` responses, and keeps missing Task execution sources on `404`.
 - Flow asset deep links restore a specific saved Flow from Workspace, Task, Prompt, History, revision, and snapshot reuse paths while preserving unsaved-edit protection.

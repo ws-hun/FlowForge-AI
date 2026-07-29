@@ -380,6 +380,7 @@ Controller -> Service -> Repository -> Entity
 | `ApiKeyCipher` | AES-256-GCM 密钥静态加密与主密钥管理 |
 | `PromptService` | Prompt 资产、收藏、版本 |
 | `WorkflowService` | Flow 草稿和节点结构 |
+| `FlowExecutionCompiler` | 将不可变 Flow 快照编译为预览与执行共享的确定性 Provider 输入 |
 | `HealthService` | 应用与 PostgreSQL 就绪探针 |
 
 数据库结构由 `backend/src/main/resources/db/migration` 下的 Flyway 迁移统一维护。Hibernate 使用 `ddl-auto: validate`，只验证实体与数据库是否一致，不会在启动时静默修改生产 schema。

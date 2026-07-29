@@ -77,7 +77,8 @@ class TaskServiceTest {
                 promptRepository,
                 workflowRepository,
                 objectMapper,
-                taskFailureRecorder
+                taskFailureRecorder,
+                new FlowExecutionCompiler()
         );
     }
 
