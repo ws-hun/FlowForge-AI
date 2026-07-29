@@ -121,6 +121,15 @@
           </div>
         </div>
 
+        <div v-if="flowConflictVisible" class="flow-conflict-note">
+          <span class="flow-run-dot warning"></span>
+          <div>
+            <strong>已载入这个 Flow 的最新版本</strong>
+            <p>另一窗口先完成了保存。仍对应当前节点的编辑文字会继续保留，请核对最新内容后再次保存。</p>
+          </div>
+          <button type="button" class="ghost-button" @click="workspace.dismissFlowConflict">知道了</button>
+        </div>
+
         <div v-if="workspace.activeFlow && !providerReadyToRun" class="flow-readiness-note">
           <span class="flow-run-dot warning"></span>
           <div>
@@ -749,7 +758,7 @@ import FlowExecutionInputPreview from '@/components/flow/FlowExecutionInputPrevi
 import FlowRunTrace from '@/components/flow/FlowRunTrace.vue'
 import { formatExecutionSource } from '@/utils/aiProvider'
 import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
-import { listFlowRuns, listFlowVersions, restoreFlowVersion } from '@/api/flows'
+import { listFlowRuns, listFlowVersions } from '@/api/flows'
 import { createPrompt, listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { compareFlowRevision } from '@/utils/flowRevisions'
@@ -961,6 +970,7 @@ const providerReadyToRun = computed(() => Boolean(workspace.activeProvider))
 const flowReadyToRun = computed(() =>
   providerReadyToRun.value && !hasIncompleteFlowNodes.value && !hasMissingFlowVariables.value
 )
+const flowConflictVisible = computed(() => workspace.flowConflictId === workspace.activeFlow?.id)
 const activeProviderLabel = computed(() => workspace.activeProvider?.model || 'Provider 未配置')
 const flowBriefItems = computed(() => {
   const nodes = workspace.activeFlow?.nodes || []
@@ -1476,8 +1486,10 @@ async function restoreFlowVersionSnapshot(version: FlowVersion) {
 
   restoringFlowVersion.value = true
   try {
-    const { data } = await restoreFlowVersion(flow.id, version.id)
-    workspace.replaceFlowDraft(data)
+    const data = await workspace.restoreActiveFlowVersion(version.id)
+    if (!data) {
+      return
+    }
     flowTitle.value = data.title
     flowDescription.value = data.description
     selectedNodeId.value = data.nodes[0]?.id || ''
@@ -1491,8 +1503,6 @@ async function restoreFlowVersionSnapshot(version: FlowVersion) {
     resetFlowRunState()
     await loadFlowVersions(data.id)
     ElMessage.success('Flow 已恢复到选中修订')
-  } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || 'Flow 修订恢复失败')
   } finally {
     restoringFlowVersion.value = false
   }

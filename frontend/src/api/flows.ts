@@ -20,8 +20,8 @@ export function updateFlow(id: string, payload: SaveFlowPayload) {
   return http.put<FlowDraft>(`/api/flows/${id}`, payload)
 }
 
-export function deleteFlow(id: string) {
-  return http.delete<void>(`/api/flows/${id}`)
+export function deleteFlow(id: string, revision: number) {
+  return http.delete<void>(`/api/flows/${id}`, { params: { revision } })
 }
 
 export function listFlowRuns(id: string) {
@@ -36,6 +36,6 @@ export function listFlowVersions(id: string) {
   return http.get<FlowVersion[]>(`/api/flows/${id}/versions`)
 }
 
-export function restoreFlowVersion(id: string, versionId: string) {
-  return http.post<FlowDraft>(`/api/flows/${id}/versions/${versionId}/restore`)
+export function restoreFlowVersion(id: string, versionId: string, revision: number) {
+  return http.post<FlowDraft>(`/api/flows/${id}/versions/${versionId}/restore`, { revision })
 }

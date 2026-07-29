@@ -1,0 +1,12 @@
+ALTER TABLE flows
+    ADD COLUMN IF NOT EXISTS revision BIGINT;
+
+UPDATE flows
+SET revision = 0
+WHERE revision IS NULL;
+
+ALTER TABLE flows
+    ALTER COLUMN revision SET DEFAULT 0;
+
+ALTER TABLE flows
+    ALTER COLUMN revision SET NOT NULL;

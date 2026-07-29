@@ -9,6 +9,7 @@ import com.flowforge.ai.dto.FlowResponse;
 import com.flowforge.ai.dto.FlowVersionResponse;
 import com.flowforge.ai.entity.Workflow;
 import com.flowforge.ai.entity.WorkflowVersion;
+import com.flowforge.ai.exception.ResourceConflictException;
 import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.repository.WorkflowRepository;
 import com.flowforge.ai.repository.WorkflowVersionRepository;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -54,8 +56,8 @@ public class WorkflowService {
 
     @Transactional
     public FlowResponse updateFlow(UUID id, FlowRequest request) {
-        Workflow workflow = workflowRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Flow not found"));
+        Workflow workflow = findFlowForMutation(id);
+        assertCurrentRevision(workflow, request.revision());
         flowDefinitionValidator.validate(request.nodes());
         saveVersionSnapshot(workflow);
         applyRequest(workflow, request);
@@ -63,12 +65,11 @@ public class WorkflowService {
     }
 
     @Transactional
-    public void deleteFlow(UUID id) {
-        if (!workflowRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Flow not found");
-        }
+    public void deleteFlow(UUID id, Long revision) {
+        Workflow workflow = findFlowForMutation(id);
+        assertCurrentRevision(workflow, revision);
         workflowVersionRepository.deleteByFlowId(id);
-        workflowRepository.deleteById(id);
+        workflowRepository.delete(workflow);
     }
 
     @Transactional(readOnly = true)
@@ -80,9 +81,9 @@ public class WorkflowService {
     }
 
     @Transactional
-    public FlowResponse restoreVersion(UUID flowId, UUID versionId) {
-        Workflow workflow = workflowRepository.findById(flowId)
-                .orElseThrow(() -> new ResourceNotFoundException("Flow not found"));
+    public FlowResponse restoreVersion(UUID flowId, UUID versionId, Long revision) {
+        Workflow workflow = findFlowForMutation(flowId);
+        assertCurrentRevision(workflow, revision);
         WorkflowVersion version = workflowVersionRepository.findById(versionId)
                 .filter(item -> item.getFlowId().equals(flowId))
                 .orElseThrow(() -> new ResourceNotFoundException("Flow version not found"));
@@ -96,6 +97,20 @@ public class WorkflowService {
         workflow.setNodesJson(version.getNodesJson());
 
         return toResponse(workflowRepository.saveAndFlush(workflow));
+    }
+
+    private Workflow findFlowForMutation(UUID id) {
+        return workflowRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Flow not found"));
+    }
+
+    private void assertCurrentRevision(Workflow workflow, Long expectedRevision) {
+        if (expectedRevision == null) {
+            throw new IllegalArgumentException("revision is required");
+        }
+        if (!Objects.equals(workflow.getRevision(), expectedRevision)) {
+            throw new ResourceConflictException("Flow 已在其他窗口更新，请基于最新版本重新确认修改");
+        }
     }
 
     private void saveVersionSnapshot(Workflow workflow) {
@@ -181,6 +196,7 @@ public class WorkflowService {
                 workflow.getSourceFlowTitle(),
                 workflow.getSourceFlowVersionId(),
                 workflow.getSourceFlowVersionNumber(),
+                workflow.getRevision(),
                 workflow.getCreatedAt(),
                 workflow.getUpdatedAt()
         );

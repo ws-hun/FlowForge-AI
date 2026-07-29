@@ -6,6 +6,7 @@ import com.flowforge.ai.dto.FlowRequest;
 import com.flowforge.ai.dto.FlowResponse;
 import com.flowforge.ai.entity.Workflow;
 import com.flowforge.ai.entity.WorkflowVersion;
+import com.flowforge.ai.exception.ResourceConflictException;
 import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.repository.WorkflowRepository;
 import com.flowforge.ai.repository.WorkflowVersionRepository;
@@ -26,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -59,7 +61,7 @@ class WorkflowServiceTest {
         Workflow flow = flow("Original flow", "Original goal", "Original input");
         FlowRequest request = request("Refined flow", "Refined goal", "Refined input");
 
-        when(workflowRepository.findById(flow.getId())).thenReturn(Optional.of(flow));
+        when(workflowRepository.findByIdForUpdate(flow.getId())).thenReturn(Optional.of(flow));
         when(workflowVersionRepository.findTopByFlowIdOrderByVersionNumberDesc(flow.getId()))
                 .thenReturn(Optional.empty());
         when(workflowVersionRepository.saveAndFlush(any(WorkflowVersion.class)))
@@ -95,7 +97,7 @@ class WorkflowServiceTest {
                 .createdAt(LocalDateTime.now().minusMinutes(5))
                 .build();
 
-        when(workflowRepository.findById(flow.getId())).thenReturn(Optional.of(flow));
+        when(workflowRepository.findByIdForUpdate(flow.getId())).thenReturn(Optional.of(flow));
         when(workflowVersionRepository.findById(revision.getId())).thenReturn(Optional.of(revision));
         when(workflowVersionRepository.findTopByFlowIdOrderByVersionNumberDesc(flow.getId()))
                 .thenReturn(Optional.of(revision));
@@ -105,7 +107,7 @@ class WorkflowServiceTest {
                 .thenReturn(List.of());
         when(workflowRepository.saveAndFlush(flow)).thenReturn(flow);
 
-        FlowResponse response = workflowService.restoreVersion(flow.getId(), revision.getId());
+        FlowResponse response = workflowService.restoreVersion(flow.getId(), revision.getId(), 0L);
 
         verify(workflowVersionRepository).saveAndFlush(versionCaptor.capture());
         WorkflowVersion safetySnapshot = versionCaptor.getValue();
@@ -132,7 +134,7 @@ class WorkflowServiceTest {
                         .build())
                 .toList();
 
-        when(workflowRepository.findById(flow.getId())).thenReturn(Optional.of(flow));
+        when(workflowRepository.findByIdForUpdate(flow.getId())).thenReturn(Optional.of(flow));
         when(workflowVersionRepository.findTopByFlowIdOrderByVersionNumberDesc(flow.getId()))
                 .thenReturn(Optional.empty());
         when(workflowVersionRepository.saveAndFlush(any(WorkflowVersion.class)))
@@ -163,13 +165,15 @@ class WorkflowServiceTest {
                 sourceVersion.getDescription(),
                 nodes("Earlier input"),
                 sourceFlow.getId(),
-                sourceVersion.getId()
+                sourceVersion.getId(),
+                null
         );
         when(workflowRepository.findById(sourceFlow.getId())).thenReturn(Optional.of(sourceFlow));
         when(workflowVersionRepository.findById(sourceVersion.getId())).thenReturn(Optional.of(sourceVersion));
         when(workflowRepository.save(any(Workflow.class))).thenAnswer(invocation -> {
             Workflow flow = invocation.getArgument(0);
             flow.setId(UUID.randomUUID());
+            flow.setRevision(0L);
             flow.setCreatedAt(LocalDateTime.now());
             flow.setUpdatedAt(LocalDateTime.now());
             return flow;
@@ -199,7 +203,8 @@ class WorkflowServiceTest {
                 "Invalid lineage",
                 nodes("Input"),
                 sourceFlow.getId(),
-                otherVersion.getId()
+                otherVersion.getId(),
+                null
         );
         when(workflowRepository.findById(sourceFlow.getId())).thenReturn(Optional.of(sourceFlow));
         when(workflowVersionRepository.findById(otherVersion.getId())).thenReturn(Optional.of(otherVersion));
@@ -213,16 +218,15 @@ class WorkflowServiceTest {
     void reportsMissingFlowResourcesAsNotFound() {
         UUID flowId = UUID.randomUUID();
         UUID versionId = UUID.randomUUID();
-        when(workflowRepository.findById(flowId)).thenReturn(Optional.empty());
-        when(workflowRepository.existsById(flowId)).thenReturn(false);
+        when(workflowRepository.findByIdForUpdate(flowId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> workflowService.updateFlow(flowId, request("Flow", "Goal", "Input")))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Flow not found");
-        assertThatThrownBy(() -> workflowService.restoreVersion(flowId, versionId))
+        assertThatThrownBy(() -> workflowService.restoreVersion(flowId, versionId, 0L))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Flow not found");
-        assertThatThrownBy(() -> workflowService.deleteFlow(flowId))
+        assertThatThrownBy(() -> workflowService.deleteFlow(flowId, 0L))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Flow not found");
     }
@@ -231,10 +235,10 @@ class WorkflowServiceTest {
     void reportsAMissingFlowVersionAsNotFound() {
         Workflow flow = flow("Current flow", "Current goal", "Current input");
         UUID versionId = UUID.randomUUID();
-        when(workflowRepository.findById(flow.getId())).thenReturn(Optional.of(flow));
+        when(workflowRepository.findByIdForUpdate(flow.getId())).thenReturn(Optional.of(flow));
         when(workflowVersionRepository.findById(versionId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> workflowService.restoreVersion(flow.getId(), versionId))
+        assertThatThrownBy(() -> workflowService.restoreVersion(flow.getId(), versionId, 0L))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Flow version not found");
     }
@@ -250,15 +254,65 @@ class WorkflowServiceTest {
                         node("output-1", "output", "Output")
                 ),
                 null,
-                null
+                null,
+                0L
         );
-        when(workflowRepository.findById(flow.getId())).thenReturn(Optional.of(flow));
+        when(workflowRepository.findByIdForUpdate(flow.getId())).thenReturn(Optional.of(flow));
 
         assertThatThrownBy(() -> workflowService.updateFlow(flow.getId(), invalidRequest))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("当前 Flow 运行模型需要且只支持一个 AI Task 节点");
 
         verifyNoInteractions(workflowVersionRepository);
+    }
+
+    @Test
+    void rejectsAStaleFlowUpdateBeforeCreatingARevisionSnapshot() {
+        Workflow flow = flow("Current flow", "Current goal", "Current input");
+        flow.setRevision(4L);
+        FlowRequest staleRequest = new FlowRequest(
+                "Stale flow",
+                "Stale goal",
+                nodes("Stale input"),
+                null,
+                null,
+                3L
+        );
+        when(workflowRepository.findByIdForUpdate(flow.getId())).thenReturn(Optional.of(flow));
+
+        assertThatThrownBy(() -> workflowService.updateFlow(flow.getId(), staleRequest))
+                .isInstanceOf(ResourceConflictException.class)
+                .hasMessage("Flow 已在其他窗口更新，请基于最新版本重新确认修改");
+
+        verifyNoInteractions(workflowVersionRepository);
+    }
+
+    @Test
+    void rejectsAStaleRestoreBeforeReadingOrWritingFlowRevisions() {
+        Workflow flow = flow("Current flow", "Current goal", "Current input");
+        flow.setRevision(5L);
+        UUID versionId = UUID.randomUUID();
+        when(workflowRepository.findByIdForUpdate(flow.getId())).thenReturn(Optional.of(flow));
+
+        assertThatThrownBy(() -> workflowService.restoreVersion(flow.getId(), versionId, 4L))
+                .isInstanceOf(ResourceConflictException.class)
+                .hasMessage("Flow 已在其他窗口更新，请基于最新版本重新确认修改");
+
+        verifyNoInteractions(workflowVersionRepository);
+    }
+
+    @Test
+    void rejectsAStaleDeleteWithoutRemovingTheFlowOrItsHistory() {
+        Workflow flow = flow("Current flow", "Current goal", "Current input");
+        flow.setRevision(2L);
+        when(workflowRepository.findByIdForUpdate(flow.getId())).thenReturn(Optional.of(flow));
+
+        assertThatThrownBy(() -> workflowService.deleteFlow(flow.getId(), 1L))
+                .isInstanceOf(ResourceConflictException.class)
+                .hasMessage("Flow 已在其他窗口更新，请基于最新版本重新确认修改");
+
+        verifyNoInteractions(workflowVersionRepository);
+        verify(workflowRepository, never()).delete(any(Workflow.class));
     }
 
     private Workflow flow(String title, String description, String input) {
@@ -268,13 +322,14 @@ class WorkflowServiceTest {
                 .title(title)
                 .description(description)
                 .nodesJson(nodesJson(input))
+                .revision(0L)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
     }
 
     private FlowRequest request(String title, String description, String input) {
-        return new FlowRequest(title, description, nodes(input), null, null);
+        return new FlowRequest(title, description, nodes(input), null, null, 0L);
     }
 
     private String nodesJson(String input) {

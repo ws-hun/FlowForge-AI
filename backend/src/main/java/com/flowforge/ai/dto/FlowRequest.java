@@ -3,6 +3,7 @@ package com.flowforge.ai.dto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -23,6 +24,9 @@ public record FlowRequest(
 
         UUID sourceFlowId,
 
-        UUID sourceFlowVersionId
+        UUID sourceFlowVersionId,
+
+        @PositiveOrZero(message = "revision must be zero or greater")
+        Long revision
 ) {
 }

@@ -11,7 +11,7 @@ import {
   saveApiKey,
   testApiKey
 } from '@/api/tasks'
-import { createFlow, deleteFlow, listFlows, updateFlow } from '@/api/flows'
+import { createFlow, deleteFlow, listFlows, restoreFlowVersion, updateFlow } from '@/api/flows'
 import { createPrompt } from '@/api/prompts'
 import { extractPromptVariables, isValidPromptVariableName, renamePromptVariable } from '@/utils/promptVariables'
 import type {
@@ -91,6 +91,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const providerTestLoadingId = ref('')
   const providerConnectionChecks = ref<Record<string, ProviderConnectionTestResponse>>({})
   const flowLoading = ref(false)
+  const flowConflictId = ref('')
   const taskAssetLoading = ref(false)
 
   const activeProvider = computed(() => apiKeys.value.find((item) => item.active))
@@ -646,6 +647,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     flowDrafts.value = exists
       ? flowDrafts.value.map((item) => (item.id === flow.id ? flow : item))
       : [flow, ...flowDrafts.value]
+    if (flowConflictId.value === flow.id) {
+      flowConflictId.value = ''
+    }
+  }
+
+  function dismissFlowConflict() {
+    flowConflictId.value = ''
   }
 
   async function duplicateActiveFlowDraft() {
@@ -888,9 +896,14 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function deleteFlowDraft(id: string) {
+    const flow = flowDrafts.value.find((item) => item.id === id)
+    if (!flow) {
+      return false
+    }
+
     flowLoading.value = true
     try {
-      await deleteFlow(id)
+      await deleteFlow(id, flow.revision)
       clearFlowRunDraft(id)
       flowDrafts.value = flowDrafts.value.filter((flow) => flow.id !== id)
       if (activeFlowId.value === id) {
@@ -901,10 +914,40 @@ export const useWorkspaceStore = defineStore('workspace', () => {
           localStorage.removeItem(ACTIVE_FLOW_STORAGE_KEY)
         }
       }
+      if (flowConflictId.value === id) {
+        flowConflictId.value = ''
+      }
       return true
     } catch (error: any) {
-      ElMessage.error(error.response?.data?.message || 'Flow 草稿删除失败')
+      if (error.response?.status === 409) {
+        await recoverFlowConflict(id, error)
+      } else {
+        ElMessage.error(error.response?.data?.message || 'Flow 草稿删除失败')
+      }
       return false
+    } finally {
+      flowLoading.value = false
+    }
+  }
+
+  async function restoreActiveFlowVersion(versionId: string) {
+    const flow = activeFlow.value
+    if (!flow) {
+      return null
+    }
+
+    flowLoading.value = true
+    try {
+      const { data } = await restoreFlowVersion(flow.id, versionId, flow.revision)
+      replaceFlowDraft(data)
+      return data
+    } catch (error: any) {
+      if (error.response?.status === 409) {
+        await recoverFlowConflict(flow.id, error)
+      } else {
+        ElMessage.error(error.response?.data?.message || 'Flow 修订恢复失败')
+      }
+      return null
     } finally {
       flowLoading.value = false
     }
@@ -971,11 +1014,21 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       replaceFlowDraft(data)
       return data
     } catch (error: any) {
-      ElMessage.error(error.response?.data?.message || 'Flow 草稿保存失败')
+      if (error.response?.status === 409) {
+        await recoverFlowConflict(flow.id, error)
+      } else {
+        ElMessage.error(error.response?.data?.message || 'Flow 草稿保存失败')
+      }
       return null
     } finally {
       flowLoading.value = false
     }
+  }
+
+  async function recoverFlowConflict(flowId: string, error: any) {
+    flowConflictId.value = flowId
+    await loadFlowDrafts()
+    ElMessage.warning(error.response?.data?.message || 'Flow 已更新，请重新确认当前修改')
   }
 
   async function saveProvider(payload: SaveApiKeyPayload) {
@@ -1089,6 +1142,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     providerTestLoadingId,
     providerConnectionChecks,
     flowLoading,
+    flowConflictId,
     taskAssetLoading,
     activeProvider,
     activeFlow,
@@ -1116,6 +1170,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     prepareFlowRunFromSnapshot,
     selectFlowDraft,
     replaceFlowDraft,
+    dismissFlowConflict,
     duplicateActiveFlowDraft,
     addPromptToActiveFlow,
     addContextToActiveFlow,
@@ -1128,6 +1183,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     duplicateFlowPromptNode,
     updateFlowMeta,
     deleteFlowDraft,
+    restoreActiveFlowVersion,
     sendFlowToTask,
     executeActiveFlow,
     executeTask,
@@ -1335,7 +1391,8 @@ function toSaveFlowPayload(flow: FlowDraft): SaveFlowPayload {
   return {
     title: flow.title,
     description: flow.description,
-    nodes: flow.nodes
+    nodes: flow.nodes,
+    revision: flow.revision
   }
 }
 

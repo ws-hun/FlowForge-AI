@@ -122,6 +122,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Historical Execution Input Archive | Done | History 使用可读运行标题，并可在历史详情与运行对比中核对、复制精确保存的服务端输入 |
 | Stage 3 | Editable Historical Input Variants | Done | 任意固定执行输入可带入 AI Command 编辑，新运行保留来源 Task 谱系但不冒充原 Flow 快照 |
 | Stage 3 | Local Workspace Preferences | Done | 工作区名称和个人显示名保存在当前浏览器，并同步到 Settings、Profile 与顶部身份入口 |
+| Stage 3 | Flow Edit Conflict Protection | Done | Flow 更新、修订恢复和删除基于服务端修订号执行，多个窗口同时创作时拒绝静默覆盖并重新载入最新状态 |
 | Foundation | Frontend Bundle Splitting | Done | 页面按路由懒加载，Element Plus 仅注册实际组件，入口 JS 与 CSS 不再包含整套页面和 UI 库 |
 | Future | Agents | Future Boundary | 不展示虚构 Agent 状态，用户可回到 Flow / Prompt 沉淀真实可执行资产 |
 | Future | Knowledge Base | Future Boundary | 不展示虚构索引来源，用户可先通过 Flow Context 固定真实上下文 |
@@ -719,14 +720,16 @@ GET    /api/flows/{id}/runs
 POST   /api/flows/{id}/execution-preview
 GET    /api/flows/{id}/versions
 POST   /api/flows/{id}/versions/{versionId}/restore
-DELETE /api/flows/{id}
+DELETE /api/flows/{id}?revision={revision}
 ```
 
 `POST /api/flows/{id}/execution-preview` 只读取已保存的 Flow，不调用 AI Provider，也不会创建任务或写入历史。它接收本次 `runtimeContext` 与 `variableValues`，返回服务端编译的 `executionInput`、不可变 `flowRunSnapshot`、有序 `sections`，以及 `executable`、`missingVariables`、`incompleteNodes` 就绪检查结果。结构视图与 Raw 输入来自同一个编译过程，真实执行仍是一笔 Provider 请求。
 
 创建 Flow 时可选传入 `sourceFlowId`，并可同时传入 `sourceFlowVersionId`。服务端会验证修订真实属于来源 Flow，并固化来源标题和版本号；后续编辑不会改变这条来源关系。
 
-Prompt / Flow 更新、收藏、恢复或删除不存在的资产时返回 `404 Not Found`；请求内容不合法时返回 `400 Bad Request`。只有真实 AI Provider 调用、配置或响应处理失败才使用 `502 Bad Gateway`。其他内部状态异常记录服务端日志并返回不泄露实现细节的 `500 Internal Server Error`。
+每个 Flow 响应包含单调递增的 `revision`。`PUT /api/flows/{id}` 在请求体中回传当前 `revision`，恢复修订时提交 `{ "revision": n }`，删除时使用同名查询参数。服务端会锁定 Flow 并校验修订号后再写入历史快照；过期修改返回 `409 Conflict`，前端重新载入服务器最新状态，同时保留仍可对应到当前节点的编辑器文字，避免多窗口创作时静默覆盖。
+
+Prompt / Flow 更新、收藏、恢复或删除不存在的资产时返回 `404 Not Found`；请求内容不合法时返回 `400 Bad Request`；Flow 修订号过期时返回 `409 Conflict`。只有真实 AI Provider 调用、配置或响应处理失败才使用 `502 Bad Gateway`。其他内部状态异常记录服务端日志并返回不泄露实现细节的 `500 Internal Server Error`。
 
 ## Validation
 

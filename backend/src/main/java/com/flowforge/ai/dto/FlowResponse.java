@@ -13,6 +13,7 @@ public record FlowResponse(
         String sourceFlowTitle,
         UUID sourceFlowVersionId,
         Integer sourceFlowVersionNumber,
+        Long revision,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {

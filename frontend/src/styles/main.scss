@@ -2794,6 +2794,33 @@ a {
   }
 }
 
+.flow-conflict-note {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 22px;
+  padding: 14px 16px;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: tokens.$radius-lg;
+  background: rgba(255, 251, 235, 0.72);
+  box-shadow: tokens.$shadow-soft;
+
+  strong {
+    display: block;
+    margin-bottom: 4px;
+    color: tokens.$text-primary;
+    font-size: 14px;
+  }
+
+  p {
+    margin: 0;
+    color: tokens.$text-secondary;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+}
+
 .flow-run-signal {
   display: flex;
   align-items: flex-start;
@@ -5370,10 +5397,12 @@ a {
     flex-direction: column;
   }
 
-  .flow-readiness-note {
+  .flow-readiness-note,
+  .flow-conflict-note {
     grid-template-columns: auto 1fr;
 
-    .secondary-button {
+    .secondary-button,
+    .ghost-button {
       grid-column: 1 / -1;
       width: 100%;
     }

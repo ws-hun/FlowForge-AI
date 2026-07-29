@@ -6,6 +6,7 @@ import com.flowforge.ai.dto.FlowExecutionSectionResponse;
 import com.flowforge.ai.dto.FlowNodeDto;
 import com.flowforge.ai.dto.FlowResponse;
 import com.flowforge.ai.dto.FlowRunSnapshotResponse;
+import com.flowforge.ai.exception.ResourceConflictException;
 import com.flowforge.ai.service.TaskService;
 import com.flowforge.ai.service.WorkflowService;
 import org.junit.jupiter.api.Test;
@@ -23,9 +24,12 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -55,16 +59,19 @@ class WorkflowControllerTest {
                 null,
                 null,
                 null,
+                3L,
                 LocalDateTime.now(),
                 LocalDateTime.now()
         );
-        when(workflowService.restoreVersion(flowId, versionId)).thenReturn(response);
+        when(workflowService.restoreVersion(flowId, versionId, 3L)).thenReturn(response);
 
-        mockMvc.perform(post("/api/flows/{id}/versions/{versionId}/restore", flowId, versionId))
+        mockMvc.perform(post("/api/flows/{id}/versions/{versionId}/restore", flowId, versionId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"revision\":3}"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
 
-        verify(workflowService).restoreVersion(flowId, versionId);
+        verify(workflowService).restoreVersion(flowId, versionId, 3L);
     }
 
     @Test
@@ -157,5 +164,83 @@ class WorkflowControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message")
                         .value("当前 Flow 运行模型需要且只支持一个 AI Task 节点"));
+    }
+
+    @Test
+    void returnsConflictWhenAFlowUpdateUsesAStaleRevision() throws Exception {
+        UUID flowId = UUID.randomUUID();
+        when(workflowService.updateFlow(eq(flowId), any())).thenThrow(new ResourceConflictException(
+                "Flow 已在其他窗口更新，请基于最新版本重新确认修改"
+        ));
+
+        mockMvc.perform(put("/api/flows/{id}", flowId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Launch Flow",
+                                  "description": "Prepare a launch",
+                                  "revision": 2,
+                                  "nodes": [
+                                    {
+                                      "id": "input-1",
+                                      "type": "input",
+                                      "title": "Intent",
+                                      "description": "Starting context",
+                                      "content": "Prepare a launch plan"
+                                    },
+                                    {
+                                      "id": "ai-task-1",
+                                      "type": "ai-task",
+                                      "title": "Execute",
+                                      "description": "Run the task",
+                                      "content": "Create the plan"
+                                    },
+                                    {
+                                      "id": "output-1",
+                                      "type": "output",
+                                      "title": "Result",
+                                      "description": "Expected delivery",
+                                      "content": "Return a clear plan"
+                                    }
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message")
+                        .value("Flow 已在其他窗口更新，请基于最新版本重新确认修改"));
+    }
+
+    @Test
+    void deletesAFlowAgainstTheRevisionVisibleToTheClient() throws Exception {
+        UUID flowId = UUID.randomUUID();
+
+        mockMvc.perform(delete("/api/flows/{id}", flowId).queryParam("revision", "7"))
+                .andExpect(status().isOk());
+
+        verify(workflowService).deleteFlow(flowId, 7L);
+    }
+
+    @Test
+    void rejectsAFlowDeleteWithoutARevisionAsBadRequest() throws Exception {
+        UUID flowId = UUID.randomUUID();
+        doThrow(new IllegalArgumentException("revision is required"))
+                .when(workflowService).deleteFlow(flowId, null);
+
+        mockMvc.perform(delete("/api/flows/{id}", flowId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("revision is required"));
+    }
+
+    @Test
+    void rejectsAnUnreadableFlowRevisionBodyAsBadRequest() throws Exception {
+        mockMvc.perform(post(
+                        "/api/flows/{id}/versions/{versionId}/restore",
+                        UUID.randomUUID(),
+                        UUID.randomUUID()
+                )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid request body"));
     }
 }

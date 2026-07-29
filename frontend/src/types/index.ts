@@ -152,6 +152,7 @@ export interface FlowDraft {
   sourceFlowTitle?: string | null
   sourceFlowVersionId?: string | null
   sourceFlowVersionNumber?: number | null
+  revision: number
   createdAt: string
   updatedAt: string
 }
@@ -235,4 +236,5 @@ export interface SaveFlowPayload {
   nodes: FlowNode[]
   sourceFlowId?: string | null
   sourceFlowVersionId?: string | null
+  revision?: number
 }

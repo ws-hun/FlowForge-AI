@@ -4,6 +4,7 @@ import com.flowforge.ai.dto.FlowExecutionPreviewRequest;
 import com.flowforge.ai.dto.FlowExecutionPreviewResponse;
 import com.flowforge.ai.dto.FlowRequest;
 import com.flowforge.ai.dto.FlowResponse;
+import com.flowforge.ai.dto.FlowRevisionRequest;
 import com.flowforge.ai.dto.FlowVersionResponse;
 import com.flowforge.ai.dto.TaskHistoryResponse;
 import com.flowforge.ai.service.TaskService;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -66,13 +68,17 @@ public class WorkflowController {
     @PostMapping("/{id}/versions/{versionId}/restore")
     public FlowResponse restoreVersion(
             @PathVariable("id") UUID id,
-            @PathVariable("versionId") UUID versionId
+            @PathVariable("versionId") UUID versionId,
+            @Valid @RequestBody FlowRevisionRequest request
     ) {
-        return workflowService.restoreVersion(id, versionId);
+        return workflowService.restoreVersion(id, versionId, request.revision());
     }
 
     @DeleteMapping("/{id}")
-    public void deleteFlow(@PathVariable("id") UUID id) {
-        workflowService.deleteFlow(id);
+    public void deleteFlow(
+            @PathVariable("id") UUID id,
+            @RequestParam(value = "revision", required = false) Long revision
+    ) {
+        workflowService.deleteFlow(id, revision);
     }
 }
