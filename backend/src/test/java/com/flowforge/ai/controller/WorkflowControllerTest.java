@@ -123,4 +123,39 @@ class WorkflowControllerTest {
                         && request.variableValues().equals(Map.of("audience", "product teams")))
         );
     }
+
+    @Test
+    void returnsBadRequestWhenTheFlowDefinitionBreaksTheRuntimeContract() throws Exception {
+        when(workflowService.createFlow(any())).thenThrow(new IllegalArgumentException(
+                "当前 Flow 运行模型需要且只支持一个 AI Task 节点"
+        ));
+
+        mockMvc.perform(post("/api/flows")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Broken Flow",
+                                  "description": "A Flow without an execution step",
+                                  "nodes": [
+                                    {
+                                      "id": "input-1",
+                                      "type": "input",
+                                      "title": "Intent",
+                                      "description": "Starting context",
+                                      "content": "Prepare a launch plan"
+                                    },
+                                    {
+                                      "id": "output-1",
+                                      "type": "output",
+                                      "title": "Result",
+                                      "description": "Expected delivery",
+                                      "content": "Return a clear plan"
+                                    }
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
+                        .value("当前 Flow 运行模型需要且只支持一个 AI Task 节点"));
+    }
 }

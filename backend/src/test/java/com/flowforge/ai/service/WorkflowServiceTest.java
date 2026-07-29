@@ -27,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,7 +46,12 @@ class WorkflowServiceTest {
 
     @BeforeEach
     void setUp() {
-        workflowService = new WorkflowService(workflowRepository, workflowVersionRepository, new ObjectMapper());
+        workflowService = new WorkflowService(
+                workflowRepository,
+                workflowVersionRepository,
+                new ObjectMapper(),
+                new FlowDefinitionValidator()
+        );
     }
 
     @Test
@@ -73,7 +79,7 @@ class WorkflowServiceTest {
         assertThat(snapshot.getNodesJson()).contains("Original input");
         assertThat(response.title()).isEqualTo("Refined flow");
         assertThat(response.description()).isEqualTo("Refined goal");
-        assertThat(response.nodes()).singleElement().extracting(FlowNodeDto::content).isEqualTo("Refined input");
+        assertThat(response.nodes().get(0).content()).isEqualTo("Refined input");
     }
 
     @Test
@@ -108,7 +114,7 @@ class WorkflowServiceTest {
         assertThat(safetySnapshot.getNodesJson()).contains("Current input");
         assertThat(response.title()).isEqualTo("Earlier flow");
         assertThat(response.description()).isEqualTo("Earlier goal");
-        assertThat(response.nodes()).singleElement().extracting(FlowNodeDto::content).isEqualTo("Earlier input");
+        assertThat(response.nodes().get(0).content()).isEqualTo("Earlier input");
     }
 
     @Test
@@ -155,7 +161,7 @@ class WorkflowServiceTest {
         FlowRequest request = new FlowRequest(
                 "Earlier flow Variant",
                 sourceVersion.getDescription(),
-                List.of(node("Earlier input")),
+                nodes("Earlier input"),
                 sourceFlow.getId(),
                 sourceVersion.getId()
         );
@@ -191,7 +197,7 @@ class WorkflowServiceTest {
         FlowRequest request = new FlowRequest(
                 "Invalid Variant",
                 "Invalid lineage",
-                List.of(node("Input")),
+                nodes("Input"),
                 sourceFlow.getId(),
                 otherVersion.getId()
         );
@@ -233,6 +239,28 @@ class WorkflowServiceTest {
                 .hasMessage("Flow version not found");
     }
 
+    @Test
+    void rejectsInvalidFlowUpdatesBeforeCreatingARevisionSnapshot() {
+        Workflow flow = flow("Current flow", "Current goal", "Current input");
+        FlowRequest invalidRequest = new FlowRequest(
+                "Broken flow",
+                "Broken goal",
+                List.of(
+                        node("input-1", "input", "Input"),
+                        node("output-1", "output", "Output")
+                ),
+                null,
+                null
+        );
+        when(workflowRepository.findById(flow.getId())).thenReturn(Optional.of(flow));
+
+        assertThatThrownBy(() -> workflowService.updateFlow(flow.getId(), invalidRequest))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("当前 Flow 运行模型需要且只支持一个 AI Task 节点");
+
+        verifyNoInteractions(workflowVersionRepository);
+    }
+
     private Workflow flow(String title, String description, String input) {
         LocalDateTime now = LocalDateTime.now();
         return Workflow.builder()
@@ -246,24 +274,32 @@ class WorkflowServiceTest {
     }
 
     private FlowRequest request(String title, String description, String input) {
-        return new FlowRequest(title, description, List.of(node(input)), null, null);
+        return new FlowRequest(title, description, nodes(input), null, null);
     }
 
     private String nodesJson(String input) {
         try {
-            return new ObjectMapper().writeValueAsString(List.of(node(input)));
+            return new ObjectMapper().writeValueAsString(nodes(input));
         } catch (Exception ex) {
             throw new IllegalStateException(ex);
         }
     }
 
-    private FlowNodeDto node(String input) {
+    private List<FlowNodeDto> nodes(String input) {
+        return List.of(
+                node("input", "input", input),
+                node("ai-task", "ai-task", "Execute the Flow objective"),
+                node("output", "output", "Return a structured result")
+        );
+    }
+
+    private FlowNodeDto node(String id, String type, String content) {
         return new FlowNodeDto(
-                "input",
-                "input",
-                "Intent",
+                id,
+                type,
+                type,
                 "The flow input",
-                input,
+                content,
                 null,
                 null
         );

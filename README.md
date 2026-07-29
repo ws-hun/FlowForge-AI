@@ -118,6 +118,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Execution Preview Node Navigation | Done | 从结构化执行段直接定位对应 Flow 节点，AI Command 可通过深链返回准确编辑位置 |
 | Stage 3 | Actionable Execution Readiness | Done | 服务端预检发现缺失变量或空节点时，可直接聚焦对应 Run Brief 字段或节点 Inspector |
 | Stage 3 | Persisted Flow Run Trace | Done | 服务端为直接 Flow 运行固化节点准备、完成、失败与跳过状态，并明确当前运行时共享一次 Provider 调用 |
+| Stage 3 | Flow Definition Contract | Done | 保存前校验节点 ID、类型、顺序以及单次 Provider 运行结构，非法定义不会进入 Flow 修订历史 |
 | Stage 3 | Historical Execution Input Archive | Done | History 使用可读运行标题，并可在历史详情与运行对比中核对、复制精确保存的服务端输入 |
 | Stage 3 | Editable Historical Input Variants | Done | 任意固定执行输入可带入 AI Command 编辑，新运行保留来源 Task 谱系但不冒充原 Flow 快照 |
 | Stage 3 | Local Workspace Preferences | Done | 工作区名称和个人显示名保存在当前浏览器，并同步到 Settings、Profile 与顶部身份入口 |
@@ -258,6 +259,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | Flow 删除 | Done |
 | Flow 变体创建 | Done |
 | Input / Prompt / AI Task / Output 节点 | Done |
+| 服务端 Flow 定义完整性校验 | Done |
 | 可新增和移除的 Context 节点 | Done |
 | Context 节点顺序控制 | Done |
 | 从 Prompt Library 添加 Prompt 节点 | Done |

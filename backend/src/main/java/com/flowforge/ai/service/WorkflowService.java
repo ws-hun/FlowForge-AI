@@ -33,6 +33,7 @@ public class WorkflowService {
     private final WorkflowRepository workflowRepository;
     private final WorkflowVersionRepository workflowVersionRepository;
     private final ObjectMapper objectMapper;
+    private final FlowDefinitionValidator flowDefinitionValidator;
 
     @Transactional(readOnly = true)
     public List<FlowResponse> listFlows() {
@@ -45,6 +46,7 @@ public class WorkflowService {
     @Transactional
     public FlowResponse createFlow(FlowRequest request) {
         Workflow workflow = Workflow.builder().build();
+        flowDefinitionValidator.validate(request.nodes());
         applyRequest(workflow, request);
         applySource(workflow, request);
         return toResponse(workflowRepository.save(workflow));
@@ -54,6 +56,7 @@ public class WorkflowService {
     public FlowResponse updateFlow(UUID id, FlowRequest request) {
         Workflow workflow = workflowRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Flow not found"));
+        flowDefinitionValidator.validate(request.nodes());
         saveVersionSnapshot(workflow);
         applyRequest(workflow, request);
         return toResponse(workflowRepository.saveAndFlush(workflow));
@@ -83,6 +86,9 @@ public class WorkflowService {
         WorkflowVersion version = workflowVersionRepository.findById(versionId)
                 .filter(item -> item.getFlowId().equals(flowId))
                 .orElseThrow(() -> new ResourceNotFoundException("Flow version not found"));
+
+        List<FlowNodeDto> versionNodes = deserializeNodes(version.getNodesJson());
+        flowDefinitionValidator.validate(versionNodes);
 
         saveVersionSnapshot(workflow);
         workflow.setTitle(version.getTitle());
