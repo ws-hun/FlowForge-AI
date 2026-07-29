@@ -27,7 +27,7 @@
           <span>API Key</span>
           <input v-model="form.apiKey" type="password" class="quiet-input mono" placeholder="粘贴 API Key" />
         </label>
-        <button class="primary-button" :disabled="!canSubmit || workspace.settingsLoading" @click="submit">
+        <button class="primary-button" :disabled="!canSubmit || providerBusy" @click="submit">
           {{ workspace.settingsLoading ? '保存中...' : '保存并激活' }}
         </button>
       </section>
@@ -41,17 +41,28 @@
           <p class="mono">{{ item.maskedKey }}</p>
           <p class="muted">{{ item.model }} · {{ item.baseUrl }}</p>
           <small class="provider-updated-at">更新于 {{ formatDate(item.updatedAt) }}</small>
-          <div class="row-between">
+          <small v-if="workspace.providerConnectionChecks[item.id]" class="provider-connection-state">
+            <span></span>
+            本次会话验证于 {{ formatDate(workspace.providerConnectionChecks[item.id].checkedAt) }}
+          </small>
+          <div class="provider-actions">
+            <button
+              class="ghost-button provider-test-button"
+              :disabled="providerBusy"
+              @click="workspace.testProviderConnection(item.id)"
+            >
+              {{ workspace.providerTestLoadingId === item.id ? '验证中...' : '测试连接' }}
+            </button>
             <button
               class="secondary-button"
-              :disabled="item.active || workspace.settingsLoading"
+              :disabled="item.active || providerBusy"
               @click="activate(item.id)"
             >
               {{ pendingProviderId === item.id && pendingAction === 'activate' ? '激活中...' : '激活' }}
             </button>
             <button
               class="danger-button"
-              :disabled="workspace.settingsLoading"
+              :disabled="providerBusy"
               @click="confirmRemove(item)"
             >
               {{ pendingProviderId === item.id && pendingAction === 'remove' ? '删除中...' : '删除' }}
@@ -86,6 +97,7 @@ const pendingProviderId = ref('')
 const pendingAction = ref<'activate' | 'remove' | ''>('')
 
 const canSubmit = computed(() => form.provider && form.apiKey && form.baseUrl && form.model)
+const providerBusy = computed(() => workspace.settingsLoading || Boolean(workspace.providerTestLoadingId))
 
 function applyDefaults() {
   form.baseUrl = defaults[form.provider].baseUrl

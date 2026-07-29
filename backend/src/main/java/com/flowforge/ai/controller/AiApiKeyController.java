@@ -2,7 +2,9 @@ package com.flowforge.ai.controller;
 
 import com.flowforge.ai.dto.AiApiKeyRequest;
 import com.flowforge.ai.dto.AiApiKeyResponse;
+import com.flowforge.ai.dto.ProviderConnectionTestResponse;
 import com.flowforge.ai.service.AiApiKeyService;
+import com.flowforge.ai.service.OpenAiService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -23,6 +25,7 @@ import java.util.UUID;
 public class AiApiKeyController {
 
     private final AiApiKeyService aiApiKeyService;
+    private final OpenAiService openAiService;
 
     @GetMapping
     public List<AiApiKeyResponse> listKeys() {
@@ -37,6 +40,11 @@ public class AiApiKeyController {
     @PatchMapping("/{id}/activate")
     public AiApiKeyResponse activate(@PathVariable UUID id) {
         return aiApiKeyService.activate(id);
+    }
+
+    @PostMapping("/{id}/test")
+    public ProviderConnectionTestResponse testConnection(@PathVariable UUID id) {
+        return openAiService.testConnection(aiApiKeyService.getKey(id));
     }
 
     @DeleteMapping("/{id}")

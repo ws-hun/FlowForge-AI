@@ -227,6 +227,30 @@ class AiApiKeyServiceTest {
     }
 
     @Test
+    void decryptsASpecificProviderForConnectionTesting() {
+        UUID id = UUID.randomUUID();
+        String encryptedKey = apiKeyCipher.encrypt("sk-provider-test-key");
+        AiApiKey storedKey = AiApiKey.builder()
+                .id(id)
+                .provider("deepseek")
+                .apiKey(encryptedKey)
+                .baseUrl("https://api.deepseek.com")
+                .model("deepseek-chat")
+                .active(false)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        when(repository.findById(id)).thenReturn(Optional.of(storedKey));
+
+        AiApiKey connectionConfig = service.getKey(id);
+
+        assertThat(connectionConfig).isNotSameAs(storedKey);
+        assertThat(connectionConfig.getApiKey()).isEqualTo("sk-provider-test-key");
+        assertThat(storedKey.getApiKey()).isEqualTo(encryptedKey);
+        verify(repository, never()).save(storedKey);
+    }
+
+    @Test
     void migratesLegacyPlaintextKeysWhenTheVaultIsListed() {
         AiApiKey legacyKey = AiApiKey.builder()
                 .id(UUID.randomUUID())

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowforge.ai.dto.OpenAiTaskResult;
+import com.flowforge.ai.dto.ProviderConnectionTestResponse;
 import com.flowforge.ai.entity.AiApiKey;
 import com.flowforge.ai.exception.AiExecutionException;
 import lombok.RequiredArgsConstructor;
@@ -16,8 +17,10 @@ import org.springframework.web.client.RestClientResponseException;
 
 import java.net.SocketTimeoutException;
 import java.net.http.HttpTimeoutException;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -43,16 +46,39 @@ public class OpenAiService {
 
             return attachExecutionMetadata(activeKey, result);
         } catch (RuntimeException ex) {
-            if (ex instanceof AiExecutionException executionException) {
-                throw executionException;
-            }
-            throw new AiExecutionException(
-                    activeKey == null ? null : activeKey.getProvider(),
-                    activeKey == null ? null : activeKey.getModel(),
-                    ex.getMessage(),
-                    ex
-            );
+            throw asProviderExecutionException(activeKey, ex);
         }
+    }
+
+    public ProviderConnectionTestResponse testConnection(AiApiKey config) {
+        try {
+            validateConfig(config);
+            executeProviderRequest(() -> restClient.get()
+                    .uri(normalizeBaseUrl(config.getBaseUrl()) + "/models")
+                    .header("Authorization", "Bearer " + config.getApiKey())
+                    .retrieve()
+                    .toBodilessEntity());
+            return new ProviderConnectionTestResponse(
+                    config.getProvider(),
+                    config.getModel(),
+                    "connected",
+                    LocalDateTime.now()
+            );
+        } catch (RuntimeException ex) {
+            throw asProviderExecutionException(config, ex);
+        }
+    }
+
+    private AiExecutionException asProviderExecutionException(AiApiKey config, RuntimeException error) {
+        if (error instanceof AiExecutionException executionException) {
+            return executionException;
+        }
+        return new AiExecutionException(
+                config == null ? null : config.getProvider(),
+                config == null ? null : config.getModel(),
+                error.getMessage(),
+                error
+        );
     }
 
     OpenAiTaskResult attachExecutionMetadata(AiApiKey activeKey, OpenAiTaskResult result) {
@@ -166,20 +192,24 @@ public class OpenAiService {
     }
 
     private String sendRequest(AiApiKey config, String path, Map<String, Object> requestBody) {
-        try {
-            JsonNode response = restClient.post()
-                    .uri(normalizeBaseUrl(config.getBaseUrl()) + path)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .header("Authorization", "Bearer " + config.getApiKey())
-                    .body(requestBody)
-                    .retrieve()
-                    .body(JsonNode.class);
+        JsonNode response = executeProviderRequest(() -> restClient.post()
+                .uri(normalizeBaseUrl(config.getBaseUrl()) + path)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Bearer " + config.getApiKey())
+                .body(requestBody)
+                .retrieve()
+                .body(JsonNode.class));
 
-            try {
-                return objectMapper.writeValueAsString(response);
-            } catch (JsonProcessingException e) {
-                throw new IllegalStateException("Failed to serialize AI response", e);
-            }
+        try {
+            return objectMapper.writeValueAsString(response);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to serialize AI response", e);
+        }
+    }
+
+    private <T> T executeProviderRequest(Supplier<T> request) {
+        try {
+            return request.get();
         } catch (RestClientResponseException e) {
             throw new IllegalStateException(providerErrorMessage(e), e);
         } catch (ResourceAccessException e) {

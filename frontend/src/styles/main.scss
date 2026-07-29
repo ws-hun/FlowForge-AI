@@ -4970,6 +4970,32 @@ a {
   font-variant-numeric: tabular-nums;
 }
 
+.provider-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.provider-test-button {
+  margin-right: auto;
+}
+
+.provider-connection-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: tokens.$success;
+  font-size: 11px;
+
+  span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+}
+
 .profile-card {
   display: flex;
   align-items: center;

@@ -209,6 +209,7 @@ API Key 不放在配置文件里，避免上传 GitHub 时泄露密钥。
 | OpenAI Provider | Done |
 | Base URL / Model 配置 | Done |
 | 激活当前 Provider | Done |
+| 已保存 Provider 连接验证 | Done |
 | Masked Key 回显 | Done |
 | AES-256-GCM 数据库静态加密 | Done |
 | 保存失败时保留待提交 Key | Done |
@@ -689,6 +690,7 @@ History 与运行对比中的“固定执行输入”直接展示 Task 保存的
 GET    /api/settings/api-keys
 POST   /api/settings/api-keys
 PATCH  /api/settings/api-keys/{id}/activate
+POST   /api/settings/api-keys/{id}/test
 DELETE /api/settings/api-keys/{id}
 ```
 

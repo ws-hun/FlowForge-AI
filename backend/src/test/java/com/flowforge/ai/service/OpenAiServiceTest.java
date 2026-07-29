@@ -2,6 +2,7 @@ package com.flowforge.ai.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowforge.ai.dto.OpenAiTaskResult;
+import com.flowforge.ai.dto.ProviderConnectionTestResponse;
 import com.flowforge.ai.entity.AiApiKey;
 import com.flowforge.ai.exception.AiExecutionException;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class OpenAiServiceTest {
 
@@ -149,6 +151,41 @@ class OpenAiServiceTest {
                     assertThat(error.getProvider()).isEqualTo("deepseek");
                     assertThat(error.getModel()).isEqualTo("deepseek-chat");
                     assertThat(error.getMessage()).isEqualTo("AI Provider connection failed");
+                });
+        server.verify();
+    }
+
+    @Test
+    void verifiesASavedProviderWithoutCreatingATaskExecution() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("https://api.deepseek.com/models"))
+                .andRespond(withSuccess("{\"data\":[]}", org.springframework.http.MediaType.APPLICATION_JSON));
+        OpenAiService service = new OpenAiService(builder.build(), null, new ObjectMapper());
+
+        ProviderConnectionTestResponse response = service.testConnection(providerConfig());
+
+        assertThat(response.provider()).isEqualTo("deepseek");
+        assertThat(response.model()).isEqualTo("deepseek-chat");
+        assertThat(response.status()).isEqualTo("connected");
+        assertThat(response.checkedAt()).isNotNull();
+        server.verify();
+    }
+
+    @Test
+    void keepsConnectionTestFailuresOnTheProviderGatewayBoundary() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("https://api.deepseek.com/models"))
+                .andRespond(withStatus(HttpStatusCode.valueOf(401))
+                        .body("provider-internal-sensitive-body"));
+        OpenAiService service = new OpenAiService(builder.build(), null, new ObjectMapper());
+
+        assertThatThrownBy(() -> service.testConnection(providerConfig()))
+                .isInstanceOfSatisfying(AiExecutionException.class, error -> {
+                    assertThat(error.getProvider()).isEqualTo("deepseek");
+                    assertThat(error.getModel()).isEqualTo("deepseek-chat");
+                    assertThat(error.getMessage()).isEqualTo("AI Provider 鉴权失败，请检查当前 API Key");
                 });
         server.verify();
     }

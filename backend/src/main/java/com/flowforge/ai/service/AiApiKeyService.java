@@ -83,6 +83,17 @@ public class AiApiKeyService {
     public AiApiKey getActiveKey() {
         AiApiKey storedKey = aiApiKeyRepository.findFirstByActiveTrue()
                 .orElseThrow(() -> new IllegalStateException("No active AI API key configured"));
+        return toDecryptedCopy(storedKey);
+    }
+
+    @Transactional
+    public AiApiKey getKey(UUID id) {
+        AiApiKey storedKey = aiApiKeyRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("API key config not found"));
+        return toDecryptedCopy(storedKey);
+    }
+
+    private AiApiKey toDecryptedCopy(AiApiKey storedKey) {
         String plaintextKey = apiKeyCipher.decrypt(storedKey.getApiKey());
         if (migrateLegacyKey(storedKey)) {
             aiApiKeyRepository.save(storedKey);

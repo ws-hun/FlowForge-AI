@@ -1,6 +1,7 @@
 import http from './client'
 import type {
   ApiKeyConfig,
+  ProviderConnectionTestResponse,
   RunTaskPayload,
   SaveApiKeyPayload,
   TaskHistoryItem,
@@ -38,6 +39,10 @@ export function saveApiKey(payload: SaveApiKeyPayload) {
 
 export function activateApiKey(id: string) {
   return http.patch<ApiKeyConfig>(`/api/settings/api-keys/${id}/activate`)
+}
+
+export function testApiKey(id: string) {
+  return http.post<ProviderConnectionTestResponse>(`/api/settings/api-keys/${id}/test`)
 }
 
 export function deleteApiKey(id: string) {

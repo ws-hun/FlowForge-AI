@@ -70,6 +70,13 @@ export interface ApiKeyConfig {
   updatedAt: string
 }
 
+export interface ProviderConnectionTestResponse {
+  provider: Provider
+  model: string
+  status: 'connected'
+  checkedAt: string
+}
+
 export interface SaveApiKeyPayload {
   provider: Provider
   apiKey: string

@@ -8,7 +8,8 @@ import {
   listTasks,
   rerunTask as rerunTaskRequest,
   runTask,
-  saveApiKey
+  saveApiKey,
+  testApiKey
 } from '@/api/tasks'
 import { createFlow, deleteFlow, listFlows, updateFlow } from '@/api/flows'
 import { createPrompt } from '@/api/prompts'
@@ -20,6 +21,7 @@ import type {
   FlowRunSnapshot,
   FlowVersion,
   PromptAsset,
+  ProviderConnectionTestResponse,
   SaveApiKeyPayload,
   SaveFlowPayload,
   SavePromptPayload,
@@ -86,6 +88,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const running = ref(false)
   const historyLoading = ref(false)
   const settingsLoading = ref(false)
+  const providerTestLoadingId = ref('')
+  const providerConnectionChecks = ref<Record<string, ProviderConnectionTestResponse>>({})
   const flowLoading = ref(false)
   const taskAssetLoading = ref(false)
 
@@ -978,6 +982,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     settingsLoading.value = true
     try {
       await saveApiKey(payload)
+      providerConnectionChecks.value = {}
       ElMessage.success('API 密钥已保存')
       await loadApiKeys()
       return true
@@ -1004,10 +1009,34 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
+  async function testProviderConnection(id: string) {
+    providerTestLoadingId.value = id
+    try {
+      const { data } = await testApiKey(id)
+      providerConnectionChecks.value = {
+        ...providerConnectionChecks.value,
+        [id]: data
+      }
+      ElMessage.success(`${data.provider} 连接正常`)
+      return data
+    } catch (error: any) {
+      const nextChecks = { ...providerConnectionChecks.value }
+      delete nextChecks[id]
+      providerConnectionChecks.value = nextChecks
+      ElMessage.error(error.response?.data?.message || 'Provider 连接验证失败')
+      return null
+    } finally {
+      providerTestLoadingId.value = ''
+    }
+  }
+
   async function removeProvider(id: string) {
     settingsLoading.value = true
     try {
       await deleteApiKey(id)
+      const nextChecks = { ...providerConnectionChecks.value }
+      delete nextChecks[id]
+      providerConnectionChecks.value = nextChecks
       ElMessage.success('API 密钥已删除')
       await loadApiKeys()
       return true
@@ -1057,6 +1086,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     running,
     historyLoading,
     settingsLoading,
+    providerTestLoadingId,
+    providerConnectionChecks,
     flowLoading,
     taskAssetLoading,
     activeProvider,
@@ -1113,6 +1144,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     saveTaskSourceFlowRunDraft,
     saveProvider,
     activateProvider,
+    testProviderConnection,
     removeProvider
   }
 })

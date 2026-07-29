@@ -112,6 +112,7 @@ Current Stage 3 capabilities:
 - Flow execution compilation is isolated as one deterministic server module shared by preview, readiness checks, persisted traces, and the current single Provider call.
 - Provider HTTP calls use explicit configurable connect and read timeouts, convert transport failures into stable gateway errors, and preserve failed runs for recovery instead of hanging the workspace indefinitely.
 - Provider HTTP status failures are translated into actionable authentication, rate-limit, timeout, request, or availability messages without exposing raw upstream response bodies to the workspace or History.
+- Provider Vault can verify any saved configuration against its `/models` endpoint without creating a Task run, exposing plaintext credentials, or pretending the result is persisted health telemetry.
 - Prompt and Flow mutation endpoints preserve REST semantics by separating missing assets (`404`) and invalid input (`400`) from actual Provider gateway failures (`502`).
 - Global error handling isolates `AiExecutionException` as `502`, reports internal state failures as non-leaking `500` responses, and keeps missing Task execution sources on `404`.
 - Flow asset deep links restore a specific saved Flow from Workspace, Task, Prompt, History, revision, and snapshot reuse paths while preserving unsaved-edit protection.
