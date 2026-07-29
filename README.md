@@ -541,6 +541,8 @@ SPRING_DATASOURCE_USERNAME=flowforge
 SPRING_DATASOURCE_PASSWORD=flowforge
 
 FRONTEND_URL=http://localhost:5173
+FLOWFORGE_AI_CONNECT_TIMEOUT=10s
+FLOWFORGE_AI_READ_TIMEOUT=120s
 FLOWFORGE_ENCRYPTION_KEY=
 ```
 
@@ -553,6 +555,8 @@ openssl rand -base64 32
 ```
 
 将结果设置为 `FLOWFORGE_ENCRYPTION_KEY`。主密钥一旦更换或丢失，已有密文无法解密，因此备份 PostgreSQL 时必须同时备份 `backend-secrets` volume，或妥善保存注入的环境密钥。
+
+Provider HTTP 连接超时默认为 `10s`，响应读取超时默认为 `120s`。可通过 `FLOWFORGE_AI_CONNECT_TIMEOUT` 和 `FLOWFORGE_AI_READ_TIMEOUT` 使用 Spring Duration 格式调整，例如 `5s`、`90s` 或 `2m`。超时和连接失败会作为可恢复的 Provider 失败保存到 History。
 
 首次升级到 Flyway 版本时，已有 Hibernate 数据库会在版本 `0` 建立基线，再执行 `V1` 兼容迁移；全新数据库会直接从 `V1` 创建。后续 schema 变更必须新增迁移文件，禁止重新启用 `ddl-auto: update`。
 

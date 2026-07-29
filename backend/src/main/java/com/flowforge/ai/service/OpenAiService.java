@@ -10,9 +10,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.net.SocketTimeoutException;
+import java.net.http.HttpTimeoutException;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -179,7 +182,23 @@ public class OpenAiService {
             }
         } catch (RestClientResponseException e) {
             throw new IllegalStateException("AI API error: " + e.getResponseBodyAsString(), e);
+        } catch (ResourceAccessException e) {
+            if (hasCause(e, HttpTimeoutException.class) || hasCause(e, SocketTimeoutException.class)) {
+                throw new IllegalStateException("AI Provider request timed out", e);
+            }
+            throw new IllegalStateException("AI Provider connection failed", e);
         }
+    }
+
+    private boolean hasCause(Throwable error, Class<? extends Throwable> causeType) {
+        Throwable current = error;
+        while (current != null) {
+            if (causeType.isInstance(current)) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private String normalizeBaseUrl(String baseUrl) {

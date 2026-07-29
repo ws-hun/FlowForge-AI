@@ -110,6 +110,7 @@ Current Stage 3 capabilities:
 - PostgreSQL schema changes are versioned through Flyway while Hibernate remains in validation mode, making local and Docker upgrades deterministic without changing the workspace experience.
 - Saved Flow definitions enforce unique node identity, supported node types, and the honest single-call Input / Prompt / AI Task / Output execution shape before a revision can enter the workspace.
 - Flow execution compilation is isolated as one deterministic server module shared by preview, readiness checks, persisted traces, and the current single Provider call.
+- Provider HTTP calls use explicit configurable connect and read timeouts, convert transport failures into stable gateway errors, and preserve failed runs for recovery instead of hanging the workspace indefinitely.
 - Prompt and Flow mutation endpoints preserve REST semantics by separating missing assets (`404`) and invalid input (`400`) from actual Provider gateway failures (`502`).
 - Global error handling isolates `AiExecutionException` as `502`, reports internal state failures as non-leaking `500` responses, and keeps missing Task execution sources on `404`.
 - Flow asset deep links restore a specific saved Flow from Workspace, Task, Prompt, History, revision, and snapshot reuse paths while preserving unsaved-edit protection.

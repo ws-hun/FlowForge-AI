@@ -5,11 +5,18 @@ import com.flowforge.ai.dto.OpenAiTaskResult;
 import com.flowforge.ai.entity.AiApiKey;
 import com.flowforge.ai.exception.AiExecutionException;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestClient;
+
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
 
 class OpenAiServiceTest {
 
@@ -102,5 +109,52 @@ class OpenAiServiceTest {
                     assertThat(error.getModel()).isNull();
                     assertThat(error.getMessage()).isEqualTo("No active AI API key configured");
                 });
+    }
+
+    @Test
+    void reportsProviderTimeoutsWithoutLeakingTheTransportFailure() {
+        AiApiKeyService apiKeyService = mock(AiApiKeyService.class);
+        when(apiKeyService.getActiveKey()).thenReturn(providerConfig());
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("https://api.deepseek.com/chat/completions"))
+                .andRespond(withException(new SocketTimeoutException("Read timed out at socket layer")));
+        OpenAiService service = new OpenAiService(builder.build(), apiKeyService, new ObjectMapper());
+
+        assertThatThrownBy(() -> service.processTask("Execute this task"))
+                .isInstanceOfSatisfying(AiExecutionException.class, error -> {
+                    assertThat(error.getProvider()).isEqualTo("deepseek");
+                    assertThat(error.getModel()).isEqualTo("deepseek-chat");
+                    assertThat(error.getMessage()).isEqualTo("AI Provider request timed out");
+                });
+        server.verify();
+    }
+
+    @Test
+    void reportsProviderConnectionFailuresAsStableGatewayErrors() {
+        AiApiKeyService apiKeyService = mock(AiApiKeyService.class);
+        when(apiKeyService.getActiveKey()).thenReturn(providerConfig());
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("https://api.deepseek.com/chat/completions"))
+                .andRespond(withException(new ConnectException("Connection refused by test transport")));
+        OpenAiService service = new OpenAiService(builder.build(), apiKeyService, new ObjectMapper());
+
+        assertThatThrownBy(() -> service.processTask("Execute this task"))
+                .isInstanceOfSatisfying(AiExecutionException.class, error -> {
+                    assertThat(error.getProvider()).isEqualTo("deepseek");
+                    assertThat(error.getModel()).isEqualTo("deepseek-chat");
+                    assertThat(error.getMessage()).isEqualTo("AI Provider connection failed");
+                });
+        server.verify();
+    }
+
+    private AiApiKey providerConfig() {
+        return AiApiKey.builder()
+                .provider("deepseek")
+                .apiKey("sk-test")
+                .baseUrl("https://api.deepseek.com")
+                .model("deepseek-chat")
+                .build();
     }
 }

@@ -29,6 +29,10 @@ spring:
 
 flowforge:
   frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  ai:
+    http:
+      connect-timeout: ${FLOWFORGE_AI_CONNECT_TIMEOUT:10s}
+      read-timeout: ${FLOWFORGE_AI_READ_TIMEOUT:120s}
   security:
     encryption-key: ${FLOWFORGE_ENCRYPTION_KEY:}
     key-file: ${FLOWFORGE_KEY_FILE:.flowforge/master.key}
