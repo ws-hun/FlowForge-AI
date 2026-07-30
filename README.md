@@ -81,6 +81,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Prompt Revision Branching | Done | 从任意 Prompt 历史版本创建带来源关系的独立变体，无需覆盖当前资产 |
 | Stage 3 | Prompt Revision Diff | Done | 恢复或创建变体前展示名称、分类、正文规模、标签、变量与收藏状态差异 |
 | Stage 3 | Prompt Unsaved Edit Guard | Done | 关闭编辑器、页面跳转或刷新前统一处理未保存 Prompt，避免创作内容静默丢失 |
+| Stage 3 | Prompt Editor Draft Recovery | Done | 本地保存未提交的 Prompt 表单，刷新后自动重开编辑上下文，并与最新服务器修订安全合并或转为新资产 |
 | Stage 3 | Prompt Edit Conflict Protection | Done | Prompt 编辑、收藏、版本恢复和删除基于服务端修订号执行，多窗口冲突时保留当前输入并显式选择本地或最新版本 |
 | Stage 3 | Flow Revisions | Done | 每次编辑前保存 Flow 快照，恢复前可预览任意创作节点及其影响范围 |
 | Stage 3 | Flow Revision Branching | Done | 从历史修订创建带来源 Flow 与修订号的独立变体，无需覆盖当前草稿 |
@@ -716,6 +717,8 @@ DELETE /api/prompts/{id}?revision={revision}
 创建 Prompt 时可选传入 `sourceTaskId`、`sourcePromptId`，或传入 `sourceFlowId` + `sourceNodeId`。服务端会读取真实 Task / Prompt / Flow 并固化来源标题与关系；后续编辑和版本恢复只改变 Prompt 内容，不会改写最初来源。
 
 每个 Prompt 响应包含单调递增的 `revision`。编辑请求在 `PUT` 请求体中回传当前修订号，收藏与恢复使用 `{ "revision": n }`，删除使用同名查询参数。过期请求返回 `409 Conflict`；编辑器会读取最新资产基线但保留当前输入，由用户继续保存本地版本或显式采用最新版本。
+
+Prompt 编辑器会把尚未提交的名称、分类、描述、正文、标签和收藏状态保存到当前浏览器。刷新或意外退出后会自动重开草稿；如果原 Prompt 已有更新，草稿进入同一套修订冲突流程；如果原 Prompt 已删除，草稿会转换为可直接保存的新 Prompt。保存成功或明确放弃修改后，本地草稿立即清除。
 
 ### Flow
 

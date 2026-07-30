@@ -134,7 +134,13 @@
         </label>
         <div class="editor-save-state" :class="{ dirty: promptFormChanged }">
           <span></span>
-          {{ promptFormChanged ? 'Prompt 修改尚未保存' : editingPrompt ? 'Prompt 内容已保存' : '等待开始创作' }}
+          {{ promptDraftRecovered
+            ? '已恢复本地未保存的 Prompt 草稿'
+            : promptFormChanged
+              ? 'Prompt 修改尚未保存'
+              : editingPrompt
+                ? 'Prompt 内容已保存'
+                : '等待开始创作' }}
         </div>
         <div v-if="promptConflictVisible" class="prompt-conflict-note">
           <span></span>
@@ -413,6 +419,20 @@ type StarterPrompt = SavePromptPayload & {
   signal: string
 }
 
+type PromptEditorDraft = {
+  promptId: string | null
+  baseRevision: number | null
+  title: string
+  category: string
+  description: string
+  content: string
+  tagInput: string
+  favorite: boolean
+  updatedAt: string
+}
+
+const PROMPT_EDITOR_DRAFT_STORAGE_KEY = 'flowforge.promptEditorDraft'
+
 const router = useRouter()
 const route = useRoute()
 const workspace = useWorkspaceStore()
@@ -437,6 +457,8 @@ const selectedVersion = ref<PromptVersion | null>(null)
 const variableValues = ref<Record<string, string>>({})
 const promptRouteReady = ref(false)
 const promptConflictId = ref('')
+const promptDraftRecovered = ref(false)
+const promptEditorDraft = ref<PromptEditorDraft | null>(readPromptEditorDraft())
 
 const form = reactive<SavePromptPayload>({
   title: '',
@@ -628,9 +650,16 @@ const selectedPromptVersionDiff = computed(() => {
 
 onMounted(async () => {
   window.addEventListener('beforeunload', handleBeforeUnload)
-  await loadPromptAssets()
+  const assetsLoaded = await loadPromptAssets()
+  if (!assetsLoaded) {
+    promptRouteReady.value = true
+    return
+  }
+  const draftRestored = restorePromptEditorDraft()
   promptRouteReady.value = true
-  await openPromptFromRoute()
+  if (!draftRestored) {
+    await openPromptFromRoute()
+  }
 })
 
 onBeforeUnmount(() => {
@@ -651,16 +680,32 @@ watch(
 watch(dialogOpen, (open) => {
   if (!open) {
     promptConflictId.value = ''
+    promptDraftRecovered.value = false
+    if (promptRouteReady.value && route.query.prompt) {
+      void openPromptFromRoute()
+    }
   }
 })
+
+watch(
+  [
+    dialogOpen,
+    () => editingPrompt.value?.id,
+    () => editingPrompt.value?.revision,
+    () => serializePromptForm()
+  ],
+  () => syncPromptEditorDraft()
+)
 
 async function loadPromptAssets() {
   loading.value = true
   try {
     const { data } = await listPrompts()
     prompts.value = data
+    return true
   } catch (error: any) {
     ElMessage.error(error.response?.data?.message || 'Prompt Library 加载失败')
+    return false
   } finally {
     loading.value = false
   }
@@ -697,6 +742,7 @@ async function openPromptFromRoute() {
 
 function openCreate() {
   promptConflictId.value = ''
+  promptDraftRecovered.value = false
   editingPrompt.value = null
   fillForm()
   dialogOpen.value = true
@@ -704,6 +750,7 @@ function openCreate() {
 
 function openEdit(prompt: PromptAsset) {
   promptConflictId.value = ''
+  promptDraftRecovered.value = false
   editingPrompt.value = prompt
   fillForm(prompt)
   dialogOpen.value = true
@@ -746,6 +793,78 @@ function serializePromptForm() {
   return JSON.stringify(buildPayload())
 }
 
+function restorePromptEditorDraft() {
+  const draft = promptEditorDraft.value
+  if (!draft) {
+    return false
+  }
+
+  const sourcePrompt = draft.promptId
+    ? prompts.value.find((prompt) => prompt.id === draft.promptId) || null
+    : null
+  editingPrompt.value = sourcePrompt
+  fillForm(sourcePrompt || undefined)
+  applyPromptEditorDraft(draft)
+
+  if (serializePromptForm() === promptEditorBaseline.value) {
+    clearPromptEditorDraft()
+    return false
+  }
+
+  promptConflictId.value =
+    sourcePrompt && draft.baseRevision !== sourcePrompt.revision ? sourcePrompt.id : ''
+  promptDraftRecovered.value = true
+  dialogOpen.value = true
+
+  if (draft.promptId && !sourcePrompt) {
+    ElMessage.warning('原 Prompt 已不存在，已将本地草稿恢复为新的 Prompt')
+  }
+  return true
+}
+
+function applyPromptEditorDraft(draft: PromptEditorDraft) {
+  form.title = draft.title
+  form.category = draft.category
+  form.description = draft.description
+  form.content = draft.content
+  tagInput.value = draft.tagInput
+  form.tags = draft.tagInput
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+  form.favorite = draft.favorite
+}
+
+function syncPromptEditorDraft() {
+  if (!dialogOpen.value || !promptFormChanged.value) {
+    clearPromptEditorDraft()
+    return
+  }
+
+  const promptId = editingPrompt.value?.id || null
+  const baseRevision = promptEditorDraft.value?.promptId === promptId
+    ? promptEditorDraft.value.baseRevision
+    : editingPrompt.value?.revision ?? null
+  const draft: PromptEditorDraft = {
+    promptId,
+    baseRevision,
+    title: form.title,
+    category: form.category,
+    description: form.description,
+    content: form.content,
+    tagInput: tagInput.value,
+    favorite: form.favorite,
+    updatedAt: new Date().toISOString()
+  }
+  promptEditorDraft.value = draft
+  persistPromptEditorDraft(draft)
+}
+
+function clearPromptEditorDraft() {
+  promptEditorDraft.value = null
+  removePromptEditorDraft()
+}
+
 async function persistPromptAsset(notify: boolean) {
   if (!promptFormChanged.value) {
     return true
@@ -776,6 +895,8 @@ async function persistPromptAsset(notify: boolean) {
 
     replacePromptInLibrary(savedPrompt)
     promptConflictId.value = ''
+    promptDraftRecovered.value = false
+    clearPromptEditorDraft()
     editingPrompt.value = savedPrompt
     fillForm(savedPrompt)
     if (notify) {
@@ -804,6 +925,8 @@ async function savePromptAsset() {
 
 function resetPromptEditorToSavedState() {
   fillForm(editingPrompt.value || undefined)
+  promptDraftRecovered.value = false
+  clearPromptEditorDraft()
 }
 
 async function resolvePendingPromptEdits() {
@@ -1278,6 +1401,8 @@ function adoptLatestPromptAfterConflict() {
   }
   fillForm(editingPrompt.value)
   promptConflictId.value = ''
+  promptDraftRecovered.value = false
+  clearPromptEditorDraft()
   ElMessage.info('已采用最新 Prompt')
 }
 
@@ -1322,6 +1447,73 @@ function toSavePayload(prompt: SavePromptPayload): SavePromptPayload {
     content: prompt.content,
     tags: [...prompt.tags],
     favorite: prompt.favorite
+  }
+}
+
+function readPromptEditorDraft(): PromptEditorDraft | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const value = JSON.parse(window.localStorage.getItem(PROMPT_EDITOR_DRAFT_STORAGE_KEY) || 'null')
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null
+    }
+    const candidate = value as Record<string, unknown>
+    const promptId = typeof candidate.promptId === 'string' && candidate.promptId.trim()
+      ? candidate.promptId.trim()
+      : null
+    const baseRevision = typeof candidate.baseRevision === 'number' && candidate.baseRevision >= 0
+      ? Math.floor(candidate.baseRevision)
+      : null
+    const draft: PromptEditorDraft = {
+      promptId,
+      baseRevision,
+      title: readPromptDraftText(candidate.title, 120),
+      category: readPromptDraftText(candidate.category, 80),
+      description: readPromptDraftText(candidate.description, 300),
+      content: readPromptDraftText(candidate.content, 12000, false),
+      tagInput: readPromptDraftText(candidate.tagInput, 2000, false),
+      favorite: candidate.favorite === true,
+      updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : new Date(0).toISOString()
+    }
+    const hasDraftContent = Boolean(
+      draft.title || draft.category || draft.description || draft.content || draft.tagInput || draft.favorite
+    )
+    return promptId || hasDraftContent ? draft : null
+  } catch {
+    return null
+  }
+}
+
+function readPromptDraftText(value: unknown, maxLength: number, trim = true) {
+  if (typeof value !== 'string') {
+    return ''
+  }
+  const text = trim ? value.trim() : value
+  return text.slice(0, maxLength)
+}
+
+function persistPromptEditorDraft(draft: PromptEditorDraft) {
+  if (typeof window === 'undefined') {
+    return
+  }
+  try {
+    window.localStorage.setItem(PROMPT_EDITOR_DRAFT_STORAGE_KEY, JSON.stringify(draft))
+  } catch {
+    // The active editor state remains available in memory when browser storage is unavailable.
+  }
+}
+
+function removePromptEditorDraft() {
+  if (typeof window === 'undefined') {
+    return
+  }
+  try {
+    window.localStorage.removeItem(PROMPT_EDITOR_DRAFT_STORAGE_KEY)
+  } catch {
+    // Ignore storage cleanup failures; no server state is affected.
   }
 }
 </script>
