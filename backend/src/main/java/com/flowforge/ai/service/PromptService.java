@@ -11,6 +11,7 @@ import com.flowforge.ai.entity.Prompt;
 import com.flowforge.ai.entity.PromptVersion;
 import com.flowforge.ai.entity.Task;
 import com.flowforge.ai.entity.Workflow;
+import com.flowforge.ai.exception.ResourceConflictException;
 import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.repository.PromptRepository;
 import com.flowforge.ai.repository.PromptVersionRepository;
@@ -26,6 +27,7 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -67,28 +69,27 @@ public class PromptService {
 
     @Transactional
     public PromptResponse updatePrompt(UUID id, PromptRequest request) {
-        Prompt prompt = promptRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
+        Prompt prompt = findPromptForMutation(id);
+        assertCurrentRevision(prompt, request.revision());
         saveVersionSnapshot(prompt);
         applyRequest(prompt, request);
-        return toResponse(prompt);
+        return toResponse(promptRepository.saveAndFlush(prompt));
     }
 
     @Transactional
-    public PromptResponse toggleFavorite(UUID id) {
-        Prompt prompt = promptRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
+    public PromptResponse toggleFavorite(UUID id, Long revision) {
+        Prompt prompt = findPromptForMutation(id);
+        assertCurrentRevision(prompt, revision);
         prompt.setFavorite(!prompt.isFavorite());
-        return toResponse(prompt);
+        return toResponse(promptRepository.saveAndFlush(prompt));
     }
 
     @Transactional
-    public void deletePrompt(UUID id) {
-        if (!promptRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Prompt not found");
-        }
+    public void deletePrompt(UUID id, Long revision) {
+        Prompt prompt = findPromptForMutation(id);
+        assertCurrentRevision(prompt, revision);
         promptVersionRepository.deleteByPromptId(id);
-        promptRepository.deleteById(id);
+        promptRepository.delete(prompt);
     }
 
     @Transactional(readOnly = true)
@@ -100,9 +101,9 @@ public class PromptService {
     }
 
     @Transactional
-    public PromptResponse restoreVersion(UUID promptId, UUID versionId) {
-        Prompt prompt = promptRepository.findById(promptId)
-                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
+    public PromptResponse restoreVersion(UUID promptId, UUID versionId, Long revision) {
+        Prompt prompt = findPromptForMutation(promptId);
+        assertCurrentRevision(prompt, revision);
         PromptVersion version = promptVersionRepository.findById(versionId)
                 .filter(item -> item.getPromptId().equals(promptId))
                 .orElseThrow(() -> new ResourceNotFoundException("Prompt version not found"));
@@ -115,7 +116,21 @@ public class PromptService {
         prompt.setTags(version.getTags());
         prompt.setFavorite(version.isFavorite());
 
-        return toResponse(prompt);
+        return toResponse(promptRepository.saveAndFlush(prompt));
+    }
+
+    private Prompt findPromptForMutation(UUID id) {
+        return promptRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Prompt not found"));
+    }
+
+    private void assertCurrentRevision(Prompt prompt, Long expectedRevision) {
+        if (expectedRevision == null) {
+            throw new IllegalArgumentException("revision is required");
+        }
+        if (!Objects.equals(prompt.getRevision(), expectedRevision)) {
+            throw new ResourceConflictException("Prompt 已在其他窗口更新，请基于最新版本重新确认修改");
+        }
     }
 
     private void saveVersionSnapshot(Prompt prompt) {
@@ -310,6 +325,7 @@ public class PromptService {
                 prompt.getSourceFlowTitle(),
                 prompt.getSourceNodeId(),
                 prompt.getSourceNodeTitle(),
+                prompt.getRevision(),
                 prompt.getCreatedAt(),
                 prompt.getUpdatedAt()
         );

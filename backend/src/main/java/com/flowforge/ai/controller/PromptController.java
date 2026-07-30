@@ -3,6 +3,7 @@ package com.flowforge.ai.controller;
 import com.flowforge.ai.dto.PromptRequest;
 import com.flowforge.ai.dto.PromptResponse;
 import com.flowforge.ai.dto.PromptVersionResponse;
+import com.flowforge.ai.dto.RevisionRequest;
 import com.flowforge.ai.dto.TaskHistoryResponse;
 import com.flowforge.ai.service.PromptService;
 import com.flowforge.ai.service.TaskService;
@@ -50,8 +51,8 @@ public class PromptController {
     }
 
     @PatchMapping("/{id}/favorite")
-    public PromptResponse toggleFavorite(@PathVariable UUID id) {
-        return promptService.toggleFavorite(id);
+    public PromptResponse toggleFavorite(@PathVariable UUID id, @Valid @RequestBody RevisionRequest request) {
+        return promptService.toggleFavorite(id, request.revision());
     }
 
     @GetMapping("/{id}/runs")
@@ -65,12 +66,19 @@ public class PromptController {
     }
 
     @PostMapping("/{id}/versions/{versionId}/restore")
-    public PromptResponse restoreVersion(@PathVariable UUID id, @PathVariable UUID versionId) {
-        return promptService.restoreVersion(id, versionId);
+    public PromptResponse restoreVersion(
+            @PathVariable UUID id,
+            @PathVariable UUID versionId,
+            @Valid @RequestBody RevisionRequest request
+    ) {
+        return promptService.restoreVersion(id, versionId, request.revision());
     }
 
     @DeleteMapping("/{id}")
-    public void deletePrompt(@PathVariable UUID id) {
-        promptService.deletePrompt(id);
+    public void deletePrompt(
+            @PathVariable UUID id,
+            @RequestParam(value = "revision", required = false) Long revision
+    ) {
+        promptService.deletePrompt(id, revision);
     }
 }

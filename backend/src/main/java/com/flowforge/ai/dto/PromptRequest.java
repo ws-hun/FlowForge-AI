@@ -1,6 +1,7 @@
 package com.flowforge.ai.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -34,6 +35,9 @@ public record PromptRequest(
         UUID sourceFlowId,
 
         @Size(max = 80, message = "sourceNodeId must be less than 80 characters")
-        String sourceNodeId
+        String sourceNodeId,
+
+        @PositiveOrZero(message = "revision must be zero or greater")
+        Long revision
 ) {
 }

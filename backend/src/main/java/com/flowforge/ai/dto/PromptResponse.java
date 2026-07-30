@@ -20,6 +20,7 @@ public record PromptResponse(
         String sourceFlowTitle,
         String sourceNodeId,
         String sourceNodeTitle,
+        Long revision,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {

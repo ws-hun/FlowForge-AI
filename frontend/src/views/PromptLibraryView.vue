@@ -136,6 +136,16 @@
           <span></span>
           {{ promptFormChanged ? 'Prompt 修改尚未保存' : editingPrompt ? 'Prompt 内容已保存' : '等待开始创作' }}
         </div>
+        <div v-if="promptConflictVisible" class="prompt-conflict-note">
+          <span></span>
+          <div>
+            <strong>已读取这个 Prompt 的最新版本</strong>
+            <p>另一窗口先完成了修改。当前输入没有被覆盖，请核对后再次保存。</p>
+            <button type="button" class="text-button" @click="adoptLatestPromptAfterConflict">
+              采用最新版本
+            </button>
+          </div>
+        </div>
       </div>
 
       <template #footer>
@@ -426,6 +436,7 @@ const promptVersionsLoading = ref(false)
 const selectedVersion = ref<PromptVersion | null>(null)
 const variableValues = ref<Record<string, string>>({})
 const promptRouteReady = ref(false)
+const promptConflictId = ref('')
 
 const form = reactive<SavePromptPayload>({
   title: '',
@@ -604,6 +615,9 @@ const promptOriginContext = computed(() => {
 const promptFormChanged = computed(() =>
   dialogOpen.value && serializePromptForm() !== promptEditorBaseline.value
 )
+const promptConflictVisible = computed(() =>
+  Boolean(editingPrompt.value && promptConflictId.value === editingPrompt.value.id)
+)
 
 const selectedPromptVersionDiff = computed(() => {
   if (!selectedPrompt.value || !selectedVersion.value) {
@@ -633,6 +647,12 @@ watch(
     }
   }
 )
+
+watch(dialogOpen, (open) => {
+  if (!open) {
+    promptConflictId.value = ''
+  }
+})
 
 async function loadPromptAssets() {
   loading.value = true
@@ -676,12 +696,14 @@ async function openPromptFromRoute() {
 }
 
 function openCreate() {
+  promptConflictId.value = ''
   editingPrompt.value = null
   fillForm()
   dialogOpen.value = true
 }
 
 function openEdit(prompt: PromptAsset) {
+  promptConflictId.value = ''
   editingPrompt.value = prompt
   fillForm(prompt)
   dialogOpen.value = true
@@ -715,7 +737,8 @@ function buildPayload(): SavePromptPayload {
       .split(',')
       .map((tag) => tag.trim())
       .filter(Boolean),
-    favorite: form.favorite
+    favorite: form.favorite,
+    revision: editingPrompt.value?.revision
   }
 }
 
@@ -752,6 +775,7 @@ async function persistPromptAsset(notify: boolean) {
     }
 
     replacePromptInLibrary(savedPrompt)
+    promptConflictId.value = ''
     editingPrompt.value = savedPrompt
     fillForm(savedPrompt)
     if (notify) {
@@ -759,7 +783,13 @@ async function persistPromptAsset(notify: boolean) {
     }
     return true
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || 'Prompt 保存失败')
+    if (editingPrompt.value && error.response?.status === 409) {
+      await recoverPromptConflict(editingPrompt.value.id, error)
+    } else if (editingPrompt.value && error.response?.status === 404) {
+      await recoverDeletedPrompt(editingPrompt.value.id)
+    } else {
+      ElMessage.error(error.response?.data?.message || 'Prompt 保存失败')
+    }
     return false
   } finally {
     saving.value = false
@@ -825,13 +855,21 @@ function handleBeforeUnload(event: BeforeUnloadEvent) {
 
 async function toggleFavorite(prompt: PromptAsset) {
   try {
-    const { data } = await togglePromptFavorite(prompt.id)
+    const { data } = await togglePromptFavorite(prompt.id, prompt.revision)
     const index = prompts.value.findIndex((item) => item.id === prompt.id)
     if (index >= 0) {
       prompts.value[index] = data
     }
+    if (selectedPrompt.value?.id === data.id) {
+      selectedPrompt.value = data
+    }
+    promptConflictId.value = ''
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || '收藏状态更新失败')
+    if (error.response?.status === 409) {
+      await recoverPromptConflict(prompt.id, error)
+    } else {
+      ElMessage.error(error.response?.data?.message || '收藏状态更新失败')
+    }
   }
 }
 
@@ -842,12 +880,17 @@ async function removePrompt(prompt: PromptAsset) {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    await deletePrompt(prompt.id)
+    await deletePrompt(prompt.id, prompt.revision)
     prompts.value = prompts.value.filter((item) => item.id !== prompt.id)
+    promptConflictId.value = ''
     ElMessage.success('Prompt 已删除')
   } catch (error: any) {
     if (error !== 'cancel') {
-      ElMessage.error(error.response?.data?.message || 'Prompt 删除失败')
+      if (error.response?.status === 409) {
+        await recoverPromptConflict(prompt.id, error)
+      } else {
+        ElMessage.error(error.response?.data?.message || 'Prompt 删除失败')
+      }
     }
   }
 }
@@ -919,6 +962,7 @@ function openStarterDetail(prompt: StarterPrompt) {
   selectedPrompt.value = {
     ...toSavePayload(prompt),
     id: prompt.title,
+    revision: 0,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }
@@ -1114,15 +1158,24 @@ async function restoreVersionSnapshot(version: PromptVersion) {
 
   saving.value = true
   try {
-    const { data } = await restorePromptVersion(selectedPrompt.value.id, version.id)
+    const { data } = await restorePromptVersion(
+      selectedPrompt.value.id,
+      version.id,
+      selectedPrompt.value.revision
+    )
     replacePromptInLibrary(data)
     selectedPrompt.value = data
+    promptConflictId.value = ''
     selectedVersion.value = null
     variableValues.value = buildVariableValues(data.content, true)
     await loadPromptVersions(data.id)
     ElMessage.success('Prompt 已恢复到选中版本')
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || 'Prompt 版本恢复失败')
+    if (selectedPrompt.value && error.response?.status === 409) {
+      await recoverPromptConflict(selectedPrompt.value.id, error)
+    } else {
+      ElMessage.error(error.response?.data?.message || 'Prompt 版本恢复失败')
+    }
   } finally {
     saving.value = false
   }
@@ -1169,6 +1222,63 @@ function replacePromptInLibrary(prompt: PromptAsset) {
   } else {
     prompts.value = [prompt, ...prompts.value]
   }
+}
+
+async function recoverPromptConflict(promptId: string, error: any) {
+  await loadPromptAssets()
+  const latestPrompt = prompts.value.find((prompt) => prompt.id === promptId)
+  if (!latestPrompt) {
+    promptConflictId.value = ''
+    ElMessage.error('这个 Prompt 已在另一窗口删除')
+    return null
+  }
+
+  promptConflictId.value = promptId
+  if (editingPrompt.value?.id === promptId) {
+    editingPrompt.value = latestPrompt
+    promptEditorBaseline.value = serializePromptAsset(latestPrompt)
+  }
+  if (selectedPrompt.value?.id === promptId) {
+    selectedPrompt.value = latestPrompt
+    variableValues.value = buildVariableValues(latestPrompt.content, true)
+    await loadPromptVersions(promptId)
+  }
+  ElMessage.warning(error.response?.data?.message || 'Prompt 已更新，请重新确认当前修改')
+  return latestPrompt
+}
+
+async function recoverDeletedPrompt(promptId: string) {
+  await loadPromptAssets()
+  editingPrompt.value = null
+  promptConflictId.value = ''
+  promptEditorBaseline.value = ''
+  if (selectedPrompt.value?.id === promptId) {
+    selectedPrompt.value = null
+    detailOpen.value = false
+    await syncPromptRoute(null, 'replace')
+  }
+  ElMessage.warning('原 Prompt 已在另一窗口删除，当前内容可直接保存为新的 Prompt')
+}
+
+function serializePromptAsset(prompt: PromptAsset) {
+  return JSON.stringify({
+    title: prompt.title,
+    category: prompt.category,
+    description: prompt.description,
+    content: prompt.content,
+    tags: prompt.tags,
+    favorite: prompt.favorite,
+    revision: prompt.revision
+  })
+}
+
+function adoptLatestPromptAfterConflict() {
+  if (!editingPrompt.value) {
+    return
+  }
+  fillForm(editingPrompt.value)
+  promptConflictId.value = ''
+  ElMessage.info('已采用最新 Prompt')
 }
 
 function buildVariableValues(content: string, preserveCurrent = false) {

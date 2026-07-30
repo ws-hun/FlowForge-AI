@@ -67,10 +67,16 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(ex.getMessage(), LocalDateTime.now());
     }
 
-    @ExceptionHandler({ResourceConflictException.class, OptimisticLockingFailureException.class})
+    @ExceptionHandler(ResourceConflictException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
-    public ErrorResponse handleConflict(RuntimeException ex) {
-        return new ErrorResponse("Flow 已在其他窗口更新，请基于最新版本重新确认修改", LocalDateTime.now());
+    public ErrorResponse handleConflict(ResourceConflictException ex) {
+        return new ErrorResponse(ex.getMessage(), LocalDateTime.now());
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleOptimisticLocking(OptimisticLockingFailureException ex) {
+        return new ErrorResponse("资产已在其他窗口更新，请基于最新版本重新确认修改", LocalDateTime.now());
     }
 
     @ExceptionHandler(Exception.class)

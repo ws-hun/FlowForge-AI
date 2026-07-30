@@ -4,8 +4,8 @@ import com.flowforge.ai.dto.FlowExecutionPreviewRequest;
 import com.flowforge.ai.dto.FlowExecutionPreviewResponse;
 import com.flowforge.ai.dto.FlowRequest;
 import com.flowforge.ai.dto.FlowResponse;
-import com.flowforge.ai.dto.FlowRevisionRequest;
 import com.flowforge.ai.dto.FlowVersionResponse;
+import com.flowforge.ai.dto.RevisionRequest;
 import com.flowforge.ai.dto.TaskHistoryResponse;
 import com.flowforge.ai.service.TaskService;
 import com.flowforge.ai.service.WorkflowService;
@@ -69,7 +69,7 @@ public class WorkflowController {
     public FlowResponse restoreVersion(
             @PathVariable("id") UUID id,
             @PathVariable("versionId") UUID versionId,
-            @Valid @RequestBody FlowRevisionRequest request
+            @Valid @RequestBody RevisionRequest request
     ) {
         return workflowService.restoreVersion(id, versionId, request.revision());
     }

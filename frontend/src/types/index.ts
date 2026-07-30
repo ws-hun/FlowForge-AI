@@ -101,6 +101,7 @@ export interface PromptAsset {
   sourceFlowTitle?: string | null
   sourceNodeId?: string | null
   sourceNodeTitle?: string | null
+  revision: number
   createdAt: string
   updatedAt: string
 }
@@ -129,6 +130,7 @@ export interface SavePromptPayload {
   sourcePromptId?: string | null
   sourceFlowId?: string | null
   sourceNodeId?: string | null
+  revision?: number
 }
 
 export type FlowNodeType = 'input' | 'prompt' | 'ai-task' | 'output'

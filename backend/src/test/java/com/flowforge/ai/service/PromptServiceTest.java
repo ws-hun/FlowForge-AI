@@ -8,6 +8,7 @@ import com.flowforge.ai.entity.Prompt;
 import com.flowforge.ai.entity.PromptVersion;
 import com.flowforge.ai.entity.Task;
 import com.flowforge.ai.entity.Workflow;
+import com.flowforge.ai.exception.ResourceConflictException;
 import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.repository.PromptRepository;
 import com.flowforge.ai.repository.PromptVersionRepository;
@@ -29,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -181,14 +183,16 @@ class PromptServiceTest {
                 .description("Original description")
                 .content("Original content")
                 .tags("Flow,Result")
+                .revision(0L)
                 .sourceTaskId(sourceTaskId)
                 .sourceTaskSummary("Original run")
                 .createdAt(LocalDateTime.now().minusMinutes(5))
                 .updatedAt(LocalDateTime.now().minusMinutes(5))
                 .build();
-        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        when(promptRepository.findByIdForUpdate(promptId)).thenReturn(Optional.of(prompt));
         when(promptVersionRepository.findTopByPromptIdOrderByVersionNumberDesc(promptId)).thenReturn(Optional.empty());
         when(promptVersionRepository.save(any(PromptVersion.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(promptRepository.saveAndFlush(prompt)).thenReturn(prompt);
 
         PromptResponse response = promptService.updatePrompt(
                 promptId,
@@ -202,7 +206,8 @@ class PromptServiceTest {
                         UUID.randomUUID(),
                         UUID.randomUUID(),
                         null,
-                        null
+                        null,
+                        0L
                 )
         );
 
@@ -215,19 +220,18 @@ class PromptServiceTest {
     void reportsMissingPromptResourcesAsNotFound() {
         UUID promptId = UUID.randomUUID();
         UUID versionId = UUID.randomUUID();
-        when(promptRepository.findById(promptId)).thenReturn(Optional.empty());
-        when(promptRepository.existsById(promptId)).thenReturn(false);
+        when(promptRepository.findByIdForUpdate(promptId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> promptService.updatePrompt(promptId, request(null, null, null, null)))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Prompt not found");
-        assertThatThrownBy(() -> promptService.toggleFavorite(promptId))
+        assertThatThrownBy(() -> promptService.toggleFavorite(promptId, 0L))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Prompt not found");
-        assertThatThrownBy(() -> promptService.restoreVersion(promptId, versionId))
+        assertThatThrownBy(() -> promptService.restoreVersion(promptId, versionId, 0L))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Prompt not found");
-        assertThatThrownBy(() -> promptService.deletePrompt(promptId))
+        assertThatThrownBy(() -> promptService.deletePrompt(promptId, 0L))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Prompt not found");
     }
@@ -236,16 +240,93 @@ class PromptServiceTest {
     void reportsAMissingPromptVersionAsNotFound() {
         UUID promptId = UUID.randomUUID();
         UUID versionId = UUID.randomUUID();
-        Prompt prompt = Prompt.builder().id(promptId).build();
-        when(promptRepository.findById(promptId)).thenReturn(Optional.of(prompt));
+        Prompt prompt = Prompt.builder().id(promptId).revision(0L).build();
+        when(promptRepository.findByIdForUpdate(promptId)).thenReturn(Optional.of(prompt));
         when(promptVersionRepository.findById(versionId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> promptService.restoreVersion(promptId, versionId))
+        assertThatThrownBy(() -> promptService.restoreVersion(promptId, versionId, 0L))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Prompt version not found");
     }
 
+    @Test
+    void rejectsStalePromptMutationsBeforeWritingVersionsOrContent() {
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .title("Current Prompt")
+                .category("Product")
+                .description("Current description")
+                .content("Current content")
+                .tags("Product")
+                .revision(4L)
+                .build();
+        when(promptRepository.findByIdForUpdate(promptId)).thenReturn(Optional.of(prompt));
+
+        assertThatThrownBy(() -> promptService.updatePrompt(promptId, request(null, null, null, null, 3L)))
+                .isInstanceOf(ResourceConflictException.class)
+                .hasMessage("Prompt 已在其他窗口更新，请基于最新版本重新确认修改");
+
+        verify(promptVersionRepository, never()).save(any(PromptVersion.class));
+        verify(promptRepository, never()).saveAndFlush(any(Prompt.class));
+    }
+
+    @Test
+    void incrementsThePromptRevisionWhenFavoriteChanges() {
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .title("Product brief")
+                .category("Product")
+                .description("Prepare a product brief")
+                .content("Create a focused brief")
+                .tags("Product")
+                .favorite(false)
+                .revision(2L)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        when(promptRepository.findByIdForUpdate(promptId)).thenReturn(Optional.of(prompt));
+        when(promptRepository.saveAndFlush(prompt)).thenAnswer(invocation -> {
+            prompt.setRevision(3L);
+            return prompt;
+        });
+
+        PromptResponse response = promptService.toggleFavorite(promptId, 2L);
+
+        assertThat(response.favorite()).isTrue();
+        assertThat(response.revision()).isEqualTo(3L);
+    }
+
+    @Test
+    void rejectsStaleRestoreAndDeleteBeforeTouchingPromptHistory() {
+        UUID promptId = UUID.randomUUID();
+        Prompt prompt = Prompt.builder()
+                .id(promptId)
+                .revision(6L)
+                .build();
+        when(promptRepository.findByIdForUpdate(promptId)).thenReturn(Optional.of(prompt));
+
+        assertThatThrownBy(() -> promptService.restoreVersion(promptId, UUID.randomUUID(), 5L))
+                .isInstanceOf(ResourceConflictException.class);
+        assertThatThrownBy(() -> promptService.deletePrompt(promptId, 5L))
+                .isInstanceOf(ResourceConflictException.class);
+
+        verifyNoInteractions(promptVersionRepository);
+        verify(promptRepository, never()).delete(any(Prompt.class));
+    }
+
     private PromptRequest request(UUID sourceTaskId, UUID sourcePromptId, UUID sourceFlowId, String sourceNodeId) {
+        return request(sourceTaskId, sourcePromptId, sourceFlowId, sourceNodeId, null);
+    }
+
+    private PromptRequest request(
+            UUID sourceTaskId,
+            UUID sourcePromptId,
+            UUID sourceFlowId,
+            String sourceNodeId,
+            Long revision
+    ) {
         return new PromptRequest(
                 "Reusable work pattern",
                 "Flow Output",
@@ -256,7 +337,8 @@ class PromptServiceTest {
                 sourceTaskId,
                 sourcePromptId,
                 sourceFlowId,
-                sourceNodeId
+                sourceNodeId,
+                revision
         );
     }
 
@@ -265,6 +347,7 @@ class PromptServiceTest {
             Prompt prompt = invocation.getArgument(0);
             LocalDateTime now = LocalDateTime.now();
             prompt.setId(UUID.randomUUID());
+            prompt.setRevision(0L);
             prompt.setCreatedAt(now);
             prompt.setUpdatedAt(now);
             return prompt;

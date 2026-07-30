@@ -6,6 +6,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -69,6 +70,10 @@ public class Prompt {
 
     @Column(name = "source_node_title", length = 120)
     private String sourceNodeTitle;
+
+    @Version
+    @Column(nullable = false)
+    private Long revision;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

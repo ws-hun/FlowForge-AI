@@ -19,12 +19,12 @@ export function updatePrompt(id: string, payload: SavePromptPayload) {
   return http.put<PromptAsset>(`/api/prompts/${id}`, payload)
 }
 
-export function togglePromptFavorite(id: string) {
-  return http.patch<PromptAsset>(`/api/prompts/${id}/favorite`)
+export function togglePromptFavorite(id: string, revision: number) {
+  return http.patch<PromptAsset>(`/api/prompts/${id}/favorite`, { revision })
 }
 
-export function deletePrompt(id: string) {
-  return http.delete<void>(`/api/prompts/${id}`)
+export function deletePrompt(id: string, revision: number) {
+  return http.delete<void>(`/api/prompts/${id}`, { params: { revision } })
 }
 
 export function listPromptRuns(id: string) {
@@ -35,6 +35,6 @@ export function listPromptVersions(id: string) {
   return http.get<PromptVersion[]>(`/api/prompts/${id}/versions`)
 }
 
-export function restorePromptVersion(id: string, versionId: string) {
-  return http.post<PromptAsset>(`/api/prompts/${id}/versions/${versionId}/restore`)
+export function restorePromptVersion(id: string, versionId: string, revision: number) {
+  return http.post<PromptAsset>(`/api/prompts/${id}/versions/${versionId}/restore`, { revision })
 }
