@@ -114,6 +114,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Flow Run Deep Links | Done | 使用 `/workflows?flow=<id>&node=<nodeId>&run=<taskId>` 同时恢复 Flow、节点和不可变历史运行，支持旧运行并与浏览器导航保持一致 |
 | Stage 3 | Run Brief Draft Recovery | Done | 按 Flow 本地保存运行上下文和变量值，切换 Flow 或刷新后可继续，并支持主动清除 |
 | Stage 3 | Cross-workspace Run Brief Sync | Done | Flow 带入 AI Command 后，运行说明和变量修改会同步回对应 Flow 草稿 |
+| Stage 3 | AI Command Draft Recovery | Done | 本地保存未执行的任务输入、Prompt / Flow / Result 来源和 Flow 变量，刷新后继续创作且不写入服务器 History |
 | Stage 3 | Cross-workspace Execution Preview | Done | Flow Space 与 AI Command 复用同一服务端编译预览，可在执行前核对真实 Provider 输入 |
 | Stage 3 | Structured Execution Preview | Done | 按 Flow 目标、上下文、Prompt、执行指令和交付重点拆解输入，并显示运行就绪状态与完整 Raw 输入 |
 | Stage 3 | Execution Preview Node Navigation | Done | 从结构化执行段直接定位对应 Flow 节点，AI Command 可通过深链返回准确编辑位置 |
@@ -678,6 +679,8 @@ Response:
 `POST /api/tasks/{id}/rerun` 不会读取或重新编译当前 Flow，而是复用历史 Task 已固化的服务端执行输入、来源信息和 Flow 快照，再通过当前激活的 Provider 创建一条新运行。这样即使 Flow 后续被编辑，也能对同一份输入进行可比较执行。
 
 History 与运行对比中的“固定执行输入”直接展示 Task 保存的 `input`，不会使用当前 Flow 重新生成，因此可以核对或复制当时实际提交给 Provider 的完整文本。
+
+AI Command 中尚未执行的输入与来源上下文保存在当前浏览器的本地草稿中，包括 Prompt、Flow、历史 Result 来源和 Flow 变量。刷新页面后可以继续，但这份草稿不会创建 Task，也不会出现在 History；执行成功并清空命令后，本地草稿会同步移除。若原 Flow 或历史运行已不存在，FlowForge 会脱离失效来源并尽可能保留现有输入作为独立任务。
 
 从固定执行输入创建变体时，AI Command 会提交编辑后的 `input` 与 `inputVariantOfTaskId`。新 Task 只保留来源运行关系，不复制原运行的 Prompt、Flow 或 `flowRunSnapshot`，避免编辑后的独立输入被错误解释为原 Flow 执行。
 

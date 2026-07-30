@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
   activateApiKey,
@@ -31,6 +31,7 @@ import type {
 
 const ACTIVE_FLOW_STORAGE_KEY = 'flowforge.activeFlowId'
 const FLOW_RUN_DRAFTS_STORAGE_KEY = 'flowforge.flowRunDrafts'
+const AI_COMMAND_DRAFT_STORAGE_KEY = 'flowforge.aiCommandDraft'
 const WORKSPACE_PREFERENCES_STORAGE_KEY = 'flowforge.workspacePreferences'
 const MAX_FLOW_RUN_DRAFTS = 20
 const DEFAULT_AI_TASK_EXECUTION_GUIDANCE =
@@ -61,9 +62,24 @@ type WorkspacePreferences = {
   profileName: string
 }
 
+type AiCommandDraft = {
+  input: string
+  sourcePromptId: string | null
+  sourcePromptTitle: string
+  sourceFlowId: string | null
+  sourceFlowTitle: string
+  sourceFlowVariableValues: Record<string, string>
+  sourceRunId: string | null
+  sourceRunSummary: string
+  inputVariantOfTaskId: string | null
+  inputVariantSourceTitle: string
+  updatedAt: string
+}
+
 export const useWorkspaceStore = defineStore('workspace', () => {
   let bootstrapPromise: Promise<void> | null = null
   let bootstrapped = false
+  const initialTaskDraft = readAiCommandDraft()
   const tasks = ref<TaskHistoryItem[]>([])
   const apiKeys = ref<ApiKeyConfig[]>([])
   const flowDrafts = ref<FlowDraft[]>([])
@@ -72,16 +88,19 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const latestTaskInput = ref('')
   const latestTaskPrompt = ref<PromptAsset | null>(null)
   const taskPromptsByRunId = ref<Record<string, PromptAsset>>({})
-  const taskInput = ref('')
-  const taskSourcePromptId = ref<string | null>(null)
-  const taskSourcePromptTitle = ref('')
-  const taskSourceFlowId = ref<string | null>(null)
-  const taskSourceFlowTitle = ref('')
-  const taskSourceFlowVariableValues = ref<Record<string, string>>({})
-  const taskSourceRunId = ref<string | null>(null)
-  const taskSourceRunSummary = ref('')
-  const taskInputVariantOfTaskId = ref<string | null>(null)
-  const taskInputVariantSourceTitle = ref('')
+  const taskInput = ref(initialTaskDraft?.input || '')
+  const taskSourcePromptId = ref<string | null>(initialTaskDraft?.sourcePromptId || null)
+  const taskSourcePromptTitle = ref(initialTaskDraft?.sourcePromptTitle || '')
+  const taskSourceFlowId = ref<string | null>(initialTaskDraft?.sourceFlowId || null)
+  const taskSourceFlowTitle = ref(initialTaskDraft?.sourceFlowTitle || '')
+  const taskSourceFlowVariableValues = ref<Record<string, string>>({
+    ...(initialTaskDraft?.sourceFlowVariableValues || {})
+  })
+  const taskSourceRunId = ref<string | null>(initialTaskDraft?.sourceRunId || null)
+  const taskSourceRunSummary = ref(initialTaskDraft?.sourceRunSummary || '')
+  const taskInputVariantOfTaskId = ref<string | null>(initialTaskDraft?.inputVariantOfTaskId || null)
+  const taskInputVariantSourceTitle = ref(initialTaskDraft?.inputVariantSourceTitle || '')
+  const taskDraftRecovered = ref(Boolean(initialTaskDraft))
   const pendingFlowRunSeed = ref<FlowRunSeed | null>(null)
   const flowRunDrafts = ref<Record<string, FlowRunDraft>>(readFlowRunDrafts())
   const workspacePreferences = ref<WorkspacePreferences>(readWorkspacePreferences())
@@ -108,6 +127,23 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   )
   const canExecuteTask = computed(() =>
     taskSourceFlowId.value ? missingTaskSourceFlowVariables.value.length === 0 : Boolean(taskInput.value.trim())
+  )
+
+  watch(
+    [
+      taskInput,
+      taskSourcePromptId,
+      taskSourcePromptTitle,
+      taskSourceFlowId,
+      taskSourceFlowTitle,
+      taskSourceFlowVariableValues,
+      taskSourceRunId,
+      taskSourceRunSummary,
+      taskInputVariantOfTaskId,
+      taskInputVariantSourceTitle
+    ],
+    () => persistAiCommandDraft(captureAiCommandDraft()),
+    { deep: true }
   )
 
   async function loadTasks() {
@@ -223,6 +259,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     sourceFlow?: TaskFlowSource | null
   ) {
     saveTaskSourceFlowRunDraft()
+    taskDraftRecovered.value = false
     taskInput.value = input
     taskSourcePromptId.value = sourcePrompt?.id || null
     taskSourcePromptTitle.value = sourcePrompt?.title || ''
@@ -237,6 +274,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   function prepareTaskContinuation(sourceRun: TaskHistoryItem) {
     saveTaskSourceFlowRunDraft()
+    taskDraftRecovered.value = false
     taskInput.value = ''
     taskSourcePromptId.value = null
     taskSourcePromptTitle.value = ''
@@ -271,6 +309,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   function prepareTaskInputVariant(sourceRun: TaskHistoryItem) {
     saveTaskSourceFlowRunDraft()
+    taskDraftRecovered.value = false
     taskInput.value = sourceRun.input
     taskSourcePromptId.value = null
     taskSourcePromptTitle.value = ''
@@ -306,6 +345,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   function clearTaskSource() {
     saveTaskSourceFlowRunDraft()
+    taskDraftRecovered.value = false
     taskSourcePromptId.value = null
     taskSourcePromptTitle.value = ''
     taskSourceFlowId.value = null
@@ -315,6 +355,63 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     taskSourceRunSummary.value = ''
     taskInputVariantOfTaskId.value = null
     taskInputVariantSourceTitle.value = ''
+  }
+
+  function acknowledgeTaskDraftRecovery() {
+    taskDraftRecovered.value = false
+  }
+
+  function captureAiCommandDraft(): AiCommandDraft | null {
+    const hasSource = Boolean(
+      taskSourcePromptId.value ||
+        taskSourceFlowId.value ||
+        taskSourceRunId.value ||
+        taskInputVariantOfTaskId.value
+    )
+    if (!taskInput.value.trim() && !hasSource) {
+      return null
+    }
+
+    return {
+      input: taskInput.value,
+      sourcePromptId: taskSourcePromptId.value,
+      sourcePromptTitle: taskSourcePromptTitle.value,
+      sourceFlowId: taskSourceFlowId.value,
+      sourceFlowTitle: taskSourceFlowTitle.value,
+      sourceFlowVariableValues: { ...taskSourceFlowVariableValues.value },
+      sourceRunId: taskSourceRunId.value,
+      sourceRunSummary: taskSourceRunSummary.value,
+      inputVariantOfTaskId: taskInputVariantOfTaskId.value,
+      inputVariantSourceTitle: taskInputVariantSourceTitle.value,
+      updatedAt: new Date().toISOString()
+    }
+  }
+
+  function reconcileAiCommandDraftSource() {
+    let detached = false
+    if (taskSourceFlowId.value && !flowDrafts.value.some((flow) => flow.id === taskSourceFlowId.value)) {
+      taskSourceFlowId.value = null
+      taskSourceFlowTitle.value = ''
+      taskSourceFlowVariableValues.value = {}
+      detached = true
+    }
+    if (taskSourceRunId.value && !tasks.value.some((task) => task.id === taskSourceRunId.value)) {
+      taskSourceRunId.value = null
+      taskSourceRunSummary.value = ''
+      detached = true
+    }
+    if (
+      taskInputVariantOfTaskId.value &&
+      !tasks.value.some((task) => task.id === taskInputVariantOfTaskId.value)
+    ) {
+      taskInputVariantOfTaskId.value = null
+      taskInputVariantSourceTitle.value = ''
+      detached = true
+    }
+    if (detached) {
+      persistAiCommandDraft(captureAiCommandDraft())
+      ElMessage.warning('AI Command 草稿的原始来源已不存在，现有输入已保留为独立任务')
+    }
   }
 
   function saveTaskSourceFlowRunDraft() {
@@ -1119,6 +1216,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (!bootstrapPromise) {
       bootstrapPromise = Promise.all([loadTasks(), loadApiKeys(), loadFlowDrafts()])
         .then(() => {
+          reconcileAiCommandDraftSource()
           bootstrapped = true
         })
         .finally(() => {
@@ -1147,6 +1245,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     taskSourceRunSummary,
     taskInputVariantOfTaskId,
     taskInputVariantSourceTitle,
+    taskDraftRecovered,
     running,
     historyLoading,
     settingsLoading,
@@ -1209,6 +1308,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     prepareTaskInputVariant,
     prepareLatestResultContinuation,
     clearTaskSource,
+    acknowledgeTaskDraftRecovery,
     saveTaskSourceFlowRunDraft,
     saveProvider,
     activateProvider,
@@ -1434,6 +1534,102 @@ function applyFlowNodePatch(
   targetNode.description = description
   if (typeof content === 'string') {
     targetNode.content = content.trim()
+  }
+}
+
+function readAiCommandDraft(): AiCommandDraft | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const value = JSON.parse(window.localStorage.getItem(AI_COMMAND_DRAFT_STORAGE_KEY) || 'null')
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null
+    }
+
+    const candidate = value as Record<string, unknown>
+    const input = typeof candidate.input === 'string' ? candidate.input.slice(0, 50000) : ''
+    const sourcePromptId = readDraftId(candidate.sourcePromptId)
+    const sourceFlowId = readDraftId(candidate.sourceFlowId)
+    const sourceRunId = readDraftId(candidate.sourceRunId)
+    const inputVariantOfTaskId = readDraftId(candidate.inputVariantOfTaskId)
+    const sourceCount = [sourcePromptId, sourceFlowId, sourceRunId, inputVariantOfTaskId].filter(Boolean).length
+    if (sourceCount > 1) {
+      return input.trim() ? standaloneAiCommandDraft(input) : null
+    }
+    if (!input.trim() && sourceCount === 0) {
+      return null
+    }
+
+    return {
+      input,
+      sourcePromptId,
+      sourcePromptTitle: sourcePromptId ? readDraftLabel(candidate.sourcePromptTitle) : '',
+      sourceFlowId,
+      sourceFlowTitle: sourceFlowId ? readDraftLabel(candidate.sourceFlowTitle) : '',
+      sourceFlowVariableValues: sourceFlowId
+        ? readAiCommandVariableValues(candidate.sourceFlowVariableValues)
+        : {},
+      sourceRunId,
+      sourceRunSummary: sourceRunId ? readDraftLabel(candidate.sourceRunSummary, 500) : '',
+      inputVariantOfTaskId,
+      inputVariantSourceTitle: inputVariantOfTaskId ? readDraftLabel(candidate.inputVariantSourceTitle) : '',
+      updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : new Date(0).toISOString()
+    }
+  } catch {
+    return null
+  }
+}
+
+function standaloneAiCommandDraft(input: string): AiCommandDraft {
+  return {
+    input,
+    sourcePromptId: null,
+    sourcePromptTitle: '',
+    sourceFlowId: null,
+    sourceFlowTitle: '',
+    sourceFlowVariableValues: {},
+    sourceRunId: null,
+    sourceRunSummary: '',
+    inputVariantOfTaskId: null,
+    inputVariantSourceTitle: '',
+    updatedAt: new Date().toISOString()
+  }
+}
+
+function readDraftId(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
+function readDraftLabel(value: unknown, maxLength = 200) {
+  return typeof value === 'string' ? value.trim().slice(0, maxLength) : ''
+}
+
+function readAiCommandVariableValues(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([name, variableValue]) => name.trim() && typeof variableValue === 'string')
+      .slice(0, 50)
+      .map(([name, variableValue]) => [name.trim().slice(0, 120), (variableValue as string).slice(0, 8000)])
+  )
+}
+
+function persistAiCommandDraft(draft: AiCommandDraft | null) {
+  if (typeof window === 'undefined') {
+    return
+  }
+  try {
+    if (!draft) {
+      window.localStorage.removeItem(AI_COMMAND_DRAFT_STORAGE_KEY)
+      return
+    }
+    window.localStorage.setItem(AI_COMMAND_DRAFT_STORAGE_KEY, JSON.stringify(draft))
+  } catch {
+    // The active command remains available in memory when browser storage is unavailable.
   }
 }
 

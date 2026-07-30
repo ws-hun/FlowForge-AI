@@ -137,6 +137,7 @@ Current Stage 3 capabilities:
 - Flow mutations use server revisions and row-level serialization so concurrent browser sessions cannot silently overwrite a newer Flow, restore an old revision over fresh work, or delete an unseen update.
 - Pending Flow metadata and node edits are committed as one complete mutation before navigation, preview, or execution, so one user decision produces one predictable revision instead of intermediate snapshots.
 - Prompt mutations use the same revision contract as Flows, preserving local editor input on conflict while preventing stale edits, favorite changes, restores, or deletes from silently replacing a newer creative asset.
+- AI Command drafts preserve unexecuted input, source identity, Flow variables, and continuation intent locally across reloads without creating false server History; missing Flow or Result sources degrade to an independent task while retaining usable input.
 
 Current Stage 3 priorities:
 

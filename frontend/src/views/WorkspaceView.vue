@@ -19,8 +19,14 @@
         @input="workspace.clearTaskSource"
       ></textarea>
       <div class="composer-footer">
-        <span>{{ workspace.taskInput.trim() ? '已准备进入 AI Command Workspace' : '先写下一个想法，或从模板开始' }}</span>
-        <button class="primary-button" :disabled="!workspace.taskInput.trim()" @click="startBuilding">开始构建</button>
+        <span>
+          {{ workspace.taskDraftRecovered
+            ? '已恢复上次未执行的 AI Command 草稿'
+            : workspace.taskInput.trim()
+              ? '已准备进入 AI Command Workspace'
+              : '先写下一个想法，或从模板开始' }}
+        </span>
+        <button class="primary-button" :disabled="!canStartBuilding" @click="startBuilding">开始构建</button>
       </div>
     </div>
 
@@ -153,6 +159,7 @@ const recentFlows = computed(() =>
   workspace.flowDrafts.filter((flow) => flow.id !== continueFlow.value?.id).slice(0, 3)
 )
 const recentPrompts = computed(() => prompts.value.slice(0, 3))
+const canStartBuilding = computed(() => Boolean(workspace.taskInput.trim() || workspace.taskSourceFlowId))
 
 const templates = [
   {
@@ -193,7 +200,7 @@ async function loadRecentPrompts() {
 }
 
 function startBuilding() {
-  if (!workspace.taskInput.trim()) {
+  if (!canStartBuilding.value) {
     return
   }
   router.push('/tasks')

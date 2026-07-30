@@ -97,7 +97,11 @@
           <button type="button" class="secondary-button" @click="goToApiKeys">配置 Provider</button>
         </div>
         <div class="composer-footer">
-          <span>{{ workspace.activeProvider?.provider || '请先配置 Provider' }}</span>
+          <span>
+            {{ workspace.taskDraftRecovered
+              ? '已恢复上次未执行的 AI Command 草稿'
+              : workspace.activeProvider?.provider || '请先配置 Provider' }}
+          </span>
           <button
             class="primary-button"
             :disabled="workspace.running || !workspace.canExecuteTask || !providerReadyToRun"
@@ -240,7 +244,10 @@ const sourceDescription = computed(() => {
 
 watch(
   [() => workspace.taskInput, () => workspace.taskSourceFlowVariableValues],
-  () => workspace.saveTaskSourceFlowRunDraft(),
+  () => {
+    workspace.acknowledgeTaskDraftRecovery()
+    workspace.saveTaskSourceFlowRunDraft()
+  },
   { deep: true }
 )
 
