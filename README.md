@@ -752,6 +752,7 @@ Frontend:
 
 ```bash
 cd frontend
+npm run test:unit
 npm run typecheck
 npm run build
 ```
