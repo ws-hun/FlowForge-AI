@@ -88,6 +88,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Flow Lineage Snapshots | Done | 每次派生 Flow 执行都会在运行快照中固化来源 Flow 与修订，并可从历史返回来源 |
 | Stage 3 | Flow Unsaved Edit Guard | Done | 切换 Flow / 节点、预览、执行、复用或离开页面前统一处理未保存修改，避免编辑内容静默丢失或执行旧版本 |
 | Stage 3 | Flow Creation Draft Recovery | Done | 本地保存尚未创建的 Flow 想法与模板选择，刷新后继续从同一创作起点推进 |
+| Stage 3 | Customizable Flow Templates | Done | 模板只决定节点结构，不覆盖用户已写想法；目标可继续编辑，并通过显式操作移除模板 |
 | Stage 3 | Flow Editor Draft Recovery | Done | 本地保存未提交的 Flow 目标与节点编辑，刷新后回到原创作位置；来源失效时可创建独立恢复副本 |
 | Stage 3 | Reproducible Flow Runs | Done | 每次 Flow 执行由服务端根据已保存的节点、目标、Run Brief 和变量值编译；变量可注入 Input / Context / Prompt / AI Task / Output，工作区可在执行前查看同一份服务端输入，历史不受后续编辑或浏览器输入影响 |
 | Stage 3 | Configurable AI Execution Guidance | Done | AI Task 节点可保存工作流专属的执行指令，并由服务端编译进预览与真实 AI 调用 |

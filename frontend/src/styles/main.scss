@@ -2713,6 +2713,19 @@ a {
   }
 }
 
+.flow-template-preview-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+
+  .text-button {
+    flex: 0 0 auto;
+    color: tokens.$text-secondary;
+    font-size: 11px;
+  }
+}
+
 .draft-list {
   display: grid;
   gap: 10px;

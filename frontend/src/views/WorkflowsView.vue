@@ -18,7 +18,6 @@
             v-model="flowIntent"
             class="quiet-textarea flow-intent-input"
             placeholder="例如：把一个产品想法依次拆解成 PRD、接口草案和任务清单..."
-            @input="selectedFlowTemplate = ''"
           ></textarea>
           <div v-if="flowCreationDraftRecovered" class="editor-save-state dirty">
             <span></span>
@@ -47,7 +46,7 @@
             type="button"
             class="flow-template-option"
             :class="{ active: selectedFlowTemplate === template.title }"
-            @click="useFlowTemplate(template.intent)"
+            @click="useFlowTemplate(template)"
           >
             <span>{{ template.category }}</span>
             <strong>{{ template.title }}</strong>
@@ -56,7 +55,10 @@
           </button>
 
           <div v-if="selectedFlowTemplateDetail" class="flow-template-preview">
-            <span>Template Flow</span>
+            <div class="flow-template-preview-heading">
+              <span>Template Flow</span>
+              <button type="button" class="text-button" @click="detachFlowTemplate">移除模板</button>
+            </div>
             <strong>将生成 {{ selectedFlowTemplateDetail.nodes.length + 3 }} 个节点</strong>
             <ol>
               <li>Intent</li>
@@ -2037,10 +2039,22 @@ async function focusExecutionPreviewVariable(variable: string) {
   input?.focus({ preventScroll: true })
 }
 
-function useFlowTemplate(intent: string) {
-  const template = flowTemplates.find((item) => item.intent === intent)
-  selectedFlowTemplate.value = template?.title || ''
-  flowIntent.value = intent
+function useFlowTemplate(template: FlowTemplate) {
+  const currentTemplate = selectedFlowTemplateDetail.value
+  const currentIntent = flowIntent.value.trim()
+  const stillUsingTemplateDefault = Boolean(
+    currentTemplate && currentIntent === currentTemplate.intent.trim()
+  )
+  selectedFlowTemplate.value = template.title
+  if (!currentIntent || stillUsingTemplateDefault) {
+    flowIntent.value = template.intent
+  }
+  flowCreationDraftRecovered.value = false
+}
+
+function detachFlowTemplate() {
+  selectedFlowTemplate.value = ''
+  flowCreationDraftRecovered.value = false
 }
 
 async function addPromptNode(prompt: PromptAsset) {
