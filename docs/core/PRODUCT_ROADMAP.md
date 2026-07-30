@@ -139,6 +139,7 @@ Current Stage 3 capabilities:
 - Prompt mutations use the same revision contract as Flows, preserving local editor input on conflict while preventing stale edits, favorite changes, restores, or deletes from silently replacing a newer creative asset.
 - AI Command drafts preserve unexecuted input, source identity, Flow variables, and continuation intent locally across reloads without creating false server History; missing Flow or Result sources degrade to an independent task while retaining usable input.
 - Prompt editor drafts reopen unfinished local creation after reload, rebase against the latest asset revision when possible, and become a new Prompt when the original asset no longer exists.
+- Flow editor drafts restore unfinished metadata and node work to its exact creation context, rebase safely on newer revisions, and can become an independent recovery copy when the original Flow or node no longer exists.
 
 Current Stage 3 priorities:
 

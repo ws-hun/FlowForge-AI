@@ -87,6 +87,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Flow Revision Branching | Done | 从历史修订创建带来源 Flow 与修订号的独立变体，无需覆盖当前草稿 |
 | Stage 3 | Flow Lineage Snapshots | Done | 每次派生 Flow 执行都会在运行快照中固化来源 Flow 与修订，并可从历史返回来源 |
 | Stage 3 | Flow Unsaved Edit Guard | Done | 切换 Flow / 节点、预览、执行、复用或离开页面前统一处理未保存修改，避免编辑内容静默丢失或执行旧版本 |
+| Stage 3 | Flow Editor Draft Recovery | Done | 本地保存未提交的 Flow 目标与节点编辑，刷新后回到原创作位置；来源失效时可创建独立恢复副本 |
 | Stage 3 | Reproducible Flow Runs | Done | 每次 Flow 执行由服务端根据已保存的节点、目标、Run Brief 和变量值编译；变量可注入 Input / Context / Prompt / AI Task / Output，工作区可在执行前查看同一份服务端输入，历史不受后续编辑或浏览器输入影响 |
 | Stage 3 | Configurable AI Execution Guidance | Done | AI Task 节点可保存工作流专属的执行指令，并由服务端编译进预览与真实 AI 调用 |
 | Stage 3 | Configurable Output Delivery Focus | Done | Output 节点可定义结果的交付重点，确保同一 Flow 的结果表达可以稳定复用 |
@@ -738,6 +739,8 @@ DELETE /api/flows/{id}?revision={revision}
 创建 Flow 时可选传入 `sourceFlowId`，并可同时传入 `sourceFlowVersionId`。服务端会验证修订真实属于来源 Flow，并固化来源标题和版本号；后续编辑不会改变这条来源关系。
 
 每个 Flow 响应包含单调递增的 `revision`。`PUT /api/flows/{id}` 在请求体中回传当前 `revision`，恢复修订时提交 `{ "revision": n }`，删除时使用同名查询参数。服务端会锁定 Flow 并校验修订号后再写入历史快照；过期修改返回 `409 Conflict`，前端重新载入服务器最新状态，同时保留仍可对应到当前节点的编辑器文字，避免多窗口创作时静默覆盖。
+
+Flow Space 会把尚未提交的 Flow 标题、目标、当前节点文字和保存基线快照保留在当前浏览器。刷新后优先回到对应 Flow 与节点；如果服务器已有新修订，本地文字会叠加在最新可保存基线上并提示用户确认；如果原 Flow 或节点已删除，则可基于完整本地快照创建重新生成节点 ID 的独立恢复副本。草稿本身不会进入服务器修订或运行历史，保存、放弃或采用最新版本后会立即清除。
 
 Prompt / Flow 更新、收藏、恢复或删除不存在的资产时返回 `404 Not Found`；请求内容不合法时返回 `400 Bad Request`；Flow 修订号过期时返回 `409 Conflict`。只有真实 AI Provider 调用、配置或响应处理失败才使用 `502 Bad Gateway`。其他内部状态异常记录服务端日志并返回不泄露实现细节的 `500 Internal Server Error`。
 

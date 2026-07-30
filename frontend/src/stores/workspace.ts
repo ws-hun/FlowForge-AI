@@ -110,6 +110,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const providerTestLoadingId = ref('')
   const providerConnectionChecks = ref<Record<string, ProviderConnectionTestResponse>>({})
   const flowLoading = ref(false)
+  const flowAssetsReady = ref(false)
   const flowConflictId = ref('')
   const taskAssetLoading = ref(false)
 
@@ -514,11 +515,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     try {
       const { data } = await listFlows()
       flowDrafts.value = data
+      flowAssetsReady.value = true
 
       const storedActiveFlowId = localStorage.getItem(ACTIVE_FLOW_STORAGE_KEY) || ''
       const activeFlowExists = data.some((flow) => flow.id === storedActiveFlowId)
       activeFlowId.value = activeFlowExists ? storedActiveFlowId : data[0]?.id || ''
     } catch (error: any) {
+      flowAssetsReady.value = false
       ElMessage.error(error.response?.data?.message || 'Flow 草稿加载失败')
     } finally {
       flowLoading.value = false
@@ -628,6 +631,32 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
 
     return persistNewFlowDraft(payload, '从 Flow 修订创建变体失败')
+  }
+
+  async function createFlowFromRecoveredEditor(
+    snapshot: Pick<SaveFlowPayload, 'title' | 'description' | 'nodes'>,
+    sourceFlowId?: string | null
+  ) {
+    const title = snapshot.title.trim()
+    const description = snapshot.description.trim()
+    if (!title || !description || !snapshot.nodes.length) {
+      ElMessage.warning('本地 Flow 草稿不完整，暂时无法创建恢复副本')
+      return null
+    }
+
+    const sourceStillAvailable = Boolean(
+      sourceFlowId && flowDrafts.value.some((flow) => flow.id === sourceFlowId)
+    )
+    const payload: SaveFlowPayload = {
+      title: buildFlowRecoveryTitle(title),
+      description,
+      nodes: snapshot.nodes.map((node) => ({
+        ...node,
+        id: createId()
+      })),
+      sourceFlowId: sourceStillAvailable ? sourceFlowId : null
+    }
+    return persistNewFlowDraft(payload, 'Flow 恢复副本创建失败')
   }
 
   function consumeFlowRunSeed(flowId: string) {
@@ -1124,6 +1153,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     } catch (error: any) {
       if (error.response?.status === 409) {
         await recoverFlowConflict(flow.id, error)
+      } else if (error.response?.status === 404) {
+        await recoverMissingFlow(flow.id, error)
       } else {
         ElMessage.error(error.response?.data?.message || 'Flow 草稿保存失败')
       }
@@ -1137,6 +1168,14 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     flowConflictId.value = flowId
     await loadFlowDrafts()
     ElMessage.warning(error.response?.data?.message || 'Flow 已更新，请重新确认当前修改')
+  }
+
+  async function recoverMissingFlow(flowId: string, error: any) {
+    if (flowConflictId.value === flowId) {
+      flowConflictId.value = ''
+    }
+    await loadFlowDrafts()
+    ElMessage.warning(error.response?.data?.message || '原 Flow 已删除，本地编辑仍可创建为恢复副本')
   }
 
   async function saveProvider(payload: SaveApiKeyPayload) {
@@ -1252,6 +1291,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     providerTestLoadingId,
     providerConnectionChecks,
     flowLoading,
+    flowAssetsReady,
     flowConflictId,
     taskAssetLoading,
     activeProvider,
@@ -1273,6 +1313,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     createFlowFromPrompt,
     createFlowFromRunSnapshot,
     createFlowFromRevision,
+    createFlowFromRecoveredEditor,
     consumeFlowRunSeed,
     getFlowRunDraft,
     saveFlowRunDraft,
@@ -1495,6 +1536,12 @@ function buildFlowRevisionTitle(title: string) {
 
 function buildFlowCopyTitle(title: string) {
   const suffix = ' Copy'
+  const cleanTitle = title.trim() || 'Untitled Flow'
+  return `${cleanTitle.slice(0, 120 - suffix.length).trim()}${suffix}`
+}
+
+function buildFlowRecoveryTitle(title: string) {
+  const suffix = ' 恢复'
   const cleanTitle = title.trim() || 'Untitled Flow'
   return `${cleanTitle.slice(0, 120 - suffix.length).trim()}${suffix}`
 }

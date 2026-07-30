@@ -2861,6 +2861,23 @@ a {
   }
 }
 
+.flow-draft-recovery-note:not(.orphaned) {
+  border-color: rgba(79, 124, 255, 0.18);
+  background: rgba(239, 244, 255, 0.72);
+}
+
+.flow-recovery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+
+  .secondary-button,
+  .ghost-button {
+    min-height: 36px;
+  }
+}
+
 .flow-run-signal {
   display: flex;
   align-items: flex-start;
@@ -5446,6 +5463,13 @@ a {
       grid-column: 1 / -1;
       width: 100%;
     }
+  }
+
+  .flow-recovery-actions {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
   }
 
   .flow-brief-strip {

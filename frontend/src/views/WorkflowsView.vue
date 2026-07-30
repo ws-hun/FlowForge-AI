@@ -86,6 +86,34 @@
       </aside>
 
       <section class="surface flow-canvas-panel">
+        <div v-if="orphanedFlowEditorDraft" class="flow-conflict-note flow-draft-recovery-note orphaned">
+          <span class="flow-run-dot warning"></span>
+          <div>
+            <strong>本地 Flow 草稿仍然可用</strong>
+            <p>原 Flow 或编辑节点已不存在。完整快照仍保留在当前浏览器，可创建独立恢复副本继续工作。</p>
+          </div>
+          <div class="flow-recovery-actions">
+            <button type="button" class="secondary-button" :disabled="workspace.flowLoading" @click="recoverOrphanedFlowEditorDraft">
+              创建恢复副本
+            </button>
+            <button type="button" class="ghost-button" :disabled="workspace.flowLoading" @click="discardFlowEditorDraft">
+              放弃草稿
+            </button>
+          </div>
+        </div>
+
+        <div
+          v-else-if="flowEditorDraftRecovered && !flowConflictVisible"
+          class="flow-conflict-note flow-draft-recovery-note"
+        >
+          <span class="flow-run-dot"></span>
+          <div>
+            <strong>已恢复未保存的 Flow 草稿</strong>
+            <p>刷新前的 Flow 目标与节点编辑已回到原位置，可继续完善或保存。</p>
+          </div>
+          <button type="button" class="ghost-button" @click="discardFlowEditorDraft">放弃草稿</button>
+        </div>
+
         <div v-if="workspace.activeFlow" class="flow-canvas-header">
           <div>
             <span class="badge">Draft Flow</span>
@@ -125,9 +153,9 @@
           <span class="flow-run-dot warning"></span>
           <div>
             <strong>已载入这个 Flow 的最新版本</strong>
-            <p>另一窗口先完成了保存。仍对应当前节点的编辑文字会继续保留，请核对最新内容后再次保存。</p>
+            <p>另一窗口先完成了保存。本地编辑仍被保留，请核对后再次保存，或采用最新版本。</p>
           </div>
-          <button type="button" class="ghost-button" @click="workspace.dismissFlowConflict">知道了</button>
+          <button type="button" class="ghost-button" @click="adoptLatestFlowAfterConflict">采用最新版本</button>
         </div>
 
         <div v-if="workspace.activeFlow && !providerReadyToRun" class="flow-readiness-note">
@@ -395,7 +423,11 @@
           <textarea v-model="flowDescription" class="quiet-textarea" placeholder="Flow 目标"></textarea>
           <div class="editor-save-state" :class="{ dirty: flowMetaChanged }">
             <span></span>
-            {{ flowMetaChanged ? 'Flow 目标尚未保存' : 'Flow 目标已保存' }}
+            {{ flowEditorDraftRecovered && flowMetaChanged
+              ? '已恢复本地未保存的 Flow 目标'
+              : flowMetaChanged
+                ? 'Flow 目标尚未保存'
+                : 'Flow 目标已保存' }}
           </div>
           <div class="flow-editor-actions">
             <button
@@ -608,7 +640,11 @@
             </label>
             <div class="editor-save-state" :class="{ dirty: nodeEditorChanged }">
               <span></span>
-              {{ nodeEditorChanged ? '节点修改尚未保存' : '节点内容已保存' }}
+              {{ flowEditorDraftRecovered && nodeEditorChanged
+                ? '已恢复本地未保存的节点内容'
+                : nodeEditorChanged
+                  ? '节点修改尚未保存'
+                  : '节点内容已保存' }}
             </div>
             <div class="flow-node-editor-actions">
               <button
@@ -762,7 +798,15 @@ import { listFlowRuns, listFlowVersions } from '@/api/flows'
 import { createPrompt, listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { compareFlowRevision } from '@/utils/flowRevisions'
+import {
+  buildRecoveredFlowSnapshot,
+  captureFlowEditorSnapshot,
+  persistFlowEditorDraft,
+  readFlowEditorDraft,
+  removeFlowEditorDraft
+} from '@/utils/flowEditorDraft'
 import { extractPromptVariables, isValidPromptVariableName } from '@/utils/promptVariables'
+import type { FlowEditorDraft } from '@/utils/flowEditorDraft'
 import type {
   FlowNode,
   FlowNodeType,
@@ -826,6 +870,11 @@ const selectedNodeId = ref('')
 const nodeInspector = ref<HTMLElement | null>(null)
 const flowRouteReady = ref(false)
 const routeSelectionApplying = ref(false)
+const flowEditorDraftReady = ref(false)
+const flowEditorDraftRecovered = ref(false)
+const flowDraftRevisionConflict = ref(false)
+const flowEditorDraft = ref<FlowEditorDraft | null>(readFlowEditorDraft())
+const orphanedFlowEditorDraft = ref<FlowEditorDraft | null>(null)
 
 const flowTemplates: FlowTemplate[] = [
   {
@@ -970,7 +1019,9 @@ const providerReadyToRun = computed(() => Boolean(workspace.activeProvider))
 const flowReadyToRun = computed(() =>
   providerReadyToRun.value && !hasIncompleteFlowNodes.value && !hasMissingFlowVariables.value
 )
-const flowConflictVisible = computed(() => workspace.flowConflictId === workspace.activeFlow?.id)
+const flowConflictVisible = computed(() =>
+  workspace.flowConflictId === workspace.activeFlow?.id || flowDraftRevisionConflict.value
+)
 const activeProviderLabel = computed(() => workspace.activeProvider?.model || 'Provider 未配置')
 const flowBriefItems = computed(() => {
   const nodes = workspace.activeFlow?.nodes || []
@@ -1299,15 +1350,51 @@ watch([flowRunContext, flowVariableValues], () => {
 
 watch(
   () => selectedNode.value?.id,
-  () => syncSelectedNodeEditor(),
+  () => {
+    const draft = flowEditorDraft.value
+    const draftNodeStillAvailable = workspace.activeFlow?.nodes.some((node) => node.id === draft?.nodeId)
+    if (
+      flowEditorDraftReady.value &&
+      draft &&
+      draft.flowId === workspace.activeFlow?.id &&
+      draft.nodeChanged &&
+      !draftNodeStillAvailable
+    ) {
+      orphanedFlowEditorDraft.value = draft
+      flowEditorDraftRecovered.value = false
+      flowDraftRevisionConflict.value = false
+      return
+    }
+    syncSelectedNodeEditor()
+  },
   { immediate: true }
+)
+
+watch(
+  [
+    () => workspace.activeFlow?.id,
+    () => workspace.activeFlow?.revision,
+    selectedNodeId,
+    flowTitle,
+    flowDescription,
+    nodeTitle,
+    nodeDescription,
+    nodeContent
+  ],
+  () => syncFlowEditorDraft()
 )
 
 onMounted(async () => {
   window.addEventListener('beforeunload', handleBeforeUnload)
   await Promise.all([workspace.bootstrap(), loadPromptAssets()])
+  const draftRestored = workspace.flowAssetsReady ? await restoreFlowEditorDraft() : false
+  flowEditorDraftReady.value = true
   flowRouteReady.value = true
-  await applyFlowRouteSelection()
+  if (draftRestored) {
+    await syncActiveRouteState()
+  } else if (workspace.flowAssetsReady) {
+    await applyFlowRouteSelection()
+  }
 })
 
 onBeforeUnmount(() => {
@@ -1370,6 +1457,132 @@ async function loadFlowVersions(flowId: string) {
   }
 }
 
+async function restoreFlowEditorDraft() {
+  const draft = flowEditorDraft.value
+  if (!draft) {
+    return false
+  }
+
+  const sourceFlow = workspace.flowDrafts.find((flow) => flow.id === draft.flowId) || null
+  const sourceNode = sourceFlow?.nodes.find((node) => node.id === draft.nodeId) || null
+  if (!sourceFlow || (draft.nodeChanged && !sourceNode)) {
+    orphanedFlowEditorDraft.value = draft
+    ElMessage.warning('原 Flow 或编辑节点已不存在，本地草稿仍可创建为恢复副本')
+    return true
+  }
+
+  workspace.selectFlowDraft(sourceFlow.id)
+  await nextTick()
+  selectedNodeId.value = sourceNode?.id || sourceFlow.nodes[0]?.id || ''
+  await nextTick()
+  flowTitle.value = sourceFlow.title
+  flowDescription.value = sourceFlow.description
+  syncSelectedNodeEditor()
+
+  if (draft.flowChanged) {
+    flowTitle.value = draft.flowTitle
+    flowDescription.value = draft.flowDescription
+  }
+  if (draft.nodeChanged) {
+    nodeTitle.value = draft.nodeTitle
+    nodeDescription.value = draft.nodeDescription
+    nodeContent.value = draft.nodeContent
+  }
+
+  if (!flowMetaChanged.value && !nodeEditorChanged.value) {
+    clearFlowEditorDraft()
+    return false
+  }
+
+  flowEditorDraftRecovered.value = true
+  flowDraftRevisionConflict.value = draft.baseRevision !== sourceFlow.revision
+  return true
+}
+
+function syncFlowEditorDraft() {
+  if (!flowEditorDraftReady.value || orphanedFlowEditorDraft.value) {
+    return
+  }
+
+  const flow = workspace.activeFlow
+  const currentDraft = flowEditorDraft.value
+  if (currentDraft && currentDraft.flowId !== flow?.id) {
+    orphanedFlowEditorDraft.value = currentDraft
+    flowEditorDraftRecovered.value = false
+    flowDraftRevisionConflict.value = false
+    return
+  }
+  if (!flow || (!flowMetaChanged.value && !nodeEditorChanged.value)) {
+    clearFlowEditorDraft()
+    return
+  }
+
+  const draft: FlowEditorDraft = {
+    flowId: flow.id,
+    baseRevision: currentDraft?.flowId === flow.id ? currentDraft.baseRevision : flow.revision,
+    nodeId: selectedNode.value?.id || selectedNodeId.value,
+    flowChanged: flowMetaChanged.value,
+    nodeChanged: nodeEditorChanged.value,
+    flowTitle: flowTitle.value,
+    flowDescription: flowDescription.value,
+    nodeTitle: nodeTitle.value,
+    nodeDescription: nodeDescription.value,
+    nodeContent: nodeContent.value,
+    snapshot: captureFlowEditorSnapshot(flow),
+    updatedAt: new Date().toISOString()
+  }
+  flowEditorDraft.value = draft
+  persistFlowEditorDraft(draft)
+}
+
+async function recoverOrphanedFlowEditorDraft() {
+  const draft = orphanedFlowEditorDraft.value
+  if (!draft) {
+    return
+  }
+
+  const selectedNodeIndex = draft.snapshot.nodes.findIndex((node) => node.id === draft.nodeId)
+  const sourceStillAvailable = workspace.flowDrafts.some((flow) => flow.id === draft.flowId)
+  const flow = await workspace.createFlowFromRecoveredEditor(
+    buildRecoveredFlowSnapshot(draft),
+    sourceStillAvailable ? draft.flowId : null
+  )
+  if (!flow) {
+    return
+  }
+
+  clearFlowEditorDraft()
+  await nextTick()
+  selectedNodeId.value = flow.nodes[selectedNodeIndex]?.id || flow.nodes[0]?.id || ''
+  flowTitle.value = flow.title
+  flowDescription.value = flow.description
+  syncSelectedNodeEditor()
+  ElMessage.success('已创建 Flow 恢复副本')
+}
+
+function discardFlowEditorDraft() {
+  if (!orphanedFlowEditorDraft.value) {
+    resetEditorsToSavedState()
+  }
+  clearFlowEditorDraft()
+  ElMessage.info('本地 Flow 草稿已放弃')
+}
+
+function adoptLatestFlowAfterConflict() {
+  resetEditorsToSavedState()
+  clearFlowEditorDraft()
+  ElMessage.info('已采用最新 Flow')
+}
+
+function clearFlowEditorDraft() {
+  flowEditorDraft.value = null
+  orphanedFlowEditorDraft.value = null
+  flowEditorDraftRecovered.value = false
+  flowDraftRevisionConflict.value = false
+  workspace.dismissFlowConflict()
+  removeFlowEditorDraft()
+}
+
 function resetEditorsToSavedState() {
   flowTitle.value = workspace.activeFlow?.title || ''
   flowDescription.value = workspace.activeFlow?.description || ''
@@ -1429,6 +1642,7 @@ async function persistPendingEdits() {
     flowDescription.value = updatedFlow.description
     syncSelectedNodeEditor()
     resetFlowRunState()
+    clearFlowEditorDraft()
     ElMessage.success('未保存修改已保存')
     return true
   }
@@ -1439,6 +1653,7 @@ async function persistPendingEdits() {
     return false
   }
   if (hadFlowChanges || hadNodeChanges) {
+    clearFlowEditorDraft()
     ElMessage.success('未保存修改已保存')
   }
   return true
@@ -1461,6 +1676,7 @@ async function resolvePendingEdits() {
   } catch (action) {
     if (action === 'cancel') {
       resetEditorsToSavedState()
+      clearFlowEditorDraft()
       return true
     }
     return false
@@ -2655,4 +2871,5 @@ function buildNodeTaskInput() {
     nodeContent.value.trim()
   ].join('\n')
 }
+
 </script>
