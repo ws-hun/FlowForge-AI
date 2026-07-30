@@ -13,12 +13,18 @@
           <h2>描述你想搭建的工作流</h2>
         </div>
 
-        <textarea
-          v-model="flowIntent"
-          class="quiet-textarea flow-intent-input"
-          placeholder="例如：把一个产品想法依次拆解成 PRD、接口草案和任务清单..."
-          @input="selectedFlowTemplate = ''"
-        ></textarea>
+        <div class="flow-intent-editor">
+          <textarea
+            v-model="flowIntent"
+            class="quiet-textarea flow-intent-input"
+            placeholder="例如：把一个产品想法依次拆解成 PRD、接口草案和任务清单..."
+            @input="selectedFlowTemplate = ''"
+          ></textarea>
+          <div v-if="flowCreationDraftRecovered" class="editor-save-state dirty">
+            <span></span>
+            已恢复未创建的 Flow 想法
+          </div>
+        </div>
 
         <button
           type="button"
@@ -798,6 +804,7 @@ import { listFlowRuns, listFlowVersions } from '@/api/flows'
 import { createPrompt, listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { compareFlowRevision } from '@/utils/flowRevisions'
+import { persistFlowCreationDraft, readFlowCreationDraft } from '@/utils/flowCreationDraft'
 import {
   buildRecoveredFlowSnapshot,
   captureFlowEditorSnapshot,
@@ -838,8 +845,10 @@ const router = useRouter()
 const route = useRoute()
 const workspace = useWorkspaceStore()
 
-const flowIntent = ref('')
-const selectedFlowTemplate = ref('')
+const initialFlowCreationDraft = readFlowCreationDraft()
+const flowIntent = ref(initialFlowCreationDraft?.intent || '')
+const selectedFlowTemplate = ref(initialFlowCreationDraft?.templateTitle || '')
+const flowCreationDraftRecovered = ref(Boolean(initialFlowCreationDraft))
 const flowTitle = ref('')
 const flowDescription = ref('')
 const flowRunContext = ref('')
@@ -962,6 +971,18 @@ const flowTemplates: FlowTemplate[] = [
     ]
   }
 ]
+
+if (
+  selectedFlowTemplate.value &&
+  !flowTemplates.some((template) => template.title === selectedFlowTemplate.value)
+) {
+  selectedFlowTemplate.value = ''
+  persistFlowCreationDraft({
+    intent: flowIntent.value,
+    templateTitle: '',
+    updatedAt: new Date().toISOString()
+  })
+}
 
 const selectedNode = computed<FlowNode | null>(() => {
   if (!workspace.activeFlow) {
@@ -1271,6 +1292,20 @@ const flowRunDescription = computed(() => {
   }
 
   return 'Flow 已准备好执行。'
+})
+
+watch([flowIntent, selectedFlowTemplate], () => {
+  if (!flowIntent.value.trim()) {
+    flowCreationDraftRecovered.value = false
+    persistFlowCreationDraft(null)
+    return
+  }
+
+  persistFlowCreationDraft({
+    intent: flowIntent.value,
+    templateTitle: selectedFlowTemplate.value,
+    updatedAt: new Date().toISOString()
+  })
 })
 
 watch(
@@ -1761,6 +1796,7 @@ async function createFlow() {
   }
   flowIntent.value = ''
   selectedFlowTemplate.value = ''
+  flowCreationDraftRecovered.value = false
   selectedNodeId.value = flow.nodes[0]?.id || ''
   ElMessage.success('Flow 草稿已创建')
 }

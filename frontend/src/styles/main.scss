@@ -2612,6 +2612,11 @@ a {
   background: tokens.$surface-secondary;
 }
 
+.flow-intent-editor {
+  display: grid;
+  gap: 8px;
+}
+
 .flow-template-pack {
   display: grid;
   gap: 10px;
