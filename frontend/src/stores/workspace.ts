@@ -14,8 +14,15 @@ import {
 import { createFlow, deleteFlow, listFlows, restoreFlowVersion, updateFlow } from '@/api/flows'
 import { createPrompt } from '@/api/prompts'
 import { persistAiCommandDraft, readAiCommandDraft } from '@/utils/aiCommandDraft'
+import {
+  persistFlowRunDrafts,
+  readFlowRunDrafts,
+  removeFlowRunDraft,
+  upsertFlowRunDraft
+} from '@/utils/flowRunDrafts'
 import { extractPromptVariables, isValidPromptVariableName, renamePromptVariable } from '@/utils/promptVariables'
 import type { AiCommandDraft } from '@/utils/aiCommandDraft'
+import type { FlowRunDraft } from '@/utils/flowRunDrafts'
 import type {
   ApiKeyConfig,
   FlowDraft,
@@ -32,9 +39,7 @@ import type {
 } from '@/types'
 
 const ACTIVE_FLOW_STORAGE_KEY = 'flowforge.activeFlowId'
-const FLOW_RUN_DRAFTS_STORAGE_KEY = 'flowforge.flowRunDrafts'
 const WORKSPACE_PREFERENCES_STORAGE_KEY = 'flowforge.workspacePreferences'
-const MAX_FLOW_RUN_DRAFTS = 20
 const DEFAULT_AI_TASK_EXECUTION_GUIDANCE =
   '综合上游上下文与 Prompt，给出清晰、可执行的结构化结果。\n优先保留关键判断、行动建议和必要的边界条件。'
 const DEFAULT_OUTPUT_DELIVERY_FOCUS =
@@ -50,12 +55,6 @@ type FlowRunSeed = {
   flowId: string
   runtimeContext: string
   variableValues: Record<string, string>
-}
-
-type FlowRunDraft = {
-  runtimeContext: string
-  variableValues: Record<string, string>
-  updatedAt: string
 }
 
 type WorkspacePreferences = {
@@ -668,47 +667,19 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   function saveFlowRunDraft(flowId: string, runtimeContext: string, variableValues: Record<string, string>) {
-    if (!flowId) {
+    const nextDrafts = upsertFlowRunDraft(flowRunDrafts.value, flowId, runtimeContext, variableValues)
+    if (nextDrafts === flowRunDrafts.value) {
       return
     }
-
-    const cleanContext = runtimeContext.trim()
-    const cleanVariableValues = sanitizeFlowRunDraftVariables(variableValues)
-    if (!cleanContext && !Object.keys(cleanVariableValues).length) {
-      clearFlowRunDraft(flowId)
-      return
-    }
-
-    const currentDraft = flowRunDrafts.value[flowId]
-    if (
-      currentDraft?.runtimeContext === cleanContext &&
-      JSON.stringify(currentDraft.variableValues) === JSON.stringify(cleanVariableValues)
-    ) {
-      return
-    }
-
-    const nextDrafts = {
-      ...flowRunDrafts.value,
-      [flowId]: {
-        runtimeContext: cleanContext,
-        variableValues: cleanVariableValues,
-        updatedAt: new Date().toISOString()
-      }
-    }
-    flowRunDrafts.value = Object.fromEntries(
-      Object.entries(nextDrafts)
-        .sort(([, left], [, right]) => right.updatedAt.localeCompare(left.updatedAt))
-        .slice(0, MAX_FLOW_RUN_DRAFTS)
-    )
+    flowRunDrafts.value = nextDrafts
     persistFlowRunDrafts(flowRunDrafts.value)
   }
 
   function clearFlowRunDraft(flowId: string) {
-    if (!flowRunDrafts.value[flowId]) {
+    const nextDrafts = removeFlowRunDraft(flowRunDrafts.value, flowId)
+    if (nextDrafts === flowRunDrafts.value) {
       return
     }
-    const nextDrafts = { ...flowRunDrafts.value }
-    delete nextDrafts[flowId]
     flowRunDrafts.value = nextDrafts
     persistFlowRunDrafts(nextDrafts)
   }
@@ -1568,73 +1539,6 @@ function applyFlowNodePatch(
   targetNode.description = description
   if (typeof content === 'string') {
     targetNode.content = content.trim()
-  }
-}
-
-function readFlowRunDrafts(): Record<string, FlowRunDraft> {
-  if (typeof window === 'undefined') {
-    return {}
-  }
-
-  try {
-    const value = JSON.parse(window.localStorage.getItem(FLOW_RUN_DRAFTS_STORAGE_KEY) || '{}')
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      return {}
-    }
-
-    const drafts = Object.fromEntries(
-      Object.entries(value).flatMap(([flowId, draft]) => {
-        if (!flowId) {
-          return []
-        }
-        if (!draft || typeof draft !== 'object' || Array.isArray(draft)) {
-          return []
-        }
-        const candidate = draft as Record<string, unknown>
-        const runtimeContext = typeof candidate.runtimeContext === 'string' ? candidate.runtimeContext : ''
-        const variableValues = sanitizeFlowRunDraftVariables(candidate.variableValues)
-        if (!runtimeContext.trim() && !Object.keys(variableValues).length) {
-          return []
-        }
-        return [[
-          flowId,
-          {
-            runtimeContext,
-            variableValues,
-            updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : new Date(0).toISOString()
-          }
-        ]]
-      })
-    )
-    return Object.fromEntries(
-      Object.entries(drafts)
-        .sort(([, left], [, right]) => right.updatedAt.localeCompare(left.updatedAt))
-        .slice(0, MAX_FLOW_RUN_DRAFTS)
-    )
-  } catch {
-    return {}
-  }
-}
-
-function sanitizeFlowRunDraftVariables(value: unknown) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return {}
-  }
-  return Object.fromEntries(
-    Object.entries(value)
-      .filter(([, variableValue]) => typeof variableValue === 'string' && variableValue.trim())
-      .map(([name, variableValue]) => [name, (variableValue as string).trim()])
-  )
-}
-
-function persistFlowRunDrafts(drafts: Record<string, FlowRunDraft>) {
-  if (typeof window === 'undefined') {
-    return
-  }
-  try {
-    window.localStorage.setItem(FLOW_RUN_DRAFTS_STORAGE_KEY, JSON.stringify(drafts))
-  } catch {
-    // The active in-memory draft remains available when browser storage is unavailable.
   }
 }
 
