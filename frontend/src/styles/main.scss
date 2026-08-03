@@ -3783,6 +3783,14 @@ a {
   }
 }
 
+.editor-save-state.recovered {
+  color: tokens.$text-secondary;
+
+  span {
+    background: tokens.$primary;
+  }
+}
+
 .flow-variable-inputs {
   display: grid;
   gap: 12px;

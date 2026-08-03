@@ -291,9 +291,12 @@
           ></textarea>
 
           <div class="flow-run-draft-state">
-            <div class="editor-save-state" :class="{ idle: !hasFlowRunDraftContent }">
+            <div
+              class="editor-save-state"
+              :class="{ idle: !hasFlowRunDraftContent, recovered: flowRunDraftRecovered }"
+            >
               <span></span>
-              {{ hasFlowRunDraftContent ? 'Run Brief 已自动保存' : '等待补充本次运行上下文' }}
+              {{ flowRunDraftStateLabel }}
             </div>
             <button
               v-if="hasFlowRunDraftContent"
@@ -855,6 +858,8 @@ const flowTitle = ref('')
 const flowDescription = ref('')
 const flowRunContext = ref('')
 const flowVariableValues = ref<Record<string, string>>({})
+const flowRunDraftRecovered = ref(false)
+const flowRunDraftHydrating = ref(false)
 const nodeTitle = ref('')
 const nodeDescription = ref('')
 const nodeContent = ref('')
@@ -1038,6 +1043,12 @@ const hasFlowRunDraftContent = computed(() =>
       Object.values(flowVariableValues.value).some((value) => value?.trim())
   )
 )
+const flowRunDraftStateLabel = computed(() => {
+  if (flowRunDraftRecovered.value) {
+    return '已恢复上次 Run Brief'
+  }
+  return hasFlowRunDraftContent.value ? 'Run Brief 已自动保存' : '等待补充本次运行上下文'
+})
 const providerReadyToRun = computed(() => Boolean(workspace.activeProvider))
 const flowReadyToRun = computed(() =>
   providerReadyToRun.value && !hasIncompleteFlowNodes.value && !hasMissingFlowVariables.value
@@ -1317,12 +1328,20 @@ watch(
     const runSeed = activeFlowId ? workspace.consumeFlowRunSeed(activeFlowId) : null
     const localDraft = activeFlowId ? workspace.getFlowRunDraft(activeFlowId) : null
     const runDraft = runSeed || localDraft
+    const nextRunContext = runDraft?.runtimeContext || ''
+    const nextVariableValues = buildFlowVariableValues(flowVariables.value, runDraft?.variableValues)
+    flowRunDraftHydrating.value = true
+    flowRunDraftRecovered.value = Boolean(
+      localDraft &&
+        !runSeed &&
+        (nextRunContext.trim() || Object.values(nextVariableValues).some((value) => value?.trim()))
+    )
     resetFlowRunState()
     selectedNodeId.value = workspace.activeFlow?.nodes[0]?.id || ''
     flowTitle.value = workspace.activeFlow?.title || ''
     flowDescription.value = workspace.activeFlow?.description || ''
-    flowRunContext.value = runDraft?.runtimeContext || ''
-    flowVariableValues.value = buildFlowVariableValues(flowVariables.value, runDraft?.variableValues)
+    flowRunContext.value = nextRunContext
+    flowVariableValues.value = nextVariableValues
     flowRuns.value = []
     flowVersions.value = []
     flowExecutionVisible.value = false
@@ -1336,6 +1355,9 @@ watch(
     if (!routeSelectionApplying.value) {
       void syncActiveRouteState()
     }
+    void nextTick(() => {
+      flowRunDraftHydrating.value = false
+    })
   },
   { immediate: true }
 )
@@ -1379,6 +1401,9 @@ watch(flowVariables, (variables) => {
 })
 
 watch([flowRunContext, flowVariableValues], () => {
+  if (!flowRunDraftHydrating.value) {
+    flowRunDraftRecovered.value = false
+  }
   const flowId = workspace.activeFlow?.id
   if (flowId) {
     workspace.saveFlowRunDraft(flowId, flowRunContext.value, flowVariableValues.value)
@@ -2377,6 +2402,7 @@ function clearCurrentFlowRunDraft() {
   }
   flowRunContext.value = ''
   flowVariableValues.value = buildFlowVariableValues(flowVariables.value)
+  flowRunDraftRecovered.value = false
   workspace.clearFlowRunDraft(flowId)
   resetFlowRunState()
   ElMessage.success('Run Brief 已清除')
