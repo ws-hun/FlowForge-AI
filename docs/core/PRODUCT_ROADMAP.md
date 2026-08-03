@@ -116,6 +116,7 @@ Current Stage 3 capabilities:
 - Prompt and Flow mutation endpoints preserve REST semantics by separating missing assets (`404`) and invalid input (`400`) from actual Provider gateway failures (`502`).
 - Global error handling isolates `AiExecutionException` as `502`, reports internal state failures as non-leaking `500` responses, and keeps missing Task execution sources on `404`.
 - Flow asset deep links restore a specific saved Flow from Workspace, Task, Prompt, History, revision, and snapshot reuse paths while preserving unsaved-edit protection.
+- Flow Space restores the last active Flow across reloads, repairs stale selections after deletion, and remains usable when browser persistence is unavailable.
 - Prompt asset deep links keep Library cards, source Prompt navigation, AI Command return paths, revision branches, Drawer state, and browser history aligned to one saved Prompt.
 - Result deep links restore and focus one immutable run from AI Command, Prompt, Flow, lineage, and History while keeping source Prompt and Flow assets reachable.
 - Any successful historical Result can become a source-linked reusable Prompt pattern or a new editable Flow without first replacing the current AI Command result.

@@ -14,6 +14,7 @@ import {
 import { createFlow, deleteFlow, listFlows, restoreFlowVersion, updateFlow } from '@/api/flows'
 import { createPrompt } from '@/api/prompts'
 import { persistAiCommandDraft, readAiCommandDraft } from '@/utils/aiCommandDraft'
+import { persistActiveFlowId, readActiveFlowId, resolveActiveFlowId } from '@/utils/flowSelection'
 import {
   persistFlowRunDrafts,
   readFlowRunDrafts,
@@ -38,7 +39,6 @@ import type {
   TaskRunResponse
 } from '@/types'
 
-const ACTIVE_FLOW_STORAGE_KEY = 'flowforge.activeFlowId'
 const WORKSPACE_PREFERENCES_STORAGE_KEY = 'flowforge.workspacePreferences'
 const DEFAULT_AI_TASK_EXECUTION_GUIDANCE =
   '综合上游上下文与 Prompt，给出清晰、可执行的结构化结果。\n优先保留关键判断、行动建议和必要的边界条件。'
@@ -503,9 +503,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       flowDrafts.value = data
       flowAssetsReady.value = true
 
-      const storedActiveFlowId = localStorage.getItem(ACTIVE_FLOW_STORAGE_KEY) || ''
-      const activeFlowExists = data.some((flow) => flow.id === storedActiveFlowId)
-      activeFlowId.value = activeFlowExists ? storedActiveFlowId : data[0]?.id || ''
+      activeFlowId.value = resolveActiveFlowId(data.map((flow) => flow.id), readActiveFlowId())
+      persistActiveFlowId(activeFlowId.value)
     } catch (error: any) {
       flowAssetsReady.value = false
       ElMessage.error(error.response?.data?.message || 'Flow 草稿加载失败')
@@ -691,7 +690,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
 
     activeFlowId.value = sourceFlow.id
-    localStorage.setItem(ACTIVE_FLOW_STORAGE_KEY, sourceFlow.id)
+    persistActiveFlowId(sourceFlow.id)
     pendingFlowRunSeed.value = {
       flowId: sourceFlow.id,
       runtimeContext: snapshot.runtimeContext?.trim() || '',
@@ -711,7 +710,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       beforeActivate?.(data)
       flowDrafts.value = [data, ...flowDrafts.value]
       activeFlowId.value = data.id
-      localStorage.setItem(ACTIVE_FLOW_STORAGE_KEY, data.id)
+      persistActiveFlowId(data.id)
       return data
     } catch (error: any) {
       ElMessage.error(error.response?.data?.message || errorMessage)
@@ -723,7 +722,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   function selectFlowDraft(id: string) {
     activeFlowId.value = id
-    localStorage.setItem(ACTIVE_FLOW_STORAGE_KEY, id)
+    persistActiveFlowId(id)
   }
 
   function replaceFlowDraft(flow: FlowDraft) {
@@ -1003,11 +1002,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       flowDrafts.value = flowDrafts.value.filter((flow) => flow.id !== id)
       if (activeFlowId.value === id) {
         activeFlowId.value = flowDrafts.value[0]?.id || ''
-        if (activeFlowId.value) {
-          localStorage.setItem(ACTIVE_FLOW_STORAGE_KEY, activeFlowId.value)
-        } else {
-          localStorage.removeItem(ACTIVE_FLOW_STORAGE_KEY)
-        }
+        persistActiveFlowId(activeFlowId.value)
       }
       if (flowConflictId.value === id) {
         flowConflictId.value = ''
