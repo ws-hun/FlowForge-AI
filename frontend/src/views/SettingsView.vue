@@ -38,7 +38,7 @@
             </label>
           </div>
           <div class="settings-save-row">
-            <span>{{ preferencesChanged ? '有尚未保存的本地修改' : '本地偏好已保存' }}</span>
+            <span>{{ preferenceSaveStateLabel }}</span>
             <button type="button" class="primary-button" :disabled="!canSavePreferences" @click="savePreferences">
               保存偏好
             </button>
@@ -113,6 +113,12 @@ const preferencesChanged = computed(() =>
 const canSavePreferences = computed(() =>
   Boolean(preferencesChanged.value && draft.workspaceName.trim() && draft.profileName.trim())
 )
+const preferenceSaveStateLabel = computed(() => {
+  if (preferencesChanged.value) {
+    return '有尚未保存的本地修改'
+  }
+  return workspace.workspacePreferencesPersisted ? '本地偏好已保存' : '仅在当前会话生效'
+})
 
 watch(
   [() => workspace.workspaceName, () => workspace.profileName],
@@ -125,12 +131,17 @@ watch(
 )
 
 function savePreferences() {
-  if (!workspace.updateWorkspacePreferences(draft)) {
+  const result = workspace.updateWorkspacePreferences(draft)
+  if (result === 'invalid') {
     ElMessage.warning('工作区名称和个人显示名不能为空')
     return
   }
   draft.workspaceName = workspace.workspaceName
   draft.profileName = workspace.profileName
+  if (result === 'memory-only') {
+    ElMessage.warning('偏好已应用到当前会话，但浏览器未允许本地保存')
+    return
+  }
   ElMessage.success('本地工作区偏好已保存')
 }
 </script>

@@ -99,7 +99,7 @@ Current Stage 3 capabilities:
 - Failed Provider executions preserve their context and remain recoverable from History.
 - Workspace continuation paths reopen the active Flow, continue the latest successful Result, and deep-link into recent Prompt assets without turning the home screen into a dashboard.
 - Global creation search provides one calm entry point for AI Command, Flow Space, Prompt assets, and immutable Results without introducing dense navigation.
-- Local workspace identity preferences keep Settings, Profile, and the global shell consistent without pretending that team accounts or remote synchronization already exist.
+- Local workspace identity preferences keep Settings, Profile, and the global shell consistent, while explicitly reporting session-only fallback when browser persistence is unavailable and never pretending that remote synchronization exists.
 - Future modules remain outside the primary navigation and use honest workspace boundaries that route users back to currently executable creation paths instead of presenting fake Agent, Knowledge, or Analytics state.
 - Route-level code splitting and scoped Element Plus registration keep the calm workspace shell lightweight while loading complex creation surfaces only when opened.
 - Docker readiness follows the real dependency chain from PostgreSQL to the backend database probe and then to the Nginx frontend proxy.

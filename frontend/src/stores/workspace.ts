@@ -22,8 +22,14 @@ import {
   upsertFlowRunDraft
 } from '@/utils/flowRunDrafts'
 import { extractPromptVariables, isValidPromptVariableName, renamePromptVariable } from '@/utils/promptVariables'
+import {
+  normalizeWorkspacePreferences,
+  persistWorkspacePreferences,
+  readWorkspacePreferences
+} from '@/utils/workspacePreferences'
 import type { AiCommandDraft } from '@/utils/aiCommandDraft'
 import type { FlowRunDraft } from '@/utils/flowRunDrafts'
+import type { WorkspacePreferences } from '@/utils/workspacePreferences'
 import type {
   ApiKeyConfig,
   FlowDraft,
@@ -39,7 +45,6 @@ import type {
   TaskRunResponse
 } from '@/types'
 
-const WORKSPACE_PREFERENCES_STORAGE_KEY = 'flowforge.workspacePreferences'
 const DEFAULT_AI_TASK_EXECUTION_GUIDANCE =
   '综合上游上下文与 Prompt，给出清晰、可执行的结构化结果。\n优先保留关键判断、行动建议和必要的边界条件。'
 const DEFAULT_OUTPUT_DELIVERY_FOCUS =
@@ -57,10 +62,7 @@ type FlowRunSeed = {
   variableValues: Record<string, string>
 }
 
-type WorkspacePreferences = {
-  workspaceName: string
-  profileName: string
-}
+type WorkspacePreferenceUpdateResult = 'saved' | 'memory-only' | 'invalid'
 
 export const useWorkspaceStore = defineStore('workspace', () => {
   let bootstrapPromise: Promise<void> | null = null
@@ -90,6 +92,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const pendingFlowRunSeed = ref<FlowRunSeed | null>(null)
   const flowRunDrafts = ref<Record<string, FlowRunDraft>>(readFlowRunDrafts())
   const workspacePreferences = ref<WorkspacePreferences>(readWorkspacePreferences())
+  const workspacePreferencesPersisted = ref(true)
   const running = ref(false)
   const historyLoading = ref(false)
   const settingsLoading = ref(false)
@@ -145,15 +148,16 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
-  function updateWorkspacePreferences(nextPreferences: WorkspacePreferences) {
-    const workspaceName = nextPreferences.workspaceName.trim().slice(0, 80)
-    const profileName = nextPreferences.profileName.trim().slice(0, 80)
-    if (!workspaceName || !profileName) {
-      return false
+  function updateWorkspacePreferences(
+    nextPreferences: WorkspacePreferences
+  ): WorkspacePreferenceUpdateResult {
+    const normalizedPreferences = normalizeWorkspacePreferences(nextPreferences)
+    if (!normalizedPreferences) {
+      return 'invalid'
     }
-    workspacePreferences.value = { workspaceName, profileName }
-    persistWorkspacePreferences(workspacePreferences.value)
-    return true
+    workspacePreferences.value = normalizedPreferences
+    workspacePreferencesPersisted.value = persistWorkspacePreferences(normalizedPreferences)
+    return workspacePreferencesPersisted.value ? 'saved' : 'memory-only'
   }
 
   async function loadApiKeys() {
@@ -1252,6 +1256,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     workspaceName,
     profileName,
     profileInitial,
+    workspacePreferencesPersisted,
     canPromoteLatestTask,
     taskSourceFlowVariables,
     missingTaskSourceFlowVariables,
@@ -1534,43 +1539,6 @@ function applyFlowNodePatch(
   targetNode.description = description
   if (typeof content === 'string') {
     targetNode.content = content.trim()
-  }
-}
-
-function readWorkspacePreferences(): WorkspacePreferences {
-  const defaults: WorkspacePreferences = {
-    workspaceName: 'FlowForge Workspace',
-    profileName: 'AI 创作者'
-  }
-  if (typeof window === 'undefined') {
-    return defaults
-  }
-
-  try {
-    const value = JSON.parse(window.localStorage.getItem(WORKSPACE_PREFERENCES_STORAGE_KEY) || '{}')
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      return defaults
-    }
-    const candidate = value as Record<string, unknown>
-    const workspaceName = typeof candidate.workspaceName === 'string' ? candidate.workspaceName.trim() : ''
-    const profileName = typeof candidate.profileName === 'string' ? candidate.profileName.trim() : ''
-    return {
-      workspaceName: workspaceName.slice(0, 80) || defaults.workspaceName,
-      profileName: profileName.slice(0, 80) || defaults.profileName
-    }
-  } catch {
-    return defaults
-  }
-}
-
-function persistWorkspacePreferences(preferences: WorkspacePreferences) {
-  if (typeof window === 'undefined') {
-    return
-  }
-  try {
-    window.localStorage.setItem(WORKSPACE_PREFERENCES_STORAGE_KEY, JSON.stringify(preferences))
-  } catch {
-    // Preferences remain available in memory when browser storage is unavailable.
   }
 }
 
