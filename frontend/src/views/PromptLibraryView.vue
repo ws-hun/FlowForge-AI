@@ -413,25 +413,18 @@ import { useWorkspaceStore } from '@/stores/workspace'
 import { applyPromptVariables, extractPromptVariables } from '@/utils/promptVariables'
 import { comparePromptRevision } from '@/utils/promptRevisions'
 import { formatExecutionSource } from '@/utils/aiProvider'
+import {
+  parsePromptDraftTags,
+  persistPromptEditorDraft,
+  readPromptEditorDraft,
+  removePromptEditorDraft
+} from '@/utils/promptEditorDraft'
+import type { PromptEditorDraft } from '@/utils/promptEditorDraft'
 import type { PromptAsset, PromptVersion, SavePromptPayload, TaskHistoryItem } from '@/types'
 
 type StarterPrompt = SavePromptPayload & {
   signal: string
 }
-
-type PromptEditorDraft = {
-  promptId: string | null
-  baseRevision: number | null
-  title: string
-  category: string
-  description: string
-  content: string
-  tagInput: string
-  favorite: boolean
-  updatedAt: string
-}
-
-const PROMPT_EDITOR_DRAFT_STORAGE_KEY = 'flowforge.promptEditorDraft'
 
 const router = useRouter()
 const route = useRoute()
@@ -828,10 +821,7 @@ function applyPromptEditorDraft(draft: PromptEditorDraft) {
   form.description = draft.description
   form.content = draft.content
   tagInput.value = draft.tagInput
-  form.tags = draft.tagInput
-    .split(',')
-    .map((tag) => tag.trim())
-    .filter(Boolean)
+  form.tags = parsePromptDraftTags(draft.tagInput)
   form.favorite = draft.favorite
 }
 
@@ -1450,70 +1440,4 @@ function toSavePayload(prompt: SavePromptPayload): SavePromptPayload {
   }
 }
 
-function readPromptEditorDraft(): PromptEditorDraft | null {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
-  try {
-    const value = JSON.parse(window.localStorage.getItem(PROMPT_EDITOR_DRAFT_STORAGE_KEY) || 'null')
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      return null
-    }
-    const candidate = value as Record<string, unknown>
-    const promptId = typeof candidate.promptId === 'string' && candidate.promptId.trim()
-      ? candidate.promptId.trim()
-      : null
-    const baseRevision = typeof candidate.baseRevision === 'number' && candidate.baseRevision >= 0
-      ? Math.floor(candidate.baseRevision)
-      : null
-    const draft: PromptEditorDraft = {
-      promptId,
-      baseRevision,
-      title: readPromptDraftText(candidate.title, 120),
-      category: readPromptDraftText(candidate.category, 80),
-      description: readPromptDraftText(candidate.description, 300),
-      content: readPromptDraftText(candidate.content, 12000, false),
-      tagInput: readPromptDraftText(candidate.tagInput, 2000, false),
-      favorite: candidate.favorite === true,
-      updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : new Date(0).toISOString()
-    }
-    const hasDraftContent = Boolean(
-      draft.title || draft.category || draft.description || draft.content || draft.tagInput || draft.favorite
-    )
-    return promptId || hasDraftContent ? draft : null
-  } catch {
-    return null
-  }
-}
-
-function readPromptDraftText(value: unknown, maxLength: number, trim = true) {
-  if (typeof value !== 'string') {
-    return ''
-  }
-  const text = trim ? value.trim() : value
-  return text.slice(0, maxLength)
-}
-
-function persistPromptEditorDraft(draft: PromptEditorDraft) {
-  if (typeof window === 'undefined') {
-    return
-  }
-  try {
-    window.localStorage.setItem(PROMPT_EDITOR_DRAFT_STORAGE_KEY, JSON.stringify(draft))
-  } catch {
-    // The active editor state remains available in memory when browser storage is unavailable.
-  }
-}
-
-function removePromptEditorDraft() {
-  if (typeof window === 'undefined') {
-    return
-  }
-  try {
-    window.localStorage.removeItem(PROMPT_EDITOR_DRAFT_STORAGE_KEY)
-  } catch {
-    // Ignore storage cleanup failures; no server state is affected.
-  }
-}
 </script>
