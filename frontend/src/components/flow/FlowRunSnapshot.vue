@@ -57,6 +57,26 @@
         </div>
       </div>
 
+      <section
+        v-if="snapshotDiff"
+        class="flow-run-snapshot-comparison"
+        :class="{ unchanged: !snapshotDiff.hasChanges }"
+      >
+        <div class="flow-run-snapshot-comparison-heading">
+          <span>与当前 Flow 对比</span>
+          <strong>
+            {{ snapshotDiff.hasChanges ? `当前 Flow 已有 ${snapshotDiff.changeCount} 处变化` : '与当前 Flow 一致' }}
+          </strong>
+        </div>
+        <ul v-if="snapshotDiff.hasChanges">
+          <li v-for="item in visibleComparisonItems" :key="item.key">
+            <span>{{ item.label }}</span>
+            <p>{{ item.detail }}</p>
+          </li>
+        </ul>
+        <small v-if="remainingComparisonCount">另有 {{ remainingComparisonCount }} 处变化</small>
+      </section>
+
       <div v-if="showActions" class="snapshot-actions">
         <button
           v-if="canReuseRunSettings && hasReusableSettings"
@@ -85,11 +105,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Back, Plus, RefreshRight } from '@element-plus/icons-vue'
-import type { FlowRunSnapshot } from '@/types'
+import { compareFlowRunSnapshot } from '@/utils/flowRunSnapshots'
+import type { FlowDraft, FlowRunSnapshot } from '@/types'
 
 const props = withDefaults(
   defineProps<{
     snapshot: FlowRunSnapshot
+    currentFlow?: FlowDraft | null
     canCreateFlow?: boolean
     canReuseRunSettings?: boolean
     canOpenSourceFlow?: boolean
@@ -97,6 +119,7 @@ const props = withDefaults(
   }>(),
   {
     canCreateFlow: false,
+    currentFlow: null,
     canReuseRunSettings: false,
     canOpenSourceFlow: false,
     creating: false
@@ -110,6 +133,33 @@ const emit = defineEmits<{
 }>()
 
 const variableEntries = computed(() => Object.entries(props.snapshot.variableValues || {}))
+const snapshotDiff = computed(() => {
+  if (!props.currentFlow || props.currentFlow.id !== props.snapshot.flowId) {
+    return null
+  }
+  return compareFlowRunSnapshot(props.currentFlow, props.snapshot)
+})
+const comparisonItems = computed(() => {
+  const diff = snapshotDiff.value
+  if (!diff) {
+    return []
+  }
+  return [
+    ...(diff.titleChanged
+      ? [{ key: 'title', label: '标题', detail: `当前为“${props.currentFlow?.title || ''}”` }]
+      : []),
+    ...(diff.descriptionChanged
+      ? [{ key: 'description', label: '目标', detail: '当前 Flow 的创作目标已修改' }]
+      : []),
+    ...diff.nodeChanges.map((change) => ({
+      key: `${change.kind}-${change.id}`,
+      label: nodeChangeLabel(change.kind),
+      detail: change.title
+    }))
+  ]
+})
+const visibleComparisonItems = computed(() => comparisonItems.value.slice(0, 5))
+const remainingComparisonCount = computed(() => Math.max(0, comparisonItems.value.length - 5))
 const hasReusableSettings = computed(() =>
   Boolean(
     props.snapshot.runtimeContext?.trim() ||
@@ -129,5 +179,14 @@ function formatDate(value: string) {
     hour: '2-digit',
     minute: '2-digit'
   }).format(new Date(value))
+}
+
+function nodeChangeLabel(kind: 'added' | 'removed' | 'updated' | 'reordered') {
+  return {
+    added: '新增节点',
+    removed: '已移除',
+    updated: '节点已修改',
+    reordered: '顺序已调整'
+  }[kind]
 }
 </script>

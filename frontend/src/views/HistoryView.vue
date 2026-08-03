@@ -179,6 +179,7 @@
               <FlowRunSnapshot
                 v-if="task.flowRunSnapshot"
                 :snapshot="task.flowRunSnapshot"
+                :current-flow="currentFlowForSnapshot(task.flowRunSnapshot)"
                 can-create-flow
                 :can-reuse-run-settings="flowStillAvailable(task.flowRunSnapshot)"
                 :can-open-source-flow="flowSourceStillAvailable(task.flowRunSnapshot)"
@@ -536,7 +537,11 @@ function continueFromRun(run: TaskHistoryItem) {
 }
 
 function flowStillAvailable(snapshot: FlowRunSnapshotType) {
-  return workspace.flowDrafts.some((flow) => flow.id === snapshot.flowId)
+  return Boolean(currentFlowForSnapshot(snapshot))
+}
+
+function currentFlowForSnapshot(snapshot: FlowRunSnapshotType) {
+  return workspace.flowDrafts.find((flow) => flow.id === snapshot.flowId) || null
 }
 
 function flowSourceStillAvailable(snapshot: FlowRunSnapshotType) {
