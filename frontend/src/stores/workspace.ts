@@ -13,7 +13,9 @@ import {
 } from '@/api/tasks'
 import { createFlow, deleteFlow, listFlows, restoreFlowVersion, updateFlow } from '@/api/flows'
 import { createPrompt } from '@/api/prompts'
+import { persistAiCommandDraft, readAiCommandDraft } from '@/utils/aiCommandDraft'
 import { extractPromptVariables, isValidPromptVariableName, renamePromptVariable } from '@/utils/promptVariables'
+import type { AiCommandDraft } from '@/utils/aiCommandDraft'
 import type {
   ApiKeyConfig,
   FlowDraft,
@@ -31,7 +33,6 @@ import type {
 
 const ACTIVE_FLOW_STORAGE_KEY = 'flowforge.activeFlowId'
 const FLOW_RUN_DRAFTS_STORAGE_KEY = 'flowforge.flowRunDrafts'
-const AI_COMMAND_DRAFT_STORAGE_KEY = 'flowforge.aiCommandDraft'
 const WORKSPACE_PREFERENCES_STORAGE_KEY = 'flowforge.workspacePreferences'
 const MAX_FLOW_RUN_DRAFTS = 20
 const DEFAULT_AI_TASK_EXECUTION_GUIDANCE =
@@ -60,20 +61,6 @@ type FlowRunDraft = {
 type WorkspacePreferences = {
   workspaceName: string
   profileName: string
-}
-
-type AiCommandDraft = {
-  input: string
-  sourcePromptId: string | null
-  sourcePromptTitle: string
-  sourceFlowId: string | null
-  sourceFlowTitle: string
-  sourceFlowVariableValues: Record<string, string>
-  sourceRunId: string | null
-  sourceRunSummary: string
-  inputVariantOfTaskId: string | null
-  inputVariantSourceTitle: string
-  updatedAt: string
 }
 
 export const useWorkspaceStore = defineStore('workspace', () => {
@@ -1581,102 +1568,6 @@ function applyFlowNodePatch(
   targetNode.description = description
   if (typeof content === 'string') {
     targetNode.content = content.trim()
-  }
-}
-
-function readAiCommandDraft(): AiCommandDraft | null {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
-  try {
-    const value = JSON.parse(window.localStorage.getItem(AI_COMMAND_DRAFT_STORAGE_KEY) || 'null')
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      return null
-    }
-
-    const candidate = value as Record<string, unknown>
-    const input = typeof candidate.input === 'string' ? candidate.input.slice(0, 50000) : ''
-    const sourcePromptId = readDraftId(candidate.sourcePromptId)
-    const sourceFlowId = readDraftId(candidate.sourceFlowId)
-    const sourceRunId = readDraftId(candidate.sourceRunId)
-    const inputVariantOfTaskId = readDraftId(candidate.inputVariantOfTaskId)
-    const sourceCount = [sourcePromptId, sourceFlowId, sourceRunId, inputVariantOfTaskId].filter(Boolean).length
-    if (sourceCount > 1) {
-      return input.trim() ? standaloneAiCommandDraft(input) : null
-    }
-    if (!input.trim() && sourceCount === 0) {
-      return null
-    }
-
-    return {
-      input,
-      sourcePromptId,
-      sourcePromptTitle: sourcePromptId ? readDraftLabel(candidate.sourcePromptTitle) : '',
-      sourceFlowId,
-      sourceFlowTitle: sourceFlowId ? readDraftLabel(candidate.sourceFlowTitle) : '',
-      sourceFlowVariableValues: sourceFlowId
-        ? readAiCommandVariableValues(candidate.sourceFlowVariableValues)
-        : {},
-      sourceRunId,
-      sourceRunSummary: sourceRunId ? readDraftLabel(candidate.sourceRunSummary, 500) : '',
-      inputVariantOfTaskId,
-      inputVariantSourceTitle: inputVariantOfTaskId ? readDraftLabel(candidate.inputVariantSourceTitle) : '',
-      updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : new Date(0).toISOString()
-    }
-  } catch {
-    return null
-  }
-}
-
-function standaloneAiCommandDraft(input: string): AiCommandDraft {
-  return {
-    input,
-    sourcePromptId: null,
-    sourcePromptTitle: '',
-    sourceFlowId: null,
-    sourceFlowTitle: '',
-    sourceFlowVariableValues: {},
-    sourceRunId: null,
-    sourceRunSummary: '',
-    inputVariantOfTaskId: null,
-    inputVariantSourceTitle: '',
-    updatedAt: new Date().toISOString()
-  }
-}
-
-function readDraftId(value: unknown) {
-  return typeof value === 'string' && value.trim() ? value.trim() : null
-}
-
-function readDraftLabel(value: unknown, maxLength = 200) {
-  return typeof value === 'string' ? value.trim().slice(0, maxLength) : ''
-}
-
-function readAiCommandVariableValues(value: unknown) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return {}
-  }
-  return Object.fromEntries(
-    Object.entries(value)
-      .filter(([name, variableValue]) => name.trim() && typeof variableValue === 'string')
-      .slice(0, 50)
-      .map(([name, variableValue]) => [name.trim().slice(0, 120), (variableValue as string).slice(0, 8000)])
-  )
-}
-
-function persistAiCommandDraft(draft: AiCommandDraft | null) {
-  if (typeof window === 'undefined') {
-    return
-  }
-  try {
-    if (!draft) {
-      window.localStorage.removeItem(AI_COMMAND_DRAFT_STORAGE_KEY)
-      return
-    }
-    window.localStorage.setItem(AI_COMMAND_DRAFT_STORAGE_KEY, JSON.stringify(draft))
-  } catch {
-    // The active command remains available in memory when browser storage is unavailable.
   }
 }
 
