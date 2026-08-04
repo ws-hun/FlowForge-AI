@@ -20,6 +20,23 @@ export type FlowRunSnapshotDiff = {
   hasChanges: boolean
 }
 
+export type FlowRunSettings = {
+  runtimeContext: string
+  variableValues: Record<string, string>
+}
+
+export type FlowRunVariableChange = {
+  name: string
+  kind: 'added' | 'removed' | 'updated'
+}
+
+export type FlowRunSettingsDiff = {
+  runtimeContextChanged: boolean
+  variableChanges: FlowRunVariableChange[]
+  changeCount: number
+  hasChanges: boolean
+}
+
 export function compareFlowRunSnapshot(
   current: CurrentFlowSnapshot,
   snapshot: FlowRunSnapshot
@@ -69,6 +86,37 @@ export function compareFlowRunSnapshot(
   }
 }
 
+export function compareFlowRunSettings(
+  current: FlowRunSettings,
+  snapshot: FlowRunSettings
+): FlowRunSettingsDiff {
+  const currentVariables = normalizeVariableValues(current.variableValues)
+  const snapshotVariables = normalizeVariableValues(snapshot.variableValues)
+  const variableNames = new Set([...Object.keys(snapshotVariables), ...Object.keys(currentVariables)])
+  const variableChanges = Array.from(variableNames).flatMap<FlowRunVariableChange>((name) => {
+    const currentValue = currentVariables[name]
+    const snapshotValue = snapshotVariables[name]
+    if (currentValue === snapshotValue) {
+      return []
+    }
+    if (snapshotValue === undefined) {
+      return [{ name, kind: 'added' }]
+    }
+    if (currentValue === undefined) {
+      return [{ name, kind: 'removed' }]
+    }
+    return [{ name, kind: 'updated' }]
+  })
+  const runtimeContextChanged = normalizeText(current.runtimeContext) !== normalizeText(snapshot.runtimeContext)
+  const changeCount = Number(runtimeContextChanged) + variableChanges.length
+  return {
+    runtimeContextChanged,
+    variableChanges,
+    changeCount,
+    hasChanges: changeCount > 0
+  }
+}
+
 function sameNode(left: FlowNode, right: FlowNode) {
   return (
     left.type === right.type &&
@@ -78,4 +126,18 @@ function sameNode(left: FlowNode, right: FlowNode) {
     left.promptId === right.promptId &&
     left.promptTitle === right.promptTitle
   )
+}
+
+function normalizeVariableValues(value: Record<string, string>) {
+  return Object.fromEntries(
+    Object.entries(value).flatMap(([name, variableValue]) => {
+      const cleanName = name.trim()
+      const cleanValue = normalizeText(variableValue)
+      return cleanName && cleanValue ? [[cleanName, cleanValue]] : []
+    })
+  )
+}
+
+function normalizeText(value: string) {
+  return value.trim()
 }

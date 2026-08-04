@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareFlowRunSnapshot } from '../flowRunSnapshots'
+import { compareFlowRunSettings, compareFlowRunSnapshot } from '../flowRunSnapshots'
 import type { FlowDraft, FlowNode, FlowRunSnapshot } from '@/types'
 
 function node(id: string, title: string, content = title): FlowNode {
@@ -81,5 +81,53 @@ describe('Flow run snapshot comparison', () => {
       { id: 'b', kind: 'removed', title: 'Draft' },
       { id: 'd', kind: 'added', title: 'Review' }
     ])
+  })
+})
+
+describe('Flow run settings comparison', () => {
+  it('treats equivalent trimmed context and variable values as unchanged', () => {
+    expect(compareFlowRunSettings(
+      {
+        runtimeContext: '  Focus on launch readiness.  ',
+        variableValues: { audience: '  product teams  ', unused: ' ' }
+      },
+      {
+        runtimeContext: 'Focus on launch readiness.',
+        variableValues: { audience: 'product teams' }
+      }
+    )).toEqual({
+      runtimeContextChanged: false,
+      variableChanges: [],
+      changeCount: 0,
+      hasChanges: false
+    })
+  })
+
+  it('reports changed context and added, removed, or updated variable values', () => {
+    expect(compareFlowRunSettings(
+      {
+        runtimeContext: 'Target the second release.',
+        variableValues: {
+          audience: 'enterprise teams',
+          format: 'decision memo'
+        }
+      },
+      {
+        runtimeContext: 'Target the first release.',
+        variableValues: {
+          audience: 'product teams',
+          tone: 'calm'
+        }
+      }
+    )).toEqual({
+      runtimeContextChanged: true,
+      variableChanges: [
+        { name: 'audience', kind: 'updated' },
+        { name: 'tone', kind: 'removed' },
+        { name: 'format', kind: 'added' }
+      ],
+      changeCount: 4,
+      hasChanges: true
+    })
   })
 })

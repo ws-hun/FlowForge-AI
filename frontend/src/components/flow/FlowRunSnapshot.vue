@@ -77,6 +77,28 @@
         <small v-if="remainingComparisonCount">另有 {{ remainingComparisonCount }} 处变化</small>
       </section>
 
+      <section
+        v-if="runSettingsDiff"
+        class="flow-run-snapshot-comparison run-settings"
+        :class="{ unchanged: !runSettingsDiff.hasChanges }"
+      >
+        <div class="flow-run-snapshot-comparison-heading">
+          <span>与当前 Run Brief 对比</span>
+          <strong>
+            {{ runSettingsDiff.hasChanges ? `当前输入已有 ${runSettingsDiff.changeCount} 处变化` : '与当前 Run Brief 一致' }}
+          </strong>
+        </div>
+        <ul v-if="runSettingsDiff.hasChanges">
+          <li v-for="item in visibleRunSettingsComparisonItems" :key="item.key">
+            <span>{{ item.label }}</span>
+            <p>{{ item.detail }}</p>
+          </li>
+        </ul>
+        <small v-if="remainingRunSettingsComparisonCount">
+          另有 {{ remainingRunSettingsComparisonCount }} 处变化
+        </small>
+      </section>
+
       <div v-if="showActions" class="snapshot-actions">
         <button
           v-if="canReuseRunSettings && hasReusableSettings"
@@ -105,13 +127,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Back, Plus, RefreshRight } from '@element-plus/icons-vue'
-import { compareFlowRunSnapshot } from '@/utils/flowRunSnapshots'
+import { compareFlowRunSettings, compareFlowRunSnapshot } from '@/utils/flowRunSnapshots'
+import type { FlowRunSettings } from '@/utils/flowRunSnapshots'
 import type { FlowDraft, FlowRunSnapshot } from '@/types'
 
 const props = withDefaults(
   defineProps<{
     snapshot: FlowRunSnapshot
     currentFlow?: FlowDraft | null
+    currentRunSettings?: FlowRunSettings | null
     canCreateFlow?: boolean
     canReuseRunSettings?: boolean
     canOpenSourceFlow?: boolean
@@ -120,6 +144,7 @@ const props = withDefaults(
   {
     canCreateFlow: false,
     currentFlow: null,
+    currentRunSettings: null,
     canReuseRunSettings: false,
     canOpenSourceFlow: false,
     creating: false
@@ -139,7 +164,16 @@ const snapshotDiff = computed(() => {
   }
   return compareFlowRunSnapshot(props.currentFlow, props.snapshot)
 })
-const comparisonItems = computed(() => {
+const runSettingsDiff = computed(() => {
+  if (
+    !props.currentRunSettings ||
+    (!hasRunSettings(props.currentRunSettings) && !hasRunSettings(props.snapshot))
+  ) {
+    return null
+  }
+  return compareFlowRunSettings(props.currentRunSettings, props.snapshot)
+})
+const flowComparisonItems = computed(() => {
   const diff = snapshotDiff.value
   if (!diff) {
     return []
@@ -158,14 +192,29 @@ const comparisonItems = computed(() => {
     }))
   ]
 })
-const visibleComparisonItems = computed(() => comparisonItems.value.slice(0, 5))
-const remainingComparisonCount = computed(() => Math.max(0, comparisonItems.value.length - 5))
-const hasReusableSettings = computed(() =>
-  Boolean(
-    props.snapshot.runtimeContext?.trim() ||
-      variableEntries.value.some(([, value]) => value?.trim())
-  )
+const visibleComparisonItems = computed(() => flowComparisonItems.value.slice(0, 5))
+const remainingComparisonCount = computed(() => Math.max(0, flowComparisonItems.value.length - 5))
+const runSettingsComparisonItems = computed(() => {
+  const diff = runSettingsDiff.value
+  if (!diff) {
+    return []
+  }
+  return [
+    ...(diff.runtimeContextChanged
+      ? [{ key: 'runtime-context', label: '运行说明', detail: '当前运行上下文已修改' }]
+      : []),
+    ...diff.variableChanges.map((change) => ({
+      key: `${change.kind}-${change.name}`,
+      label: variableChangeLabel(change.kind),
+      detail: `{${change.name}}`
+    }))
+  ]
+})
+const visibleRunSettingsComparisonItems = computed(() => runSettingsComparisonItems.value.slice(0, 5))
+const remainingRunSettingsComparisonCount = computed(() =>
+  Math.max(0, runSettingsComparisonItems.value.length - 5)
 )
+const hasReusableSettings = computed(() => hasRunSettings(props.snapshot))
 const showActions = computed(() => props.canCreateFlow || (props.canReuseRunSettings && hasReusableSettings.value))
 
 function formatDate(value: string) {
@@ -188,5 +237,20 @@ function nodeChangeLabel(kind: 'added' | 'removed' | 'updated' | 'reordered') {
     updated: '节点已修改',
     reordered: '顺序已调整'
   }[kind]
+}
+
+function variableChangeLabel(kind: 'added' | 'removed' | 'updated') {
+  return {
+    added: '新增变量值',
+    removed: '已清空',
+    updated: '变量已修改'
+  }[kind]
+}
+
+function hasRunSettings(settings: FlowRunSettings) {
+  return Boolean(
+    settings.runtimeContext?.trim() ||
+      Object.values(settings.variableValues || {}).some((value) => value?.trim())
+  )
 }
 </script>

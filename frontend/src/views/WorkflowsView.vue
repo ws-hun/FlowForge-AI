@@ -376,6 +376,7 @@
             v-if="activeFlowRunSnapshot"
             :snapshot="activeFlowRunSnapshot"
             :current-flow="workspace.activeFlow"
+            :current-run-settings="{ runtimeContext: flowRunContext, variableValues: flowVariableValues }"
             can-create-flow
             can-reuse-run-settings
             :can-open-source-flow="flowSourceStillAvailable(activeFlowRunSnapshot)"

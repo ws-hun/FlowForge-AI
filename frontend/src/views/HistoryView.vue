@@ -180,6 +180,7 @@
                 v-if="task.flowRunSnapshot"
                 :snapshot="task.flowRunSnapshot"
                 :current-flow="currentFlowForSnapshot(task.flowRunSnapshot)"
+                :current-run-settings="currentRunSettingsForSnapshot(task.flowRunSnapshot)"
                 can-create-flow
                 :can-reuse-run-settings="flowStillAvailable(task.flowRunSnapshot)"
                 :can-open-source-flow="flowSourceStillAvailable(task.flowRunSnapshot)"
@@ -542,6 +543,10 @@ function flowStillAvailable(snapshot: FlowRunSnapshotType) {
 
 function currentFlowForSnapshot(snapshot: FlowRunSnapshotType) {
   return workspace.flowDrafts.find((flow) => flow.id === snapshot.flowId) || null
+}
+
+function currentRunSettingsForSnapshot(snapshot: FlowRunSnapshotType) {
+  return currentFlowForSnapshot(snapshot) ? workspace.getFlowRunDraft(snapshot.flowId) : null
 }
 
 function flowSourceStillAvailable(snapshot: FlowRunSnapshotType) {
