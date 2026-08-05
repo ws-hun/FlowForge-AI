@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { persistFlowCreationDraft, readFlowCreationDraft } from '../flowCreationDraft'
 import {
+  buildFlowEditorPreview,
   buildRecoveredFlowSnapshot,
   captureFlowEditorSnapshot,
   persistFlowEditorDraft,
@@ -128,6 +129,36 @@ describe('Flow editor drafts', () => {
       content: 'Recovered prompt'
     })
     expect(draft.snapshot).toEqual(captureFlowEditorSnapshot(sourceFlow))
+  })
+
+  it('builds a current comparison preview without committing pending editor state', () => {
+    const preview = buildFlowEditorPreview(sourceFlow, {
+      flowChanged: true,
+      flowTitle: '  Pending Flow  ',
+      flowDescription: '  Pending goal  ',
+      nodeChanged: true,
+      nodeId: 'prompt-1',
+      nodeTitle: '  Pending contract  ',
+      nodeDescription: '  Pending description  ',
+      nodeContent: '  Pending prompt  '
+    })
+
+    expect(preview).toMatchObject({
+      title: 'Pending Flow',
+      description: 'Pending goal'
+    })
+    expect(preview.nodes.find((node) => node.id === 'input-1')).toMatchObject({
+      description: '用户想完成的 AI 工作',
+      content: 'Pending goal'
+    })
+    expect(preview.nodes.find((node) => node.id === 'prompt-1')).toMatchObject({
+      title: 'Pending contract',
+      description: 'Pending description',
+      content: 'Pending prompt'
+    })
+    expect(sourceFlow.title).toBe('Original Flow')
+    expect(sourceFlow.description).toBe('Original goal')
+    expect(sourceFlow.nodes.find((node) => node.id === 'prompt-1')?.content).toBe('Original prompt')
   })
 
   it('rejects snapshots with duplicate node identities', () => {

@@ -1,6 +1,7 @@
 import type { FlowNode, FlowRunSnapshot } from '@/types'
 
-type CurrentFlowSnapshot = {
+export type CurrentFlowSnapshot = {
+  id: string
   title: string
   description: string
   nodes: FlowNode[]

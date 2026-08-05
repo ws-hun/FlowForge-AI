@@ -132,13 +132,13 @@ import {
   compareFlowRunSnapshot,
   hasFlowRunSettings
 } from '@/utils/flowRunSnapshots'
-import type { FlowRunSettings } from '@/utils/flowRunSnapshots'
-import type { FlowDraft, FlowRunSnapshot } from '@/types'
+import type { CurrentFlowSnapshot, FlowRunSettings } from '@/utils/flowRunSnapshots'
+import type { FlowRunSnapshot } from '@/types'
 
 const props = withDefaults(
   defineProps<{
     snapshot: FlowRunSnapshot
-    currentFlow?: FlowDraft | null
+    currentFlow?: CurrentFlowSnapshot | null
     currentRunSettings?: FlowRunSettings | null
     canCreateFlow?: boolean
     canReuseRunSettings?: boolean

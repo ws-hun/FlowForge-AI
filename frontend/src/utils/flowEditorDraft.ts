@@ -2,6 +2,17 @@ import type { FlowDraft, FlowNode, FlowNodeType, SaveFlowPayload } from '@/types
 
 export type FlowEditorSnapshot = Pick<FlowDraft, 'title' | 'description' | 'nodes'>
 
+export type FlowEditorPendingState = {
+  flowChanged: boolean
+  flowTitle: string
+  flowDescription: string
+  nodeChanged: boolean
+  nodeId: string
+  nodeTitle: string
+  nodeDescription: string
+  nodeContent: string
+}
+
 export type FlowEditorDraft = {
   flowId: string
   baseRevision: number
@@ -25,6 +36,36 @@ export function captureFlowEditorSnapshot(flow: FlowDraft): FlowEditorSnapshot {
     description: flow.description,
     nodes: flow.nodes.map((node) => ({ ...node }))
   }
+}
+
+export function buildFlowEditorPreview(
+  flow: FlowDraft,
+  pending: FlowEditorPendingState
+): FlowEditorSnapshot {
+  const preview = captureFlowEditorSnapshot(flow)
+
+  if (pending.flowChanged) {
+    preview.title = pending.flowTitle.trim()
+    preview.description = pending.flowDescription.trim()
+    const intentNode = preview.nodes.find((node) => node.type === 'input')
+    if (intentNode) {
+      intentNode.content = preview.description
+      intentNode.description = '用户想完成的 AI 工作'
+    }
+  }
+
+  if (pending.nodeChanged) {
+    const targetNode = preview.nodes.find((node) => node.id === pending.nodeId)
+    if (targetNode) {
+      targetNode.title = pending.nodeTitle.trim()
+      targetNode.description = pending.nodeDescription.trim()
+      if (typeof targetNode.content === 'string') {
+        targetNode.content = pending.nodeContent.trim()
+      }
+    }
+  }
+
+  return preview
 }
 
 export function buildRecoveredFlowSnapshot(

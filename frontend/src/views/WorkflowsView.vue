@@ -382,7 +382,7 @@
           <FlowRunSnapshot
             v-if="activeFlowRunSnapshot"
             :snapshot="activeFlowRunSnapshot"
-            :current-flow="workspace.activeFlow"
+            :current-flow="currentFlowComparison"
             :current-run-settings="{ runtimeContext: flowRunContext, variableValues: flowVariableValues }"
             can-create-flow
             can-reuse-run-settings
@@ -822,6 +822,7 @@ import { canPersistFlowContext, MAX_FLOW_CONTEXT_LENGTH } from '@/utils/flowCont
 import { shouldConfirmFlowRunSettingsReplacement } from '@/utils/flowRunSnapshots'
 import { persistFlowCreationDraft, readFlowCreationDraft } from '@/utils/flowCreationDraft'
 import {
+  buildFlowEditorPreview,
   buildRecoveredFlowSnapshot,
   captureFlowEditorSnapshot,
   persistFlowEditorDraft,
@@ -1220,6 +1221,26 @@ const nodeEditorChanged = computed(() => {
     nodeDescription.value.trim() !== selectedNode.value.description ||
     contentChanged
   )
+})
+
+const currentFlowComparison = computed(() => {
+  const flow = workspace.activeFlow
+  if (!flow) {
+    return null
+  }
+  return {
+    id: flow.id,
+    ...buildFlowEditorPreview(flow, {
+      flowChanged: flowMetaChanged.value,
+      flowTitle: flowTitle.value,
+      flowDescription: flowDescription.value,
+      nodeChanged: nodeEditorChanged.value,
+      nodeId: selectedNode.value?.id || '',
+      nodeTitle: nodeTitle.value,
+      nodeDescription: nodeDescription.value,
+      nodeContent: nodeContent.value
+    })
+  }
 })
 
 const selectedPromptIndex = computed(() => {
