@@ -22,13 +22,21 @@ export type FlowRevisionDiff = {
 }
 
 export function compareFlowRevision(current: FlowRevisionSource, revision: FlowVersion): FlowRevisionDiff {
-  const currentNodes = new Map(current.nodes.map((node, index) => [node.id, { node, index }]))
-  const revisionNodes = new Map(revision.nodes.map((node, index) => [node.id, { node, index }]))
+  const currentNodes = new Map(current.nodes.map((node) => [node.id, node]))
+  const revisionNodes = new Map(revision.nodes.map((node) => [node.id, node]))
+  const currentSharedOrder = current.nodes
+    .filter((node) => revisionNodes.has(node.id))
+    .map((node) => node.id)
+  const revisionSharedOrder = revision.nodes
+    .filter((node) => currentNodes.has(node.id))
+    .map((node) => node.id)
+  const currentSharedIndexes = new Map(currentSharedOrder.map((id, index) => [id, index]))
+  const revisionSharedIndexes = new Map(revisionSharedOrder.map((id, index) => [id, index]))
   const nodeChanges: FlowRevisionNodeChange[] = []
 
-  revision.nodes.forEach((node, index) => {
-    const currentItem = currentNodes.get(node.id)
-    if (!currentItem) {
+  revision.nodes.forEach((node) => {
+    const currentNode = currentNodes.get(node.id)
+    if (!currentNode) {
       nodeChanges.push({
         id: node.id,
         kind: 'restore',
@@ -38,7 +46,7 @@ export function compareFlowRevision(current: FlowRevisionSource, revision: FlowV
       return
     }
 
-    if (!sameNode(currentItem.node, node)) {
+    if (!sameNode(currentNode, node)) {
       nodeChanges.push({
         id: node.id,
         kind: 'update',
@@ -48,7 +56,7 @@ export function compareFlowRevision(current: FlowRevisionSource, revision: FlowV
       return
     }
 
-    if (currentItem.index !== index) {
+    if (currentSharedIndexes.get(node.id) !== revisionSharedIndexes.get(node.id)) {
       nodeChanges.push({
         id: node.id,
         kind: 'reorder',

@@ -1017,13 +1017,6 @@ const flowMetaChanged = computed(() => {
   return flowTitle.value.trim() !== workspace.activeFlow.title || flowDescription.value.trim() !== workspace.activeFlow.description
 })
 
-const selectedFlowVersionDiff = computed(() => {
-  if (!workspace.activeFlow || !selectedFlowVersion.value) {
-    return null
-  }
-  return compareFlowRevision(workspace.activeFlow, selectedFlowVersion.value)
-})
-
 const flowVariableNodeMap = computed<Record<string, FlowNode[]>>(() => {
   return (workspace.activeFlow?.nodes || []).reduce<Record<string, FlowNode[]>>((usageMap, node) => {
     extractPromptVariables(node.content || '').forEach((variable) => {
@@ -1241,6 +1234,13 @@ const currentFlowComparison = computed(() => {
       nodeContent: nodeContent.value
     })
   }
+})
+
+const selectedFlowVersionDiff = computed(() => {
+  if (!currentFlowComparison.value || !selectedFlowVersion.value) {
+    return null
+  }
+  return compareFlowRevision(currentFlowComparison.value, selectedFlowVersion.value)
 })
 
 const selectedPromptIndex = computed(() => {
