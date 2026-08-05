@@ -92,7 +92,7 @@ Current Stage 3 capabilities:
 - Reuse through run settings, snapshot branching, result-to-Prompt, exact historical reruns, run comparison, and result continuation.
 - Prompt assets created from results or Flow nodes preserve their immutable source and can reopen the original work.
 - Historical Prompt revisions can branch into independent assets without replacing the current Prompt.
-- Prompt revision previews explain field, tag, variable, and content changes before restore or branching.
+- Prompt revision previews explain field, tag, variable, and content changes before restore or branching, and compare against the visible editor state when local edits are still pending.
 - Prompt creation and editing guard unsaved work across dialog close, navigation, and browser unload.
 - Historical Flow revisions can branch into independent, source-linked Flow assets without restoring over the current draft.
 - Flow revision previews compare against the visible editor state, include pending local edits, and distinguish true node reordering from simple node additions or removals.

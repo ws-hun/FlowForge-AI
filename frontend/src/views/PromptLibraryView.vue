@@ -414,6 +414,7 @@ import { applyPromptVariables, extractPromptVariables } from '@/utils/promptVari
 import { comparePromptRevision } from '@/utils/promptRevisions'
 import { formatExecutionSource } from '@/utils/aiProvider'
 import {
+  buildPromptEditorPreview,
   parsePromptDraftTags,
   persistPromptEditorDraft,
   readPromptEditorDraft,
@@ -634,11 +635,31 @@ const promptConflictVisible = computed(() =>
   Boolean(editingPrompt.value && promptConflictId.value === editingPrompt.value.id)
 )
 
-const selectedPromptVersionDiff = computed(() => {
-  if (!selectedPrompt.value || !selectedVersion.value) {
+const currentPromptComparison = computed(() => {
+  const prompt = selectedPrompt.value
+  if (!prompt) {
     return null
   }
-  return comparePromptRevision(selectedPrompt.value, selectedVersion.value)
+
+  const pending = dialogOpen.value && editingPrompt.value?.id === prompt.id
+    ? {
+        title: form.title,
+        category: form.category,
+        description: form.description,
+        content: form.content,
+        tagInput: tagInput.value,
+        favorite: form.favorite
+      }
+    : null
+
+  return buildPromptEditorPreview(prompt, pending)
+})
+
+const selectedPromptVersionDiff = computed(() => {
+  if (!currentPromptComparison.value || !selectedVersion.value) {
+    return null
+  }
+  return comparePromptRevision(currentPromptComparison.value, selectedVersion.value)
 })
 
 onMounted(async () => {

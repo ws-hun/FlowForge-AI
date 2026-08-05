@@ -1,3 +1,5 @@
+import type { PromptAsset, SavePromptPayload } from '@/types'
+
 export type PromptEditorDraft = {
   promptId: string | null
   baseRevision: number | null
@@ -10,7 +12,45 @@ export type PromptEditorDraft = {
   updatedAt: string
 }
 
+export type PromptEditorSnapshot = Pick<
+  SavePromptPayload,
+  'title' | 'category' | 'description' | 'content' | 'tags' | 'favorite'
+>
+
+export type PromptEditorPendingState = Omit<PromptEditorSnapshot, 'tags'> & {
+  tagInput: string
+}
+
 const PROMPT_EDITOR_DRAFT_STORAGE_KEY = 'flowforge.promptEditorDraft'
+
+export function capturePromptEditorSnapshot(prompt: PromptAsset): PromptEditorSnapshot {
+  return {
+    title: prompt.title,
+    category: prompt.category,
+    description: prompt.description,
+    content: prompt.content,
+    tags: [...prompt.tags],
+    favorite: prompt.favorite
+  }
+}
+
+export function buildPromptEditorPreview(
+  prompt: PromptAsset,
+  pending: PromptEditorPendingState | null
+): PromptEditorSnapshot {
+  if (!pending) {
+    return capturePromptEditorSnapshot(prompt)
+  }
+
+  return {
+    title: pending.title.trim(),
+    category: pending.category.trim(),
+    description: pending.description.trim(),
+    content: pending.content.trim(),
+    tags: parsePromptDraftTags(pending.tagInput),
+    favorite: pending.favorite
+  }
+}
 
 export function readPromptEditorDraft(): PromptEditorDraft | null {
   if (typeof window === 'undefined') {
