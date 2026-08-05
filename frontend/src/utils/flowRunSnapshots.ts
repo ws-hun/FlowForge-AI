@@ -117,6 +117,20 @@ export function compareFlowRunSettings(
   }
 }
 
+export function hasFlowRunSettings(settings: FlowRunSettings) {
+  return Boolean(
+    normalizeText(settings.runtimeContext) ||
+      Object.values(settings.variableValues).some((value) => normalizeText(value))
+  )
+}
+
+export function shouldConfirmFlowRunSettingsReplacement(
+  current: FlowRunSettings,
+  snapshot: FlowRunSettings
+) {
+  return hasFlowRunSettings(current) && compareFlowRunSettings(current, snapshot).hasChanges
+}
+
 function sameNode(left: FlowNode, right: FlowNode) {
   return (
     left.type === right.type &&

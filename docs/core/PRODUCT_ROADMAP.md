@@ -130,6 +130,7 @@ Current Stage 3 capabilities:
 - Execution previews expose the ordered Flow contributions, readiness issues, and final Raw input while remaining one deterministic Provider request.
 - Persisted Flow Run Traces preserve the server-authored state of every saved node for successful and failed direct Flow runs, while explicitly recording that the current runtime uses one shared Provider call.
 - Historical Flow Run snapshots explain how the current Flow and Run Brief have changed since execution across goals, node content, membership, order, runtime context, and variables without altering the immutable result.
+- Reusing historical Flow Run settings remains one action for empty or unchanged briefs, while protecting meaningful current context with an explicit replacement decision.
 - Failed Flow runs can be reopened in Flow Space, restore their persisted node states, rerun the exact historical input, and compare the immutable failure with its recovery run.
 - Every node-backed execution section can reopen its exact Flow node from Flow Space or AI Command, keeping inspection connected to editing.
 - Preview readiness issues are actionable: missing variables focus their Run Brief field and incomplete nodes reopen their exact Inspector context.

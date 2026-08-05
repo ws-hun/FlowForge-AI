@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { compareFlowRunSettings, compareFlowRunSnapshot } from '../flowRunSnapshots'
+import {
+  compareFlowRunSettings,
+  compareFlowRunSnapshot,
+  hasFlowRunSettings,
+  shouldConfirmFlowRunSettingsReplacement
+} from '../flowRunSnapshots'
 import type { FlowDraft, FlowNode, FlowRunSnapshot } from '@/types'
 
 function node(id: string, title: string, content = title): FlowNode {
@@ -129,5 +134,23 @@ describe('Flow run settings comparison', () => {
       changeCount: 4,
       hasChanges: true
     })
+  })
+
+  it('only requires confirmation when replacement would discard current input', () => {
+    const historicalSettings = {
+      runtimeContext: 'Historical context',
+      variableValues: { audience: 'product teams' }
+    }
+
+    expect(hasFlowRunSettings({ runtimeContext: ' ', variableValues: { audience: ' ' } })).toBe(false)
+    expect(shouldConfirmFlowRunSettingsReplacement(
+      { runtimeContext: '', variableValues: {} },
+      historicalSettings
+    )).toBe(false)
+    expect(shouldConfirmFlowRunSettingsReplacement(historicalSettings, historicalSettings)).toBe(false)
+    expect(shouldConfirmFlowRunSettingsReplacement(
+      { runtimeContext: 'Current context', variableValues: { audience: 'enterprise teams' } },
+      historicalSettings
+    )).toBe(true)
   })
 })

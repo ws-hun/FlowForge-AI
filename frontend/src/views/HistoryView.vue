@@ -216,7 +216,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
@@ -226,6 +226,8 @@ import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
 import FlowRunTrace from '@/components/flow/FlowRunTrace.vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { formatExecutionSource } from '@/utils/aiProvider'
+import { shouldConfirmFlowRunSettingsReplacement } from '@/utils/flowRunSnapshots'
+import { extractPromptVariables } from '@/utils/promptVariables'
 import type { FlowRunSnapshot as FlowRunSnapshotType, TaskHistoryItem } from '@/types'
 
 const router = useRouter()
@@ -546,7 +548,20 @@ function currentFlowForSnapshot(snapshot: FlowRunSnapshotType) {
 }
 
 function currentRunSettingsForSnapshot(snapshot: FlowRunSnapshotType) {
-  return currentFlowForSnapshot(snapshot) ? workspace.getFlowRunDraft(snapshot.flowId) : null
+  const flow = currentFlowForSnapshot(snapshot)
+  const draft = flow ? workspace.getFlowRunDraft(snapshot.flowId) : null
+  if (!flow || !draft) {
+    return null
+  }
+  const variableNames = new Set(
+    flow.nodes.flatMap((node) => extractPromptVariables(node.content || ''))
+  )
+  return {
+    runtimeContext: draft.runtimeContext,
+    variableValues: Object.fromEntries(
+      Object.entries(draft.variableValues).filter(([name]) => variableNames.has(name))
+    )
+  }
 }
 
 function flowSourceStillAvailable(snapshot: FlowRunSnapshotType) {
@@ -567,7 +582,24 @@ function openFlowSnapshotSource(snapshot: FlowRunSnapshotType) {
   router.push({ path: '/workflows', query: { flow: sourceFlow.id } })
 }
 
-function reuseFlowRunSettings(snapshot: FlowRunSnapshotType) {
+async function reuseFlowRunSettings(snapshot: FlowRunSnapshotType) {
+  const currentSettings = currentRunSettingsForSnapshot(snapshot)
+  if (currentSettings && shouldConfirmFlowRunSettingsReplacement(currentSettings, snapshot)) {
+    try {
+      await ElMessageBox.confirm(
+        '原 Flow 已有自动保存的 Run Brief。复用这次历史配置会替换当前运行说明和变量值。',
+        '替换原 Flow 的 Run Brief？',
+        {
+          confirmButtonText: '替换并打开',
+          cancelButtonText: '保留当前内容',
+          type: 'warning'
+        }
+      )
+    } catch {
+      return
+    }
+  }
+
   if (!workspace.prepareFlowRunFromSnapshot(snapshot)) {
     ElMessage.warning('原 Flow 已不存在，请从快照创建新的 Flow')
     return

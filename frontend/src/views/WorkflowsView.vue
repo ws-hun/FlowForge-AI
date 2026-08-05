@@ -811,6 +811,7 @@ import { listFlowRuns, listFlowVersions } from '@/api/flows'
 import { createPrompt, listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { compareFlowRevision } from '@/utils/flowRevisions'
+import { shouldConfirmFlowRunSettingsReplacement } from '@/utils/flowRunSnapshots'
 import { persistFlowCreationDraft, readFlowCreationDraft } from '@/utils/flowCreationDraft'
 import {
   buildRecoveredFlowSnapshot,
@@ -2380,9 +2381,28 @@ function useLatestResultAsRunContext() {
   ElMessage.success('已带入 Run Brief')
 }
 
-function reuseFlowRunSettings(snapshot: FlowRunSnapshotType) {
+async function reuseFlowRunSettings(snapshot: FlowRunSnapshotType) {
   if (!workspace.activeFlow || snapshot.flowId !== workspace.activeFlow.id) {
     return
+  }
+
+  if (shouldConfirmFlowRunSettingsReplacement(
+    { runtimeContext: flowRunContext.value, variableValues: flowVariableValues.value },
+    snapshot
+  )) {
+    try {
+      await ElMessageBox.confirm(
+        '当前 Run Brief 已包含自动保存的运行说明或变量值。复用历史配置会替换这些内容。',
+        '替换当前 Run Brief？',
+        {
+          confirmButtonText: '替换并复用',
+          cancelButtonText: '保留当前内容',
+          type: 'warning'
+        }
+      )
+    } catch {
+      return
+    }
   }
 
   const snapshotVariableValues = snapshot.variableValues || {}

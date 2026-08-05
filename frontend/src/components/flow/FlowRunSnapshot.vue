@@ -127,7 +127,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Back, Plus, RefreshRight } from '@element-plus/icons-vue'
-import { compareFlowRunSettings, compareFlowRunSnapshot } from '@/utils/flowRunSnapshots'
+import {
+  compareFlowRunSettings,
+  compareFlowRunSnapshot,
+  hasFlowRunSettings
+} from '@/utils/flowRunSnapshots'
 import type { FlowRunSettings } from '@/utils/flowRunSnapshots'
 import type { FlowDraft, FlowRunSnapshot } from '@/types'
 
@@ -167,7 +171,7 @@ const snapshotDiff = computed(() => {
 const runSettingsDiff = computed(() => {
   if (
     !props.currentRunSettings ||
-    (!hasRunSettings(props.currentRunSettings) && !hasRunSettings(props.snapshot))
+    (!hasFlowRunSettings(props.currentRunSettings) && !hasFlowRunSettings(props.snapshot))
   ) {
     return null
   }
@@ -214,7 +218,7 @@ const visibleRunSettingsComparisonItems = computed(() => runSettingsComparisonIt
 const remainingRunSettingsComparisonCount = computed(() =>
   Math.max(0, runSettingsComparisonItems.value.length - 5)
 )
-const hasReusableSettings = computed(() => hasRunSettings(props.snapshot))
+const hasReusableSettings = computed(() => hasFlowRunSettings(props.snapshot))
 const showActions = computed(() => props.canCreateFlow || (props.canReuseRunSettings && hasReusableSettings.value))
 
 function formatDate(value: string) {
@@ -247,10 +251,4 @@ function variableChangeLabel(kind: 'added' | 'removed' | 'updated') {
   }[kind]
 }
 
-function hasRunSettings(settings: FlowRunSettings) {
-  return Boolean(
-    settings.runtimeContext?.trim() ||
-      Object.values(settings.variableValues || {}).some((value) => value?.trim())
-  )
-}
 </script>
