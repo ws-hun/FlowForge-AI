@@ -125,6 +125,7 @@ Current Stage 3 capabilities:
 - Flow run deep links restore a specific immutable run together with its Flow and node, including older runs outside the recent-run window.
 - Every historical run with an available Flow can reopen that run directly in Flow Space, even when the older record predates persisted node traces.
 - Run Brief drafts preserve per-Flow runtime context and variable values locally across Flow switching and browser reloads without presenting unexecuted input as server history.
+- A useful Run Brief can become a persisted Context node in one action, moving temporary execution knowledge into the reusable Flow without duplicating it in the next run.
 - Flow Run Brief edits remain synchronized when work moves between Flow Space and AI Command, including return, detach, and execution paths.
 - Flow Space and AI Command share one server-compiled execution preview, so users can inspect the exact Provider input from either workspace before running.
 - Execution previews expose the ordered Flow contributions, readiness issues, and final Raw input while remaining one deterministic Provider request.

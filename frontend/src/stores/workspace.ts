@@ -15,6 +15,7 @@ import { createFlow, deleteFlow, listFlows, restoreFlowVersion, updateFlow } fro
 import { createPrompt } from '@/api/prompts'
 import { persistAiCommandDraft, readAiCommandDraft } from '@/utils/aiCommandDraft'
 import { persistActiveFlowId, readActiveFlowId, resolveActiveFlowId } from '@/utils/flowSelection'
+import { canPersistFlowContext, createFlowContextNode } from '@/utils/flowContext'
 import {
   persistFlowRunDrafts,
   readFlowRunDrafts,
@@ -785,18 +786,15 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     return updatedFlow ? promptNode : null
   }
 
-  async function addContextToActiveFlow() {
+  async function addContextToActiveFlow(content = '') {
     if (!activeFlow.value) {
       return null
     }
-
-    const contextNode: FlowNode = {
-      id: createId(),
-      type: 'input',
-      title: 'Context',
-      description: '补充本次 Flow 需要参考的背景、约束或已有材料',
-      content: ''
+    if (content.trim() && !canPersistFlowContext(content)) {
+      return null
     }
+
+    const contextNode = createFlowContextNode(createId(), content)
 
     const updatedFlow = await updateActiveFlow((flow) => {
       const firstNonInputIndex = flow.nodes.findIndex((node) => node.type !== 'input')

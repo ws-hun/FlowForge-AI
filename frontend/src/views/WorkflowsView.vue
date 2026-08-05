@@ -298,14 +298,21 @@
               <span></span>
               {{ flowRunDraftStateLabel }}
             </div>
-            <button
-              v-if="hasFlowRunDraftContent"
-              type="button"
-              class="text-button"
-              @click="clearCurrentFlowRunDraft"
-            >
-              清除 Run Brief
-            </button>
+            <div v-if="hasFlowRunDraftContent" class="flow-run-draft-actions">
+              <button
+                v-if="flowRunContext.trim()"
+                type="button"
+                class="text-button"
+                :disabled="workspace.flowLoading || workspace.running"
+                @click="persistRunBriefAsContext"
+              >
+                <el-icon><Plus /></el-icon>
+                固化到 Flow
+              </button>
+              <button type="button" class="text-button" @click="clearCurrentFlowRunDraft">
+                清除 Run Brief
+              </button>
+            </div>
           </div>
 
           <FlowExecutionInputPreview
@@ -811,6 +818,7 @@ import { listFlowRuns, listFlowVersions } from '@/api/flows'
 import { createPrompt, listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { compareFlowRevision } from '@/utils/flowRevisions'
+import { canPersistFlowContext, MAX_FLOW_CONTEXT_LENGTH } from '@/utils/flowContext'
 import { shouldConfirmFlowRunSettingsReplacement } from '@/utils/flowRunSnapshots'
 import { persistFlowCreationDraft, readFlowCreationDraft } from '@/utils/flowCreationDraft'
 import {
@@ -2111,6 +2119,32 @@ async function addContextNode() {
   selectedNodeId.value = addedNode.id
   resetFlowRunState()
   ElMessage.success('上下文节点已加入 Flow')
+}
+
+async function persistRunBriefAsContext() {
+  const content = flowRunContext.value.trim()
+  if (!content) {
+    return
+  }
+  if (!canPersistFlowContext(content)) {
+    ElMessage.warning(`运行说明超过 ${MAX_FLOW_CONTEXT_LENGTH} 字符，请精简后再固化到 Flow`)
+    return
+  }
+  if (!(await resolvePendingEdits())) {
+    return
+  }
+
+  const addedNode = await workspace.addContextToActiveFlow(content)
+  if (!addedNode) {
+    return
+  }
+
+  flowRunContext.value = ''
+  selectedNodeId.value = addedNode.id
+  flowExecutionVisible.value = false
+  selectedFlowRun.value = null
+  resetFlowRunState()
+  ElMessage.success('运行说明已固化为可复用上下文')
 }
 
 async function removeSelectedNode() {

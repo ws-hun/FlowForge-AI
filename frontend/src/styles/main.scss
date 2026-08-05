@@ -3847,6 +3847,25 @@ a {
   gap: 16px;
 }
 
+.flow-run-draft-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+
+  .text-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .el-icon {
+    width: 14px;
+    height: 14px;
+  }
+}
+
 .editor-save-state.idle {
   color: tokens.$text-muted;
 
