@@ -245,7 +245,7 @@
         <section v-if="promptVariables.length" class="detail-section">
           <div class="section-heading compact">
             <h3>变量</h3>
-            <span>{{ promptVariables.length }} 个上下文输入</span>
+            <span>{{ promptRunDraftRecovered ? '已恢复本地填写' : `${promptVariables.length} 个上下文输入` }}</span>
           </div>
           <div class="variable-list">
             <label v-for="variable in promptVariables" :key="variable">
@@ -395,7 +395,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Close } from '@element-plus/icons-vue'
@@ -412,6 +412,12 @@ import {
 import { useWorkspaceStore } from '@/stores/workspace'
 import { applyPromptVariables, extractPromptVariables } from '@/utils/promptVariables'
 import { comparePromptRevision } from '@/utils/promptRevisions'
+import {
+  persistPromptRunDrafts,
+  readPromptRunDrafts,
+  removePromptRunDraft,
+  upsertPromptRunDraft
+} from '@/utils/promptRunDrafts'
 import { formatExecutionSource } from '@/utils/aiProvider'
 import {
   buildPromptEditorPreview,
@@ -449,6 +455,9 @@ const promptVersions = ref<PromptVersion[]>([])
 const promptVersionsLoading = ref(false)
 const selectedVersion = ref<PromptVersion | null>(null)
 const variableValues = ref<Record<string, string>>({})
+const promptRunDrafts = ref(readPromptRunDrafts())
+const promptRunDraftRecovered = ref(false)
+const promptRunDraftHydrating = ref(false)
 const promptRouteReady = ref(false)
 const promptConflictId = ref('')
 const promptDraftRecovered = ref(false)
@@ -711,6 +720,24 @@ watch(
   () => syncPromptEditorDraft()
 )
 
+watch(variableValues, (values) => {
+  if (promptRunDraftHydrating.value) {
+    return
+  }
+  promptRunDraftRecovered.value = false
+  const prompt = selectedPrompt.value
+  if (!prompt || isStarterDetail.value) {
+    return
+  }
+
+  const nextDrafts = upsertPromptRunDraft(promptRunDrafts.value, prompt.id, values)
+  if (nextDrafts === promptRunDrafts.value) {
+    return
+  }
+  promptRunDrafts.value = nextDrafts
+  persistPromptRunDrafts(nextDrafts)
+}, { deep: true })
+
 async function loadPromptAssets() {
   loading.value = true
   try {
@@ -896,7 +923,7 @@ async function persistPromptAsset(notify: boolean) {
       savedPrompt = data
       if (selectedPrompt.value?.id === data.id) {
         selectedPrompt.value = data
-        variableValues.value = buildVariableValues(data.content, true)
+        variableValues.value = buildVariableValues(data.content, variableValues.value)
         await loadPromptVersions(data.id)
       }
     } else {
@@ -1016,6 +1043,7 @@ async function removePrompt(prompt: PromptAsset) {
     })
     await deletePrompt(prompt.id, prompt.revision)
     prompts.value = prompts.value.filter((item) => item.id !== prompt.id)
+    clearPromptRunDraft(prompt.id)
     promptConflictId.value = ''
     ElMessage.success('Prompt 已删除')
   } catch (error: any) {
@@ -1082,7 +1110,7 @@ function showPromptDetail(prompt: PromptAsset) {
   promptRuns.value = []
   promptVersions.value = []
   selectedVersion.value = null
-  variableValues.value = buildVariableValues(prompt.content)
+  hydratePromptRunDraft(prompt)
   detailOpen.value = true
   loadPromptRuns(prompt.id)
   loadPromptVersions(prompt.id)
@@ -1100,6 +1128,7 @@ function openStarterDetail(prompt: StarterPrompt) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }
+  promptRunDraftRecovered.value = false
   variableValues.value = buildVariableValues(prompt.content)
   detailOpen.value = true
 }
@@ -1133,7 +1162,9 @@ function sendPreparedPrompt() {
   if (!selectedPrompt.value) {
     return
   }
-  sendToTask(preparedPromptPreview.value, selectedPrompt.value)
+  const prompt = selectedPrompt.value
+  sendToTask(preparedPromptPreview.value, prompt)
+  clearPromptRunDraft(prompt.id)
 }
 
 async function importStarterAndRun() {
@@ -1301,7 +1332,7 @@ async function restoreVersionSnapshot(version: PromptVersion) {
     selectedPrompt.value = data
     promptConflictId.value = ''
     selectedVersion.value = null
-    variableValues.value = buildVariableValues(data.content, true)
+    variableValues.value = buildVariableValues(data.content, variableValues.value)
     await loadPromptVersions(data.id)
     ElMessage.success('Prompt 已恢复到选中版本')
   } catch (error: any) {
@@ -1374,7 +1405,7 @@ async function recoverPromptConflict(promptId: string, error: any) {
   }
   if (selectedPrompt.value?.id === promptId) {
     selectedPrompt.value = latestPrompt
-    variableValues.value = buildVariableValues(latestPrompt.content, true)
+    variableValues.value = buildVariableValues(latestPrompt.content, variableValues.value)
     await loadPromptVersions(promptId)
   }
   ElMessage.warning(error.response?.data?.message || 'Prompt 已更新，请重新确认当前修改')
@@ -1383,6 +1414,7 @@ async function recoverPromptConflict(promptId: string, error: any) {
 
 async function recoverDeletedPrompt(promptId: string) {
   await loadPromptAssets()
+  clearPromptRunDraft(promptId)
   editingPrompt.value = null
   promptConflictId.value = ''
   promptEditorBaseline.value = ''
@@ -1417,9 +1449,32 @@ function adoptLatestPromptAfterConflict() {
   ElMessage.info('已采用最新 Prompt')
 }
 
-function buildVariableValues(content: string, preserveCurrent = false) {
+function hydratePromptRunDraft(prompt: PromptAsset) {
+  const draft = promptRunDrafts.value[prompt.id]
+  const nextValues = buildVariableValues(prompt.content, draft?.variableValues)
+  promptRunDraftHydrating.value = true
+  promptRunDraftRecovered.value = Boolean(
+    draft && Object.values(nextValues).some((value) => value.trim())
+  )
+  variableValues.value = nextValues
+  void nextTick(() => {
+    promptRunDraftHydrating.value = false
+  })
+}
+
+function clearPromptRunDraft(promptId: string) {
+  const nextDrafts = removePromptRunDraft(promptRunDrafts.value, promptId)
+  if (nextDrafts === promptRunDrafts.value) {
+    return
+  }
+  promptRunDrafts.value = nextDrafts
+  promptRunDraftRecovered.value = false
+  persistPromptRunDrafts(nextDrafts)
+}
+
+function buildVariableValues(content: string, currentValues: Record<string, string> = {}) {
   return Object.fromEntries(
-    extractPromptVariables(content).map((variable) => [variable, preserveCurrent ? variableValues.value[variable] || '' : ''])
+    extractPromptVariables(content).map((variable) => [variable, currentValues[variable] || ''])
   )
 }
 
