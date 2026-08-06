@@ -16,6 +16,13 @@ export function applyPromptVariables(content: string, values: PromptVariableValu
   })
 }
 
+export function findMissingPromptVariables(
+  content: string,
+  values: PromptVariableValues
+): string[] {
+  return extractPromptVariables(content).filter((variable) => !values[variable]?.trim())
+}
+
 export function isValidPromptVariableName(value: string): boolean {
   return PROMPT_VARIABLE_NAME_PATTERN.test(value.trim())
 }

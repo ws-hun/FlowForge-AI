@@ -245,10 +245,14 @@
         <section v-if="promptVariables.length" class="detail-section">
           <div class="section-heading compact">
             <h3>变量</h3>
-            <span>{{ promptRunDraftRecovered ? '已恢复本地填写' : `${promptVariables.length} 个上下文输入` }}</span>
+            <span>{{ promptVariableStatusLabel }}</span>
           </div>
           <div class="variable-list">
-            <label v-for="variable in promptVariables" :key="variable">
+            <label
+              v-for="variable in promptVariables"
+              :key="variable"
+              :class="{ 'is-missing': !variableValues[variable]?.trim() }"
+            >
               <span>{{ variable }}</span>
               <textarea
                 v-model="variableValues[variable]"
@@ -256,6 +260,10 @@
                 :placeholder="`填写 ${variable} 的上下文...`"
               ></textarea>
             </label>
+          </div>
+          <div v-if="missingPromptVariables.length" class="prompt-variable-readiness">
+            <span class="flow-run-dot warning"></span>
+            <p>进入 Task 前请填写 {{ missingPromptVariableLabels }}。</p>
           </div>
         </section>
 
@@ -379,14 +387,28 @@
             <button type="button" class="secondary-button" :disabled="saving" @click="createFlowFromSelectedPrompt">
               加入并创建 Flow
             </button>
-            <button type="button" class="primary-button" @click="importStarterAndRun">加入并进入 Task</button>
+            <button
+              type="button"
+              class="primary-button"
+              :disabled="saving || !preparedPromptReady"
+              @click="importStarterAndRun"
+            >
+              加入并进入 Task
+            </button>
           </template>
           <template v-else>
             <button type="button" class="ghost-button" @click="openEditFromDetail">编辑 Prompt</button>
             <button type="button" class="secondary-button" :disabled="saving" @click="createFlowFromSelectedPrompt">
               创建 Flow
             </button>
-            <button type="button" class="primary-button" @click="sendPreparedPrompt">进入 Task</button>
+            <button
+              type="button"
+              class="primary-button"
+              :disabled="!preparedPromptReady"
+              @click="sendPreparedPrompt"
+            >
+              进入 Task
+            </button>
           </template>
         </footer>
       </aside>
@@ -410,7 +432,11 @@ import {
   updatePrompt
 } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
-import { applyPromptVariables, extractPromptVariables } from '@/utils/promptVariables'
+import {
+  applyPromptVariables,
+  extractPromptVariables,
+  findMissingPromptVariables
+} from '@/utils/promptVariables'
 import { comparePromptRevision } from '@/utils/promptRevisions'
 import {
   persistPromptRunDrafts,
@@ -588,6 +614,31 @@ const preparedPromptPreview = computed(() => {
   }
 
   return applyPromptVariables(selectedPrompt.value.content, variableValues.value)
+})
+
+const missingPromptVariables = computed(() => {
+  if (!selectedPrompt.value) {
+    return []
+  }
+  return findMissingPromptVariables(selectedPrompt.value.content, variableValues.value)
+})
+
+const missingPromptVariableLabels = computed(() =>
+  missingPromptVariables.value.map((variable) => `{${variable}}`).join('、')
+)
+
+const preparedPromptReady = computed(() =>
+  Boolean(selectedPrompt.value?.content.trim()) && missingPromptVariables.value.length === 0
+)
+
+const promptVariableStatusLabel = computed(() => {
+  if (missingPromptVariables.value.length) {
+    return `${missingPromptVariables.value.length} 项待填写`
+  }
+  if (promptRunDraftRecovered.value) {
+    return '已恢复本地填写'
+  }
+  return `${promptVariables.value.length} 个变量已就绪`
 })
 
 const promptOriginTitle = computed(() => {
@@ -1159,7 +1210,7 @@ function syncPromptRoute(promptId: string | null, mode: 'push' | 'replace' = 'pu
 }
 
 function sendPreparedPrompt() {
-  if (!selectedPrompt.value) {
+  if (!selectedPrompt.value || !ensurePreparedPromptReady()) {
     return
   }
   const prompt = selectedPrompt.value
@@ -1168,7 +1219,7 @@ function sendPreparedPrompt() {
 }
 
 async function importStarterAndRun() {
-  if (!selectedPrompt.value) {
+  if (!selectedPrompt.value || !ensurePreparedPromptReady()) {
     return
   }
 
@@ -1460,6 +1511,14 @@ function hydratePromptRunDraft(prompt: PromptAsset) {
   void nextTick(() => {
     promptRunDraftHydrating.value = false
   })
+}
+
+function ensurePreparedPromptReady() {
+  if (!missingPromptVariables.value.length) {
+    return true
+  }
+  ElMessage.warning(`请先填写 Prompt 变量：${missingPromptVariables.value.join('、')}`)
+  return false
 }
 
 function clearPromptRunDraft(promptId: string) {

@@ -2247,6 +2247,24 @@ a {
     color: tokens.$text-secondary;
     font-size: 13px;
   }
+
+  label.is-missing .quiet-textarea {
+    border-color: rgba(245, 158, 11, 0.34);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.06);
+  }
+}
+
+.prompt-variable-readiness {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+
+  p {
+    margin: 0;
+    color: tokens.$text-secondary;
+    font-size: 12px;
+    line-height: 1.6;
+  }
 }
 
 .run-timeline {
