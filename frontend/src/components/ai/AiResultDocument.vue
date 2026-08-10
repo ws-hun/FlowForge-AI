@@ -63,8 +63,11 @@
       </div>
     </div>
 
-    <el-collapse v-if="showRaw">
-      <el-collapse-item title="原始 JSON" name="raw">
+    <el-collapse v-if="showRaw || resolvedResult.sourceJson">
+      <el-collapse-item v-if="resolvedResult.sourceJson" title="原始 Result JSON" name="result-json">
+        <pre class="code-block">{{ resolvedResult.sourceJson }}</pre>
+      </el-collapse-item>
+      <el-collapse-item v-if="showRaw" title="Provider 原始响应" name="provider-raw">
         <pre class="code-block">{{ formattedRaw }}</pre>
       </el-collapse-item>
     </el-collapse>
@@ -76,7 +79,11 @@ import { computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { CopyDocument, Download } from '@element-plus/icons-vue'
 import { formatExecutionDuration, formatProviderName, formatTokenUsage } from '@/utils/aiProvider'
-import { buildResultMarkdown, createResultDocumentFilename } from '@/utils/resultDocument'
+import {
+  buildResultMarkdown,
+  createResultDocumentFilename,
+  resolveResultDocument
+} from '@/utils/resultDocument'
 
 type ResultBlock =
   | { type: 'heading'; level: number; content: string }
@@ -132,8 +139,11 @@ const formattedRaw = computed(() => {
   }
 })
 
-const resultBlocks = computed(() => parseResultDocument(props.result || ''))
-const portableDocument = computed(() => buildResultMarkdown(props.summary || '', props.result || ''))
+const resolvedResult = computed(() => resolveResultDocument(props.result || ''))
+const resultBlocks = computed(() => parseResultDocument(resolvedResult.value.markdown))
+const portableDocument = computed(() =>
+  buildResultMarkdown(props.summary || '', resolvedResult.value.markdown)
+)
 
 const keyPoints = computed(() => {
   const listItems = resultBlocks.value
