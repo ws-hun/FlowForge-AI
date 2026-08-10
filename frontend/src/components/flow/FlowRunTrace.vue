@@ -3,7 +3,10 @@
     <summary>
       <span>
         <strong>Server Run Trace</strong>
-        <small>{{ trace.nodes.length }} nodes · {{ trace.providerCallCount }} Provider call</small>
+        <small>
+          {{ executionModeLabel(trace.executionMode) }} · {{ trace.nodes.length }} nodes ·
+          {{ trace.providerCallCount }} Provider call
+        </small>
       </span>
       <em :class="trace.status">{{ trace.status === 'completed' ? 'Completed' : 'Failed' }}</em>
     </summary>
@@ -45,7 +48,7 @@
 
 <script setup lang="ts">
 import { Right } from '@element-plus/icons-vue'
-import type { FlowNodeRunTraceStatus, FlowNodeType, FlowRunTrace } from '@/types'
+import type { FlowExecutionMode, FlowNodeRunTraceStatus, FlowNodeType, FlowRunTrace } from '@/types'
 
 withDefaults(
   defineProps<{
@@ -71,6 +74,10 @@ function nodeTypeLabel(type: FlowNodeType) {
     output: 'Output'
   }
   return labels[type]
+}
+
+function executionModeLabel(mode: FlowExecutionMode | null | undefined) {
+  return mode === 'node-sequential' ? 'Node sequential' : 'Single-pass'
 }
 
 function statusLabel(status: FlowNodeRunTraceStatus) {

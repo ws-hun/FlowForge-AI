@@ -17,6 +17,8 @@ import java.util.regex.Pattern;
 @Component
 public class FlowExecutionCompiler {
 
+    static final String EXECUTION_MODE = "single-pass";
+    static final int PROVIDER_CALL_COUNT = 1;
     private static final Pattern FLOW_VARIABLE_PATTERN = Pattern.compile("\\{[a-zA-Z0-9_\\u4e00-\\u9fa5-]+}");
 
     Compilation compile(FlowRunSnapshotResponse snapshot) {
@@ -90,7 +92,12 @@ public class FlowExecutionCompiler {
         }
         executionInput.add("");
         executionInput.add("请输出：1. Summary 2. Key Points 3. Result 4. Next Actions");
-        return new Compilation(String.join("\n", executionInput), List.copyOf(sections));
+        return new Compilation(
+                EXECUTION_MODE,
+                PROVIDER_CALL_COUNT,
+                String.join("\n", executionInput),
+                List.copyOf(sections)
+        );
     }
 
     List<String> findMissingVariables(FlowRunSnapshotResponse snapshot) {
@@ -148,6 +155,8 @@ public class FlowExecutionCompiler {
     }
 
     record Compilation(
+            String executionMode,
+            int providerCallCount,
             String executionInput,
             List<FlowExecutionSectionResponse> sections
     ) {

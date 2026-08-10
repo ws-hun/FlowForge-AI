@@ -9,6 +9,7 @@ import java.util.UUID;
 public record FlowRunTraceResponse(
         UUID flowId,
         String status,
+        String executionMode,
         Integer providerCallCount,
         List<FlowNodeRunTraceResponse> nodes
 ) {

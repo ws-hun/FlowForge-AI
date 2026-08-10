@@ -249,6 +249,8 @@ public class TaskService {
         List<String> incompleteNodes = findIncompleteFlowNodes(flowRunSnapshot);
 
         return new FlowExecutionPreviewResponse(
+                compiledExecution.executionMode(),
+                compiledExecution.providerCallCount(),
                 compiledExecution.executionInput(),
                 flowRunSnapshot,
                 compiledExecution.sections(),
@@ -413,7 +415,8 @@ public class TaskService {
         return new FlowRunTraceResponse(
                 snapshot.flowId(),
                 completed ? Task.STATUS_COMPLETED : Task.STATUS_FAILED,
-                1,
+                FlowExecutionCompiler.EXECUTION_MODE,
+                FlowExecutionCompiler.PROVIDER_CALL_COUNT,
                 nodes
         );
     }

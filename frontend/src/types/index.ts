@@ -184,6 +184,7 @@ export interface FlowRunSnapshot {
 }
 
 export type FlowNodeRunTraceStatus = 'prepared' | 'completed' | 'failed' | 'skipped'
+export type FlowExecutionMode = 'single-pass' | 'node-sequential'
 
 export interface FlowNodeRunTrace {
   nodeId: string
@@ -198,6 +199,7 @@ export interface FlowNodeRunTrace {
 export interface FlowRunTrace {
   flowId: string
   status: 'completed' | 'failed'
+  executionMode?: FlowExecutionMode | null
   providerCallCount: number
   nodes: FlowNodeRunTrace[]
 }
@@ -224,6 +226,8 @@ export interface FlowExecutionSection {
 }
 
 export interface FlowExecutionPreviewResponse {
+  executionMode: FlowExecutionMode
+  providerCallCount: number
   executionInput: string
   flowRunSnapshot: FlowRunSnapshot
   sections: FlowExecutionSection[]

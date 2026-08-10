@@ -180,6 +180,7 @@ class TaskServiceTest {
         String executionInput = executionInputCaptor.getValue();
         assertThat(savedTask.getSourceFlowId()).isEqualTo(flowId);
         assertThat(savedTask.getSourceFlowSnapshotJson()).contains("Idea to MVP");
+        assertThat(savedTask.getFlowRunTraceJson()).contains("\"executionMode\":\"single-pass\"");
         assertThat(savedTask.getFlowRunTraceJson()).contains("\"providerCallCount\":1");
         assertThat(savedTask.getInput()).isEqualTo(executionInput);
         assertThat(savedTask.getProvider()).isEqualTo("deepseek");
@@ -231,6 +232,7 @@ class TaskServiceTest {
         assertThat(response.flowRunTrace().flowId()).isEqualTo(flowId);
         assertThat(response.flowRunTrace().status()).isEqualTo(Task.STATUS_COMPLETED);
         assertThat(response.flowRunTrace().providerCallCount()).isEqualTo(1);
+        assertThat(response.flowRunTrace().executionMode()).isEqualTo("single-pass");
         assertThat(response.flowRunTrace().nodes())
                 .extracting(node -> node.title() + ":" + node.status())
                 .containsExactly(
@@ -543,6 +545,7 @@ class TaskServiceTest {
                 .findAndRegisterModules()
                 .readValue(failedTask.getFlowRunTraceJson(), FlowRunTraceResponse.class);
         assertThat(trace.status()).isEqualTo(Task.STATUS_FAILED);
+        assertThat(trace.executionMode()).isEqualTo("single-pass");
         assertThat(trace.providerCallCount()).isEqualTo(1);
         assertThat(trace.nodes())
                 .extracting(node -> node.title() + ":" + node.status())
@@ -805,6 +808,8 @@ class TaskServiceTest {
                 .doesNotContain("untrusted browser node");
         assertThat(response.flowRunSnapshot().flowId()).isEqualTo(flowId);
         assertThat(response.flowRunSnapshot().flowUpdatedAt()).isEqualTo(updatedAt);
+        assertThat(response.executionMode()).isEqualTo("single-pass");
+        assertThat(response.providerCallCount()).isEqualTo(1);
         assertThat(response.flowRunSnapshot().nodes()).extracting(FlowNodeDto::title)
                 .containsExactly("Product context", "Audience lens", "Launch execution guidance", "Release delivery focus");
         assertThat(response.executable()).isTrue();

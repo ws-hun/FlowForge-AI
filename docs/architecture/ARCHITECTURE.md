@@ -66,7 +66,7 @@ entity/
 dto/
 config/
 
-Flow execution compilation is isolated in `FlowExecutionCompiler`. It converts one immutable Flow snapshot into the exact single Provider input and structured preview sections used by both preview and execution paths.
+Flow execution compilation is isolated in `FlowExecutionCompiler`. It converts one immutable Flow snapshot into the exact Provider input, execution mode, call count, and structured preview sections used by both preview and execution paths.
 
 ---
 

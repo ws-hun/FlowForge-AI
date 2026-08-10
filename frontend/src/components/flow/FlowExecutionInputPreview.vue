@@ -82,7 +82,10 @@
             Raw 输入
           </button>
         </div>
-        <span>{{ preview.sections.length }} 个执行段 · 1 次 Provider 调用</span>
+        <span>
+          {{ executionModeLabel(preview.executionMode) }} · {{ preview.sections.length }} 个执行段 ·
+          {{ preview.providerCallCount }} 次 Provider 调用
+        </span>
       </div>
 
       <div v-if="activeView === 'outline'" class="flow-input-preview-sections" :class="{ 'is-stale': stale }">
@@ -245,6 +248,10 @@ async function loadPreview() {
 
 function sectionKindLabel(kind: FlowExecutionSectionKind) {
   return sectionKindLabels[kind]
+}
+
+function executionModeLabel(mode: FlowExecutionPreviewResponse['executionMode']) {
+  return mode === 'node-sequential' ? 'Node sequential' : 'Single-pass'
 }
 
 function openSectionNode(nodeId: string | null | undefined) {

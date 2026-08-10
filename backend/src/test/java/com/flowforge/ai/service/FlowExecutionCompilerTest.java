@@ -21,6 +21,8 @@ class FlowExecutionCompilerTest {
 
         FlowExecutionCompiler.Compilation compilation = compiler.compile(snapshot);
 
+        assertThat(compilation.executionMode()).isEqualTo("single-pass");
+        assertThat(compilation.providerCallCount()).isEqualTo(1);
         assertThat(compilation.executionInput())
                 .contains("Flow: Launch workspace")
                 .contains("本次运行上下文:\nShip a focused first release.")

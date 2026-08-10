@@ -79,6 +79,8 @@ class WorkflowControllerTest {
         UUID flowId = UUID.randomUUID();
         LocalDateTime updatedAt = LocalDateTime.of(2026, 7, 15, 10, 20);
         FlowExecutionPreviewResponse response = new FlowExecutionPreviewResponse(
+                "single-pass",
+                1,
                 "Flow: Launch brief\n本次运行上下文:\nFocus on the first release.",
                 new FlowRunSnapshotResponse(
                         flowId,
@@ -115,6 +117,8 @@ class WorkflowControllerTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.executionMode").value("single-pass"))
+                .andExpect(jsonPath("$.providerCallCount").value(1))
                 .andExpect(jsonPath("$.executionInput").value("Flow: Launch brief\n本次运行上下文:\nFocus on the first release."))
                 .andExpect(jsonPath("$.flowRunSnapshot.flowId").value(flowId.toString()))
                 .andExpect(jsonPath("$.flowRunSnapshot.variableValues.audience").value("product teams"))

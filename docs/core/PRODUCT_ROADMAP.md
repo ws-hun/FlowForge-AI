@@ -110,7 +110,7 @@ Current Stage 3 capabilities:
 - Provider API Keys are encrypted at rest with AES-256-GCM, using a Git-ignored local key file or an injected production key while preserving legacy plaintext readability during migration.
 - PostgreSQL schema changes are versioned through Flyway while Hibernate remains in validation mode, making local and Docker upgrades deterministic without changing the workspace experience.
 - Saved Flow definitions enforce unique node identity, supported node types, and the honest single-call Input / Prompt / AI Task / Output execution shape before a revision can enter the workspace.
-- Flow execution compilation is isolated as one deterministic server module shared by preview, readiness checks, persisted traces, and the current single Provider call.
+- Flow execution compilation is isolated as one deterministic server module shared by preview, readiness checks, persisted traces, and the current single Provider call; preview and trace contracts explicitly identify this runtime as `single-pass`.
 - Provider HTTP calls use explicit configurable connect and read timeouts, convert transport failures into stable gateway errors, and preserve failed runs for recovery instead of hanging the workspace indefinitely.
 - Provider HTTP status failures are translated into actionable authentication, rate-limit, timeout, request, or availability messages without exposing raw upstream response bodies to the workspace or History.
 - Provider Vault can verify any saved configuration against its `/models` endpoint without creating a Task run, exposing plaintext credentials, or pretending the result is persisted health telemetry.
