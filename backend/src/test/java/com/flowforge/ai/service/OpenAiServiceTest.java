@@ -14,6 +14,8 @@ import org.springframework.web.client.RestClient;
 
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
+import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -83,6 +85,54 @@ class OpenAiServiceTest {
         assertThat(enriched.inputTokens()).isNull();
         assertThat(enriched.outputTokens()).isNull();
         assertThat(enriched.totalTokens()).isNull();
+    }
+
+    @Test
+    void formatsStructuredDeepSeekResultsWhilePreservingTheProviderResponse() throws Exception {
+        AiApiKeyService apiKeyService = mock(AiApiKeyService.class);
+        when(apiKeyService.getActiveKey()).thenReturn(providerConfig());
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        ObjectMapper objectMapper = new ObjectMapper();
+        String aiContent = objectMapper.writeValueAsString(Map.of(
+                "summary", "API draft ready",
+                "result", Map.of(
+                        "base_url", "/api/v1",
+                        "endpoints", List.of(Map.of(
+                                "method", "post",
+                                "path", "/flows",
+                                "description", "Create a flow"
+                        ))
+                )
+        ));
+        String providerResponse = objectMapper.writeValueAsString(Map.of(
+                "choices", List.of(Map.of("message", Map.of("content", aiContent))),
+                "usage", Map.of(
+                        "prompt_tokens", 20,
+                        "completion_tokens", 30,
+                        "total_tokens", 50
+                )
+        ));
+        server.expect(requestTo("https://api.deepseek.com/chat/completions"))
+                .andRespond(withSuccess(providerResponse, org.springframework.http.MediaType.APPLICATION_JSON));
+        OpenAiService service = new OpenAiService(builder.build(), apiKeyService, objectMapper);
+
+        OpenAiTaskResult result = service.processTask("Design a flow API");
+
+        assertThat(result.summary()).isEqualTo("API draft ready");
+        assertThat(result.result()).isEqualTo("""
+                - **Base URL:** /api/v1
+
+                ## Endpoints
+
+                ### POST /flows
+
+                - **Description:** Create a flow""");
+        assertThat(objectMapper.readTree(result.raw())).isEqualTo(objectMapper.readTree(providerResponse));
+        assertThat(result.provider()).isEqualTo("deepseek");
+        assertThat(result.model()).isEqualTo("deepseek-chat");
+        assertThat(result.totalTokens()).isEqualTo(50);
+        server.verify();
     }
 
     @Test

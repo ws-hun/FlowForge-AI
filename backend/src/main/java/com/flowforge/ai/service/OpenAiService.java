@@ -342,11 +342,7 @@ public class OpenAiService {
         if (result.isTextual()) {
             return result.asText();
         }
-        try {
-            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result);
-        } catch (JsonProcessingException e) {
-            return result.toString();
-        }
+        return StructuredResultFormatter.format(result);
     }
 
     private String extractSummaryFromText(String text) {
