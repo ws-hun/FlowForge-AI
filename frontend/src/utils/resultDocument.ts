@@ -6,13 +6,17 @@ export interface ResolvedResultDocument {
   sourceJson: string | null
 }
 
-export function buildResultMarkdown(summary: string, result: string) {
+export function buildResultMarkdown(summary: string, result: string, provenance: string[] = []) {
   const normalizedSummary = summary.trim()
   const normalizedResult = result.trim()
+  const normalizedProvenance = provenance.map((item) => item.trim()).filter(Boolean)
 
   return [
     normalizedSummary ? '# ' + normalizedSummary : '',
-    normalizedResult
+    normalizedResult,
+    normalizedProvenance.length
+      ? '---\n\n> FlowForge AI · ' + normalizedProvenance.join(' · ')
+      : ''
   ]
     .filter(Boolean)
     .join('\n\n')

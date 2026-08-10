@@ -151,8 +151,20 @@ const formattedRaw = computed(() => {
 
 const resolvedResult = computed(() => resolveResultDocument(props.result || ''))
 const resultBlocks = computed(() => parseResultMarkdown(resolvedResult.value.markdown))
+const portableDocumentProvenance = computed(() =>
+  [
+    providerLabel.value,
+    props.model?.trim() || '',
+    tokenUsageLabel.value,
+    durationLabel.value
+  ].filter((item): item is string => Boolean(item))
+)
 const portableDocument = computed(() =>
-  buildResultMarkdown(props.summary || '', resolvedResult.value.markdown)
+  buildResultMarkdown(
+    props.summary || '',
+    resolvedResult.value.markdown,
+    portableDocumentProvenance.value
+  )
 )
 
 const keyPoints = computed(() => {

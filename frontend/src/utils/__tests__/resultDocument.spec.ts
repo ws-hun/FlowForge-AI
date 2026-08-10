@@ -16,6 +16,19 @@ describe('resultDocument', () => {
     expect(buildResultMarkdown('  ', 'Detailed result')).toBe('Detailed result')
   })
 
+  it('preserves execution provenance in a portable result document', () => {
+    expect(
+      buildResultMarkdown('Launch plan', 'Detailed result', [
+        'DeepSeek',
+        'deepseek-chat',
+        '1,200 tokens',
+        '2.4 s'
+      ])
+    ).toBe(
+      '# Launch plan\n\nDetailed result\n\n---\n\n> FlowForge AI · DeepSeek · deepseek-chat · 1,200 tokens · 2.4 s'
+    )
+  })
+
   it('creates a filesystem-safe markdown filename without losing readable text', () => {
     expect(createResultDocumentFilename('API / Workflow: launch?')).toBe('API Workflow launch.md')
     expect(createResultDocumentFilename('产品发布计划')).toBe('产品发布计划.md')

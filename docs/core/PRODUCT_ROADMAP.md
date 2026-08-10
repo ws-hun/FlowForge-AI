@@ -114,7 +114,7 @@ Current Stage 3 capabilities:
 - Provider HTTP calls use explicit configurable connect and read timeouts, convert transport failures into stable gateway errors, and preserve failed runs for recovery instead of hanging the workspace indefinitely.
 - Provider HTTP status failures are translated into actionable authentication, rate-limit, timeout, request, or availability messages without exposing raw upstream response bodies to the workspace or History.
 - Provider results that violate the string contract with a JSON object or array are deterministically converted into readable Markdown while preserving the Provider response for raw inspection.
-- Every successful Result document can be copied or downloaded as portable Markdown from AI Command, Flow Space, comparison, and History surfaces.
+- Every successful Result document can be copied or downloaded as portable Markdown from AI Command, Flow Space, comparison, and History surfaces, carrying available Provider, model, token, and duration provenance with it.
 - Historical Result strings produced before structured formatting are detected at presentation time, rendered as readable documents, and keep their original JSON available without mutating immutable run data.
 - Result rendering preserves headings, grouped lists, fenced code, inline emphasis, code tokens, quotes, and document dividers through a tested safe-text parser instead of flattening useful AI output structure.
 - Provider Vault can verify any saved configuration against its `/models` endpoint without creating a Task run, exposing plaintext credentials, or pretending the result is persisted health telemetry.
