@@ -1647,6 +1647,29 @@ a {
   gap: 12px;
 }
 
+.result-doc-meta-end {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.result-doc-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+
+  .icon-button {
+    width: 36px;
+    min-height: 36px;
+    border-radius: tokens.$radius-md;
+    font-size: 16px;
+  }
+}
+
 .execution-source {
   display: inline-flex;
   flex-wrap: wrap;
@@ -5573,6 +5596,20 @@ a {
       grid-column: 1 / -1;
       width: 100%;
     }
+  }
+
+  .result-doc-meta {
+    align-items: flex-start;
+  }
+
+  .result-doc-meta-end {
+    width: 100%;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  .execution-source {
+    min-width: 0;
   }
 
   .flow-canvas {

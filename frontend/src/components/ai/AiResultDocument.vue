@@ -3,12 +3,34 @@
     <div class="result-doc-header">
       <div class="result-doc-meta">
         <span class="badge">AI Result</span>
-        <span v-if="providerLabel || model || tokenUsageLabel || durationLabel" class="execution-source">
-          <strong v-if="providerLabel">{{ providerLabel }}</strong>
-          <code v-if="model">{{ model }}</code>
-          <span v-if="tokenUsageLabel" :title="tokenUsageDetail">{{ tokenUsageLabel }}</span>
-          <span v-if="durationLabel">{{ durationLabel }}</span>
-        </span>
+        <div class="result-doc-meta-end">
+          <span v-if="providerLabel || model || tokenUsageLabel || durationLabel" class="execution-source">
+            <strong v-if="providerLabel">{{ providerLabel }}</strong>
+            <code v-if="model">{{ model }}</code>
+            <span v-if="tokenUsageLabel" :title="tokenUsageDetail">{{ tokenUsageLabel }}</span>
+            <span v-if="durationLabel">{{ durationLabel }}</span>
+          </span>
+          <div class="result-doc-actions" role="group" aria-label="结果文档操作">
+            <button
+              type="button"
+              class="icon-button"
+              title="复制 Markdown"
+              aria-label="复制结果 Markdown"
+              @click="copyResult"
+            >
+              <el-icon><CopyDocument /></el-icon>
+            </button>
+            <button
+              type="button"
+              class="icon-button"
+              title="下载 Markdown"
+              aria-label="下载结果 Markdown"
+              @click="downloadResult"
+            >
+              <el-icon><Download /></el-icon>
+            </button>
+          </div>
+        </div>
       </div>
       <p class="page-kicker">摘要</p>
       <h2>{{ summary }}</h2>
@@ -51,7 +73,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { ElMessage } from 'element-plus'
+import { CopyDocument, Download } from '@element-plus/icons-vue'
 import { formatExecutionDuration, formatProviderName, formatTokenUsage } from '@/utils/aiProvider'
+import { buildResultMarkdown, createResultDocumentFilename } from '@/utils/resultDocument'
 
 type ResultBlock =
   | { type: 'heading'; level: number; content: string }
@@ -108,6 +133,7 @@ const formattedRaw = computed(() => {
 })
 
 const resultBlocks = computed(() => parseResultDocument(props.result || ''))
+const portableDocument = computed(() => buildResultMarkdown(props.summary || '', props.result || ''))
 
 const keyPoints = computed(() => {
   const listItems = resultBlocks.value
@@ -129,6 +155,32 @@ const keyPoints = computed(() => {
     .filter((item) => item.length > 8)
     .slice(0, 5)
 })
+
+async function copyResult() {
+  try {
+    if (!navigator.clipboard?.writeText) {
+      throw new Error('Clipboard API unavailable')
+    }
+    await navigator.clipboard.writeText(portableDocument.value)
+    ElMessage.success('结果 Markdown 已复制')
+  } catch {
+    ElMessage.error('复制失败，请稍后重试')
+  }
+}
+
+function downloadResult() {
+  const blob = new Blob([portableDocument.value], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = createResultDocumentFilename(props.summary)
+  link.hidden = true
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+  ElMessage.success('结果 Markdown 已下载')
+}
 
 function parseResultDocument(text: string): ResultBlock[] {
   const lines = text.replace(/\r\n/g, '\n').split('\n')
