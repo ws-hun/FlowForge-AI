@@ -116,6 +116,7 @@ Current Stage 3 capabilities:
 - Provider results that violate the string contract with a JSON object or array are deterministically converted into readable Markdown while preserving the Provider response for raw inspection.
 - Every successful Result document can be copied or downloaded as portable Markdown from AI Command, Flow Space, comparison, and History surfaces.
 - Historical Result strings produced before structured formatting are detected at presentation time, rendered as readable documents, and keep their original JSON available without mutating immutable run data.
+- Result rendering preserves headings, grouped lists, fenced code, inline emphasis, code tokens, quotes, and document dividers through a tested safe-text parser instead of flattening useful AI output structure.
 - Provider Vault can verify any saved configuration against its `/models` endpoint without creating a Task run, exposing plaintext credentials, or pretending the result is persisted health telemetry.
 - Prompt and Flow mutation endpoints preserve REST semantics by separating missing assets (`404`) and invalid input (`400`) from actual Provider gateway failures (`502`).
 - Global error handling isolates `AiExecutionException` as `502`, reports internal state failures as non-leaking `500` responses, and keeps missing Task execution sources on `404`.
