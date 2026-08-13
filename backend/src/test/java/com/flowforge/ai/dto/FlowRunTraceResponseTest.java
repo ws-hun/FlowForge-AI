@@ -34,6 +34,7 @@ class FlowRunTraceResponseTest {
         assertThat(trace.executionInputFingerprint()).isNull();
         assertThat(trace.inputSource()).isNull();
         assertThat(trace.replayedFromTaskId()).isNull();
+        assertThat(trace.executionPlan()).isNull();
     }
 
     @Test
@@ -51,6 +52,19 @@ class FlowRunTraceResponseTest {
                 "1f4a8b6c",
                 "stored-input-replay",
                 sourceRunId,
+                new FlowExecutionPlanResponse(
+                        "flow-plan-v1",
+                        "linear",
+                        List.of(new FlowExecutionStepResponse(
+                                1,
+                                "ai-task-1",
+                                "ai-task",
+                                "Decision analysis",
+                                "invoke-provider",
+                                List.of(),
+                                true
+                        ))
+                ),
                 List.of(new FlowNodeRunTraceResponse(
                         "ai-task-1",
                         "ai-task",
@@ -70,6 +84,7 @@ class FlowRunTraceResponseTest {
         assertThat(restored).isEqualTo(trace);
         assertThat(restored.runId()).isEqualTo(runId);
         assertThat(restored.replayedFromTaskId()).isEqualTo(sourceRunId);
+        assertThat(restored.executionPlan().version()).isEqualTo("flow-plan-v1");
         assertThat(restored.nodes()).singleElement().satisfies(node -> {
             assertThat(node.nodeId()).isEqualTo("ai-task-1");
             assertThat(node.outputSummary()).isEqualTo("Option A is preferred.");

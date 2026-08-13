@@ -2,7 +2,9 @@ package com.flowforge.ai.controller;
 
 import com.flowforge.ai.dto.FlowExecutionPreviewRequest;
 import com.flowforge.ai.dto.FlowExecutionPreviewResponse;
+import com.flowforge.ai.dto.FlowExecutionPlanResponse;
 import com.flowforge.ai.dto.FlowExecutionSectionResponse;
+import com.flowforge.ai.dto.FlowExecutionStepResponse;
 import com.flowforge.ai.dto.FlowNodeDto;
 import com.flowforge.ai.dto.FlowResponse;
 import com.flowforge.ai.dto.FlowRunSnapshotResponse;
@@ -103,6 +105,19 @@ class WorkflowControllerTest {
                         "Launch brief",
                         "Prepare a focused launch"
                 )),
+                new FlowExecutionPlanResponse(
+                        "flow-plan-v1",
+                        "linear",
+                        List.of(new FlowExecutionStepResponse(
+                                1,
+                                "input-1",
+                                "input",
+                                "Intent",
+                                "supply-context",
+                                List.of(),
+                                false
+                        ))
+                ),
                 true,
                 List.of(),
                 List.of()
@@ -123,6 +138,8 @@ class WorkflowControllerTest {
                 .andExpect(jsonPath("$.providerCallCount").value(1))
                 .andExpect(jsonPath("$.compilerVersion").value("flow-compiler-v1"))
                 .andExpect(jsonPath("$.executionInputFingerprint").value("8f2a4a8bd2f30ec4880b55df102d714d1f05d5dc7e60d7cc15bfc5bf5f660b8a"))
+                .andExpect(jsonPath("$.executionPlan.version").value("flow-plan-v1"))
+                .andExpect(jsonPath("$.executionPlan.steps[0].operation").value("supply-context"))
                 .andExpect(jsonPath("$.executionInput").value("Flow: Launch brief\n本次运行上下文:\nFocus on the first release."))
                 .andExpect(jsonPath("$.flowRunSnapshot.flowId").value(flowId.toString()))
                 .andExpect(jsonPath("$.flowRunSnapshot.variableValues.audience").value("product teams"))

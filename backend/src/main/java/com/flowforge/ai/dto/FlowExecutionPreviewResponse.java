@@ -13,6 +13,7 @@ public record FlowExecutionPreviewResponse(
         String executionInput,
         FlowRunSnapshotResponse flowRunSnapshot,
         List<FlowExecutionSectionResponse> sections,
+        FlowExecutionPlanResponse executionPlan,
         boolean executable,
         List<String> missingVariables,
         List<String> incompleteNodes

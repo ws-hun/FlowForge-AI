@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowforge.ai.dto.FlowExecutionPreviewRequest;
 import com.flowforge.ai.dto.FlowExecutionPreviewResponse;
+import com.flowforge.ai.dto.FlowExecutionPlanResponse;
 import com.flowforge.ai.dto.FlowNodeDto;
 import com.flowforge.ai.dto.FlowNodeRunTraceResponse;
 import com.flowforge.ai.dto.FlowRunTraceResponse;
@@ -96,6 +97,7 @@ public class TaskService {
                             null,
                             null,
                             null,
+                            null,
                             null
                     )
             );
@@ -125,7 +127,8 @@ public class TaskService {
                         compiledExecution == null ? null : compiledExecution.compilerVersion(),
                         compiledExecution == null ? null : compiledExecution.executionInputFingerprint(),
                         compiledExecution == null ? null : FLOW_INPUT_SOURCE_COMPILED,
-                        null
+                        null,
+                        compiledExecution == null ? null : compiledExecution.plan()
                 )
         );
     }
@@ -157,7 +160,8 @@ public class TaskService {
                         sourceTrace == null ? null : sourceTrace.compilerVersion(),
                         flowRunSnapshot == null ? null : flowExecutionCompiler.fingerprint(sourceTask.getInput()),
                         flowRunSnapshot == null ? null : FLOW_INPUT_SOURCE_REPLAY,
-                        flowRunSnapshot == null ? null : sourceTask.getId()
+                        flowRunSnapshot == null ? null : sourceTask.getId(),
+                        sourceTrace == null ? null : sourceTrace.executionPlan()
                 )
         );
     }
@@ -290,6 +294,7 @@ public class TaskService {
                 compiledExecution.executionInput(),
                 flowRunSnapshot,
                 compiledExecution.sections(),
+                compiledExecution.plan(),
                 missingVariables.isEmpty() && incompleteNodes.isEmpty(),
                 missingVariables,
                 incompleteNodes
@@ -458,6 +463,7 @@ public class TaskService {
                 source.executionInputFingerprint(),
                 source.inputSource(),
                 source.replayedFromTaskId(),
+                source.executionPlan(),
                 nodes
         );
     }
@@ -588,7 +594,8 @@ public class TaskService {
             String compilerVersion,
             String executionInputFingerprint,
             String inputSource,
-            UUID replayedFromTaskId
+            UUID replayedFromTaskId,
+            FlowExecutionPlanResponse executionPlan
     ) {
     }
 

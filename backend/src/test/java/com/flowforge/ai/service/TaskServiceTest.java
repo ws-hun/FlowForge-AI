@@ -237,6 +237,14 @@ class TaskServiceTest {
                 .isEqualTo(new FlowExecutionCompiler().fingerprint(executionInput));
         assertThat(response.flowRunTrace().inputSource()).isEqualTo("compiled-flow");
         assertThat(response.flowRunTrace().replayedFromTaskId()).isNull();
+        assertThat(response.flowRunTrace().executionPlan().version()).isEqualTo("flow-plan-v1");
+        assertThat(response.flowRunTrace().executionPlan().steps())
+                .filteredOn(step -> step.providerBoundary())
+                .singleElement()
+                .satisfies(step -> {
+                    assertThat(step.nodeId()).isEqualTo("ai-task-1");
+                    assertThat(step.operation()).isEqualTo("invoke-provider");
+                });
         assertThat(response.flowRunTrace().nodes())
                 .extracting(node -> node.title() + ":" + node.status())
                 .containsExactly(
@@ -648,6 +656,7 @@ class TaskServiceTest {
                 "source-fingerprint",
                 "compiled-flow",
                 null,
+                new FlowExecutionCompiler().compilePlan(snapshot.nodes()),
                 List.of()
         ));
         Task sourceTask = Task.builder()
@@ -676,6 +685,9 @@ class TaskServiceTest {
                 .isNotEqualTo("source-fingerprint");
         assertThat(response.flowRunTrace().inputSource()).isEqualTo("stored-input-replay");
         assertThat(response.flowRunTrace().replayedFromTaskId()).isEqualTo(sourceTaskId);
+        assertThat(response.flowRunTrace().executionPlan()).isEqualTo(
+                new FlowExecutionCompiler().compilePlan(snapshot.nodes())
+        );
     }
 
     @Test
@@ -718,6 +730,7 @@ class TaskServiceTest {
                 "source-fingerprint",
                 "compiled-flow",
                 null,
+                new FlowExecutionCompiler().compilePlan(snapshot.nodes()),
                 List.of()
         ));
         Task sourceTask = Task.builder()
@@ -893,6 +906,10 @@ class TaskServiceTest {
         assertThat(response.executable()).isTrue();
         assertThat(response.missingVariables()).isEmpty();
         assertThat(response.incompleteNodes()).isEmpty();
+        assertThat(response.executionPlan().version()).isEqualTo("flow-plan-v1");
+        assertThat(response.executionPlan().steps())
+                .extracting(step -> step.nodeId())
+                .containsExactly("input-1", "prompt-1", "ai-task-1", "output-1");
         assertThat(response.sections())
                 .extracting(section -> section.kind() + ":" + section.title())
                 .containsExactly(
@@ -967,6 +984,7 @@ class TaskServiceTest {
         assertThat(run.flowRunTrace().executionInputFingerprint())
                 .isEqualTo(preview.executionInputFingerprint());
         assertThat(run.flowRunTrace().compilerVersion()).isEqualTo(preview.compilerVersion());
+        assertThat(run.flowRunTrace().executionPlan()).isEqualTo(preview.executionPlan());
     }
 
     @Test

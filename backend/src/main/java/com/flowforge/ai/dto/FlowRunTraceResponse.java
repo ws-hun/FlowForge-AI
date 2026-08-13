@@ -16,6 +16,7 @@ public record FlowRunTraceResponse(
         String executionInputFingerprint,
         String inputSource,
         UUID replayedFromTaskId,
+        FlowExecutionPlanResponse executionPlan,
         List<FlowNodeRunTraceResponse> nodes
 ) {
 }
