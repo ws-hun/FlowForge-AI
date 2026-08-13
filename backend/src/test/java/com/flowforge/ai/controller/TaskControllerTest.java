@@ -165,12 +165,13 @@ class TaskControllerTest {
 
     @Test
     void separatesProviderFailuresFromInternalApplicationFailures() throws Exception {
+        UUID failedRunId = UUID.randomUUID();
         doThrow(new AiExecutionException(
                 "deepseek",
                 "deepseek-chat",
                 "AI API error: provider unavailable",
                 new IllegalStateException("provider unavailable")
-        )).when(taskService).runTask(any());
+        ).attachRunId(failedRunId)).when(taskService).runTask(any());
 
         mockMvc.perform(post("/api/tasks/run")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -178,7 +179,8 @@ class TaskControllerTest {
                                 { "input": "Generate a release brief" }
                                 """))
                 .andExpect(status().isBadGateway())
-                .andExpect(jsonPath("$.message").value("AI API error: provider unavailable"));
+                .andExpect(jsonPath("$.message").value("AI API error: provider unavailable"))
+                .andExpect(jsonPath("$.runId").value(failedRunId.toString()));
 
         reset(taskService);
         doThrow(new IllegalStateException("database payload is corrupt"))
@@ -190,6 +192,7 @@ class TaskControllerTest {
                                 { "input": "Generate another release brief" }
                                 """))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.message").value("Internal server error"));
+                .andExpect(jsonPath("$.message").value("Internal server error"))
+                .andExpect(jsonPath("$.runId").doesNotExist());
     }
 }

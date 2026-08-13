@@ -168,6 +168,14 @@
             </div>
           </div>
         </template>
+        <div v-else-if="workspace.failedRun" class="command-recovery-note">
+          <div>
+            <span class="section-kicker">已保存失败运行</span>
+            <strong>{{ workspace.failedRun.errorMessage || workspace.failedRun.result }}</strong>
+            <p>执行输入和来源上下文已保留，可以在 History 中检查并使用当前 Provider 重跑。</p>
+          </div>
+          <button type="button" class="secondary-button" @click="openFailedRunHistory">打开失败运行</button>
+        </div>
         <div v-else class="empty-state">结果会以文档形式显示在这里。</div>
       </section>
     </div>
@@ -293,6 +301,12 @@ function openLatestResultHistory() {
   const runId = workspace.latestResult?.taskId
   if (runId) {
     router.push({ path: '/history', query: { run: runId } })
+  }
+}
+
+function openFailedRunHistory() {
+  if (workspace.failedRunId) {
+    router.push({ path: '/history', query: { run: workspace.failedRunId } })
   }
 }
 

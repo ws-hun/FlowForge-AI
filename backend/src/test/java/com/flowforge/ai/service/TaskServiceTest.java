@@ -393,6 +393,7 @@ class TaskServiceTest {
         verify(taskFailureRecorder).record(taskCaptor.capture());
         Task failedTask = taskCaptor.getValue();
         assertThat(failedTask.getId()).isNotNull();
+        assertThat(failure.getRunId()).isEqualTo(failedTask.getId());
         assertThat(failedTask.getInput()).isEqualTo("Prepare a release plan");
         assertThat(failedTask.getSummary()).isEqualTo("AI 执行失败");
         assertThat(failedTask.getResult()).isEqualTo("AI API error: rate limit exceeded");
@@ -555,6 +556,7 @@ class TaskServiceTest {
                         "Release decision:skipped"
                 );
         assertThat(trace.nodes().get(1).errorMessage()).isEqualTo("AI API error: provider unavailable");
+        assertThat(failure.getRunId()).isEqualTo(failedTask.getId());
         verify(taskRepository, never()).save(any(Task.class));
     }
 

@@ -74,6 +74,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const flowDrafts = ref<FlowDraft[]>([])
   const activeFlowId = ref('')
   const latestResult = ref<TaskRunResponse | null>(null)
+  const failedRunId = ref('')
   const latestTaskInput = ref('')
   const latestTaskPrompt = ref<PromptAsset | null>(null)
   const taskPromptsByRunId = ref<Record<string, PromptAsset>>({})
@@ -119,6 +120,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const canExecuteTask = computed(() =>
     taskSourceFlowId.value ? missingTaskSourceFlowVariables.value.length === 0 : Boolean(taskInput.value.trim())
   )
+  const failedRun = computed(() => tasks.value.find((task) => task.id === failedRunId.value) || null)
 
   watch(
     [
@@ -194,6 +196,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     saveTaskSourceFlowRunDraft()
 
     running.value = true
+    latestResult.value = null
+    failedRunId.value = ''
     try {
       const { data } = await runTask({
         input,
@@ -212,6 +216,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       ElMessage.success('任务执行完成')
       await loadTasks()
     } catch (error: any) {
+      failedRunId.value = error.response?.data?.runId || ''
       ElMessage.error(error.response?.data?.message || '任务执行失败')
       await loadTasks()
     } finally {
@@ -226,6 +231,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
 
     running.value = true
+    latestResult.value = null
+    failedRunId.value = ''
     try {
       const { data } = await rerunTaskRequest(taskId)
       latestResult.value = data
@@ -237,6 +244,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       await loadTasks()
       return data
     } catch (error: any) {
+      failedRunId.value = error.response?.data?.runId || ''
       ElMessage.error(error.response?.data?.message || '历史任务重新执行失败')
       await loadTasks()
       return null
@@ -1067,6 +1075,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
 
     running.value = true
+    latestResult.value = null
+    failedRunId.value = ''
     try {
       const { data } = await runTask({
         input: runtimeContext.trim(),
@@ -1079,6 +1089,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       await loadTasks()
       return data
     } catch (error: any) {
+      failedRunId.value = error.response?.data?.runId || ''
       ElMessage.error(error.response?.data?.message || 'Flow 执行失败')
       await loadTasks()
       return null
@@ -1226,6 +1237,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     flowDrafts,
     activeFlowId,
     latestResult,
+    failedRunId,
+    failedRun,
     latestTaskInput,
     latestTaskPrompt,
     taskPromptsByRunId,

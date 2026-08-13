@@ -168,7 +168,10 @@ public class TaskService {
         try {
             aiResult = openAiService.processTask(executionInput);
         } catch (RuntimeException ex) {
-            recordFailedExecution(executionInput, source, ex, elapsedMillis(startedAt));
+            UUID failedRunId = recordFailedExecution(executionInput, source, ex, elapsedMillis(startedAt));
+            if (failedRunId != null && ex instanceof AiExecutionException aiException) {
+                aiException.attachRunId(failedRunId);
+            }
             throw ex;
         }
         long durationMs = elapsedMillis(startedAt);
@@ -208,7 +211,7 @@ public class TaskService {
         );
     }
 
-    private void recordFailedExecution(
+    private UUID recordFailedExecution(
             String executionInput,
             TaskExecutionSource source,
             RuntimeException exception,
@@ -235,8 +238,10 @@ public class TaskService {
                 .build();
         try {
             taskFailureRecorder.record(failedTask);
+            return failedTask.getId();
         } catch (RuntimeException persistenceFailure) {
             exception.addSuppressed(persistenceFailure);
+            return null;
         }
     }
 

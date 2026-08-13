@@ -2731,10 +2731,7 @@ async function executeFlowNow() {
 
   failFlowRun()
   await loadFlowRuns(flowId)
-  const runStartedAt = Date.parse(flowRunStartedAt.value)
-  const failedRun = flowRuns.value.find(
-    (run) => run.status === 'failed' && Date.parse(run.createdAt) >= runStartedAt
-  )
+  const failedRun = flowRuns.value.find((run) => run.id === workspace.failedRunId)
   if (failedRun) {
     selectFlowRun(failedRun)
   }

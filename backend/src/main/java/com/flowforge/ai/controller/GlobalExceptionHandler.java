@@ -39,7 +39,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AiExecutionException.class)
     @ResponseStatus(HttpStatus.BAD_GATEWAY)
     public ErrorResponse handleAiExecution(AiExecutionException ex) {
-        return new ErrorResponse(ex.getMessage(), LocalDateTime.now());
+        return new ErrorResponse(ex.getMessage(), LocalDateTime.now(), ex.getRunId());
     }
 
     @ExceptionHandler(IllegalStateException.class)

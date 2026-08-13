@@ -70,6 +70,8 @@ Flow execution compilation is isolated in `FlowExecutionCompiler`. It converts o
 
 Direct Flow execution assigns the persisted Task UUID before the Provider request. The same UUID becomes the run identity in successful or failed traces, while exact reruns record `stored-input-replay` and the immutable source Task UUID instead of presenting the replay as a newly compiled Flow input.
 
+When Provider execution fails, `TaskService` persists the failed Task in a separate transaction and attaches its UUID to the `AiExecutionException` only after that write succeeds. The `502` response can therefore expose an optional `runId` that always refers to a real recoverable History entry.
+
 ---
 
 ## 6. API Design Principles
