@@ -910,6 +910,66 @@ class TaskServiceTest {
     }
 
     @Test
+    void sendsAndPersistsTheExactInputPreviouslyProducedByFlowPreview() throws Exception {
+        UUID flowId = UUID.randomUUID();
+        Workflow flow = Workflow.builder()
+                .id(flowId)
+                .title("Launch decision")
+                .description("Choose the first launch scope")
+                .nodesJson(new ObjectMapper().writeValueAsString(List.of(
+                        new FlowNodeDto(
+                                "input-1",
+                                "input",
+                                "Launch context",
+                                "The fixed launch context",
+                                "Prepare the launch for {audience}.",
+                                null,
+                                null
+                        ),
+                        new FlowNodeDto(
+                                "ai-task-1",
+                                "ai-task",
+                                "Scope decision",
+                                "Choose a focused scope",
+                                "Recommend one scope for {audience}.",
+                                null,
+                                null
+                        )
+                )))
+                .createdAt(LocalDateTime.now().minusDays(1))
+                .updatedAt(LocalDateTime.now())
+                .build();
+        String runtimeContext = "Keep the first release intentionally small.";
+        Map<String, String> variableValues = Map.of("audience", "product teams");
+        when(workflowRepository.findById(flowId)).thenReturn(Optional.of(flow));
+        when(openAiService.processTask(any()))
+                .thenReturn(new OpenAiTaskResult("Focused launch", "Launch result", "{}"));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        FlowExecutionPreviewResponse preview = taskService.previewFlowExecution(
+                flowId,
+                new FlowExecutionPreviewRequest(runtimeContext, variableValues)
+        );
+        TaskRunResponse run = taskService.runTask(new RunTaskRequest(
+                "browser input must not replace the compiled Flow",
+                null,
+                flowId,
+                runtimeContext,
+                variableValues
+        ));
+
+        verify(openAiService).processTask(executionInputCaptor.capture());
+        verify(taskRepository).save(taskCaptor.capture());
+        assertThat(executionInputCaptor.getValue()).isEqualTo(preview.executionInput());
+        assertThat(taskCaptor.getValue().getInput()).isEqualTo(preview.executionInput());
+        assertThat(run.executionInput()).isEqualTo(preview.executionInput());
+        assertThat(run.flowRunTrace()).isNotNull();
+        assertThat(run.flowRunTrace().executionInputFingerprint())
+                .isEqualTo(preview.executionInputFingerprint());
+        assertThat(run.flowRunTrace().compilerVersion()).isEqualTo(preview.compilerVersion());
+    }
+
+    @Test
     void reportsFlowPreviewReadinessWithoutCallingTheProvider() throws Exception {
         UUID flowId = UUID.randomUUID();
         Workflow flow = Workflow.builder()
