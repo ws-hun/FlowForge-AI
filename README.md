@@ -138,6 +138,8 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Recoverable Provider Failures | Done | Provider 失败响应关联已保存运行，AI Command 与 Flow Space 可精确打开失败上下文，不再依赖时间窗口猜测 |
 | Stage 3 | Verified Run Input Comparison | Done | 运行对比优先使用 Provider 输入指纹判断输入是否一致，旧记录则诚实回退到固定执行文本 |
 | Stage 3 | Flow Runtime Contract Verification | Done | 自动化测试锁定预览、真实 Provider 输入、历史保存输入、编译器版本与运行轨迹指纹的一致性 |
+| Stage 3 | Versioned Node Execution Plan | Done | Preview 与不可变运行轨迹共享 `flow-plan-v1`，固定节点顺序、直接依赖、运行职责与唯一 Provider 边界 |
+| Stage 3 | Node Runtime Role Guidance | Done | Flow canvas 与 Inspector 解释每个节点如何参与执行，并明确当前只有 AI Task 触发 Provider 调用 |
 | Foundation | Frontend Bundle Splitting | Done | 页面按路由懒加载，Element Plus 仅注册实际组件，入口 JS 与 CSS 不再包含整套页面和 UI 库 |
 | Future | Agents | Future Boundary | 不展示虚构 Agent 状态，用户可回到 Flow / Prompt 沉淀真实可执行资产 |
 | Future | Knowledge Base | Future Boundary | 不展示虚构索引来源，用户可先通过 Flow Context 固定真实上下文 |
@@ -302,6 +304,8 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | 交付重点参与服务端预览与真实运行 | Done |
 | 真实 Flow 运行生命周期反馈（上下文准备 / 单次 AI 调用 / Output 记录） | Done |
 | 服务端持久化 Flow Run Trace（prepared / completed / failed / skipped） | Done |
+| 运行前 Preview / 历史轨迹共享版本化节点执行路径 | Done |
+| Inspector 展示节点职责、执行顺序与前置编译依赖 | Done |
 | 失败运行在 Flow Space 中检查节点状态并使用固定输入重跑 | Done |
 | Flow 执行结果展示 | Done |
 | Flow 执行历史回看 | Done |
@@ -397,7 +401,7 @@ Controller -> Service -> Repository -> Entity
 | `ApiKeyCipher` | AES-256-GCM 密钥静态加密与主密钥管理 |
 | `PromptService` | Prompt 资产、收藏、版本 |
 | `WorkflowService` | Flow 草稿和节点结构 |
-| `FlowExecutionCompiler` | 将不可变 Flow 快照编译为预览与执行共享的确定性 Provider 输入 |
+| `FlowExecutionCompiler` | 将不可变 Flow 快照编译为预览与执行共享的确定性 Provider 输入和 `flow-plan-v1` 节点计划 |
 | `HealthService` | 应用与 PostgreSQL 就绪探针 |
 
 数据库结构由 `backend/src/main/resources/db/migration` 下的 Flyway 迁移统一维护。Hibernate 使用 `ddl-auto: validate`，只验证实体与数据库是否一致，不会在启动时静默修改生产 schema。
@@ -680,6 +684,8 @@ Response:
 
 当前 Flow Runtime 仍把所有已保存节点编译成一个确定性输入，并执行 **一次共享 Provider 调用**。因此 `providerCallCount` 当前固定为 `1`，Flow Run Trace 是可解释的服务端运行记录，不代表每个节点都进行了独立模型调用。
 
+`executionPlan` 使用 `flow-plan-v1` 固定保存节点顺序、直接前置依赖、节点职责和 Provider 边界。Input 与 Prompt 提供编译内容，AI Task 是唯一 `invoke-provider` 步骤，Output 定义同一请求的交付约束。新成功或失败运行都会保存这份计划；旧记录缺失时保持未知，不会根据当前 Flow 现场补造。
+
 `executionInput` 是服务端实际提交给 AI Provider 的输入。Flow 工作区的“查看服务端执行输入”使用同一套编译逻辑，确保用户确认的内容与真实执行一致。
 
 `provider` 与 `model` 是本次执行真正使用的 AI 来源。它们会随 Task 一起持久化，因此之后切换 Provider 或模型不会改写历史执行来源；旧记录没有来源信息时，界面会保持安静并省略该元信息。
@@ -744,7 +750,7 @@ POST   /api/flows/{id}/versions/{versionId}/restore
 DELETE /api/flows/{id}?revision={revision}
 ```
 
-`POST /api/flows/{id}/execution-preview` 只读取已保存的 Flow，不调用 AI Provider，也不会创建任务或写入历史。它接收本次 `runtimeContext` 与 `variableValues`，返回服务端编译的 `executionInput`、不可变 `flowRunSnapshot`、有序 `sections`，以及 `executable`、`missingVariables`、`incompleteNodes` 就绪检查结果。结构视图与 Raw 输入来自同一个编译过程，真实执行仍是一笔 Provider 请求。
+`POST /api/flows/{id}/execution-preview` 只读取已保存的 Flow，不调用 AI Provider，也不会创建任务或写入历史。它接收本次 `runtimeContext` 与 `variableValues`，返回服务端编译的 `executionInput`、不可变 `flowRunSnapshot`、有序 `sections`、`executionPlan`，以及 `executable`、`missingVariables`、`incompleteNodes` 就绪检查结果。结构视图、节点路径与 Raw 输入来自同一个编译过程，真实执行仍是一笔 Provider 请求。
 
 创建 Flow 时可选传入 `sourceFlowId`，并可同时传入 `sourceFlowVersionId`。服务端会验证修订真实属于来源 Flow，并固化来源标题和版本号；后续编辑不会改变这条来源关系。
 
@@ -839,8 +845,9 @@ Check:
 
 ### Near Term
 
-- Workflow Builder node experience polish
-- 从当前单次 Provider Runtime 演进到真实独立的 node-level execution engine
+- 为节点定义可持久化的输入 / 输出结果契约
+- 设计逐节点 Provider 来源、Token、耗时和错误轨迹
+- 在明确 stop / skip / retry 策略后演进到真实 node-level execution engine
 - Prompt / Flow 复用闭环细化
 - More complete onboarding and empty states
 

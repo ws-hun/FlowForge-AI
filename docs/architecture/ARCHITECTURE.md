@@ -66,13 +66,15 @@ entity/
 dto/
 config/
 
-Flow execution compilation is isolated in `FlowExecutionCompiler`. It converts one immutable Flow snapshot into the exact Provider input, execution mode, call count, compiler version, SHA-256 input fingerprint, and structured preview sections used by both preview and execution paths.
+Flow execution compilation is isolated in `FlowExecutionCompiler`. It converts one immutable Flow snapshot into the exact Provider input, execution mode, call count, compiler version, SHA-256 input fingerprint, structured preview sections, and a versioned deterministic node execution plan used by both preview and execution paths.
+
+The current `flow-plan-v1` contract uses linear scheduling and identifies Input, Prompt, AI Task, and Output responsibilities without claiming independent node execution. AI Task is the only Provider boundary, so the number of boundary steps must remain equal to the persisted Provider call count. See [FLOW_RUNTIME.md](./FLOW_RUNTIME.md).
 
 Direct Flow execution assigns the persisted Task UUID before the Provider request. The same UUID becomes the run identity in successful or failed traces, while exact reruns record `stored-input-replay` and the immutable source Task UUID instead of presenting the replay as a newly compiled Flow input.
 
 When Provider execution fails, `TaskService` persists the failed Task in a separate transaction and attaches its UUID to the `AiExecutionException` only after that write succeeds. The `502` response can therefore expose an optional `runId` that always refers to a real recoverable History entry.
 
-The runtime contract test suite requires one saved Flow snapshot and Run Brief to produce byte-for-byte identical preview, Provider, persisted Task, and response inputs. It also requires the preview fingerprint and persisted trace fingerprint to match, preventing preview and execution paths from drifting independently.
+The runtime contract test suite requires one saved Flow snapshot and Run Brief to produce byte-for-byte identical preview, Provider, persisted Task, and response inputs. It also requires the preview fingerprint and persisted trace fingerprint to match, the preview and trace execution plans to be identical, and plan step order to match persisted node trace order.
 
 ---
 

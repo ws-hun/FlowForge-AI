@@ -245,6 +245,11 @@ class TaskServiceTest {
                     assertThat(step.nodeId()).isEqualTo("ai-task-1");
                     assertThat(step.operation()).isEqualTo("invoke-provider");
                 });
+        assertThat(response.flowRunTrace().executionPlan().steps())
+                .extracting(step -> step.nodeId())
+                .containsExactlyElementsOf(
+                        response.flowRunTrace().nodes().stream().map(FlowNodeRunTraceResponse::nodeId).toList()
+                );
         assertThat(response.flowRunTrace().nodes())
                 .extracting(node -> node.title() + ":" + node.status())
                 .containsExactly(
@@ -556,6 +561,16 @@ class TaskServiceTest {
                 .isEqualTo(new FlowExecutionCompiler().fingerprint(failedTask.getInput()));
         assertThat(trace.inputSource()).isEqualTo("compiled-flow");
         assertThat(trace.replayedFromTaskId()).isNull();
+        assertThat(trace.executionPlan().steps())
+                .extracting(step -> step.nodeId())
+                .containsExactlyElementsOf(trace.nodes().stream().map(FlowNodeRunTraceResponse::nodeId).toList());
+        assertThat(trace.executionPlan().steps())
+                .filteredOn(step -> step.providerBoundary())
+                .singleElement()
+                .satisfies(step -> {
+                    assertThat(step.nodeId()).isEqualTo("ai-task-1");
+                    assertThat(step.operation()).isEqualTo("invoke-provider");
+                });
         assertThat(trace.nodes())
                 .extracting(node -> node.title() + ":" + node.status())
                 .containsExactly(
@@ -985,6 +1000,9 @@ class TaskServiceTest {
                 .isEqualTo(preview.executionInputFingerprint());
         assertThat(run.flowRunTrace().compilerVersion()).isEqualTo(preview.compilerVersion());
         assertThat(run.flowRunTrace().executionPlan()).isEqualTo(preview.executionPlan());
+        assertThat(preview.executionPlan().steps())
+                .filteredOn(step -> step.providerBoundary())
+                .hasSize(preview.providerCallCount());
     }
 
     @Test
