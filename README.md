@@ -133,6 +133,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Portable Result Documents | Done | AI Command、Flow、运行对比与 History 中的结果可复制或下载为 Markdown，并携带可用的 Provider、模型、Token 与耗时来源 |
 | Stage 3 | Legacy Result Presentation | Done | 旧版 JSON Result 自动呈现为可读文档，同时保留原始 JSON 且不修改不可变历史 |
 | Stage 3 | Structured Result Rendering | Done | Result 安全文本渲染保留标题、列表、代码、强调、引用与文档分隔结构 |
+| Stage 3 | Versioned Flow Compilation | Done | Flow 预览与运行轨迹记录编译器版本和真实 Provider 输入指纹，历史精确重跑不冒充重新编译 |
 | Foundation | Frontend Bundle Splitting | Done | 页面按路由懒加载，Element Plus 仅注册实际组件，入口 JS 与 CSS 不再包含整套页面和 UI 库 |
 | Future | Agents | Future Boundary | 不展示虚构 Agent 状态，用户可回到 Flow / Prompt 沉淀真实可执行资产 |
 | Future | Knowledge Base | Future Boundary | 不展示虚构索引来源，用户可先通过 Flow Context 固定真实上下文 |

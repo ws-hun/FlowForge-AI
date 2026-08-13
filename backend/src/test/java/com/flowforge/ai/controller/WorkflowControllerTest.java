@@ -81,6 +81,8 @@ class WorkflowControllerTest {
         FlowExecutionPreviewResponse response = new FlowExecutionPreviewResponse(
                 "single-pass",
                 1,
+                "flow-compiler-v1",
+                "8f2a4a8bd2f30ec4880b55df102d714d1f05d5dc7e60d7cc15bfc5bf5f660b8a",
                 "Flow: Launch brief\n本次运行上下文:\nFocus on the first release.",
                 new FlowRunSnapshotResponse(
                         flowId,
@@ -119,6 +121,8 @@ class WorkflowControllerTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.executionMode").value("single-pass"))
                 .andExpect(jsonPath("$.providerCallCount").value(1))
+                .andExpect(jsonPath("$.compilerVersion").value("flow-compiler-v1"))
+                .andExpect(jsonPath("$.executionInputFingerprint").value("8f2a4a8bd2f30ec4880b55df102d714d1f05d5dc7e60d7cc15bfc5bf5f660b8a"))
                 .andExpect(jsonPath("$.executionInput").value("Flow: Launch brief\n本次运行上下文:\nFocus on the first release."))
                 .andExpect(jsonPath("$.flowRunSnapshot.flowId").value(flowId.toString()))
                 .andExpect(jsonPath("$.flowRunSnapshot.variableValues.audience").value("product teams"))

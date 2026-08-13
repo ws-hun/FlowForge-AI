@@ -3165,6 +3165,12 @@ a {
       color: tokens.$text-secondary;
       font-size: 12px;
       line-height: 1.45;
+
+      code {
+        color: tokens.$text-muted;
+        font-family: tokens.$mono;
+        font-size: 10px;
+      }
     }
 
     em {
@@ -4283,6 +4289,12 @@ a {
     color: tokens.$text-muted;
     font-family: tokens.$mono;
     font-size: 11px;
+
+    code {
+      color: tokens.$text-secondary;
+      font-family: inherit;
+      font-size: inherit;
+    }
   }
 }
 

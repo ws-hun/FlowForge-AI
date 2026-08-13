@@ -23,6 +23,11 @@ class FlowExecutionCompilerTest {
 
         assertThat(compilation.executionMode()).isEqualTo("single-pass");
         assertThat(compilation.providerCallCount()).isEqualTo(1);
+        assertThat(compilation.compilerVersion()).isEqualTo("flow-compiler-v1");
+        assertThat(compilation.executionInputFingerprint())
+                .hasSize(64)
+                .matches("[0-9a-f]{64}")
+                .isEqualTo(compiler.fingerprint(compilation.executionInput()));
         assertThat(compilation.executionInput())
                 .contains("Flow: Launch workspace")
                 .contains("本次运行上下文:\nShip a focused first release.")
@@ -42,6 +47,16 @@ class FlowExecutionCompilerTest {
                         "delivery-focus",
                         "response-contract"
                 );
+    }
+
+    @Test
+    void changesTheFingerprintWhenTheCompiledProviderInputChanges() {
+        FlowExecutionCompiler.Compilation first = compiler.compile(snapshot(Map.of("audience", "product teams")));
+        FlowExecutionCompiler.Compilation second = compiler.compile(snapshot(Map.of("audience", "engineering teams")));
+
+        assertThat(first.executionInputFingerprint()).isNotEqualTo(second.executionInputFingerprint());
+        assertThat(compiler.compile(snapshot(Map.of("audience", "product teams"))).executionInputFingerprint())
+                .isEqualTo(first.executionInputFingerprint());
     }
 
     @Test

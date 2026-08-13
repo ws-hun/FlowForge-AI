@@ -11,6 +11,8 @@ public record FlowRunTraceResponse(
         String status,
         String executionMode,
         Integer providerCallCount,
+        String compilerVersion,
+        String executionInputFingerprint,
         List<FlowNodeRunTraceResponse> nodes
 ) {
 }

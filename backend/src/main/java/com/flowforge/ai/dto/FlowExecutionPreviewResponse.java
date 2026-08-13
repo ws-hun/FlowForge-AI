@@ -8,6 +8,8 @@ import java.util.List;
 public record FlowExecutionPreviewResponse(
         String executionMode,
         int providerCallCount,
+        String compilerVersion,
+        String executionInputFingerprint,
         String executionInput,
         FlowRunSnapshotResponse flowRunSnapshot,
         List<FlowExecutionSectionResponse> sections,

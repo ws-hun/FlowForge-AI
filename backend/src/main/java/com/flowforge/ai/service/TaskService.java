@@ -86,14 +86,21 @@ public class TaskService {
                             null,
                             continuedFromTask.getId(),
                             null,
-                            false
+                            false,
+                            null,
+                            null,
+                            null,
+                            null
                     )
             );
         }
 
-        String executionInput = flowRunSnapshot == null
+        FlowExecutionCompiler.Compilation compiledExecution = flowRunSnapshot == null
+                ? null
+                : flowExecutionCompiler.compile(flowRunSnapshot);
+        String executionInput = compiledExecution == null
                 ? standaloneInput
-                : flowExecutionCompiler.compile(flowRunSnapshot).executionInput();
+                : compiledExecution.executionInput();
         return executeAndSave(
                 executionInput,
                 new TaskExecutionSource(
@@ -105,7 +112,11 @@ public class TaskService {
                         null,
                         null,
                         inputVariantSourceTask == null ? null : inputVariantSourceTask.getId(),
-                        sourceFlow != null
+                        sourceFlow != null,
+                        compiledExecution == null ? null : compiledExecution.executionMode(),
+                        compiledExecution == null ? null : compiledExecution.providerCallCount(),
+                        compiledExecution == null ? null : compiledExecution.compilerVersion(),
+                        compiledExecution == null ? null : compiledExecution.executionInputFingerprint()
                 )
         );
     }
@@ -115,6 +126,7 @@ public class TaskService {
         Task sourceTask = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Task run not found"));
         FlowRunSnapshotResponse flowRunSnapshot = deserializeFlowRunSnapshot(sourceTask.getSourceFlowSnapshotJson());
+        FlowRunTraceResponse sourceTrace = deserializeFlowRunTrace(sourceTask.getFlowRunTraceJson());
 
         return executeAndSave(
                 sourceTask.getInput(),
@@ -129,7 +141,11 @@ public class TaskService {
                         sourceTask.getInputVariantOfTaskId(),
                         flowRunSnapshot != null
                                 && sourceTask.getContinuedFromTaskId() == null
-                                && sourceTask.getInputVariantOfTaskId() == null
+                                && sourceTask.getInputVariantOfTaskId() == null,
+                        sourceTrace == null ? FlowExecutionCompiler.EXECUTION_MODE : sourceTrace.executionMode(),
+                        sourceTrace == null ? FlowExecutionCompiler.PROVIDER_CALL_COUNT : sourceTrace.providerCallCount(),
+                        sourceTrace == null ? null : sourceTrace.compilerVersion(),
+                        flowRunSnapshot == null ? null : flowExecutionCompiler.fingerprint(sourceTask.getInput())
                 )
         );
     }
@@ -251,6 +267,8 @@ public class TaskService {
         return new FlowExecutionPreviewResponse(
                 compiledExecution.executionMode(),
                 compiledExecution.providerCallCount(),
+                compiledExecution.compilerVersion(),
+                compiledExecution.executionInputFingerprint(),
                 compiledExecution.executionInput(),
                 flowRunSnapshot,
                 compiledExecution.sections(),
@@ -415,8 +433,10 @@ public class TaskService {
         return new FlowRunTraceResponse(
                 snapshot.flowId(),
                 completed ? Task.STATUS_COMPLETED : Task.STATUS_FAILED,
-                FlowExecutionCompiler.EXECUTION_MODE,
-                FlowExecutionCompiler.PROVIDER_CALL_COUNT,
+                source.executionMode(),
+                source.providerCallCount(),
+                source.compilerVersion(),
+                source.executionInputFingerprint(),
                 nodes
         );
     }
@@ -540,7 +560,11 @@ public class TaskService {
             UUID rerunOfTaskId,
             UUID continuedFromTaskId,
             UUID inputVariantOfTaskId,
-            boolean flowExecution
+            boolean flowExecution,
+            String executionMode,
+            Integer providerCallCount,
+            String compilerVersion,
+            String executionInputFingerprint
     ) {
     }
 

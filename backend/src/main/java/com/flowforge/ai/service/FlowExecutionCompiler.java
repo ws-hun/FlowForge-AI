@@ -6,6 +6,9 @@ import com.flowforge.ai.dto.FlowRunSnapshotResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -19,6 +22,7 @@ public class FlowExecutionCompiler {
 
     static final String EXECUTION_MODE = "single-pass";
     static final int PROVIDER_CALL_COUNT = 1;
+    static final String COMPILER_VERSION = "flow-compiler-v1";
     private static final Pattern FLOW_VARIABLE_PATTERN = Pattern.compile("\\{[a-zA-Z0-9_\\u4e00-\\u9fa5-]+}");
 
     Compilation compile(FlowRunSnapshotResponse snapshot) {
@@ -92,12 +96,25 @@ public class FlowExecutionCompiler {
         }
         executionInput.add("");
         executionInput.add("请输出：1. Summary 2. Key Points 3. Result 4. Next Actions");
+        String compiledInput = String.join("\n", executionInput);
         return new Compilation(
                 EXECUTION_MODE,
                 PROVIDER_CALL_COUNT,
-                String.join("\n", executionInput),
+                COMPILER_VERSION,
+                fingerprint(compiledInput),
+                compiledInput,
                 List.copyOf(sections)
         );
+    }
+
+    String fingerprint(String executionInput) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(executionInput.getBytes(StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 is not available", ex);
+        }
     }
 
     List<String> findMissingVariables(FlowRunSnapshotResponse snapshot) {
@@ -157,6 +174,8 @@ public class FlowExecutionCompiler {
     record Compilation(
             String executionMode,
             int providerCallCount,
+            String compilerVersion,
+            String executionInputFingerprint,
             String executionInput,
             List<FlowExecutionSectionResponse> sections
     ) {

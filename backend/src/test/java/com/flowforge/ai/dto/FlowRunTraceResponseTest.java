@@ -28,5 +28,7 @@ class FlowRunTraceResponseTest {
         assertThat(trace.flowId()).isEqualTo(flowId);
         assertThat(trace.executionMode()).isNull();
         assertThat(trace.providerCallCount()).isEqualTo(1);
+        assertThat(trace.compilerVersion()).isNull();
+        assertThat(trace.executionInputFingerprint()).isNull();
     }
 }

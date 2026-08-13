@@ -111,6 +111,7 @@ Current Stage 3 capabilities:
 - PostgreSQL schema changes are versioned through Flyway while Hibernate remains in validation mode, making local and Docker upgrades deterministic without changing the workspace experience.
 - Saved Flow definitions enforce unique node identity, supported node types, and the honest single-call Input / Prompt / AI Task / Output execution shape before a revision can enter the workspace.
 - Flow execution compilation is isolated as one deterministic server module shared by preview, readiness checks, persisted traces, and the current single Provider call; preview and trace contracts explicitly identify this runtime as `single-pass`.
+- Flow execution previews and persisted run traces expose a versioned compiler contract and SHA-256 fingerprint of the exact Provider input, while legacy runs keep unknown compiler versions honest and exact reruns fingerprint the stored input without recompiling it.
 - Provider HTTP calls use explicit configurable connect and read timeouts, convert transport failures into stable gateway errors, and preserve failed runs for recovery instead of hanging the workspace indefinitely.
 - Provider HTTP status failures are translated into actionable authentication, rate-limit, timeout, request, or availability messages without exposing raw upstream response bodies to the workspace or History.
 - Provider results that violate the string contract with a JSON object or array are deterministically converted into readable Markdown while preserving the Provider response for raw inspection.

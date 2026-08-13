@@ -2,13 +2,17 @@
   <details class="flow-run-trace">
     <summary>
       <span>
-        <strong>Server Run Trace</strong>
+        <strong>服务端运行轨迹</strong>
         <small>
-          {{ executionModeLabel(trace.executionMode) }} · {{ trace.nodes.length }} nodes ·
-          {{ trace.providerCallCount }} Provider call
+          {{ executionModeLabel(trace.executionMode) }} · {{ trace.nodes.length }} 个节点 ·
+          {{ trace.providerCallCount }} 次 Provider 调用
+          <template v-if="trace.compilerVersion"> · {{ trace.compilerVersion }}</template>
+          <template v-if="trace.executionInputFingerprint">
+            · <code :title="trace.executionInputFingerprint">输入 {{ shortFingerprint(trace.executionInputFingerprint) }}</code>
+          </template>
         </small>
       </span>
-      <em :class="trace.status">{{ trace.status === 'completed' ? 'Completed' : 'Failed' }}</em>
+      <em :class="trace.status">{{ trace.status === 'completed' ? '已完成' : '失败' }}</em>
     </summary>
 
     <div class="flow-run-trace-body">
@@ -26,7 +30,7 @@
           </header>
 
           <details v-if="node.compiledContent" class="flow-run-trace-content">
-            <summary>Compiled content</summary>
+            <summary>编译后内容</summary>
             <pre>{{ node.compiledContent }}</pre>
           </details>
           <p v-if="node.outputSummary" class="flow-run-trace-output">{{ node.outputSummary }}</p>
@@ -77,15 +81,19 @@ function nodeTypeLabel(type: FlowNodeType) {
 }
 
 function executionModeLabel(mode: FlowExecutionMode | null | undefined) {
-  return mode === 'node-sequential' ? 'Node sequential' : 'Single-pass'
+  return mode === 'node-sequential' ? '节点顺序执行' : '单次编译执行'
+}
+
+function shortFingerprint(fingerprint: string) {
+  return fingerprint.slice(0, 10)
 }
 
 function statusLabel(status: FlowNodeRunTraceStatus) {
   const labels: Record<FlowNodeRunTraceStatus, string> = {
-    prepared: 'Prepared',
-    completed: 'Done',
-    failed: 'Failed',
-    skipped: 'Skipped'
+    prepared: '已准备',
+    completed: '已完成',
+    failed: '失败',
+    skipped: '已跳过'
   }
   return labels[status]
 }

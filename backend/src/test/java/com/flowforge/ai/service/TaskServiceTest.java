@@ -233,6 +233,11 @@ class TaskServiceTest {
         assertThat(response.flowRunTrace().status()).isEqualTo(Task.STATUS_COMPLETED);
         assertThat(response.flowRunTrace().providerCallCount()).isEqualTo(1);
         assertThat(response.flowRunTrace().executionMode()).isEqualTo("single-pass");
+        assertThat(response.flowRunTrace().compilerVersion()).isEqualTo("flow-compiler-v1");
+        assertThat(response.flowRunTrace().executionInputFingerprint())
+                .hasSize(64)
+                .matches("[0-9a-f]{64}")
+                .isEqualTo(new FlowExecutionCompiler().fingerprint(executionInput));
         assertThat(response.flowRunTrace().nodes())
                 .extracting(node -> node.title() + ":" + node.status())
                 .containsExactly(
@@ -547,6 +552,9 @@ class TaskServiceTest {
         assertThat(trace.status()).isEqualTo(Task.STATUS_FAILED);
         assertThat(trace.executionMode()).isEqualTo("single-pass");
         assertThat(trace.providerCallCount()).isEqualTo(1);
+        assertThat(trace.compilerVersion()).isEqualTo("flow-compiler-v1");
+        assertThat(trace.executionInputFingerprint())
+                .isEqualTo(new FlowExecutionCompiler().fingerprint(failedTask.getInput()));
         assertThat(trace.nodes())
                 .extracting(node -> node.title() + ":" + node.status())
                 .containsExactly(
@@ -603,11 +611,79 @@ class TaskServiceTest {
 
         assertThat(response.flowRunTrace()).isNotNull();
         assertThat(response.flowRunTrace().providerCallCount()).isEqualTo(1);
+        assertThat(response.flowRunTrace().compilerVersion()).isNull();
+        assertThat(response.flowRunTrace().executionInputFingerprint())
+                .isEqualTo(new FlowExecutionCompiler().fingerprint("Stored direct Flow input"));
         assertThat(response.flowRunTrace().nodes())
                 .extracting(FlowNodeRunTraceResponse::status)
                 .containsExactly("prepared", "completed", "completed");
         verify(taskRepository).save(taskCaptor.capture());
         assertThat(taskCaptor.getValue().getFlowRunTraceJson()).contains("Updated decision");
+    }
+
+    @Test
+    void preservesCompilerVersionAndRecalculatesFingerprintWhenRerunningADirectFlowRecord() throws Exception {
+        UUID sourceTaskId = UUID.randomUUID();
+        UUID flowId = UUID.randomUUID();
+        FlowRunSnapshotResponse snapshot = new FlowRunSnapshotResponse(
+                flowId,
+                "Launch decision",
+                "Decide the first launch scope",
+                List.of(new FlowNodeDto(
+                        "ai-task-1",
+                        "ai-task",
+                        "Launch analysis",
+                        "Analysis",
+                        "Recommend the first launch scope.",
+                        null,
+                        null
+                )),
+                null,
+                null,
+                null,
+                null,
+                LocalDateTime.of(2026, 7, 18, 9, 30),
+                "Keep the first release focused.",
+                Map.of()
+        );
+        ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+        String snapshotJson = objectMapper.writeValueAsString(snapshot);
+        String sourceTraceJson = objectMapper.writeValueAsString(new FlowRunTraceResponse(
+                flowId,
+                Task.STATUS_COMPLETED,
+                "single-pass",
+                1,
+                "flow-compiler-v1",
+                "source-fingerprint",
+                List.of()
+        ));
+        Task sourceTask = Task.builder()
+                .id(sourceTaskId)
+                .input("Exact server-compiled execution input")
+                .summary("Original result")
+                .result("Original content")
+                .sourceFlowId(flowId)
+                .sourceFlowTitle("Launch decision")
+                .sourceFlowSnapshotJson(snapshotJson)
+                .flowRunTraceJson(sourceTraceJson)
+                .createdAt(LocalDateTime.now().minusDays(1))
+                .build();
+        when(taskRepository.findById(sourceTaskId)).thenReturn(Optional.of(sourceTask));
+        when(openAiService.processTask(sourceTask.getInput()))
+                .thenReturn(new OpenAiTaskResult("Current decision", "Current result", "{}"));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
+            Task task = invocation.getArgument(0);
+            task.setId(UUID.randomUUID());
+            return task;
+        });
+
+        TaskRunResponse response = taskService.rerunTask(sourceTaskId);
+
+        assertThat(response.flowRunTrace()).isNotNull();
+        assertThat(response.flowRunTrace().compilerVersion()).isEqualTo("flow-compiler-v1");
+        assertThat(response.flowRunTrace().executionInputFingerprint())
+                .isEqualTo(new FlowExecutionCompiler().fingerprint(sourceTask.getInput()))
+                .isNotEqualTo("source-fingerprint");
     }
 
     @Test
@@ -638,7 +714,17 @@ class TaskServiceTest {
                 "Keep the first release focused.",
                 Map.of("audience", "product teams")
         );
-        String snapshotJson = new ObjectMapper().findAndRegisterModules().writeValueAsString(snapshot);
+        ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+        String snapshotJson = objectMapper.writeValueAsString(snapshot);
+        String sourceTraceJson = objectMapper.writeValueAsString(new FlowRunTraceResponse(
+                flowId,
+                Task.STATUS_COMPLETED,
+                "single-pass",
+                1,
+                "flow-compiler-v1",
+                "source-fingerprint",
+                List.of()
+        ));
         Task sourceTask = Task.builder()
                 .id(sourceTaskId)
                 .input("Exact server-compiled execution input")
@@ -649,6 +735,7 @@ class TaskServiceTest {
                 .sourceFlowId(flowId)
                 .sourceFlowTitle("Launch decision")
                 .sourceFlowSnapshotJson(snapshotJson)
+                .flowRunTraceJson(sourceTraceJson)
                 .continuedFromTaskId(continuationAncestorId)
                 .inputVariantOfTaskId(inputVariantAncestorId)
                 .createdAt(LocalDateTime.now().minusDays(1))
@@ -692,6 +779,7 @@ class TaskServiceTest {
         assertThat(response.inputVariantOfTaskId()).isEqualTo(inputVariantAncestorId);
         assertThat(response.flowRunSnapshot()).isEqualTo(snapshot);
         assertThat(response.totalTokens()).isEqualTo(750);
+        assertThat(response.flowRunTrace()).isNull();
         verifyNoInteractions(promptRepository, workflowRepository);
     }
 
@@ -810,6 +898,9 @@ class TaskServiceTest {
         assertThat(response.flowRunSnapshot().flowUpdatedAt()).isEqualTo(updatedAt);
         assertThat(response.executionMode()).isEqualTo("single-pass");
         assertThat(response.providerCallCount()).isEqualTo(1);
+        assertThat(response.compilerVersion()).isEqualTo("flow-compiler-v1");
+        assertThat(response.executionInputFingerprint())
+                .isEqualTo(new FlowExecutionCompiler().fingerprint(response.executionInput()));
         assertThat(response.flowRunSnapshot().nodes()).extracting(FlowNodeDto::title)
                 .containsExactly("Product context", "Audience lens", "Launch execution guidance", "Release delivery focus");
         assertThat(response.executable()).isTrue();

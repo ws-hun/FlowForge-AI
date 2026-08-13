@@ -201,6 +201,8 @@ export interface FlowRunTrace {
   status: 'completed' | 'failed'
   executionMode?: FlowExecutionMode | null
   providerCallCount: number
+  compilerVersion?: string | null
+  executionInputFingerprint?: string | null
   nodes: FlowNodeRunTrace[]
 }
 
@@ -228,6 +230,8 @@ export interface FlowExecutionSection {
 export interface FlowExecutionPreviewResponse {
   executionMode: FlowExecutionMode
   providerCallCount: number
+  compilerVersion: string
+  executionInputFingerprint: string
   executionInput: string
   flowRunSnapshot: FlowRunSnapshot
   sections: FlowExecutionSection[]

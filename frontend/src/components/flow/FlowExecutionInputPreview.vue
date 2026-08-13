@@ -84,7 +84,8 @@
         </div>
         <span>
           {{ executionModeLabel(preview.executionMode) }} · {{ preview.sections.length }} 个执行段 ·
-          {{ preview.providerCallCount }} 次 Provider 调用
+          {{ preview.providerCallCount }} 次 Provider 调用 · {{ preview.compilerVersion }} ·
+          <code :title="preview.executionInputFingerprint">输入 {{ shortFingerprint(preview.executionInputFingerprint) }}</code>
         </span>
       </div>
 
@@ -252,6 +253,10 @@ function sectionKindLabel(kind: FlowExecutionSectionKind) {
 
 function executionModeLabel(mode: FlowExecutionPreviewResponse['executionMode']) {
   return mode === 'node-sequential' ? 'Node sequential' : 'Single-pass'
+}
+
+function shortFingerprint(fingerprint: string | null | undefined) {
+  return fingerprint ? fingerprint.slice(0, 10) : 'unknown'
 }
 
 function openSectionNode(nodeId: string | null | undefined) {
