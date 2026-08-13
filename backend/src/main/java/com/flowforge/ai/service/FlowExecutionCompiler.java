@@ -1,6 +1,8 @@
 package com.flowforge.ai.service;
 
 import com.flowforge.ai.dto.FlowExecutionSectionResponse;
+import com.flowforge.ai.dto.FlowExecutionPlanResponse;
+import com.flowforge.ai.dto.FlowExecutionStepResponse;
 import com.flowforge.ai.dto.FlowNodeDto;
 import com.flowforge.ai.dto.FlowRunSnapshotResponse;
 import org.springframework.stereotype.Component;
@@ -23,6 +25,8 @@ public class FlowExecutionCompiler {
     static final String EXECUTION_MODE = "single-pass";
     static final int PROVIDER_CALL_COUNT = 1;
     static final String COMPILER_VERSION = "flow-compiler-v1";
+    static final String PLAN_VERSION = "flow-plan-v1";
+    static final String PLAN_SCHEDULING = "linear";
     private static final Pattern FLOW_VARIABLE_PATTERN = Pattern.compile("\\{[a-zA-Z0-9_\\u4e00-\\u9fa5-]+}");
 
     Compilation compile(FlowRunSnapshotResponse snapshot) {
@@ -103,8 +107,28 @@ public class FlowExecutionCompiler {
                 COMPILER_VERSION,
                 fingerprint(compiledInput),
                 compiledInput,
-                List.copyOf(sections)
+                List.copyOf(sections),
+                compilePlan(snapshot.nodes())
         );
+    }
+
+    FlowExecutionPlanResponse compilePlan(List<FlowNodeDto> nodes) {
+        List<FlowExecutionStepResponse> steps = new ArrayList<>();
+        String previousNodeId = null;
+        for (int index = 0; index < nodes.size(); index++) {
+            FlowNodeDto node = nodes.get(index);
+            steps.add(new FlowExecutionStepResponse(
+                    index + 1,
+                    node.id(),
+                    node.type(),
+                    node.title(),
+                    operationFor(node.type()),
+                    previousNodeId == null ? List.of() : List.of(previousNodeId),
+                    "ai-task".equals(node.type())
+            ));
+            previousNodeId = node.id();
+        }
+        return new FlowExecutionPlanResponse(PLAN_VERSION, PLAN_SCHEDULING, List.copyOf(steps));
     }
 
     String fingerprint(String executionInput) {
@@ -171,13 +195,24 @@ public class FlowExecutionCompiler {
                 .orElse("");
     }
 
+    private String operationFor(String nodeType) {
+        return switch (nodeType) {
+            case "input" -> "supply-context";
+            case "prompt" -> "supply-instructions";
+            case "ai-task" -> "invoke-provider";
+            case "output" -> "define-delivery";
+            default -> throw new IllegalArgumentException("Unsupported Flow node type: " + nodeType);
+        };
+    }
+
     record Compilation(
             String executionMode,
             int providerCallCount,
             String compilerVersion,
             String executionInputFingerprint,
             String executionInput,
-            List<FlowExecutionSectionResponse> sections
+            List<FlowExecutionSectionResponse> sections,
+            FlowExecutionPlanResponse plan
     ) {
     }
 }

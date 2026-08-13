@@ -47,6 +47,30 @@ class FlowExecutionCompilerTest {
                         "delivery-focus",
                         "response-contract"
                 );
+        assertThat(compilation.plan().version()).isEqualTo("flow-plan-v1");
+        assertThat(compilation.plan().scheduling()).isEqualTo("linear");
+        assertThat(compilation.plan().steps())
+                .extracting(step -> step.nodeId())
+                .containsExactly("input-1", "input-2", "prompt-1", "ai-task-1", "output-1");
+        assertThat(compilation.plan().steps())
+                .extracting(step -> step.operation())
+                .containsExactly(
+                        "supply-context",
+                        "supply-context",
+                        "supply-instructions",
+                        "invoke-provider",
+                        "define-delivery"
+                );
+        assertThat(compilation.plan().steps()).satisfies(steps -> {
+            assertThat(steps.get(0).sequence()).isEqualTo(1);
+            assertThat(steps.get(0).dependsOnNodeIds()).isEmpty();
+            assertThat(steps.get(1).dependsOnNodeIds()).containsExactly("input-1");
+            assertThat(steps.get(2).dependsOnNodeIds()).containsExactly("input-2");
+            assertThat(steps.get(3).dependsOnNodeIds()).containsExactly("prompt-1");
+            assertThat(steps.get(3).providerBoundary()).isTrue();
+            assertThat(steps.get(4).dependsOnNodeIds()).containsExactly("ai-task-1");
+            assertThat(steps.get(4).providerBoundary()).isFalse();
+        });
     }
 
     @Test
