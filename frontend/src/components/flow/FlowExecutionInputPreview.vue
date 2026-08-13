@@ -89,6 +89,15 @@
         </span>
       </div>
 
+      <FlowExecutionPlan
+        v-if="activeView === 'outline'"
+        :plan="preview.executionPlan"
+        :stale="stale"
+        node-action-label="定位节点"
+        :navigable-node-ids="preview.flowRunSnapshot.nodes.map((node) => node.id)"
+        @open-node="openSectionNode"
+      />
+
       <div v-if="activeView === 'outline'" class="flow-input-preview-sections" :class="{ 'is-stale': stale }">
         <article v-for="section in preview.sections" :key="`${section.kind}-${section.nodeId || section.title}`" class="flow-input-preview-section">
           <header>
@@ -125,6 +134,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { CopyDocument, RefreshRight, Right } from '@element-plus/icons-vue'
 import { previewFlowExecution } from '@/api/flows'
+import FlowExecutionPlan from '@/components/flow/FlowExecutionPlan.vue'
 import type { FlowExecutionPreviewResponse, FlowExecutionSectionKind } from '@/types'
 
 const props = withDefaults(

@@ -185,6 +185,27 @@ export interface FlowRunSnapshot {
 
 export type FlowNodeRunTraceStatus = 'prepared' | 'completed' | 'failed' | 'skipped'
 export type FlowExecutionMode = 'single-pass' | 'node-sequential'
+export type FlowExecutionOperation =
+  | 'supply-context'
+  | 'supply-instructions'
+  | 'invoke-provider'
+  | 'define-delivery'
+
+export interface FlowExecutionStep {
+  sequence: number
+  nodeId: string
+  nodeType: FlowNodeType
+  title: string
+  operation: FlowExecutionOperation
+  dependsOnNodeIds: string[]
+  providerBoundary: boolean
+}
+
+export interface FlowExecutionPlan {
+  version: string
+  scheduling: 'linear'
+  steps: FlowExecutionStep[]
+}
 
 export interface FlowNodeRunTrace {
   nodeId: string
@@ -206,6 +227,7 @@ export interface FlowRunTrace {
   executionInputFingerprint?: string | null
   inputSource?: 'compiled-flow' | 'stored-input-replay' | null
   replayedFromTaskId?: string | null
+  executionPlan?: FlowExecutionPlan | null
   nodes: FlowNodeRunTrace[]
 }
 
@@ -238,6 +260,7 @@ export interface FlowExecutionPreviewResponse {
   executionInput: string
   flowRunSnapshot: FlowRunSnapshot
   sections: FlowExecutionSection[]
+  executionPlan: FlowExecutionPlan
   executable: boolean
   missingVariables: string[]
   incompleteNodes: string[]

@@ -1,0 +1,72 @@
+<template>
+  <section class="flow-execution-plan" :class="{ 'is-stale': stale }">
+    <header class="flow-execution-plan-heading">
+      <div>
+        <span>{{ eyebrow }}</span>
+        <strong>{{ title }}</strong>
+      </div>
+      <small>{{ plan.version }} · {{ schedulingLabel }} · {{ providerStepCount }} 次 AI 调用</small>
+    </header>
+
+    <div class="flow-execution-plan-path">
+      <article
+        v-for="step in plan.steps"
+        :key="step.nodeId"
+        class="flow-execution-plan-step"
+        :class="{ 'is-provider': step.providerBoundary }"
+      >
+        <div class="flow-execution-plan-index">{{ step.sequence }}</div>
+        <div class="flow-execution-plan-step-body">
+          <span>{{ flowNodeTypeLabel(step.nodeType) }}</span>
+          <strong>{{ step.title }}</strong>
+          <p>{{ flowExecutionOperationLabel(step.operation) }}</p>
+          <small>
+            {{ step.dependsOnNodeIds.length ? '承接前一步输出' : '执行起点' }}
+            <template v-if="step.providerBoundary"> · 唯一 Provider 边界</template>
+          </small>
+          <button
+            v-if="nodeActionLabel"
+            type="button"
+            :disabled="stale || !navigableNodeIds.includes(step.nodeId)"
+            @click="emit('openNode', step.nodeId)"
+          >
+            {{ nodeActionLabel }}
+            <Right />
+          </button>
+        </div>
+      </article>
+    </div>
+  </section>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import { Right } from '@element-plus/icons-vue'
+import type { FlowExecutionPlan } from '@/types'
+import { flowExecutionOperationLabel, flowNodeTypeLabel } from '@/utils/flowExecutionPlan'
+
+const props = withDefaults(
+  defineProps<{
+    plan: FlowExecutionPlan
+    eyebrow?: string
+    title?: string
+    stale?: boolean
+    nodeActionLabel?: string
+    navigableNodeIds?: string[]
+  }>(),
+  {
+    eyebrow: 'Execution Path',
+    title: '节点如何形成这次运行',
+    stale: false,
+    nodeActionLabel: '',
+    navigableNodeIds: () => []
+  }
+)
+
+const emit = defineEmits<{
+  openNode: [nodeId: string]
+}>()
+
+const providerStepCount = computed(() => props.plan.steps.filter((step) => step.providerBoundary).length)
+const schedulingLabel = computed(() => props.plan.scheduling === 'linear' ? '顺序计划' : props.plan.scheduling)
+</script>

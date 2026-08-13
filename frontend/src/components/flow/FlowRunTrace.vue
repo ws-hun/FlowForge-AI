@@ -21,6 +21,16 @@
     </summary>
 
     <div class="flow-run-trace-body">
+      <FlowExecutionPlan
+        v-if="trace.executionPlan"
+        :plan="trace.executionPlan"
+        eyebrow="Persisted Plan"
+        title="本次运行保存的执行路径"
+        :node-action-label="nodeActionLabel"
+        :navigable-node-ids="navigableNodeIds"
+        @open-node="emit('openNode', $event)"
+      />
+      <p v-else class="flow-run-trace-legacy-plan">旧运行未保存节点执行计划，以下仅展示当时保留的节点状态。</p>
       <article v-for="(node, index) in trace.nodes" :key="node.nodeId" class="flow-run-trace-node">
         <div class="flow-run-trace-rail" :class="node.status">
           <span>{{ index + 1 }}</span>
@@ -58,6 +68,7 @@
 <script setup lang="ts">
 import { Right } from '@element-plus/icons-vue'
 import type { FlowExecutionMode, FlowNodeRunTraceStatus, FlowNodeType, FlowRunTrace } from '@/types'
+import FlowExecutionPlan from '@/components/flow/FlowExecutionPlan.vue'
 
 withDefaults(
   defineProps<{
