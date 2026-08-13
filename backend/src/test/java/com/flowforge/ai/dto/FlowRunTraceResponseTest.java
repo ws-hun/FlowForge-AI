@@ -26,9 +26,12 @@ class FlowRunTraceResponseTest {
         FlowRunTraceResponse trace = objectMapper.readValue(legacyTrace, FlowRunTraceResponse.class);
 
         assertThat(trace.flowId()).isEqualTo(flowId);
+        assertThat(trace.runId()).isNull();
         assertThat(trace.executionMode()).isNull();
         assertThat(trace.providerCallCount()).isEqualTo(1);
         assertThat(trace.compilerVersion()).isNull();
         assertThat(trace.executionInputFingerprint()).isNull();
+        assertThat(trace.inputSource()).isNull();
+        assertThat(trace.replayedFromTaskId()).isNull();
     }
 }

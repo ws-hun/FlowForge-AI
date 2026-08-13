@@ -160,11 +160,7 @@ class TaskServiceTest {
                         430,
                         1250
                 ));
-        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
-            Task task = invocation.getArgument(0);
-            task.setId(UUID.randomUUID());
-            return task;
-        });
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         TaskRunResponse response = taskService.runTask(new RunTaskRequest(
                 "untrusted browser payload",
@@ -229,6 +225,7 @@ class TaskServiceTest {
                         "Delivery focus"
                 );
         assertThat(response.flowRunTrace()).isNotNull();
+        assertThat(response.flowRunTrace().runId()).isEqualTo(response.taskId()).isEqualTo(savedTask.getId());
         assertThat(response.flowRunTrace().flowId()).isEqualTo(flowId);
         assertThat(response.flowRunTrace().status()).isEqualTo(Task.STATUS_COMPLETED);
         assertThat(response.flowRunTrace().providerCallCount()).isEqualTo(1);
@@ -238,6 +235,8 @@ class TaskServiceTest {
                 .hasSize(64)
                 .matches("[0-9a-f]{64}")
                 .isEqualTo(new FlowExecutionCompiler().fingerprint(executionInput));
+        assertThat(response.flowRunTrace().inputSource()).isEqualTo("compiled-flow");
+        assertThat(response.flowRunTrace().replayedFromTaskId()).isNull();
         assertThat(response.flowRunTrace().nodes())
                 .extracting(node -> node.title() + ":" + node.status())
                 .containsExactly(
@@ -255,11 +254,7 @@ class TaskServiceTest {
     void preservesTheProvidedInputForStandaloneTasks() {
         when(openAiService.processTask("Draft an onboarding checklist"))
                 .thenReturn(new OpenAiTaskResult("Onboarding", "Checklist", "{\"summary\":\"Onboarding\"}"));
-        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
-            Task task = invocation.getArgument(0);
-            task.setId(UUID.randomUUID());
-            return task;
-        });
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         taskService.runTask(new RunTaskRequest(
                 "Draft an onboarding checklist",
@@ -350,11 +345,7 @@ class TaskServiceTest {
         when(taskRepository.findById(sourceTaskId)).thenReturn(Optional.of(sourceTask));
         when(openAiService.processTask("Edited standalone execution input"))
                 .thenReturn(new OpenAiTaskResult("Variant result", "Variant content", "{}"));
-        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
-            Task task = invocation.getArgument(0);
-            task.setId(UUID.randomUUID());
-            return task;
-        });
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         TaskRunResponse response = taskService.runTask(new RunTaskRequest(
                 "Edited standalone execution input",
@@ -401,6 +392,7 @@ class TaskServiceTest {
 
         verify(taskFailureRecorder).record(taskCaptor.capture());
         Task failedTask = taskCaptor.getValue();
+        assertThat(failedTask.getId()).isNotNull();
         assertThat(failedTask.getInput()).isEqualTo("Prepare a release plan");
         assertThat(failedTask.getSummary()).isEqualTo("AI 执行失败");
         assertThat(failedTask.getResult()).isEqualTo("AI API error: rate limit exceeded");
@@ -452,11 +444,7 @@ class TaskServiceTest {
         when(taskRepository.findById(sourceTaskId)).thenReturn(Optional.of(sourceTask));
         when(openAiService.processTask(any()))
                 .thenReturn(new OpenAiTaskResult("Risk review", "Updated direction", "{}"));
-        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
-            Task task = invocation.getArgument(0);
-            task.setId(UUID.randomUUID());
-            return task;
-        });
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         TaskRunResponse response = taskService.runTask(new RunTaskRequest(
                 "补充主要风险和一周验证计划",
@@ -549,12 +537,16 @@ class TaskServiceTest {
         FlowRunTraceResponse trace = new ObjectMapper()
                 .findAndRegisterModules()
                 .readValue(failedTask.getFlowRunTraceJson(), FlowRunTraceResponse.class);
+        assertThat(failedTask.getId()).isNotNull();
+        assertThat(trace.runId()).isEqualTo(failedTask.getId());
         assertThat(trace.status()).isEqualTo(Task.STATUS_FAILED);
         assertThat(trace.executionMode()).isEqualTo("single-pass");
         assertThat(trace.providerCallCount()).isEqualTo(1);
         assertThat(trace.compilerVersion()).isEqualTo("flow-compiler-v1");
         assertThat(trace.executionInputFingerprint())
                 .isEqualTo(new FlowExecutionCompiler().fingerprint(failedTask.getInput()));
+        assertThat(trace.inputSource()).isEqualTo("compiled-flow");
+        assertThat(trace.replayedFromTaskId()).isNull();
         assertThat(trace.nodes())
                 .extracting(node -> node.title() + ":" + node.status())
                 .containsExactly(
@@ -601,11 +593,7 @@ class TaskServiceTest {
         when(taskRepository.findById(sourceTaskId)).thenReturn(Optional.of(sourceTask));
         when(openAiService.processTask("Stored direct Flow input"))
                 .thenReturn(new OpenAiTaskResult("Updated decision", "Updated result", "{}"));
-        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
-            Task task = invocation.getArgument(0);
-            task.setId(UUID.randomUUID());
-            return task;
-        });
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         TaskRunResponse response = taskService.rerunTask(sourceTaskId);
 
@@ -649,12 +637,15 @@ class TaskServiceTest {
         ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
         String snapshotJson = objectMapper.writeValueAsString(snapshot);
         String sourceTraceJson = objectMapper.writeValueAsString(new FlowRunTraceResponse(
+                sourceTaskId,
                 flowId,
                 Task.STATUS_COMPLETED,
                 "single-pass",
                 1,
                 "flow-compiler-v1",
                 "source-fingerprint",
+                "compiled-flow",
+                null,
                 List.of()
         ));
         Task sourceTask = Task.builder()
@@ -671,19 +662,18 @@ class TaskServiceTest {
         when(taskRepository.findById(sourceTaskId)).thenReturn(Optional.of(sourceTask));
         when(openAiService.processTask(sourceTask.getInput()))
                 .thenReturn(new OpenAiTaskResult("Current decision", "Current result", "{}"));
-        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
-            Task task = invocation.getArgument(0);
-            task.setId(UUID.randomUUID());
-            return task;
-        });
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         TaskRunResponse response = taskService.rerunTask(sourceTaskId);
 
         assertThat(response.flowRunTrace()).isNotNull();
+        assertThat(response.flowRunTrace().runId()).isEqualTo(response.taskId());
         assertThat(response.flowRunTrace().compilerVersion()).isEqualTo("flow-compiler-v1");
         assertThat(response.flowRunTrace().executionInputFingerprint())
                 .isEqualTo(new FlowExecutionCompiler().fingerprint(sourceTask.getInput()))
                 .isNotEqualTo("source-fingerprint");
+        assertThat(response.flowRunTrace().inputSource()).isEqualTo("stored-input-replay");
+        assertThat(response.flowRunTrace().replayedFromTaskId()).isEqualTo(sourceTaskId);
     }
 
     @Test
@@ -717,12 +707,15 @@ class TaskServiceTest {
         ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
         String snapshotJson = objectMapper.writeValueAsString(snapshot);
         String sourceTraceJson = objectMapper.writeValueAsString(new FlowRunTraceResponse(
+                sourceTaskId,
                 flowId,
                 Task.STATUS_COMPLETED,
                 "single-pass",
                 1,
                 "flow-compiler-v1",
                 "source-fingerprint",
+                "compiled-flow",
+                null,
                 List.of()
         ));
         Task sourceTask = Task.builder()
@@ -752,11 +745,7 @@ class TaskServiceTest {
                         250,
                         750
                 ));
-        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
-            Task task = invocation.getArgument(0);
-            task.setId(UUID.randomUUID());
-            return task;
-        });
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         TaskRunResponse response = taskService.rerunTask(sourceTaskId);
 
@@ -810,11 +799,7 @@ class TaskServiceTest {
         when(workflowRepository.findById(flowId)).thenReturn(Optional.of(flow));
         when(openAiService.processTask(any()))
                 .thenReturn(new OpenAiTaskResult("Completed", "Result", "{\"summary\":\"Completed\"}"));
-        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
-            Task task = invocation.getArgument(0);
-            task.setId(UUID.randomUUID());
-            return task;
-        });
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         taskService.runTask(new RunTaskRequest("", null, flowId, null, null));
 

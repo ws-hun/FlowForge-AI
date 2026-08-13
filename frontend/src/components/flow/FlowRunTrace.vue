@@ -4,6 +4,11 @@
       <span>
         <strong>服务端运行轨迹</strong>
         <small>
+          <template v-if="trace.runId">运行 <code :title="trace.runId">{{ shortRunId(trace.runId) }}</code> · </template>
+          <template v-if="trace.inputSource">{{ inputSourceLabel(trace.inputSource) }} · </template>
+          <template v-if="trace.replayedFromTaskId">
+            来源 <code :title="trace.replayedFromTaskId">{{ shortRunId(trace.replayedFromTaskId) }}</code> ·
+          </template>
           {{ executionModeLabel(trace.executionMode) }} · {{ trace.nodes.length }} 个节点 ·
           {{ trace.providerCallCount }} 次 Provider 调用
           <template v-if="trace.compilerVersion"> · {{ trace.compilerVersion }}</template>
@@ -86,6 +91,14 @@ function executionModeLabel(mode: FlowExecutionMode | null | undefined) {
 
 function shortFingerprint(fingerprint: string) {
   return fingerprint.slice(0, 10)
+}
+
+function shortRunId(runId: string) {
+  return runId.slice(0, 8)
+}
+
+function inputSourceLabel(source: FlowRunTrace['inputSource']) {
+  return source === 'stored-input-replay' ? '历史输入重放' : '当前 Flow 编译'
 }
 
 function statusLabel(status: FlowNodeRunTraceStatus) {

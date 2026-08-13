@@ -197,12 +197,15 @@ export interface FlowNodeRunTrace {
 }
 
 export interface FlowRunTrace {
+  runId?: string | null
   flowId: string
   status: 'completed' | 'failed'
   executionMode?: FlowExecutionMode | null
   providerCallCount: number
   compilerVersion?: string | null
   executionInputFingerprint?: string | null
+  inputSource?: 'compiled-flow' | 'stored-input-replay' | null
+  replayedFromTaskId?: string | null
   nodes: FlowNodeRunTrace[]
 }
 

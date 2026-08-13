@@ -35,6 +35,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TaskService {
 
+    private static final String FLOW_INPUT_SOURCE_COMPILED = "compiled-flow";
+    private static final String FLOW_INPUT_SOURCE_REPLAY = "stored-input-replay";
+
     private final OpenAiService openAiService;
     private final TaskRepository taskRepository;
     private final PromptRepository promptRepository;
@@ -78,6 +81,7 @@ public class TaskService {
             return executeAndSave(
                     compileContinuationInput(continuedFromTask, standaloneInput),
                     new TaskExecutionSource(
+                            UUID.randomUUID(),
                             continuedFromTask.getSourcePromptId(),
                             continuedFromTask.getSourcePromptTitle(),
                             continuedFromTask.getSourceFlowId(),
@@ -87,6 +91,8 @@ public class TaskService {
                             continuedFromTask.getId(),
                             null,
                             false,
+                            null,
+                            null,
                             null,
                             null,
                             null,
@@ -104,6 +110,7 @@ public class TaskService {
         return executeAndSave(
                 executionInput,
                 new TaskExecutionSource(
+                        UUID.randomUUID(),
                         sourcePrompt == null ? null : sourcePrompt.getId(),
                         sourcePrompt == null ? null : sourcePrompt.getTitle(),
                         sourceFlow == null ? null : sourceFlow.getId(),
@@ -116,7 +123,9 @@ public class TaskService {
                         compiledExecution == null ? null : compiledExecution.executionMode(),
                         compiledExecution == null ? null : compiledExecution.providerCallCount(),
                         compiledExecution == null ? null : compiledExecution.compilerVersion(),
-                        compiledExecution == null ? null : compiledExecution.executionInputFingerprint()
+                        compiledExecution == null ? null : compiledExecution.executionInputFingerprint(),
+                        compiledExecution == null ? null : FLOW_INPUT_SOURCE_COMPILED,
+                        null
                 )
         );
     }
@@ -131,6 +140,7 @@ public class TaskService {
         return executeAndSave(
                 sourceTask.getInput(),
                 new TaskExecutionSource(
+                        UUID.randomUUID(),
                         sourceTask.getSourcePromptId(),
                         sourceTask.getSourcePromptTitle(),
                         sourceTask.getSourceFlowId(),
@@ -145,7 +155,9 @@ public class TaskService {
                         sourceTrace == null ? FlowExecutionCompiler.EXECUTION_MODE : sourceTrace.executionMode(),
                         sourceTrace == null ? FlowExecutionCompiler.PROVIDER_CALL_COUNT : sourceTrace.providerCallCount(),
                         sourceTrace == null ? null : sourceTrace.compilerVersion(),
-                        flowRunSnapshot == null ? null : flowExecutionCompiler.fingerprint(sourceTask.getInput())
+                        flowRunSnapshot == null ? null : flowExecutionCompiler.fingerprint(sourceTask.getInput()),
+                        flowRunSnapshot == null ? null : FLOW_INPUT_SOURCE_REPLAY,
+                        flowRunSnapshot == null ? null : sourceTask.getId()
                 )
         );
     }
@@ -234,6 +246,7 @@ public class TaskService {
             FlowRunTraceResponse flowRunTrace
     ) {
         return Task.builder()
+                .id(source.taskId())
                 .input(executionInput)
                 .rerunOfTaskId(source.rerunOfTaskId())
                 .continuedFromTaskId(source.continuedFromTaskId())
@@ -431,12 +444,15 @@ public class TaskService {
                 .map(node -> buildFlowNodeRunTrace(node, snapshot.variableValues(), result, errorMessage))
                 .toList();
         return new FlowRunTraceResponse(
+                source.taskId(),
                 snapshot.flowId(),
                 completed ? Task.STATUS_COMPLETED : Task.STATUS_FAILED,
                 source.executionMode(),
                 source.providerCallCount(),
                 source.compilerVersion(),
                 source.executionInputFingerprint(),
+                source.inputSource(),
+                source.replayedFromTaskId(),
                 nodes
         );
     }
@@ -552,6 +568,7 @@ public class TaskService {
     }
 
     private record TaskExecutionSource(
+            UUID taskId,
             UUID promptId,
             String promptTitle,
             UUID flowId,
@@ -564,7 +581,9 @@ public class TaskService {
             String executionMode,
             Integer providerCallCount,
             String compilerVersion,
-            String executionInputFingerprint
+            String executionInputFingerprint,
+            String inputSource,
+            UUID replayedFromTaskId
     ) {
     }
 
