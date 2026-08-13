@@ -13,82 +13,92 @@
       </div>
     </template>
 
-    <div v-if="sourceRun && targetRun" class="run-comparison-grid">
-      <section class="run-comparison-pane">
-        <div class="run-comparison-pane-header">
-          <div>
-            <span class="badge">来源运行</span>
-            <time>{{ formatDate(sourceRun.createdAt) }}</time>
-          </div>
-          <span class="run-provenance">
-            {{
-              formatExecutionSource(sourceRun.provider, sourceRun.model, sourceRun.totalTokens, sourceRun.durationMs) ||
-              '来源未记录'
-            }}
-          </span>
-        </div>
-        <ExecutionInputArchive :input="sourceRun.input" title="来源执行输入" compact />
-        <FlowRunTrace v-if="sourceRun.flowRunTrace" :trace="sourceRun.flowRunTrace" />
-        <div v-if="sourceRun.status === 'failed'" class="failed-run-detail run-comparison-failure">
-          <span class="section-kicker">Execution Error</span>
-          <strong>{{ sourceRun.errorMessage || sourceRun.result }}</strong>
-          <p>这次失败记录及其节点状态保持不变，可与后续重跑结果直接核对。</p>
-        </div>
-        <AiResultDocument
-          v-else
-          :summary="sourceRun.summary"
-          :result="sourceRun.result"
-          :provider="sourceRun.provider"
-          :model="sourceRun.model"
-          :input-tokens="sourceRun.inputTokens"
-          :output-tokens="sourceRun.outputTokens"
-          :total-tokens="sourceRun.totalTokens"
-          :duration-ms="sourceRun.durationMs"
-          compact
-          :show-raw="false"
-        />
-        <div v-if="sourceRun.status !== 'failed'" class="run-comparison-pane-actions">
-          <button type="button" class="secondary-button" @click="emit('continue', sourceRun)">用此结果继续</button>
+    <div v-if="sourceRun && targetRun" class="run-comparison-body">
+      <section class="run-input-comparison" :class="inputComparison.relation">
+        <span></span>
+        <div>
+          <strong>{{ inputComparisonTitle }}</strong>
+          <p>{{ inputComparisonDescription }}</p>
         </div>
       </section>
 
-      <section class="run-comparison-pane current">
-        <div class="run-comparison-pane-header">
-          <div>
-            <span class="badge">{{ targetLabel }}</span>
-            <time>{{ formatDate(targetRun.createdAt) }}</time>
+      <div class="run-comparison-grid">
+        <section class="run-comparison-pane">
+          <div class="run-comparison-pane-header">
+            <div>
+              <span class="badge">来源运行</span>
+              <time>{{ formatDate(sourceRun.createdAt) }}</time>
+            </div>
+            <span class="run-provenance">
+              {{
+                formatExecutionSource(sourceRun.provider, sourceRun.model, sourceRun.totalTokens, sourceRun.durationMs) ||
+                '来源未记录'
+              }}
+            </span>
           </div>
-          <span class="run-provenance">
-            {{
-              formatExecutionSource(targetRun.provider, targetRun.model, targetRun.totalTokens, targetRun.durationMs) ||
-              '来源未记录'
-            }}
-          </span>
-        </div>
-        <ExecutionInputArchive :input="targetRun.input" title="本次执行输入" compact />
-        <FlowRunTrace v-if="targetRun.flowRunTrace" :trace="targetRun.flowRunTrace" />
-        <div v-if="targetRun.status === 'failed'" class="failed-run-detail run-comparison-failure">
-          <span class="section-kicker">Execution Error</span>
-          <strong>{{ targetRun.errorMessage || targetRun.result }}</strong>
-          <p>重跑仍未完成，固定输入、Provider 来源和节点失败位置已经保留。</p>
-        </div>
-        <AiResultDocument
-          v-else
-          :summary="targetRun.summary"
-          :result="targetRun.result"
-          :provider="targetRun.provider"
-          :model="targetRun.model"
-          :input-tokens="targetRun.inputTokens"
-          :output-tokens="targetRun.outputTokens"
-          :total-tokens="targetRun.totalTokens"
-          :duration-ms="targetRun.durationMs"
-          compact
-          :show-raw="false"
-        />
-        <div v-if="targetRun.status !== 'failed'" class="run-comparison-pane-actions">
-          <button type="button" class="secondary-button" @click="emit('continue', targetRun)">用此结果继续</button>
-        </div>
-      </section>
+          <ExecutionInputArchive :input="sourceRun.input" title="来源执行输入" compact />
+          <FlowRunTrace v-if="sourceRun.flowRunTrace" :trace="sourceRun.flowRunTrace" />
+          <div v-if="sourceRun.status === 'failed'" class="failed-run-detail run-comparison-failure">
+            <span class="section-kicker">Execution Error</span>
+            <strong>{{ sourceRun.errorMessage || sourceRun.result }}</strong>
+            <p>这次失败记录及其节点状态保持不变，可与后续重跑结果直接核对。</p>
+          </div>
+          <AiResultDocument
+            v-else
+            :summary="sourceRun.summary"
+            :result="sourceRun.result"
+            :provider="sourceRun.provider"
+            :model="sourceRun.model"
+            :input-tokens="sourceRun.inputTokens"
+            :output-tokens="sourceRun.outputTokens"
+            :total-tokens="sourceRun.totalTokens"
+            :duration-ms="sourceRun.durationMs"
+            compact
+            :show-raw="false"
+          />
+          <div v-if="sourceRun.status !== 'failed'" class="run-comparison-pane-actions">
+            <button type="button" class="secondary-button" @click="emit('continue', sourceRun)">用此结果继续</button>
+          </div>
+        </section>
+
+        <section class="run-comparison-pane current">
+          <div class="run-comparison-pane-header">
+            <div>
+              <span class="badge">{{ targetLabel }}</span>
+              <time>{{ formatDate(targetRun.createdAt) }}</time>
+            </div>
+            <span class="run-provenance">
+              {{
+                formatExecutionSource(targetRun.provider, targetRun.model, targetRun.totalTokens, targetRun.durationMs) ||
+                '来源未记录'
+              }}
+            </span>
+          </div>
+          <ExecutionInputArchive :input="targetRun.input" title="本次执行输入" compact />
+          <FlowRunTrace v-if="targetRun.flowRunTrace" :trace="targetRun.flowRunTrace" />
+          <div v-if="targetRun.status === 'failed'" class="failed-run-detail run-comparison-failure">
+            <span class="section-kicker">Execution Error</span>
+            <strong>{{ targetRun.errorMessage || targetRun.result }}</strong>
+            <p>重跑仍未完成，固定输入、Provider 来源和节点失败位置已经保留。</p>
+          </div>
+          <AiResultDocument
+            v-else
+            :summary="targetRun.summary"
+            :result="targetRun.result"
+            :provider="targetRun.provider"
+            :model="targetRun.model"
+            :input-tokens="targetRun.inputTokens"
+            :output-tokens="targetRun.outputTokens"
+            :total-tokens="targetRun.totalTokens"
+            :duration-ms="targetRun.durationMs"
+            compact
+            :show-raw="false"
+          />
+          <div v-if="targetRun.status !== 'failed'" class="run-comparison-pane-actions">
+            <button type="button" class="secondary-button" @click="emit('continue', targetRun)">用此结果继续</button>
+          </div>
+        </section>
+      </div>
     </div>
   </el-dialog>
 </template>
@@ -99,6 +109,7 @@ import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import ExecutionInputArchive from '@/components/ai/ExecutionInputArchive.vue'
 import FlowRunTrace from '@/components/flow/FlowRunTrace.vue'
 import { formatExecutionSource } from '@/utils/aiProvider'
+import { compareRunExecutionInputs } from '@/utils/runComparison'
 import type { TaskHistoryItem } from '@/types'
 
 const props = withDefaults(defineProps<{
@@ -119,6 +130,25 @@ const targetLabel = computed(() => {
   if (props.mode === 'continuation') return '继续结果'
   if (props.mode === 'input-variant') return '输入变体'
   return '本次重跑'
+})
+
+const inputComparison = computed(() =>
+  props.sourceRun && props.targetRun
+    ? compareRunExecutionInputs(props.sourceRun, props.targetRun)
+    : { relation: 'different' as const, verification: 'stored-text' as const }
+)
+const inputComparisonTitle = computed(() =>
+  inputComparison.value.relation === 'same' ? '两次运行使用相同输入' : '两次运行输入已经变化'
+)
+const inputComparisonDescription = computed(() => {
+  if (inputComparison.value.verification === 'fingerprint') {
+    return inputComparison.value.relation === 'same'
+      ? 'Provider 输入指纹一致，结果差异来自 Provider、模型或生成过程。'
+      : 'Provider 输入指纹不同，对比结果时需要同时考虑输入变化。'
+  }
+  return inputComparison.value.relation === 'same'
+    ? '历史记录缺少完整指纹，已按保存的执行输入文本确认一致。'
+    : '历史记录缺少完整指纹，保存的执行输入文本存在差异。'
 })
 
 function handleOpenChange(value: boolean) {

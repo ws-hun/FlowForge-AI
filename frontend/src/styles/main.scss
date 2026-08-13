@@ -1117,6 +1117,46 @@ a {
   }
 }
 
+.run-comparison-body {
+  display: grid;
+  gap: 16px;
+}
+
+.run-input-comparison {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid tokens.$border;
+  border-radius: tokens.$radius-md;
+  background: rgba(243, 245, 247, 0.64);
+
+  > span {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 auto;
+    margin-top: 6px;
+    border-radius: 50%;
+    background: tokens.$success;
+  }
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 14px;
+  }
+
+  p {
+    margin: 3px 0 0;
+    color: tokens.$text-secondary;
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
+  &.different > span {
+    background: tokens.$warning;
+  }
+}
+
 .run-comparison-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
