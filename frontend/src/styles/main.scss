@@ -3929,6 +3929,13 @@ a {
   }
 }
 
+.flow-node-operation {
+  color: tokens.$text-muted;
+  font-family: tokens.$mono;
+  font-size: 10px;
+  font-weight: 650;
+}
+
 .flow-connector {
   height: 1px;
   min-width: 32px;
@@ -4737,6 +4744,52 @@ a {
   .secondary-button,
   .ghost-button {
     min-height: 36px;
+  }
+}
+
+.flow-node-runtime-role {
+  display: grid;
+  gap: 7px;
+  padding: 14px 0;
+  border-top: 1px solid tokens.$border;
+  border-bottom: 1px solid tokens.$border;
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    span,
+    em {
+      color: tokens.$text-muted;
+      font-family: tokens.$mono;
+      font-size: 10px;
+      font-style: normal;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    span {
+      color: tokens.$primary;
+    }
+  }
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 14px;
+  }
+
+  p,
+  small {
+    margin: 0;
+    color: tokens.$text-secondary;
+    font-size: 12px;
+    line-height: 1.65;
+  }
+
+  small {
+    color: tokens.$text-muted;
   }
 }
 

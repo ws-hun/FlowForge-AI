@@ -21,7 +21,7 @@
           <strong>{{ step.title }}</strong>
           <p>{{ flowExecutionOperationLabel(step.operation) }}</p>
           <small>
-            {{ step.dependsOnNodeIds.length ? '承接前一步输出' : '执行起点' }}
+            {{ step.dependsOnNodeIds.length ? '承接前置编译内容' : '执行起点' }}
             <template v-if="step.providerBoundary"> · 唯一 Provider 边界</template>
           </small>
           <button

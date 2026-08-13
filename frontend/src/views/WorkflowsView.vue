@@ -199,6 +199,7 @@
                 <span class="flow-node-type">{{ nodeLabel(node.type) }}</span>
                 <span class="flow-node-state">{{ nodeNeedsContent(node) ? 'Needs content' : nodeStateLabel(nodeStatus(node.id)) }}</span>
               </div>
+              <small class="flow-node-operation">{{ flowExecutionOperationLabel(flowExecutionOperationForNode(node.type)) }}</small>
               <strong>{{ node.title }}</strong>
               <p>{{ node.description }}</p>
             </button>
@@ -557,6 +558,16 @@
             <p>{{ selectedNode.description }}</p>
           </div>
 
+          <section class="flow-node-runtime-role">
+            <header>
+              <span>Execution Role</span>
+              <em>步骤 {{ selectedNodeSequence }} / {{ workspace.activeFlow.nodes.length }}</em>
+            </header>
+            <strong>{{ selectedNodeOperationLabel }}</strong>
+            <p>{{ selectedNodeRuntimeDescription }}</p>
+            <small>{{ selectedNodeDependencyLabel }}</small>
+          </section>
+
           <div class="node-status-card" :class="[selectedNodeState, { incomplete: selectedNodeIncomplete }]">
             <span>{{ selectedNodeIncomplete ? 'Needs content' : nodeStateLabel(selectedNodeState) }}</span>
             <strong>{{ selectedNodeIncomplete ? '补充节点内容' : nodeStateTitle(selectedNodeState, selectedNode) }}</strong>
@@ -813,6 +824,11 @@ import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import FlowExecutionInputPreview from '@/components/flow/FlowExecutionInputPreview.vue'
 import FlowRunTrace from '@/components/flow/FlowRunTrace.vue'
 import { formatExecutionSource } from '@/utils/aiProvider'
+import {
+  flowExecutionOperationForNode,
+  flowExecutionOperationLabel,
+  flowNodeRuntimeDescription
+} from '@/utils/flowExecutionPlan'
 import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
 import { listFlowRuns, listFlowVersions } from '@/api/flows'
 import { createPrompt, listPrompts } from '@/api/prompts'
@@ -1115,6 +1131,28 @@ const selectedNodeState = computed<FlowNodeRunState>(() => {
   return nodeStatus(selectedNode.value.id)
 })
 const selectedNodeIncomplete = computed(() => Boolean(selectedNode.value && nodeNeedsContent(selectedNode.value)))
+const selectedNodeSequence = computed(() => {
+  if (!workspace.activeFlow || !selectedNode.value) {
+    return 0
+  }
+  return workspace.activeFlow.nodes.findIndex((node) => node.id === selectedNode.value?.id) + 1
+})
+const selectedNodeOperationLabel = computed(() => {
+  if (!selectedNode.value) {
+    return ''
+  }
+  return flowExecutionOperationLabel(flowExecutionOperationForNode(selectedNode.value.type))
+})
+const selectedNodeRuntimeDescription = computed(() => {
+  return selectedNode.value ? flowNodeRuntimeDescription(selectedNode.value.type) : ''
+})
+const selectedNodeDependencyLabel = computed(() => {
+  if (!workspace.activeFlow || selectedNodeSequence.value <= 1) {
+    return '执行起点，不依赖前置节点。'
+  }
+  const previousNode = workspace.activeFlow.nodes[selectedNodeSequence.value - 2]
+  return previousNode ? `承接「${previousNode.title}」形成的编译上下文。` : '执行起点，不依赖前置节点。'
+})
 const selectedNodeSourcePrompt = computed(() => {
   const promptId = selectedNode.value?.type === 'prompt' ? selectedNode.value.promptId : null
   return promptId ? prompts.value.find((prompt) => prompt.id === promptId) || null : null
