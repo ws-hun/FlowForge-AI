@@ -113,6 +113,51 @@ class FlowNodeArtifactServiceTest {
         verifyNoInteractions(artifactRepository);
     }
 
+    @Test
+    void persistsFailedAndSkippedArtifactsWithoutInventingPayloads() {
+        UUID taskId = UUID.randomUUID();
+        Task task = Task.builder().id(taskId).build();
+        FlowRunTraceResponse trace = trace(UUID.randomUUID(), List.of(
+                node(
+                        "input-1",
+                        "input",
+                        "Context",
+                        "context-contribution",
+                        "Product context",
+                        "materialized",
+                        compiler.fingerprint("Product context")
+                ),
+                node(
+                        "ai-task-1",
+                        "ai-task",
+                        "Provider result",
+                        "provider-result",
+                        "Execution guidance",
+                        "failed",
+                        null
+                ),
+                node(
+                        "output-1",
+                        "output",
+                        "Result document",
+                        "result-document",
+                        "Delivery focus",
+                        "skipped",
+                        null
+                )
+        ));
+        when(artifactRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<FlowNodeArtifact> saved = artifactService.persist(task, trace, null);
+
+        assertThat(saved).extracting(FlowNodeArtifact::getState)
+                .containsExactly("materialized", "failed", "skipped");
+        assertThat(saved).extracting(FlowNodeArtifact::getPayload)
+                .containsExactly("Product context", null, null);
+        assertThat(saved).extracting(FlowNodeArtifact::getContentFingerprint)
+                .containsExactly(compiler.fingerprint("Product context"), null, null);
+    }
+
     private FlowRunTraceResponse trace(UUID flowId, List<FlowNodeRunTraceResponse> nodes) {
         return new FlowRunTraceResponse(
                 UUID.randomUUID(),
@@ -137,6 +182,26 @@ class FlowNodeArtifactServiceTest {
             String compiledContent,
             String fingerprint
     ) {
+        return node(
+                nodeId,
+                nodeType,
+                title,
+                artifactType,
+                compiledContent,
+                "materialized",
+                fingerprint
+        );
+    }
+
+    private FlowNodeRunTraceResponse node(
+            String nodeId,
+            String nodeType,
+            String title,
+            String artifactType,
+            String compiledContent,
+            String artifactState,
+            String fingerprint
+    ) {
         return new FlowNodeRunTraceResponse(
                 nodeId,
                 nodeType,
@@ -149,7 +214,7 @@ class FlowNodeArtifactServiceTest {
                         "node:" + nodeId + ":" + artifactType,
                         artifactType,
                         "node-artifact",
-                        "materialized",
+                        artifactState,
                         fingerprint
                 )
         );

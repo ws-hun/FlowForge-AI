@@ -1,5 +1,7 @@
 package com.flowforge.ai.controller;
 
+import com.flowforge.ai.dto.FlowNodeArtifactDetailResponse;
+import com.flowforge.ai.dto.FlowNodeArtifactSummaryResponse;
 import com.flowforge.ai.dto.TaskRunResponse;
 import com.flowforge.ai.exception.AiExecutionException;
 import com.flowforge.ai.exception.ResourceNotFoundException;
@@ -12,14 +14,17 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -165,6 +170,69 @@ class TaskControllerTest {
         mockMvc.perform(post("/api/tasks/{id}/rerun", taskId))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Task run not found"));
+    }
+
+    @Test
+    void listsAddressableArtifactsWithoutEagerlyReturningPayloads() throws Exception {
+        UUID taskId = UUID.randomUUID();
+        UUID artifactId = UUID.randomUUID();
+        UUID flowId = UUID.randomUUID();
+        String artifactKey = "node:input-1:context-contribution";
+        when(flowNodeArtifactQueryService.listForTask(taskId)).thenReturn(List.of(
+                new FlowNodeArtifactSummaryResponse(
+                        artifactId,
+                        taskId,
+                        flowId,
+                        "input-1",
+                        1,
+                        artifactKey,
+                        "context-contribution",
+                        "materialized",
+                        "text/plain",
+                        "a".repeat(64),
+                        LocalDateTime.of(2026, 8, 17, 10, 30)
+                )
+        ));
+
+        mockMvc.perform(get("/api/tasks/{id}/artifacts", taskId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].artifactKey").value(artifactKey))
+                .andExpect(jsonPath("$[0].sequence").value(1))
+                .andExpect(jsonPath("$[0].payload").doesNotExist());
+
+        verify(flowNodeArtifactQueryService).listForTask(taskId);
+    }
+
+    @Test
+    void returnsOneArtifactPayloadByItsStableKey() throws Exception {
+        UUID taskId = UUID.randomUUID();
+        UUID artifactId = UUID.randomUUID();
+        UUID flowId = UUID.randomUUID();
+        String artifactKey = "node:ai-task-1:provider-result";
+        when(flowNodeArtifactQueryService.getForTask(taskId, artifactKey)).thenReturn(
+                new FlowNodeArtifactDetailResponse(
+                        artifactId,
+                        taskId,
+                        flowId,
+                        "ai-task-1",
+                        2,
+                        artifactKey,
+                        "provider-result",
+                        "materialized",
+                        "text/markdown",
+                        "Summary\nResult",
+                        "b".repeat(64),
+                        LocalDateTime.of(2026, 8, 17, 10, 31)
+                )
+        );
+
+        mockMvc.perform(get("/api/tasks/{id}/artifacts/{artifactKey}", taskId, artifactKey))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.artifactKey").value(artifactKey))
+                .andExpect(jsonPath("$.payload").value("Summary\nResult"))
+                .andExpect(jsonPath("$.mediaType").value("text/markdown"));
+
+        verify(flowNodeArtifactQueryService).getForTask(taskId, artifactKey);
     }
 
     @Test

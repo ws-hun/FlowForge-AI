@@ -68,15 +68,17 @@ config/
 
 Flow execution compilation is isolated in `FlowExecutionCompiler`. It converts one immutable Flow snapshot into the exact Provider input, execution mode, call count, compiler version, SHA-256 input fingerprint, structured preview sections, and a versioned deterministic node execution plan used by both preview and execution paths.
 
-The current `flow-plan-v2` contract uses linear scheduling and identifies Input, Prompt, AI Task, and Output responsibilities together with stable input/output artifact contracts. AI Task is the only Provider boundary, so the number of boundary steps must remain equal to the persisted Provider call count. See [FLOW_RUNTIME.md](./FLOW_RUNTIME.md).
+The current `flow-plan-v3` contract uses linear scheduling and identifies Input, Prompt, AI Task, and Output responsibilities together with stable input/output artifact contracts. AI Task is the only Provider boundary, so the number of boundary steps must remain equal to the persisted Provider call count. See [FLOW_RUNTIME.md](./FLOW_RUNTIME.md).
 
-Each modern node trace persists an output artifact state and SHA-256 fingerprint that points back to content already owned by the Flow snapshot, trace content, or Task Result. Failed and skipped nodes never receive fabricated fingerprints, while legacy v1 plans and traces keep artifact fields null.
+Each modern node trace is paired with an independently persisted `flow_node_artifacts` record. Materialized Input and Prompt artifacts store variable-resolved text, AI Task artifacts store Summary plus Result, and Output artifacts store the Result document. Payload fingerprints must match the immutable trace before the transaction can commit. Failed and skipped nodes never receive fabricated payloads or fingerprints, while legacy v1 and v2 records remain readable without synthesized artifacts.
+
+`FlowNodeArtifactService` owns atomic artifact materialization, while `FlowNodeArtifactQueryService` exposes ordered metadata and one addressable payload at a time. Successful runs write Task and artifacts in the execution transaction. `TaskFailureRecorder` writes failed Task and artifact states together in one `REQUIRES_NEW` transaction so partial failure history cannot survive.
 
 Direct Flow execution assigns the persisted Task UUID before the Provider request. The same UUID becomes the run identity in successful or failed traces, while exact reruns record `stored-input-replay` and the immutable source Task UUID instead of presenting the replay as a newly compiled Flow input.
 
 When Provider execution fails, `TaskService` persists the failed Task in a separate transaction and attaches its UUID to the `AiExecutionException` only after that write succeeds. The `502` response can therefore expose an optional `runId` that always refers to a real recoverable History entry.
 
-The runtime contract test suite requires one saved Flow snapshot and Run Brief to produce byte-for-byte identical preview, Provider, persisted Task, and response inputs. It also requires the preview fingerprint and persisted trace fingerprint to match, the preview and trace execution plans to be identical, and plan step order to match persisted node trace order.
+The runtime contract test suite requires one saved Flow snapshot and Run Brief to produce byte-for-byte identical preview, Provider, persisted Task, and response inputs. It also requires the preview fingerprint and persisted trace fingerprint to match, the preview and trace execution plans to be identical, plan step order to match persisted node trace order, and persisted node payloads to match their trace fingerprints.
 
 ---
 
