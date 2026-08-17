@@ -3469,6 +3469,64 @@ a {
   color: tokens.$error;
 }
 
+.flow-run-trace-artifact {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 8px 0;
+  border-top: 1px solid tokens.$border;
+
+  > div {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 11px;
+  }
+
+  small,
+  code,
+  em {
+    color: tokens.$text-muted;
+    font-family: tokens.$mono;
+    font-size: 9px;
+    font-style: normal;
+  }
+
+  em {
+    color: tokens.$success;
+    font-weight: 700;
+  }
+
+  &.failed em {
+    color: tokens.$error;
+  }
+
+  &.skipped em {
+    color: tokens.$text-muted;
+  }
+}
+
+.flow-run-trace-artifact-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: tokens.$success;
+
+  .failed & {
+    background: tokens.$error;
+  }
+
+  .skipped & {
+    background: tokens.$text-muted;
+  }
+}
+
 .flow-run-trace-node-action {
   display: inline-flex;
   width: fit-content;

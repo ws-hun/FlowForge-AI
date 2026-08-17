@@ -197,11 +197,17 @@ export type FlowArtifactType =
   | 'provider-result'
   | 'result-document'
 export type FlowArtifactStorage = 'flow-snapshot' | 'trace-content' | 'task-result'
+export type FlowArtifactState = 'materialized' | 'failed' | 'skipped'
 
 export interface FlowArtifactContract {
   key: string
   type: FlowArtifactType
   storage: FlowArtifactStorage
+}
+
+export interface FlowNodeArtifact extends FlowArtifactContract {
+  state: FlowArtifactState
+  contentFingerprint?: string | null
 }
 
 export interface FlowExecutionStep {
@@ -230,6 +236,7 @@ export interface FlowNodeRunTrace {
   compiledContent: string
   outputSummary?: string | null
   errorMessage?: string | null
+  outputArtifact?: FlowNodeArtifact | null
 }
 
 export interface FlowRunTrace {

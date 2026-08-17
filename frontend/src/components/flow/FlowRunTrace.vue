@@ -50,6 +50,23 @@
           </details>
           <p v-if="node.outputSummary" class="flow-run-trace-output">{{ node.outputSummary }}</p>
           <p v-if="node.errorMessage" class="flow-run-trace-error">{{ node.errorMessage }}</p>
+          <div
+            v-if="node.outputArtifact"
+            class="flow-run-trace-artifact"
+            :class="node.outputArtifact.state"
+          >
+            <span class="flow-run-trace-artifact-dot"></span>
+            <div>
+              <strong>{{ flowArtifactTypeLabel(node.outputArtifact.type) }}</strong>
+              <small>
+                {{ flowArtifactStorageLabel(node.outputArtifact.storage) }}
+                <template v-if="node.outputArtifact.contentFingerprint">
+                  · <code :title="node.outputArtifact.contentFingerprint">SHA {{ shortFingerprint(node.outputArtifact.contentFingerprint) }}</code>
+                </template>
+              </small>
+            </div>
+            <em>{{ flowArtifactStateLabel(node.outputArtifact.state) }}</em>
+          </div>
           <button
             v-if="nodeActionLabel && navigableNodeIds.includes(node.nodeId)"
             type="button"
@@ -69,6 +86,11 @@
 import { Right } from '@element-plus/icons-vue'
 import type { FlowExecutionMode, FlowNodeRunTraceStatus, FlowNodeType, FlowRunTrace } from '@/types'
 import FlowExecutionPlan from '@/components/flow/FlowExecutionPlan.vue'
+import {
+  flowArtifactStateLabel,
+  flowArtifactStorageLabel,
+  flowArtifactTypeLabel
+} from '@/utils/flowExecutionPlan'
 
 withDefaults(
   defineProps<{

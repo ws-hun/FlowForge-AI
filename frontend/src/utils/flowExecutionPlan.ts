@@ -1,5 +1,6 @@
 import type {
   FlowArtifactStorage,
+  FlowArtifactState,
   FlowArtifactType,
   FlowExecutionOperation,
   FlowNodeType
@@ -47,6 +48,12 @@ const artifactStorageLabels: Record<FlowArtifactStorage, string> = {
   'task-result': 'Task Result'
 }
 
+const artifactStateLabels: Record<FlowArtifactState, string> = {
+  materialized: '已记录',
+  failed: '未生成',
+  skipped: '已跳过'
+}
+
 export function flowNodeTypeLabel(type: FlowNodeType) {
   return nodeTypeLabels[type]
 }
@@ -69,4 +76,8 @@ export function flowArtifactTypeLabel(type: FlowArtifactType) {
 
 export function flowArtifactStorageLabel(storage: FlowArtifactStorage) {
   return artifactStorageLabels[storage]
+}
+
+export function flowArtifactStateLabel(state: FlowArtifactState) {
+  return artifactStateLabels[state]
 }
