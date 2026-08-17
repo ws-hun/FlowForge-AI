@@ -13,13 +13,13 @@ This is a real and reproducible runtime. It is not yet a node-level execution en
 The runtime exposes two independent versions:
 
 - `flow-compiler-v1` defines how the exact Provider input is produced.
-- `flow-plan-v1` defines how saved nodes are ordered and what responsibility each node has.
+- `flow-plan-v2` defines how saved nodes are ordered, what responsibility each node has, and which persisted artifact enters and leaves each step.
 
 The compiler also produces a SHA-256 fingerprint of the exact UTF-8 Provider input. Preview, Provider invocation, persisted Task input, and Run Trace must agree on that value.
 
 ## 3. Execution Plan
 
-`flow-plan-v1` uses deterministic linear scheduling.
+`flow-plan-v2` uses deterministic linear scheduling.
 
 Each step contains:
 
@@ -28,6 +28,7 @@ Each step contains:
 - Runtime operation.
 - Direct predecessor dependency.
 - Whether the step is the Provider boundary.
+- Stable input and output artifact contracts.
 
 The current operations are:
 
@@ -38,17 +39,35 @@ The current operations are:
 | AI Task | `invoke-provider` | The only Provider call boundary. |
 | Output | `define-delivery` | Contributes delivery constraints to the same Provider request. |
 
+Each artifact contract has a stable key, semantic type, and storage owner. The current owners are `flow-snapshot`, `trace-content`, and `task-result`; they point to records FlowForge actually persists rather than creating duplicate payloads inside the plan.
+
 The plan order must match the immutable node snapshot and the persisted node trace order. The number of Provider boundary steps must match `providerCallCount`.
 
-## 4. Persistence And Replay
+## 4. Node Artifact Records
+
+New direct Flow runs persist one output artifact record with each node trace:
+
+- Input and Prompt fingerprints are calculated from their actual variable-resolved `compiledContent`.
+- AI Task fingerprints are calculated from the persisted Summary and Result.
+- Output fingerprints are calculated from the persisted Result document.
+- Provider failures mark the AI Task artifact as `failed` without a content fingerprint.
+- Downstream Output artifacts are marked `skipped` when the Provider did not return a result.
+
+Artifact records contain a key, type, storage owner, state, and SHA-256 fingerprint. The source content remains in the existing Flow snapshot, node trace, or Task Result so immutable history does not store redundant copies.
+
+These records prove what was materialized by the current runtime. They are not yet independently addressable intermediate payloads and do not yet drive downstream node execution.
+
+## 5. Persistence And Replay
 
 New direct Flow runs persist their execution plan inside `flowRunTrace` for both successful and failed Provider calls.
 
 Legacy traces without an execution plan remain valid and deserialize with `executionPlan = null`. The frontend labels these records as legacy instead of synthesizing a plan that did not exist at run time.
 
+Legacy `flow-plan-v1` steps remain readable with null artifact contracts, and legacy node traces remain readable with null output artifact records.
+
 Exact historical reruns use the stored Task input. They do not recompile the old Flow. When the source trace has a plan, the new replay preserves that immutable plan and records `stored-input-replay` plus the source Task ID.
 
-## 5. Upgrade Boundary
+## 6. Upgrade Boundary
 
 FlowForge must not switch a Flow to `node-sequential` until all of the following are real backend capabilities:
 

@@ -94,4 +94,74 @@ class FlowRunTraceResponseTest {
             assertThat(node.outputArtifact()).isNull();
         });
     }
+
+    @Test
+    void preservesV2ArtifactContractsAndMaterializedOutputsAcrossJsonRoundTrips() throws Exception {
+        UUID runId = UUID.randomUUID();
+        UUID flowId = UUID.randomUUID();
+        FlowArtifactContractResponse inputArtifact = new FlowArtifactContractResponse(
+                "flow:objective",
+                "flow-objective",
+                "flow-snapshot"
+        );
+        FlowArtifactContractResponse outputArtifact = new FlowArtifactContractResponse(
+                "node:input-1:context-contribution",
+                "context-contribution",
+                "trace-content"
+        );
+        FlowRunTraceResponse trace = new FlowRunTraceResponse(
+                runId,
+                flowId,
+                "completed",
+                "single-pass",
+                1,
+                "flow-compiler-v1",
+                "provider-input-fingerprint",
+                "compiled-flow",
+                null,
+                new FlowExecutionPlanResponse(
+                        "flow-plan-v2",
+                        "linear",
+                        List.of(new FlowExecutionStepResponse(
+                                1,
+                                "input-1",
+                                "input",
+                                "Launch context",
+                                "supply-context",
+                                List.of(),
+                                false,
+                                inputArtifact,
+                                outputArtifact
+                        ))
+                ),
+                List.of(new FlowNodeRunTraceResponse(
+                        "input-1",
+                        "input",
+                        "Launch context",
+                        "prepared",
+                        "Prepare the launch.",
+                        null,
+                        null,
+                        new FlowNodeArtifactResponse(
+                                outputArtifact.key(),
+                                outputArtifact.type(),
+                                outputArtifact.storage(),
+                                "materialized",
+                                "42f34ab4"
+                        )
+                ))
+        );
+
+        FlowRunTraceResponse restored = objectMapper.readValue(
+                objectMapper.writeValueAsString(trace),
+                FlowRunTraceResponse.class
+        );
+
+        assertThat(restored).isEqualTo(trace);
+        assertThat(restored.executionPlan().version()).isEqualTo("flow-plan-v2");
+        assertThat(restored.executionPlan().steps().get(0).inputArtifact()).isEqualTo(inputArtifact);
+        assertThat(restored.executionPlan().steps().get(0).outputArtifact()).isEqualTo(outputArtifact);
+        assertThat(restored.nodes().get(0).outputArtifact().state()).isEqualTo("materialized");
+        assertThat(restored.nodes().get(0).outputArtifact().contentFingerprint()).isEqualTo("42f34ab4");
+    }
 }

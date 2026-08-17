@@ -116,7 +116,8 @@ Current Stage 3 capabilities:
 - Provider gateway errors return the saved failed run identity only after failure persistence succeeds, allowing AI Command and Flow Space to reopen the exact immutable failure context instead of locating it through timestamps or transient client state.
 - Run comparison explains whether two results used the same Provider input, preferring persisted SHA-256 fingerprints and explicitly falling back to exact stored input text for legacy records instead of overstating verification.
 - Runtime contract tests lock preview and execution to the same exact Provider input and fingerprint, preserve modern run identity through JSON round trips, and keep legacy trace fields explicitly unknown until a real runtime supplied them.
-- Flow previews and immutable run traces now share `flow-plan-v1`, a deterministic linear node plan that records dependencies, node responsibilities, and the single AI Task Provider boundary while keeping legacy plans unknown.
+- Flow previews and immutable run traces now share `flow-plan-v2`, a deterministic linear node plan that records dependencies, node responsibilities, stable input/output artifact contracts, and the single AI Task Provider boundary while keeping legacy plans readable.
+- Successful and failed node traces persist artifact state and content fingerprints against real Flow snapshot, trace content, or Task Result records; skipped and failed outputs remain explicitly unmaterialized.
 - Flow Space explains each selected node's runtime role and predecessor context during creation, so users can design the execution path without mistaking compiled Input, Prompt, or Output nodes for independent model calls.
 - Provider HTTP calls use explicit configurable connect and read timeouts, convert transport failures into stable gateway errors, and preserve failed runs for recovery instead of hanging the workspace indefinitely.
 - Provider HTTP status failures are translated into actionable authentication, rate-limit, timeout, request, or availability messages without exposing raw upstream response bodies to the workspace or History.
@@ -166,7 +167,8 @@ Current Stage 3 priorities:
 1. Make Flow creation and editing calmer and more predictable.
 2. Preserve complete execution context for comparison and reuse.
 3. Improve the Prompt / Flow / Result reuse loop.
-4. Introduce true node-level execution only after node input/output persistence, per-node Provider provenance, and explicit failure policy are real backend contracts.
+4. Materialize independently addressable intermediate node payloads before allowing them to drive downstream execution.
+5. Introduce true node-level execution only after per-node Provider provenance and explicit stop, skip, and retry policy are real backend contracts.
 
 ---
 

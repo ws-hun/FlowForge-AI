@@ -68,7 +68,9 @@ config/
 
 Flow execution compilation is isolated in `FlowExecutionCompiler`. It converts one immutable Flow snapshot into the exact Provider input, execution mode, call count, compiler version, SHA-256 input fingerprint, structured preview sections, and a versioned deterministic node execution plan used by both preview and execution paths.
 
-The current `flow-plan-v1` contract uses linear scheduling and identifies Input, Prompt, AI Task, and Output responsibilities without claiming independent node execution. AI Task is the only Provider boundary, so the number of boundary steps must remain equal to the persisted Provider call count. See [FLOW_RUNTIME.md](./FLOW_RUNTIME.md).
+The current `flow-plan-v2` contract uses linear scheduling and identifies Input, Prompt, AI Task, and Output responsibilities together with stable input/output artifact contracts. AI Task is the only Provider boundary, so the number of boundary steps must remain equal to the persisted Provider call count. See [FLOW_RUNTIME.md](./FLOW_RUNTIME.md).
+
+Each modern node trace persists an output artifact state and SHA-256 fingerprint that points back to content already owned by the Flow snapshot, trace content, or Task Result. Failed and skipped nodes never receive fabricated fingerprints, while legacy v1 plans and traces keep artifact fields null.
 
 Direct Flow execution assigns the persisted Task UUID before the Provider request. The same UUID becomes the run identity in successful or failed traces, while exact reruns record `stored-input-replay` and the immutable source Task UUID instead of presenting the replay as a newly compiled Flow input.
 

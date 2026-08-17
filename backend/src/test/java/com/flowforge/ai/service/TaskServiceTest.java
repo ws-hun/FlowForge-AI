@@ -274,6 +274,12 @@ class TaskServiceTest {
                 .isEqualTo("provider-result");
         assertThat(response.flowRunTrace().nodes().get(4).outputArtifact().type())
                 .isEqualTo("result-document");
+        assertThat(response.flowRunTrace().nodes().get(2).outputArtifact().contentFingerprint())
+                .isEqualTo(new FlowExecutionCompiler().fingerprint("Use product leads as the decision lens."));
+        assertThat(response.flowRunTrace().nodes().get(3).outputArtifact().contentFingerprint())
+                .isEqualTo(new FlowExecutionCompiler().fingerprint("Focused MVP\nDetailed result"));
+        assertThat(response.flowRunTrace().nodes().get(4).outputArtifact().contentFingerprint())
+                .isEqualTo(new FlowExecutionCompiler().fingerprint("Detailed result"));
         assertThat(response.flowRunTrace().nodes())
                 .allSatisfy(node -> assertThat(node.outputArtifact().contentFingerprint())
                         .hasSize(64)
