@@ -107,7 +107,7 @@ class WorkflowControllerTest {
                         "Prepare a focused launch"
                 )),
                 new FlowExecutionPlanResponse(
-                        "flow-plan-v2",
+                        "flow-plan-v3",
                         "linear",
                         List.of(new FlowExecutionStepResponse(
                                 1,
@@ -121,7 +121,7 @@ class WorkflowControllerTest {
                                 new FlowArtifactContractResponse(
                                         "node:input-1:context-contribution",
                                         "context-contribution",
-                                        "trace-content"
+                                        "node-artifact"
                                 )
                         ))
                 ),
@@ -145,7 +145,7 @@ class WorkflowControllerTest {
                 .andExpect(jsonPath("$.providerCallCount").value(1))
                 .andExpect(jsonPath("$.compilerVersion").value("flow-compiler-v1"))
                 .andExpect(jsonPath("$.executionInputFingerprint").value("8f2a4a8bd2f30ec4880b55df102d714d1f05d5dc7e60d7cc15bfc5bf5f660b8a"))
-                .andExpect(jsonPath("$.executionPlan.version").value("flow-plan-v2"))
+                .andExpect(jsonPath("$.executionPlan.version").value("flow-plan-v3"))
                 .andExpect(jsonPath("$.executionPlan.steps[0].operation").value("supply-context"))
                 .andExpect(jsonPath("$.executionPlan.steps[0].inputArtifact.type").value("flow-objective"))
                 .andExpect(jsonPath("$.executionPlan.steps[0].outputArtifact.type").value("context-contribution"))

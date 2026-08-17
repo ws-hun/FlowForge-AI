@@ -26,7 +26,7 @@ public class FlowExecutionCompiler {
     static final String EXECUTION_MODE = "single-pass";
     static final int PROVIDER_CALL_COUNT = 1;
     static final String COMPILER_VERSION = "flow-compiler-v1";
-    static final String PLAN_VERSION = "flow-plan-v2";
+    static final String PLAN_VERSION = "flow-plan-v3";
     static final String PLAN_SCHEDULING = "linear";
     private static final Pattern FLOW_VARIABLE_PATTERN = Pattern.compile("\\{[a-zA-Z0-9_\\u4e00-\\u9fa5-]+}");
 
@@ -223,15 +223,10 @@ public class FlowExecutionCompiler {
             case "output" -> "result-document";
             default -> throw new IllegalArgumentException("Unsupported Flow node type: " + node.type());
         };
-        String storage = switch (node.type()) {
-            case "input", "prompt" -> "trace-content";
-            case "ai-task", "output" -> "task-result";
-            default -> throw new IllegalArgumentException("Unsupported Flow node type: " + node.type());
-        };
         return new FlowArtifactContractResponse(
                 "node:" + node.id() + ":" + artifactType,
                 artifactType,
-                storage
+                "node-artifact"
         );
     }
 

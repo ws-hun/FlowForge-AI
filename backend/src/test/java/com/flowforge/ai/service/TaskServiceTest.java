@@ -62,6 +62,9 @@ class TaskServiceTest {
     @Mock
     private TaskFailureRecorder taskFailureRecorder;
 
+    @Mock
+    private FlowNodeArtifactService flowNodeArtifactService;
+
     @Captor
     private ArgumentCaptor<Task> taskCaptor;
 
@@ -80,7 +83,8 @@ class TaskServiceTest {
                 workflowRepository,
                 objectMapper,
                 taskFailureRecorder,
-                new FlowExecutionCompiler()
+                new FlowExecutionCompiler(),
+                flowNodeArtifactService
         );
     }
 
@@ -239,7 +243,7 @@ class TaskServiceTest {
                 .isEqualTo(new FlowExecutionCompiler().fingerprint(executionInput));
         assertThat(response.flowRunTrace().inputSource()).isEqualTo("compiled-flow");
         assertThat(response.flowRunTrace().replayedFromTaskId()).isNull();
-        assertThat(response.flowRunTrace().executionPlan().version()).isEqualTo("flow-plan-v2");
+        assertThat(response.flowRunTrace().executionPlan().version()).isEqualTo("flow-plan-v3");
         assertThat(response.flowRunTrace().executionPlan().steps())
                 .filteredOn(step -> step.providerBoundary())
                 .singleElement()
@@ -284,6 +288,11 @@ class TaskServiceTest {
                 .allSatisfy(node -> assertThat(node.outputArtifact().contentFingerprint())
                         .hasSize(64)
                         .matches("[0-9a-f]{64}"));
+        verify(flowNodeArtifactService).persist(
+                org.mockito.ArgumentMatchers.eq(savedTask),
+                org.mockito.ArgumentMatchers.eq(response.flowRunTrace()),
+                any(OpenAiTaskResult.class)
+        );
     }
 
     @Test
@@ -964,7 +973,7 @@ class TaskServiceTest {
         assertThat(response.executable()).isTrue();
         assertThat(response.missingVariables()).isEmpty();
         assertThat(response.incompleteNodes()).isEmpty();
-        assertThat(response.executionPlan().version()).isEqualTo("flow-plan-v2");
+        assertThat(response.executionPlan().version()).isEqualTo("flow-plan-v3");
         assertThat(response.executionPlan().steps())
                 .extracting(step -> step.nodeId())
                 .containsExactly("input-1", "prompt-1", "ai-task-1", "output-1");

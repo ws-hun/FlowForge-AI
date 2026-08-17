@@ -48,6 +48,7 @@ public class TaskService {
     private final ObjectMapper objectMapper;
     private final TaskFailureRecorder taskFailureRecorder;
     private final FlowExecutionCompiler flowExecutionCompiler;
+    private final FlowNodeArtifactService flowNodeArtifactService;
 
     @Transactional
     public TaskRunResponse runTask(RunTaskRequest request) {
@@ -196,6 +197,9 @@ public class TaskService {
                 .build();
 
         Task savedTask = taskRepository.save(task);
+        if (flowRunTrace != null) {
+            flowNodeArtifactService.persist(savedTask, flowRunTrace, aiResult);
+        }
 
         return new TaskRunResponse(
                 aiResult.summary(),
