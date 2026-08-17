@@ -1,4 +1,9 @@
-import type { FlowExecutionOperation, FlowNodeType } from '@/types'
+import type {
+  FlowArtifactStorage,
+  FlowArtifactType,
+  FlowExecutionOperation,
+  FlowNodeType
+} from '@/types'
 
 const nodeTypeLabels: Record<FlowNodeType, string> = {
   input: 'Input',
@@ -28,6 +33,20 @@ const nodeRuntimeDescriptions: Record<FlowNodeType, string> = {
   output: '定义结果的交付重点，与 AI Task 共用一次 Provider 结果，不额外调用模型。'
 }
 
+const artifactTypeLabels: Record<FlowArtifactType, string> = {
+  'flow-objective': 'Flow 目标',
+  'context-contribution': '上下文产物',
+  'instruction-contribution': '指令产物',
+  'provider-result': 'Provider 结果',
+  'result-document': '结果文档'
+}
+
+const artifactStorageLabels: Record<FlowArtifactStorage, string> = {
+  'flow-snapshot': 'Flow 快照',
+  'trace-content': '节点轨迹',
+  'task-result': 'Task Result'
+}
+
 export function flowNodeTypeLabel(type: FlowNodeType) {
   return nodeTypeLabels[type]
 }
@@ -42,4 +61,12 @@ export function flowExecutionOperationForNode(type: FlowNodeType) {
 
 export function flowNodeRuntimeDescription(type: FlowNodeType) {
   return nodeRuntimeDescriptions[type]
+}
+
+export function flowArtifactTypeLabel(type: FlowArtifactType) {
+  return artifactTypeLabels[type]
+}
+
+export function flowArtifactStorageLabel(storage: FlowArtifactStorage) {
+  return artifactStorageLabels[storage]
 }

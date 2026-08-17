@@ -20,6 +20,14 @@
           <span>{{ flowNodeTypeLabel(step.nodeType) }}</span>
           <strong>{{ step.title }}</strong>
           <p>{{ flowExecutionOperationLabel(step.operation) }}</p>
+          <div v-if="step.inputArtifact && step.outputArtifact" class="flow-execution-artifact-path">
+            <div>
+              <span :title="step.inputArtifact.key">{{ flowArtifactTypeLabel(step.inputArtifact.type) }}</span>
+              <Right />
+              <span :title="step.outputArtifact.key">{{ flowArtifactTypeLabel(step.outputArtifact.type) }}</span>
+            </div>
+            <small>输出记录于 {{ flowArtifactStorageLabel(step.outputArtifact.storage) }}</small>
+          </div>
           <small>
             {{ step.dependsOnNodeIds.length ? '承接前置编译内容' : '执行起点' }}
             <template v-if="step.providerBoundary"> · 唯一 Provider 边界</template>
@@ -43,7 +51,12 @@
 import { computed } from 'vue'
 import { Right } from '@element-plus/icons-vue'
 import type { FlowExecutionPlan } from '@/types'
-import { flowExecutionOperationLabel, flowNodeTypeLabel } from '@/utils/flowExecutionPlan'
+import {
+  flowArtifactStorageLabel,
+  flowArtifactTypeLabel,
+  flowExecutionOperationLabel,
+  flowNodeTypeLabel
+} from '@/utils/flowExecutionPlan'
 
 const props = withDefaults(
   defineProps<{

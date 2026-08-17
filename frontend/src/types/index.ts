@@ -190,6 +190,19 @@ export type FlowExecutionOperation =
   | 'supply-instructions'
   | 'invoke-provider'
   | 'define-delivery'
+export type FlowArtifactType =
+  | 'flow-objective'
+  | 'context-contribution'
+  | 'instruction-contribution'
+  | 'provider-result'
+  | 'result-document'
+export type FlowArtifactStorage = 'flow-snapshot' | 'trace-content' | 'task-result'
+
+export interface FlowArtifactContract {
+  key: string
+  type: FlowArtifactType
+  storage: FlowArtifactStorage
+}
 
 export interface FlowExecutionStep {
   sequence: number
@@ -199,6 +212,8 @@ export interface FlowExecutionStep {
   operation: FlowExecutionOperation
   dependsOnNodeIds: string[]
   providerBoundary: boolean
+  inputArtifact?: FlowArtifactContract | null
+  outputArtifact?: FlowArtifactContract | null
 }
 
 export interface FlowExecutionPlan {
