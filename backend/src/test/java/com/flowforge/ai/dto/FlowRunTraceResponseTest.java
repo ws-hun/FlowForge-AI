@@ -35,6 +35,7 @@ class FlowRunTraceResponseTest {
         assertThat(trace.inputSource()).isNull();
         assertThat(trace.replayedFromTaskId()).isNull();
         assertThat(trace.executionPlan()).isNull();
+        assertThat(trace.nodes()).isEmpty();
     }
 
     @Test
@@ -90,6 +91,7 @@ class FlowRunTraceResponseTest {
         assertThat(restored.nodes()).singleElement().satisfies(node -> {
             assertThat(node.nodeId()).isEqualTo("ai-task-1");
             assertThat(node.outputSummary()).isEqualTo("Option A is preferred.");
+            assertThat(node.outputArtifact()).isNull();
         });
     }
 }

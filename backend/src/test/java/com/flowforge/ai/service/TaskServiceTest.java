@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.flowforge.ai.dto.FlowExecutionPreviewRequest;
 import com.flowforge.ai.dto.FlowExecutionPreviewResponse;
+import com.flowforge.ai.dto.FlowExecutionPlanResponse;
+import com.flowforge.ai.dto.FlowExecutionStepResponse;
 import com.flowforge.ai.dto.FlowNodeDto;
 import com.flowforge.ai.dto.FlowNodeRunTraceResponse;
 import com.flowforge.ai.dto.FlowRunSnapshotResponse;
@@ -261,6 +263,21 @@ class TaskServiceTest {
                 );
         assertThat(response.flowRunTrace().nodes().get(2).compiledContent())
                 .isEqualTo("Use product leads as the decision lens.");
+        assertThat(response.flowRunTrace().nodes())
+                .extracting(node -> node.outputArtifact().state())
+                .containsExactly("materialized", "materialized", "materialized", "materialized", "materialized");
+        assertThat(response.flowRunTrace().nodes().get(0).outputArtifact().type())
+                .isEqualTo("context-contribution");
+        assertThat(response.flowRunTrace().nodes().get(2).outputArtifact().type())
+                .isEqualTo("instruction-contribution");
+        assertThat(response.flowRunTrace().nodes().get(3).outputArtifact().type())
+                .isEqualTo("provider-result");
+        assertThat(response.flowRunTrace().nodes().get(4).outputArtifact().type())
+                .isEqualTo("result-document");
+        assertThat(response.flowRunTrace().nodes())
+                .allSatisfy(node -> assertThat(node.outputArtifact().contentFingerprint())
+                        .hasSize(64)
+                        .matches("[0-9a-f]{64}"));
     }
 
     @Test
@@ -579,6 +596,12 @@ class TaskServiceTest {
                         "Release decision:skipped"
                 );
         assertThat(trace.nodes().get(1).errorMessage()).isEqualTo("AI API error: provider unavailable");
+        assertThat(trace.nodes())
+                .extracting(node -> node.outputArtifact().state())
+                .containsExactly("materialized", "failed", "skipped");
+        assertThat(trace.nodes().get(0).outputArtifact().contentFingerprint()).hasSize(64);
+        assertThat(trace.nodes().get(1).outputArtifact().contentFingerprint()).isNull();
+        assertThat(trace.nodes().get(2).outputArtifact().contentFingerprint()).isNull();
         assertThat(failure.getRunId()).isEqualTo(failedTask.getId());
         verify(taskRepository, never()).save(any(Task.class));
     }
@@ -671,7 +694,19 @@ class TaskServiceTest {
                 "source-fingerprint",
                 "compiled-flow",
                 null,
-                new FlowExecutionCompiler().compilePlan(snapshot.nodes()),
+                new FlowExecutionPlanResponse(
+                        "flow-plan-v1",
+                        "linear",
+                        List.of(new FlowExecutionStepResponse(
+                                1,
+                                "ai-task-1",
+                                "ai-task",
+                                "Launch analysis",
+                                "invoke-provider",
+                                List.of(),
+                                true
+                        ))
+                ),
                 List.of()
         ));
         Task sourceTask = Task.builder()
@@ -700,9 +735,11 @@ class TaskServiceTest {
                 .isNotEqualTo("source-fingerprint");
         assertThat(response.flowRunTrace().inputSource()).isEqualTo("stored-input-replay");
         assertThat(response.flowRunTrace().replayedFromTaskId()).isEqualTo(sourceTaskId);
-        assertThat(response.flowRunTrace().executionPlan()).isEqualTo(
-                new FlowExecutionCompiler().compilePlan(snapshot.nodes())
-        );
+        assertThat(response.flowRunTrace().executionPlan().version()).isEqualTo("flow-plan-v1");
+        assertThat(response.flowRunTrace().nodes()).singleElement().satisfies(node -> {
+            assertThat(node.nodeId()).isEqualTo("ai-task-1");
+            assertThat(node.outputArtifact()).isNull();
+        });
     }
 
     @Test

@@ -5,8 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowforge.ai.dto.FlowExecutionPreviewRequest;
 import com.flowforge.ai.dto.FlowExecutionPreviewResponse;
 import com.flowforge.ai.dto.FlowExecutionPlanResponse;
+import com.flowforge.ai.dto.FlowArtifactContractResponse;
 import com.flowforge.ai.dto.FlowNodeDto;
 import com.flowforge.ai.dto.FlowNodeRunTraceResponse;
+import com.flowforge.ai.dto.FlowNodeArtifactResponse;
 import com.flowforge.ai.dto.FlowRunTraceResponse;
 import com.flowforge.ai.dto.FlowRunSnapshotResponse;
 import com.flowforge.ai.dto.OpenAiTaskResult;
@@ -451,7 +453,13 @@ public class TaskService {
 
         boolean completed = result != null;
         List<FlowNodeRunTraceResponse> nodes = snapshot.nodes().stream()
-                .map(node -> buildFlowNodeRunTrace(node, snapshot.variableValues(), result, errorMessage))
+                .map(node -> buildFlowNodeRunTrace(
+                        node,
+                        outputArtifactContract(source.executionPlan(), node.id()),
+                        snapshot.variableValues(),
+                        result,
+                        errorMessage
+                ))
                 .toList();
         return new FlowRunTraceResponse(
                 source.taskId(),
@@ -470,6 +478,7 @@ public class TaskService {
 
     private FlowNodeRunTraceResponse buildFlowNodeRunTrace(
             FlowNodeDto node,
+            FlowArtifactContractResponse outputArtifactContract,
             Map<String, String> variableValues,
             OpenAiTaskResult result,
             String errorMessage
@@ -484,14 +493,59 @@ public class TaskService {
                 ? result.summary()
                 : null;
         String nodeError = "ai-task".equals(node.type()) && !completed ? errorMessage : null;
+        String compiledContent = flowExecutionCompiler.applyVariables(node.content(), variableValues);
         return new FlowNodeRunTraceResponse(
                 node.id(),
                 node.type(),
                 node.title(),
                 status,
-                flowExecutionCompiler.applyVariables(node.content(), variableValues),
+                compiledContent,
                 outputSummary,
-                nodeError
+                nodeError,
+                buildNodeOutputArtifact(node, outputArtifactContract, compiledContent, result)
+        );
+    }
+
+    private FlowArtifactContractResponse outputArtifactContract(FlowExecutionPlanResponse plan, String nodeId) {
+        if (plan == null || plan.steps() == null) {
+            return null;
+        }
+        return plan.steps().stream()
+                .filter(step -> nodeId.equals(step.nodeId()))
+                .filter(step -> step.outputArtifact() != null)
+                .map(step -> step.outputArtifact())
+                .findFirst()
+                .orElse(null);
+    }
+
+    private FlowNodeArtifactResponse buildNodeOutputArtifact(
+            FlowNodeDto node,
+            FlowArtifactContractResponse contract,
+            String compiledContent,
+            OpenAiTaskResult result
+    ) {
+        if (contract == null) {
+            return null;
+        }
+
+        String state = switch (node.type()) {
+            case "input", "prompt" -> "materialized";
+            case "ai-task" -> result == null ? "failed" : "materialized";
+            case "output" -> result == null ? "skipped" : "materialized";
+            default -> throw new IllegalArgumentException("Unsupported Flow node type: " + node.type());
+        };
+        String fingerprintSource = switch (node.type()) {
+            case "input", "prompt" -> compiledContent;
+            case "ai-task" -> result == null ? null : result.summary() + "\n" + result.result();
+            case "output" -> result == null ? null : result.result();
+            default -> throw new IllegalArgumentException("Unsupported Flow node type: " + node.type());
+        };
+        return new FlowNodeArtifactResponse(
+                contract.key(),
+                contract.type(),
+                contract.storage(),
+                state,
+                fingerprintSource == null ? null : flowExecutionCompiler.fingerprint(fingerprintSource)
         );
     }
 

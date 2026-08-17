@@ -10,6 +10,18 @@ public record FlowNodeRunTraceResponse(
         String status,
         String compiledContent,
         String outputSummary,
-        String errorMessage
+        String errorMessage,
+        FlowNodeArtifactResponse outputArtifact
 ) {
+    public FlowNodeRunTraceResponse(
+            String nodeId,
+            String nodeType,
+            String title,
+            String status,
+            String compiledContent,
+            String outputSummary,
+            String errorMessage
+    ) {
+        this(nodeId, nodeType, title, status, compiledContent, outputSummary, errorMessage, null);
+    }
 }
