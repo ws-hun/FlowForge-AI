@@ -3,6 +3,7 @@ package com.flowforge.ai.controller;
 import com.flowforge.ai.dto.TaskRunResponse;
 import com.flowforge.ai.exception.AiExecutionException;
 import com.flowforge.ai.exception.ResourceNotFoundException;
+import com.flowforge.ai.service.FlowNodeArtifactQueryService;
 import com.flowforge.ai.service.TaskService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,9 @@ class TaskControllerTest {
 
     @MockBean
     private TaskService taskService;
+
+    @MockBean
+    private FlowNodeArtifactQueryService flowNodeArtifactQueryService;
 
     @Test
     void startsAContinuationFromAStoredTaskResult() throws Exception {

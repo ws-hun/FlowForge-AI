@@ -56,7 +56,7 @@
             :class="node.outputArtifact.state"
           >
             <span class="flow-run-trace-artifact-dot"></span>
-            <div>
+            <div class="flow-run-trace-artifact-meta">
               <strong>{{ flowArtifactTypeLabel(node.outputArtifact.type) }}</strong>
               <small>
                 {{ flowArtifactStorageLabel(node.outputArtifact.storage) }}
@@ -65,8 +65,48 @@
                 </template>
               </small>
             </div>
-            <em>{{ flowArtifactStateLabel(node.outputArtifact.state) }}</em>
+            <div class="flow-run-trace-artifact-actions">
+              <em>{{ flowArtifactStateLabel(node.outputArtifact.state) }}</em>
+              <button
+                v-if="canInspectArtifact(node)"
+                type="button"
+                :disabled="loadingArtifactKey === node.outputArtifact.key"
+                @click="toggleArtifact(node)"
+              >
+                <Loading
+                  v-if="loadingArtifactKey === node.outputArtifact.key"
+                  class="flow-run-trace-artifact-loading"
+                />
+                <View v-else />
+                {{
+                  loadingArtifactKey === node.outputArtifact.key
+                    ? '加载中'
+                    : artifactIsOpen(node.outputArtifact.key)
+                      ? '收起产物'
+                      : '查看产物'
+                }}
+              </button>
+            </div>
           </div>
+          <Transition name="artifact-reveal">
+            <section
+              v-if="node.outputArtifact && artifactIsOpen(node.outputArtifact.key)"
+              class="flow-run-trace-artifact-detail"
+            >
+              <header>
+                <span>{{ artifactDetails[node.outputArtifact.key]?.mediaType || 'text/plain' }}</span>
+                <button
+                  type="button"
+                  title="复制节点产物"
+                  aria-label="复制节点产物"
+                  @click="copyArtifact(node.outputArtifact.key)"
+                >
+                  <CopyDocument />
+                </button>
+              </header>
+              <pre>{{ artifactDetails[node.outputArtifact.key]?.payload }}</pre>
+            </section>
+          </Transition>
           <button
             v-if="nodeActionLabel && navigableNodeIds.includes(node.nodeId)"
             type="button"
@@ -83,8 +123,18 @@
 </template>
 
 <script setup lang="ts">
-import { Right } from '@element-plus/icons-vue'
-import type { FlowExecutionMode, FlowNodeRunTraceStatus, FlowNodeType, FlowRunTrace } from '@/types'
+import { ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import { CopyDocument, Loading, Right, View } from '@element-plus/icons-vue'
+import type {
+  FlowExecutionMode,
+  FlowNodeArtifactDetail,
+  FlowNodeRunTrace,
+  FlowNodeRunTraceStatus,
+  FlowNodeType,
+  FlowRunTrace
+} from '@/types'
+import { getTaskArtifact } from '@/api/tasks'
 import FlowExecutionPlan from '@/components/flow/FlowExecutionPlan.vue'
 import {
   flowArtifactStateLabel,
@@ -92,7 +142,7 @@ import {
   flowArtifactTypeLabel
 } from '@/utils/flowExecutionPlan'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     trace: FlowRunTrace
     nodeActionLabel?: string
@@ -107,6 +157,54 @@ withDefaults(
 const emit = defineEmits<{
   openNode: [nodeId: string]
 }>()
+
+const artifactDetails = ref<Record<string, FlowNodeArtifactDetail>>({})
+const openArtifactKeys = ref<Record<string, boolean>>({})
+const loadingArtifactKey = ref('')
+
+function canInspectArtifact(node: FlowNodeRunTrace) {
+  return Boolean(
+    props.trace.runId
+      && node.outputArtifact?.storage === 'node-artifact'
+      && node.outputArtifact.state === 'materialized'
+  )
+}
+
+function artifactIsOpen(artifactKey: string) {
+  return Boolean(openArtifactKeys.value[artifactKey])
+}
+
+async function toggleArtifact(node: FlowNodeRunTrace) {
+  const artifact = node.outputArtifact
+  const taskId = props.trace.runId
+  if (!artifact || !taskId || !canInspectArtifact(node)) {
+    return
+  }
+  if (artifactDetails.value[artifact.key]) {
+    openArtifactKeys.value[artifact.key] = !artifactIsOpen(artifact.key)
+    return
+  }
+
+  loadingArtifactKey.value = artifact.key
+  try {
+    const { data } = await getTaskArtifact(taskId, artifact.key)
+    artifactDetails.value[artifact.key] = data
+    openArtifactKeys.value[artifact.key] = true
+  } catch {
+    ElMessage.error('节点产物加载失败')
+  } finally {
+    loadingArtifactKey.value = ''
+  }
+}
+
+async function copyArtifact(artifactKey: string) {
+  try {
+    await navigator.clipboard.writeText(artifactDetails.value[artifactKey]?.payload || '')
+    ElMessage.success('节点产物已复制')
+  } catch {
+    ElMessage.error('复制失败，请展开后手动复制')
+  }
+}
 
 function nodeTypeLabel(type: FlowNodeType) {
   const labels: Record<FlowNodeType, string> = {

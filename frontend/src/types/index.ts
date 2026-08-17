@@ -196,7 +196,7 @@ export type FlowArtifactType =
   | 'instruction-contribution'
   | 'provider-result'
   | 'result-document'
-export type FlowArtifactStorage = 'flow-snapshot' | 'trace-content' | 'task-result'
+export type FlowArtifactStorage = 'flow-snapshot' | 'trace-content' | 'task-result' | 'node-artifact'
 export type FlowArtifactState = 'materialized' | 'failed' | 'skipped'
 
 export interface FlowArtifactContract {
@@ -208,6 +208,24 @@ export interface FlowArtifactContract {
 export interface FlowNodeArtifact extends FlowArtifactContract {
   state: FlowArtifactState
   contentFingerprint?: string | null
+}
+
+export interface FlowNodeArtifactSummary {
+  id: string
+  taskId: string
+  flowId: string
+  nodeId: string
+  sequence: number
+  artifactKey: string
+  artifactType: FlowArtifactType
+  state: FlowArtifactState
+  mediaType?: string | null
+  contentFingerprint?: string | null
+  createdAt: string
+}
+
+export interface FlowNodeArtifactDetail extends FlowNodeArtifactSummary {
+  payload?: string | null
 }
 
 export interface FlowExecutionStep {

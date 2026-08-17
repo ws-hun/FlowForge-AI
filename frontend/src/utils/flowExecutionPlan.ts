@@ -45,7 +45,8 @@ const artifactTypeLabels: Record<FlowArtifactType, string> = {
 const artifactStorageLabels: Record<FlowArtifactStorage, string> = {
   'flow-snapshot': 'Flow 快照',
   'trace-content': '节点轨迹',
-  'task-result': 'Task Result'
+  'task-result': 'Task Result',
+  'node-artifact': '独立节点产物'
 }
 
 const artifactStateLabels: Record<FlowArtifactState, string> = {

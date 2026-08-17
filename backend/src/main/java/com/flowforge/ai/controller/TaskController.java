@@ -1,8 +1,11 @@
 package com.flowforge.ai.controller;
 
+import com.flowforge.ai.dto.FlowNodeArtifactDetailResponse;
+import com.flowforge.ai.dto.FlowNodeArtifactSummaryResponse;
 import com.flowforge.ai.dto.RunTaskRequest;
 import com.flowforge.ai.dto.TaskHistoryResponse;
 import com.flowforge.ai.dto.TaskRunResponse;
+import com.flowforge.ai.service.FlowNodeArtifactQueryService;
 import com.flowforge.ai.service.TaskService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +25,7 @@ import java.util.UUID;
 public class TaskController {
 
     private final TaskService taskService;
+    private final FlowNodeArtifactQueryService flowNodeArtifactQueryService;
 
     @PostMapping("/run")
     public TaskRunResponse runTask(@Valid @RequestBody RunTaskRequest request) {
@@ -36,5 +40,18 @@ public class TaskController {
     @GetMapping
     public List<TaskHistoryResponse> listTasks() {
         return taskService.listTasks();
+    }
+
+    @GetMapping("/{id}/artifacts")
+    public List<FlowNodeArtifactSummaryResponse> listArtifacts(@PathVariable UUID id) {
+        return flowNodeArtifactQueryService.listForTask(id);
+    }
+
+    @GetMapping("/{id}/artifacts/{artifactKey}")
+    public FlowNodeArtifactDetailResponse getArtifact(
+            @PathVariable UUID id,
+            @PathVariable String artifactKey
+    ) {
+        return flowNodeArtifactQueryService.getForTask(id, artifactKey);
     }
 }

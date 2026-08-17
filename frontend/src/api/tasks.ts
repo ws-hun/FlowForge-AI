@@ -1,6 +1,8 @@
 import http from './client'
 import type {
   ApiKeyConfig,
+  FlowNodeArtifactDetail,
+  FlowNodeArtifactSummary,
   ProviderConnectionTestResponse,
   RunTaskPayload,
   SaveApiKeyPayload,
@@ -27,6 +29,16 @@ export function listTasks() {
 
 export function rerunTask(id: string) {
   return http.post<TaskRunResponse>(`/api/tasks/${id}/rerun`)
+}
+
+export function listTaskArtifacts(taskId: string) {
+  return http.get<FlowNodeArtifactSummary[]>(`/api/tasks/${taskId}/artifacts`)
+}
+
+export function getTaskArtifact(taskId: string, artifactKey: string) {
+  return http.get<FlowNodeArtifactDetail>(
+    `/api/tasks/${taskId}/artifacts/${encodeURIComponent(artifactKey)}`
+  )
 }
 
 export function listApiKeys() {

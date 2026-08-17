@@ -3512,6 +3512,136 @@ a {
   }
 }
 
+.flow-run-trace-artifact-actions {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px !important;
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: tokens.$primary;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 700;
+    transition: color 200ms ease-out;
+
+    &:hover:not(:disabled) {
+      color: tokens.$accent;
+    }
+
+    &:disabled {
+      color: tokens.$text-muted;
+      cursor: wait;
+    }
+
+    svg {
+      width: 12px;
+      height: 12px;
+    }
+  }
+}
+
+.flow-run-trace-artifact-loading {
+  animation: artifact-spin 900ms linear infinite;
+}
+
+.flow-run-trace-artifact-detail {
+  overflow: hidden;
+  margin-top: 8px;
+  border: 1px solid rgba(79, 124, 255, 0.14);
+  border-radius: tokens.$radius-md;
+  background: rgba(255, 255, 255, 0.82);
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 34px;
+    padding: 6px 10px;
+    border-bottom: 1px solid tokens.$border;
+    background: rgba(243, 245, 247, 0.72);
+
+    span {
+      color: tokens.$text-muted;
+      font-family: tokens.$mono;
+      font-size: 9px;
+      font-weight: 700;
+    }
+
+    button {
+      display: inline-flex;
+      width: 24px;
+      height: 24px;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border: 0;
+      border-radius: tokens.$radius-sm;
+      background: transparent;
+      color: tokens.$text-muted;
+      cursor: pointer;
+      transition: background 200ms ease-out, color 200ms ease-out;
+
+      &:hover {
+        background: tokens.$surface;
+        color: tokens.$primary;
+      }
+
+      svg {
+        width: 13px;
+        height: 13px;
+      }
+    }
+  }
+
+  pre {
+    max-height: 320px;
+    margin: 0;
+    overflow: auto;
+    padding: 12px;
+    color: tokens.$text-secondary;
+    font-family: tokens.$mono;
+    font-size: 11px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}
+
+.artifact-reveal-enter-active,
+.artifact-reveal-leave-active {
+  transition: opacity 180ms ease-out, transform 180ms ease-out;
+}
+
+.artifact-reveal-enter-from,
+.artifact-reveal-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+@keyframes artifact-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .flow-run-trace-artifact {
+    grid-template-columns: 8px minmax(0, 1fr);
+  }
+
+  .flow-run-trace-artifact-actions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+}
+
 .flow-run-trace-artifact-dot {
   width: 7px;
   height: 7px;

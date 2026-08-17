@@ -34,6 +34,7 @@ describe('flow execution plan labels', () => {
     expect(flowArtifactStorageLabel('flow-snapshot')).toBe('Flow 快照')
     expect(flowArtifactStorageLabel('trace-content')).toBe('节点轨迹')
     expect(flowArtifactStorageLabel('task-result')).toBe('Task Result')
+    expect(flowArtifactStorageLabel('node-artifact')).toBe('独立节点产物')
     expect(flowArtifactStateLabel('materialized')).toBe('已记录')
     expect(flowArtifactStateLabel('failed')).toBe('未生成')
     expect(flowArtifactStateLabel('skipped')).toBe('已跳过')
