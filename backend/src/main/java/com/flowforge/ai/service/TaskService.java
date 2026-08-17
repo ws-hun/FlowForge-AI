@@ -247,7 +247,7 @@ public class TaskService {
                 .errorMessage(errorMessage)
                 .build();
         try {
-            taskFailureRecorder.record(failedTask);
+            taskFailureRecorder.record(failedTask, flowRunTrace);
             return failedTask.getId();
         } catch (RuntimeException persistenceFailure) {
             exception.addSuppressed(persistenceFailure);

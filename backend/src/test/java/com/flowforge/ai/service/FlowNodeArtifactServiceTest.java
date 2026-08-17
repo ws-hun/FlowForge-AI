@@ -10,13 +10,11 @@ import com.flowforge.ai.repository.FlowNodeArtifactRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -93,9 +91,7 @@ class FlowNodeArtifactServiceTest {
             assertThat(artifact.getContentFingerprint())
                     .isEqualTo(compiler.fingerprint(artifact.getPayload()));
         });
-        ArgumentCaptor<Iterable<FlowNodeArtifact>> captor = ArgumentCaptor.forClass(Iterable.class);
-        verify(artifactRepository).saveAll(captor.capture());
-        assertThat(StreamSupport.stream(captor.getValue().spliterator(), false)).hasSize(3);
+        verify(artifactRepository).saveAll(saved);
     }
 
     @Test

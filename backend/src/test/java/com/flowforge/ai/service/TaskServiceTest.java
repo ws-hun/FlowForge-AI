@@ -435,8 +435,10 @@ class TaskServiceTest {
         )))
                 .isSameAs(failure);
 
-        verify(taskFailureRecorder).record(taskCaptor.capture());
+        ArgumentCaptor<FlowRunTraceResponse> traceCaptor = ArgumentCaptor.forClass(FlowRunTraceResponse.class);
+        verify(taskFailureRecorder).record(taskCaptor.capture(), traceCaptor.capture());
         Task failedTask = taskCaptor.getValue();
+        assertThat(traceCaptor.getValue()).isNull();
         assertThat(failedTask.getId()).isNotNull();
         assertThat(failure.getRunId()).isEqualTo(failedTask.getId());
         assertThat(failedTask.getInput()).isEqualTo("Prepare a release plan");
@@ -577,8 +579,10 @@ class TaskServiceTest {
         )))
                 .isSameAs(failure);
 
-        verify(taskFailureRecorder).record(taskCaptor.capture());
+        ArgumentCaptor<FlowRunTraceResponse> traceCaptor = ArgumentCaptor.forClass(FlowRunTraceResponse.class);
+        verify(taskFailureRecorder).record(taskCaptor.capture(), traceCaptor.capture());
         Task failedTask = taskCaptor.getValue();
+        assertThat(traceCaptor.getValue()).isNotNull();
         assertThat(failedTask.getFlowRunTraceJson()).isNotBlank();
         FlowRunTraceResponse trace = new ObjectMapper()
                 .findAndRegisterModules()
