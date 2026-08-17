@@ -85,6 +85,8 @@ class FlowRunTraceResponseTest {
         assertThat(restored.runId()).isEqualTo(runId);
         assertThat(restored.replayedFromTaskId()).isEqualTo(sourceRunId);
         assertThat(restored.executionPlan().version()).isEqualTo("flow-plan-v1");
+        assertThat(restored.executionPlan().steps().get(0).inputArtifact()).isNull();
+        assertThat(restored.executionPlan().steps().get(0).outputArtifact()).isNull();
         assertThat(restored.nodes()).singleElement().satisfies(node -> {
             assertThat(node.nodeId()).isEqualTo("ai-task-1");
             assertThat(node.outputSummary()).isEqualTo("Option A is preferred.");

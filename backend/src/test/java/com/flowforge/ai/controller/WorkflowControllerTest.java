@@ -2,6 +2,7 @@ package com.flowforge.ai.controller;
 
 import com.flowforge.ai.dto.FlowExecutionPreviewRequest;
 import com.flowforge.ai.dto.FlowExecutionPreviewResponse;
+import com.flowforge.ai.dto.FlowArtifactContractResponse;
 import com.flowforge.ai.dto.FlowExecutionPlanResponse;
 import com.flowforge.ai.dto.FlowExecutionSectionResponse;
 import com.flowforge.ai.dto.FlowExecutionStepResponse;
@@ -106,7 +107,7 @@ class WorkflowControllerTest {
                         "Prepare a focused launch"
                 )),
                 new FlowExecutionPlanResponse(
-                        "flow-plan-v1",
+                        "flow-plan-v2",
                         "linear",
                         List.of(new FlowExecutionStepResponse(
                                 1,
@@ -115,7 +116,13 @@ class WorkflowControllerTest {
                                 "Intent",
                                 "supply-context",
                                 List.of(),
-                                false
+                                false,
+                                new FlowArtifactContractResponse("flow:objective", "flow-objective", "flow-snapshot"),
+                                new FlowArtifactContractResponse(
+                                        "node:input-1:context-contribution",
+                                        "context-contribution",
+                                        "trace-content"
+                                )
                         ))
                 ),
                 true,
@@ -138,8 +145,10 @@ class WorkflowControllerTest {
                 .andExpect(jsonPath("$.providerCallCount").value(1))
                 .andExpect(jsonPath("$.compilerVersion").value("flow-compiler-v1"))
                 .andExpect(jsonPath("$.executionInputFingerprint").value("8f2a4a8bd2f30ec4880b55df102d714d1f05d5dc7e60d7cc15bfc5bf5f660b8a"))
-                .andExpect(jsonPath("$.executionPlan.version").value("flow-plan-v1"))
+                .andExpect(jsonPath("$.executionPlan.version").value("flow-plan-v2"))
                 .andExpect(jsonPath("$.executionPlan.steps[0].operation").value("supply-context"))
+                .andExpect(jsonPath("$.executionPlan.steps[0].inputArtifact.type").value("flow-objective"))
+                .andExpect(jsonPath("$.executionPlan.steps[0].outputArtifact.type").value("context-contribution"))
                 .andExpect(jsonPath("$.executionInput").value("Flow: Launch brief\n本次运行上下文:\nFocus on the first release."))
                 .andExpect(jsonPath("$.flowRunSnapshot.flowId").value(flowId.toString()))
                 .andExpect(jsonPath("$.flowRunSnapshot.variableValues.audience").value("product teams"))

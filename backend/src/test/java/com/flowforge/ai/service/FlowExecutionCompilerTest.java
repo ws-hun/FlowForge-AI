@@ -47,7 +47,7 @@ class FlowExecutionCompilerTest {
                         "delivery-focus",
                         "response-contract"
                 );
-        assertThat(compilation.plan().version()).isEqualTo("flow-plan-v1");
+        assertThat(compilation.plan().version()).isEqualTo("flow-plan-v2");
         assertThat(compilation.plan().scheduling()).isEqualTo("linear");
         assertThat(compilation.plan().steps())
                 .extracting(step -> step.nodeId())
@@ -64,12 +64,26 @@ class FlowExecutionCompilerTest {
         assertThat(compilation.plan().steps()).satisfies(steps -> {
             assertThat(steps.get(0).sequence()).isEqualTo(1);
             assertThat(steps.get(0).dependsOnNodeIds()).isEmpty();
+            assertThat(steps.get(0).inputArtifact().key()).isEqualTo("flow:objective");
+            assertThat(steps.get(0).inputArtifact().type()).isEqualTo("flow-objective");
+            assertThat(steps.get(0).inputArtifact().storage()).isEqualTo("flow-snapshot");
+            assertThat(steps.get(0).outputArtifact().type()).isEqualTo("context-contribution");
+            assertThat(steps.get(0).outputArtifact().storage()).isEqualTo("trace-content");
             assertThat(steps.get(1).dependsOnNodeIds()).containsExactly("input-1");
+            assertThat(steps.get(1).inputArtifact()).isEqualTo(steps.get(0).outputArtifact());
             assertThat(steps.get(2).dependsOnNodeIds()).containsExactly("input-2");
+            assertThat(steps.get(2).inputArtifact()).isEqualTo(steps.get(1).outputArtifact());
+            assertThat(steps.get(2).outputArtifact().type()).isEqualTo("instruction-contribution");
             assertThat(steps.get(3).dependsOnNodeIds()).containsExactly("prompt-1");
             assertThat(steps.get(3).providerBoundary()).isTrue();
+            assertThat(steps.get(3).inputArtifact()).isEqualTo(steps.get(2).outputArtifact());
+            assertThat(steps.get(3).outputArtifact().type()).isEqualTo("provider-result");
+            assertThat(steps.get(3).outputArtifact().storage()).isEqualTo("task-result");
             assertThat(steps.get(4).dependsOnNodeIds()).containsExactly("ai-task-1");
             assertThat(steps.get(4).providerBoundary()).isFalse();
+            assertThat(steps.get(4).inputArtifact()).isEqualTo(steps.get(3).outputArtifact());
+            assertThat(steps.get(4).outputArtifact().type()).isEqualTo("result-document");
+            assertThat(steps.get(4).outputArtifact().storage()).isEqualTo("task-result");
         });
     }
 

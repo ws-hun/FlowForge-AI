@@ -1,6 +1,7 @@
 package com.flowforge.ai.service;
 
 import com.flowforge.ai.dto.FlowExecutionSectionResponse;
+import com.flowforge.ai.dto.FlowArtifactContractResponse;
 import com.flowforge.ai.dto.FlowExecutionPlanResponse;
 import com.flowforge.ai.dto.FlowExecutionStepResponse;
 import com.flowforge.ai.dto.FlowNodeDto;
@@ -25,7 +26,7 @@ public class FlowExecutionCompiler {
     static final String EXECUTION_MODE = "single-pass";
     static final int PROVIDER_CALL_COUNT = 1;
     static final String COMPILER_VERSION = "flow-compiler-v1";
-    static final String PLAN_VERSION = "flow-plan-v1";
+    static final String PLAN_VERSION = "flow-plan-v2";
     static final String PLAN_SCHEDULING = "linear";
     private static final Pattern FLOW_VARIABLE_PATTERN = Pattern.compile("\\{[a-zA-Z0-9_\\u4e00-\\u9fa5-]+}");
 
@@ -115,8 +116,14 @@ public class FlowExecutionCompiler {
     FlowExecutionPlanResponse compilePlan(List<FlowNodeDto> nodes) {
         List<FlowExecutionStepResponse> steps = new ArrayList<>();
         String previousNodeId = null;
+        FlowArtifactContractResponse previousArtifact = new FlowArtifactContractResponse(
+                "flow:objective",
+                "flow-objective",
+                "flow-snapshot"
+        );
         for (int index = 0; index < nodes.size(); index++) {
             FlowNodeDto node = nodes.get(index);
+            FlowArtifactContractResponse outputArtifact = outputArtifactFor(node);
             steps.add(new FlowExecutionStepResponse(
                     index + 1,
                     node.id(),
@@ -124,9 +131,12 @@ public class FlowExecutionCompiler {
                     node.title(),
                     operationFor(node.type()),
                     previousNodeId == null ? List.of() : List.of(previousNodeId),
-                    "ai-task".equals(node.type())
+                    "ai-task".equals(node.type()),
+                    previousArtifact,
+                    outputArtifact
             ));
             previousNodeId = node.id();
+            previousArtifact = outputArtifact;
         }
         return new FlowExecutionPlanResponse(PLAN_VERSION, PLAN_SCHEDULING, List.copyOf(steps));
     }
@@ -203,6 +213,26 @@ public class FlowExecutionCompiler {
             case "output" -> "define-delivery";
             default -> throw new IllegalArgumentException("Unsupported Flow node type: " + nodeType);
         };
+    }
+
+    private FlowArtifactContractResponse outputArtifactFor(FlowNodeDto node) {
+        String artifactType = switch (node.type()) {
+            case "input" -> "context-contribution";
+            case "prompt" -> "instruction-contribution";
+            case "ai-task" -> "provider-result";
+            case "output" -> "result-document";
+            default -> throw new IllegalArgumentException("Unsupported Flow node type: " + node.type());
+        };
+        String storage = switch (node.type()) {
+            case "input", "prompt" -> "trace-content";
+            case "ai-task", "output" -> "task-result";
+            default -> throw new IllegalArgumentException("Unsupported Flow node type: " + node.type());
+        };
+        return new FlowArtifactContractResponse(
+                "node:" + node.id() + ":" + artifactType,
+                artifactType,
+                storage
+        );
     }
 
     record Compilation(

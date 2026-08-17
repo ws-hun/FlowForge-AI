@@ -12,6 +12,19 @@ public record FlowExecutionStepResponse(
         String title,
         String operation,
         List<String> dependsOnNodeIds,
-        boolean providerBoundary
+        boolean providerBoundary,
+        FlowArtifactContractResponse inputArtifact,
+        FlowArtifactContractResponse outputArtifact
 ) {
+    public FlowExecutionStepResponse(
+            int sequence,
+            String nodeId,
+            String nodeType,
+            String title,
+            String operation,
+            List<String> dependsOnNodeIds,
+            boolean providerBoundary
+    ) {
+        this(sequence, nodeId, nodeType, title, operation, dependsOnNodeIds, providerBoundary, null, null);
+    }
 }
