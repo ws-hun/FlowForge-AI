@@ -92,6 +92,7 @@
             <section
               v-if="node.outputArtifact && artifactIsOpen(node.outputArtifact.key)"
               class="flow-run-trace-artifact-detail"
+              :data-artifact-key="node.outputArtifact.key"
             >
               <header>
                 <span>{{ artifactDetails[node.outputArtifact.key]?.mediaType || 'text/plain' }}</span>
@@ -104,6 +105,39 @@
                   <CopyDocument />
                 </button>
               </header>
+              <div
+                v-if="artifactDetails[node.outputArtifact.key]?.inputArtifactKey"
+                class="flow-run-trace-artifact-lineage"
+              >
+                <span></span>
+                <div>
+                  <small>上游引用</small>
+                  <strong>
+                    {{ artifactInputTypeLabel(artifactDetails[node.outputArtifact.key]) }}
+                  </strong>
+                  <p>
+                    {{ artifactInputStorageLabel(artifactDetails[node.outputArtifact.key]) }}
+                    <template v-if="artifactDetails[node.outputArtifact.key]?.inputResolution">
+                      · {{ artifactInputResolutionLabel(artifactDetails[node.outputArtifact.key]) }}
+                    </template>
+                    <template v-if="artifactDetails[node.outputArtifact.key]?.inputArtifactState">
+                      · {{ artifactInputStateLabel(artifactDetails[node.outputArtifact.key]) }}
+                    </template>
+                    <template v-if="artifactDetails[node.outputArtifact.key]?.inputContentFingerprint">
+                      · SHA {{ artifactInputFingerprintLabel(artifactDetails[node.outputArtifact.key]) }}
+                    </template>
+                  </p>
+                </div>
+                <button
+                  v-if="canInspectUpstreamArtifact(artifactDetails[node.outputArtifact.key])"
+                  type="button"
+                  :disabled="loadingArtifactKey === artifactDetails[node.outputArtifact.key]?.inputArtifactKey"
+                  @click="revealUpstreamArtifact(artifactDetails[node.outputArtifact.key])"
+                >
+                  <Back />
+                  查看上游
+                </button>
+              </div>
               <pre>{{ artifactDetails[node.outputArtifact.key]?.payload }}</pre>
             </section>
           </Transition>
@@ -123,10 +157,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { CopyDocument, Loading, Right, View } from '@element-plus/icons-vue'
+import { Back, CopyDocument, Loading, Right, View } from '@element-plus/icons-vue'
 import type {
+  FlowArtifactInputResolution,
+  FlowArtifactState,
+  FlowArtifactStorage,
+  FlowArtifactType,
   FlowExecutionMode,
   FlowNodeArtifactDetail,
   FlowNodeRunTrace,
@@ -137,6 +175,7 @@ import type {
 import { getTaskArtifact } from '@/api/tasks'
 import FlowExecutionPlan from '@/components/flow/FlowExecutionPlan.vue'
 import {
+  flowArtifactInputResolutionLabel,
   flowArtifactStateLabel,
   flowArtifactStorageLabel,
   flowArtifactTypeLabel
@@ -185,16 +224,52 @@ async function toggleArtifact(node: FlowNodeRunTrace) {
     return
   }
 
-  loadingArtifactKey.value = artifact.key
-  try {
-    const { data } = await getTaskArtifact(taskId, artifact.key)
-    artifactDetails.value[artifact.key] = data
+  const detail = await loadArtifact(taskId, artifact.key)
+  if (detail) {
     openArtifactKeys.value[artifact.key] = true
+  }
+}
+
+async function loadArtifact(taskId: string, artifactKey: string) {
+  if (artifactDetails.value[artifactKey]) {
+    return artifactDetails.value[artifactKey]
+  }
+  loadingArtifactKey.value = artifactKey
+  try {
+    const { data } = await getTaskArtifact(taskId, artifactKey)
+    artifactDetails.value[artifactKey] = data
+    return data
   } catch {
     ElMessage.error('节点产物加载失败')
+    return null
   } finally {
     loadingArtifactKey.value = ''
   }
+}
+
+function canInspectUpstreamArtifact(detail: FlowNodeArtifactDetail | undefined) {
+  return Boolean(
+    detail?.inputArtifactKey
+      && detail.inputArtifactStorage === 'node-artifact'
+      && detail.inputArtifactState === 'materialized'
+  )
+}
+
+async function revealUpstreamArtifact(detail: FlowNodeArtifactDetail | undefined) {
+  const taskId = props.trace.runId
+  const artifactKey = detail?.inputArtifactKey
+  if (!taskId || !artifactKey || !canInspectUpstreamArtifact(detail)) {
+    return
+  }
+  const upstream = await loadArtifact(taskId, artifactKey)
+  if (!upstream) {
+    return
+  }
+  openArtifactKeys.value[artifactKey] = true
+  await nextTick()
+  const target = Array.from(document.querySelectorAll<HTMLElement>('[data-artifact-key]'))
+    .find((element) => element.dataset.artifactKey === artifactKey)
+  target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
 }
 
 async function copyArtifact(artifactKey: string) {
@@ -204,6 +279,34 @@ async function copyArtifact(artifactKey: string) {
   } catch {
     ElMessage.error('复制失败，请展开后手动复制')
   }
+}
+
+function artifactInputTypeLabel(detail: FlowNodeArtifactDetail | undefined) {
+  return detail?.inputArtifactType
+    ? flowArtifactTypeLabel(detail.inputArtifactType as FlowArtifactType)
+    : '未知产物'
+}
+
+function artifactInputStorageLabel(detail: FlowNodeArtifactDetail | undefined) {
+  return detail?.inputArtifactStorage
+    ? flowArtifactStorageLabel(detail.inputArtifactStorage as FlowArtifactStorage)
+    : '未知来源'
+}
+
+function artifactInputResolutionLabel(detail: FlowNodeArtifactDetail | undefined) {
+  return detail?.inputResolution
+    ? flowArtifactInputResolutionLabel(detail.inputResolution as FlowArtifactInputResolution)
+    : '未知解析方式'
+}
+
+function artifactInputStateLabel(detail: FlowNodeArtifactDetail | undefined) {
+  return detail?.inputArtifactState
+    ? flowArtifactStateLabel(detail.inputArtifactState as FlowArtifactState)
+    : '未知状态'
+}
+
+function artifactInputFingerprintLabel(detail: FlowNodeArtifactDetail | undefined) {
+  return detail?.inputContentFingerprint ? shortFingerprint(detail.inputContentFingerprint) : ''
 }
 
 function nodeTypeLabel(type: FlowNodeType) {

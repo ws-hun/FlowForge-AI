@@ -222,6 +222,12 @@ export interface FlowNodeArtifactSummary {
   state: FlowArtifactState
   mediaType?: string | null
   contentFingerprint?: string | null
+  inputArtifactKey?: string | null
+  inputArtifactType?: FlowArtifactType | null
+  inputArtifactStorage?: FlowArtifactStorage | null
+  inputArtifactState?: FlowArtifactState | null
+  inputResolution?: FlowArtifactInputResolution | null
+  inputContentFingerprint?: string | null
   createdAt: string
 }
 

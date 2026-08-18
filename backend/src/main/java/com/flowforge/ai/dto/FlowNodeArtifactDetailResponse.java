@@ -15,6 +15,12 @@ public record FlowNodeArtifactDetailResponse(
         String mediaType,
         String payload,
         String contentFingerprint,
+        String inputArtifactKey,
+        String inputArtifactType,
+        String inputArtifactStorage,
+        String inputArtifactState,
+        String inputResolution,
+        String inputContentFingerprint,
         LocalDateTime createdAt
 ) {
 }

@@ -55,6 +55,12 @@ public class FlowNodeArtifactQueryService {
                 artifact.getState(),
                 artifact.getMediaType(),
                 artifact.getContentFingerprint(),
+                artifact.getInputArtifactKey(),
+                artifact.getInputArtifactType(),
+                artifact.getInputArtifactStorage(),
+                artifact.getInputArtifactState(),
+                artifact.getInputResolution(),
+                artifact.getInputContentFingerprint(),
                 artifact.getCreatedAt()
         );
     }
@@ -72,6 +78,12 @@ public class FlowNodeArtifactQueryService {
                 artifact.getMediaType(),
                 artifact.getPayload(),
                 artifact.getContentFingerprint(),
+                artifact.getInputArtifactKey(),
+                artifact.getInputArtifactType(),
+                artifact.getInputArtifactStorage(),
+                artifact.getInputArtifactState(),
+                artifact.getInputResolution(),
+                artifact.getInputContentFingerprint(),
                 artifact.getCreatedAt()
         );
     }

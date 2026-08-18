@@ -190,6 +190,12 @@ class TaskControllerTest {
                         "materialized",
                         "text/plain",
                         "a".repeat(64),
+                        "flow:objective",
+                        "flow-objective",
+                        "flow-snapshot",
+                        "materialized",
+                        "compiled-reference",
+                        "c".repeat(64),
                         LocalDateTime.of(2026, 8, 17, 10, 30)
                 )
         ));
@@ -198,6 +204,8 @@ class TaskControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].artifactKey").value(artifactKey))
                 .andExpect(jsonPath("$[0].sequence").value(1))
+                .andExpect(jsonPath("$[0].inputArtifactKey").value("flow:objective"))
+                .andExpect(jsonPath("$[0].inputResolution").value("compiled-reference"))
                 .andExpect(jsonPath("$[0].payload").doesNotExist());
 
         verify(flowNodeArtifactQueryService).listForTask(taskId);
@@ -222,6 +230,12 @@ class TaskControllerTest {
                         "text/markdown",
                         "Summary\nResult",
                         "b".repeat(64),
+                        "node:input-1:context-contribution",
+                        "context-contribution",
+                        "node-artifact",
+                        "materialized",
+                        "compiled-reference",
+                        "c".repeat(64),
                         LocalDateTime.of(2026, 8, 17, 10, 31)
                 )
         );
@@ -230,7 +244,11 @@ class TaskControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.artifactKey").value(artifactKey))
                 .andExpect(jsonPath("$.payload").value("Summary\nResult"))
-                .andExpect(jsonPath("$.mediaType").value("text/markdown"));
+                .andExpect(jsonPath("$.mediaType").value("text/markdown"))
+                .andExpect(jsonPath("$.inputArtifactKey")
+                        .value("node:input-1:context-contribution"))
+                .andExpect(jsonPath("$.inputArtifactStorage").value("node-artifact"))
+                .andExpect(jsonPath("$.inputResolution").value("compiled-reference"));
 
         verify(flowNodeArtifactQueryService).getForTask(taskId, artifactKey);
     }

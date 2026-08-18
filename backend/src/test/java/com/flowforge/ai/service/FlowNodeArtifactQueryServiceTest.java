@@ -72,6 +72,11 @@ class FlowNodeArtifactQueryServiceTest {
         assertThat(response.artifactKey()).isEqualTo(artifact.getArtifactKey());
         assertThat(response.payload()).isEqualTo("Summary\nResult");
         assertThat(response.mediaType()).isEqualTo("text/markdown");
+        assertThat(response.inputArtifactKey()).isEqualTo("node:input-1:context-contribution");
+        assertThat(response.inputArtifactStorage()).isEqualTo("node-artifact");
+        assertThat(response.inputArtifactState()).isEqualTo("materialized");
+        assertThat(response.inputResolution()).isEqualTo("compiled-reference");
+        assertThat(response.inputContentFingerprint()).hasSize(64);
     }
 
     @Test
@@ -117,6 +122,16 @@ class FlowNodeArtifactQueryServiceTest {
                 .mediaType(nodeId.startsWith("input") ? "text/plain" : "text/markdown")
                 .payload(payload)
                 .contentFingerprint("a".repeat(64))
+                .inputArtifactKey(sequence == 1
+                        ? "flow:objective"
+                        : "node:input-1:context-contribution")
+                .inputArtifactType(sequence == 1
+                        ? "flow-objective"
+                        : "context-contribution")
+                .inputArtifactStorage(sequence == 1 ? "flow-snapshot" : "node-artifact")
+                .inputArtifactState("materialized")
+                .inputResolution("compiled-reference")
+                .inputContentFingerprint("b".repeat(64))
                 .createdAt(LocalDateTime.of(2026, 8, 17, 10, sequence))
                 .build();
     }
