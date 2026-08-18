@@ -1,6 +1,7 @@
 package com.flowforge.ai.service;
 
 import com.flowforge.ai.dto.FlowRunTraceResponse;
+import com.flowforge.ai.dto.FlowRunSnapshotResponse;
 import com.flowforge.ai.entity.Task;
 import com.flowforge.ai.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,8 +17,8 @@ public class TaskFailureRecorder {
     private final FlowNodeArtifactService flowNodeArtifactService;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void record(Task task, FlowRunTraceResponse trace) {
+    public void record(Task task, FlowRunSnapshotResponse snapshot, FlowRunTraceResponse trace) {
         taskRepository.save(task);
-        flowNodeArtifactService.persist(task, trace, null);
+        flowNodeArtifactService.persist(task, snapshot, trace, null);
     }
 }

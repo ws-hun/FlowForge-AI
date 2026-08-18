@@ -1,7 +1,11 @@
 package com.flowforge.ai.service;
 
+import com.flowforge.ai.dto.FlowArtifactContractResponse;
+import com.flowforge.ai.dto.FlowExecutionPlanResponse;
+import com.flowforge.ai.dto.FlowExecutionStepResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactResponse;
 import com.flowforge.ai.dto.FlowNodeRunTraceResponse;
+import com.flowforge.ai.dto.FlowRunSnapshotResponse;
 import com.flowforge.ai.dto.FlowRunTraceResponse;
 import com.flowforge.ai.dto.OpenAiTaskResult;
 import com.flowforge.ai.entity.FlowNodeArtifact;
@@ -13,7 +17,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -71,7 +78,7 @@ class FlowNodeArtifactServiceTest {
         ));
         when(artifactRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        List<FlowNodeArtifact> saved = artifactService.persist(task, trace, result);
+        List<FlowNodeArtifact> saved = artifactService.persist(task, snapshot(flowId), trace, result);
 
         assertThat(saved).extracting(FlowNodeArtifact::getSequenceNumber).containsExactly(1, 2, 3);
         assertThat(saved).extracting(FlowNodeArtifact::getArtifactKey)
@@ -84,6 +91,24 @@ class FlowNodeArtifactServiceTest {
                 .containsExactly("Product context", "Focused summary\nDetailed result", "Detailed result");
         assertThat(saved).extracting(FlowNodeArtifact::getMediaType)
                 .containsExactly("text/plain", "text/markdown", "text/markdown");
+        assertThat(saved).extracting(FlowNodeArtifact::getInputArtifactKey)
+                .containsExactly(
+                        "flow:objective",
+                        "node:input-1:context-contribution",
+                        "node:ai-task-1:provider-result"
+                );
+        assertThat(saved).extracting(FlowNodeArtifact::getInputArtifactStorage)
+                .containsExactly("flow-snapshot", "node-artifact", "node-artifact");
+        assertThat(saved).extracting(FlowNodeArtifact::getInputArtifactState)
+                .containsExactly("materialized", "materialized", "materialized");
+        assertThat(saved).extracting(FlowNodeArtifact::getInputResolution)
+                .containsOnly("compiled-reference");
+        assertThat(saved).extracting(FlowNodeArtifact::getInputContentFingerprint)
+                .containsExactly(
+                        compiler.fingerprint("Flow objective"),
+                        compiler.fingerprint("Product context"),
+                        compiler.fingerprint("Focused summary\nDetailed result")
+                );
         assertThat(saved).allSatisfy(artifact -> {
             assertThat(artifact.getTaskId()).isEqualTo(taskId);
             assertThat(artifact.getFlowId()).isEqualTo(flowId);
@@ -106,7 +131,7 @@ class FlowNodeArtifactServiceTest {
                 "incorrect-fingerprint"
         )));
 
-        assertThatThrownBy(() -> artifactService.persist(task, trace, null))
+        assertThatThrownBy(() -> artifactService.persist(task, snapshot(trace.flowId()), trace, null))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Flow node artifact fingerprint does not match its payload");
 
@@ -117,7 +142,8 @@ class FlowNodeArtifactServiceTest {
     void persistsFailedAndSkippedArtifactsWithoutInventingPayloads() {
         UUID taskId = UUID.randomUUID();
         Task task = Task.builder().id(taskId).build();
-        FlowRunTraceResponse trace = trace(UUID.randomUUID(), List.of(
+        UUID flowId = UUID.randomUUID();
+        FlowRunTraceResponse trace = trace(flowId, List.of(
                 node(
                         "input-1",
                         "input",
@@ -148,7 +174,7 @@ class FlowNodeArtifactServiceTest {
         ));
         when(artifactRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        List<FlowNodeArtifact> saved = artifactService.persist(task, trace, null);
+        List<FlowNodeArtifact> saved = artifactService.persist(task, snapshot(flowId), trace, null);
 
         assertThat(saved).extracting(FlowNodeArtifact::getState)
                 .containsExactly("materialized", "failed", "skipped");
@@ -156,9 +182,52 @@ class FlowNodeArtifactServiceTest {
                 .containsExactly("Product context", null, null);
         assertThat(saved).extracting(FlowNodeArtifact::getContentFingerprint)
                 .containsExactly(compiler.fingerprint("Product context"), null, null);
+        assertThat(saved).extracting(FlowNodeArtifact::getInputArtifactKey)
+                .containsExactly(
+                        "flow:objective",
+                        "node:input-1:context-contribution",
+                        "node:ai-task-1:provider-result"
+                );
+        assertThat(saved).extracting(FlowNodeArtifact::getInputArtifactState)
+                .containsExactly("materialized", "materialized", "failed");
+        assertThat(saved).extracting(FlowNodeArtifact::getInputContentFingerprint)
+                .containsExactly(
+                        compiler.fingerprint("Flow objective"),
+                        compiler.fingerprint("Product context"),
+                        null
+                );
     }
 
     private FlowRunTraceResponse trace(UUID flowId, List<FlowNodeRunTraceResponse> nodes) {
+        List<FlowExecutionStepResponse> steps = new ArrayList<>();
+        FlowArtifactContractResponse previousArtifact = new FlowArtifactContractResponse(
+                "flow:objective",
+                "flow-objective",
+                "flow-snapshot"
+        );
+        String previousNodeId = null;
+        for (int index = 0; index < nodes.size(); index++) {
+            FlowNodeRunTraceResponse node = nodes.get(index);
+            FlowArtifactContractResponse outputArtifact = new FlowArtifactContractResponse(
+                    node.outputArtifact().key(),
+                    node.outputArtifact().type(),
+                    node.outputArtifact().storage()
+            );
+            steps.add(new FlowExecutionStepResponse(
+                    index + 1,
+                    node.nodeId(),
+                    node.nodeType(),
+                    node.title(),
+                    operation(node.nodeType()),
+                    previousNodeId == null ? List.of() : List.of(previousNodeId),
+                    "ai-task".equals(node.nodeType()),
+                    previousArtifact,
+                    "compiled-reference",
+                    outputArtifact
+            ));
+            previousArtifact = outputArtifact;
+            previousNodeId = node.nodeId();
+        }
         return new FlowRunTraceResponse(
                 UUID.randomUUID(),
                 flowId,
@@ -169,9 +238,35 @@ class FlowNodeArtifactServiceTest {
                 "provider-input-fingerprint",
                 "compiled-flow",
                 null,
-                null,
+                new FlowExecutionPlanResponse("flow-plan-v4", "linear", steps),
                 nodes
         );
+    }
+
+    private FlowRunSnapshotResponse snapshot(UUID flowId) {
+        return new FlowRunSnapshotResponse(
+                flowId,
+                "Lineage Flow",
+                "Flow objective",
+                List.of(),
+                null,
+                null,
+                null,
+                null,
+                LocalDateTime.of(2026, 8, 18, 10, 0),
+                "",
+                Map.of()
+        );
+    }
+
+    private String operation(String nodeType) {
+        return switch (nodeType) {
+            case "input" -> "supply-context";
+            case "prompt" -> "supply-instructions";
+            case "ai-task" -> "invoke-provider";
+            case "output" -> "define-delivery";
+            default -> throw new IllegalArgumentException("Unsupported node type");
+        };
     }
 
     private FlowNodeRunTraceResponse node(

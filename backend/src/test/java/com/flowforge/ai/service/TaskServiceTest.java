@@ -292,6 +292,7 @@ class TaskServiceTest {
                         .matches("[0-9a-f]{64}"));
         verify(flowNodeArtifactService).persist(
                 org.mockito.ArgumentMatchers.eq(savedTask),
+                org.mockito.ArgumentMatchers.eq(response.flowRunSnapshot()),
                 org.mockito.ArgumentMatchers.eq(response.flowRunTrace()),
                 any(OpenAiTaskResult.class)
         );
@@ -437,9 +438,11 @@ class TaskServiceTest {
         )))
                 .isSameAs(failure);
 
+        ArgumentCaptor<FlowRunSnapshotResponse> snapshotCaptor = ArgumentCaptor.forClass(FlowRunSnapshotResponse.class);
         ArgumentCaptor<FlowRunTraceResponse> traceCaptor = ArgumentCaptor.forClass(FlowRunTraceResponse.class);
-        verify(taskFailureRecorder).record(taskCaptor.capture(), traceCaptor.capture());
+        verify(taskFailureRecorder).record(taskCaptor.capture(), snapshotCaptor.capture(), traceCaptor.capture());
         Task failedTask = taskCaptor.getValue();
+        assertThat(snapshotCaptor.getValue()).isNull();
         assertThat(traceCaptor.getValue()).isNull();
         assertThat(failedTask.getId()).isNotNull();
         assertThat(failure.getRunId()).isEqualTo(failedTask.getId());
@@ -581,9 +584,11 @@ class TaskServiceTest {
         )))
                 .isSameAs(failure);
 
+        ArgumentCaptor<FlowRunSnapshotResponse> snapshotCaptor = ArgumentCaptor.forClass(FlowRunSnapshotResponse.class);
         ArgumentCaptor<FlowRunTraceResponse> traceCaptor = ArgumentCaptor.forClass(FlowRunTraceResponse.class);
-        verify(taskFailureRecorder).record(taskCaptor.capture(), traceCaptor.capture());
+        verify(taskFailureRecorder).record(taskCaptor.capture(), snapshotCaptor.capture(), traceCaptor.capture());
         Task failedTask = taskCaptor.getValue();
+        assertThat(snapshotCaptor.getValue()).isNotNull();
         assertThat(traceCaptor.getValue()).isNotNull();
         assertThat(failedTask.getFlowRunTraceJson()).isNotBlank();
         FlowRunTraceResponse trace = new ObjectMapper()

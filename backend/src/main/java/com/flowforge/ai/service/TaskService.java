@@ -198,7 +198,7 @@ public class TaskService {
 
         Task savedTask = taskRepository.save(task);
         if (flowRunTrace != null) {
-            flowNodeArtifactService.persist(savedTask, flowRunTrace, aiResult);
+            flowNodeArtifactService.persist(savedTask, source.flowRunSnapshot(), flowRunTrace, aiResult);
         }
 
         return new TaskRunResponse(
@@ -247,7 +247,7 @@ public class TaskService {
                 .errorMessage(errorMessage)
                 .build();
         try {
-            taskFailureRecorder.record(failedTask, flowRunTrace);
+            taskFailureRecorder.record(failedTask, source.flowRunSnapshot(), flowRunTrace);
             return failedTask.getId();
         } catch (RuntimeException persistenceFailure) {
             exception.addSuppressed(persistenceFailure);
