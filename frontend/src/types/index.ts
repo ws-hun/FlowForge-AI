@@ -198,6 +198,7 @@ export type FlowArtifactType =
   | 'result-document'
 export type FlowArtifactStorage = 'flow-snapshot' | 'trace-content' | 'task-result' | 'node-artifact'
 export type FlowArtifactState = 'materialized' | 'failed' | 'skipped'
+export type FlowArtifactInputResolution = 'compiled-reference' | 'persisted-artifact'
 
 export interface FlowArtifactContract {
   key: string
@@ -237,6 +238,7 @@ export interface FlowExecutionStep {
   dependsOnNodeIds: string[]
   providerBoundary: boolean
   inputArtifact?: FlowArtifactContract | null
+  inputResolution?: FlowArtifactInputResolution | null
   outputArtifact?: FlowArtifactContract | null
 }
 

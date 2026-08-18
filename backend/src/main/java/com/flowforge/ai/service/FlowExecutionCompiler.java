@@ -26,8 +26,9 @@ public class FlowExecutionCompiler {
     static final String EXECUTION_MODE = "single-pass";
     static final int PROVIDER_CALL_COUNT = 1;
     static final String COMPILER_VERSION = "flow-compiler-v1";
-    static final String PLAN_VERSION = "flow-plan-v3";
+    static final String PLAN_VERSION = "flow-plan-v4";
     static final String PLAN_SCHEDULING = "linear";
+    static final String INPUT_RESOLUTION = "compiled-reference";
     private static final Pattern FLOW_VARIABLE_PATTERN = Pattern.compile("\\{[a-zA-Z0-9_\\u4e00-\\u9fa5-]+}");
 
     Compilation compile(FlowRunSnapshotResponse snapshot) {
@@ -133,6 +134,7 @@ public class FlowExecutionCompiler {
                     previousNodeId == null ? List.of() : List.of(previousNodeId),
                     "ai-task".equals(node.type()),
                     previousArtifact,
+                    INPUT_RESOLUTION,
                     outputArtifact
             ));
             previousNodeId = node.id();

@@ -30,6 +30,9 @@
           </div>
           <small>
             {{ step.dependsOnNodeIds.length ? '承接前置编译内容' : '执行起点' }}
+            <template v-if="step.inputResolution">
+              · {{ flowArtifactInputResolutionLabel(step.inputResolution) }}
+            </template>
             <template v-if="step.providerBoundary"> · 唯一 Provider 边界</template>
           </small>
           <button
@@ -52,6 +55,7 @@ import { computed } from 'vue'
 import { Right } from '@element-plus/icons-vue'
 import type { FlowExecutionPlan } from '@/types'
 import {
+  flowArtifactInputResolutionLabel,
   flowArtifactStorageLabel,
   flowArtifactTypeLabel,
   flowExecutionOperationLabel,

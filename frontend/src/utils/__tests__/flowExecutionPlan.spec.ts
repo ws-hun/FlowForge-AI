@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  flowArtifactInputResolutionLabel,
   flowArtifactStorageLabel,
   flowArtifactStateLabel,
   flowArtifactTypeLabel,
@@ -38,5 +39,7 @@ describe('flow execution plan labels', () => {
     expect(flowArtifactStateLabel('materialized')).toBe('已记录')
     expect(flowArtifactStateLabel('failed')).toBe('未生成')
     expect(flowArtifactStateLabel('skipped')).toBe('已跳过')
+    expect(flowArtifactInputResolutionLabel('compiled-reference')).toBe('单次编译引用')
+    expect(flowArtifactInputResolutionLabel('persisted-artifact')).toBe('持久化产物输入')
   })
 })

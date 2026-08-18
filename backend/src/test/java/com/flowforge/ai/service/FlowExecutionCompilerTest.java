@@ -47,7 +47,7 @@ class FlowExecutionCompilerTest {
                         "delivery-focus",
                         "response-contract"
                 );
-        assertThat(compilation.plan().version()).isEqualTo("flow-plan-v3");
+        assertThat(compilation.plan().version()).isEqualTo("flow-plan-v4");
         assertThat(compilation.plan().scheduling()).isEqualTo("linear");
         assertThat(compilation.plan().steps())
                 .extracting(step -> step.nodeId())
@@ -62,6 +62,8 @@ class FlowExecutionCompilerTest {
                         "define-delivery"
                 );
         assertThat(compilation.plan().steps()).satisfies(steps -> {
+            assertThat(steps).allSatisfy(step -> assertThat(step.inputResolution())
+                    .isEqualTo("compiled-reference"));
             assertThat(steps.get(0).sequence()).isEqualTo(1);
             assertThat(steps.get(0).dependsOnNodeIds()).isEmpty();
             assertThat(steps.get(0).inputArtifact().key()).isEqualTo("flow:objective");

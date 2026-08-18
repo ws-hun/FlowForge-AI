@@ -243,7 +243,9 @@ class TaskServiceTest {
                 .isEqualTo(new FlowExecutionCompiler().fingerprint(executionInput));
         assertThat(response.flowRunTrace().inputSource()).isEqualTo("compiled-flow");
         assertThat(response.flowRunTrace().replayedFromTaskId()).isNull();
-        assertThat(response.flowRunTrace().executionPlan().version()).isEqualTo("flow-plan-v3");
+        assertThat(response.flowRunTrace().executionPlan().version()).isEqualTo("flow-plan-v4");
+        assertThat(response.flowRunTrace().executionPlan().steps())
+                .allSatisfy(step -> assertThat(step.inputResolution()).isEqualTo("compiled-reference"));
         assertThat(response.flowRunTrace().executionPlan().steps())
                 .filteredOn(step -> step.providerBoundary())
                 .singleElement()
@@ -977,7 +979,7 @@ class TaskServiceTest {
         assertThat(response.executable()).isTrue();
         assertThat(response.missingVariables()).isEmpty();
         assertThat(response.incompleteNodes()).isEmpty();
-        assertThat(response.executionPlan().version()).isEqualTo("flow-plan-v3");
+        assertThat(response.executionPlan().version()).isEqualTo("flow-plan-v4");
         assertThat(response.executionPlan().steps())
                 .extracting(step -> step.nodeId())
                 .containsExactly("input-1", "prompt-1", "ai-task-1", "output-1");

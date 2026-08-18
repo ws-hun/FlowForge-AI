@@ -1,4 +1,5 @@
 import type {
+  FlowArtifactInputResolution,
   FlowArtifactStorage,
   FlowArtifactState,
   FlowArtifactType,
@@ -55,6 +56,11 @@ const artifactStateLabels: Record<FlowArtifactState, string> = {
   skipped: '已跳过'
 }
 
+const artifactInputResolutionLabels: Record<FlowArtifactInputResolution, string> = {
+  'compiled-reference': '单次编译引用',
+  'persisted-artifact': '持久化产物输入'
+}
+
 export function flowNodeTypeLabel(type: FlowNodeType) {
   return nodeTypeLabels[type]
 }
@@ -81,4 +87,8 @@ export function flowArtifactStorageLabel(storage: FlowArtifactStorage) {
 
 export function flowArtifactStateLabel(state: FlowArtifactState) {
   return artifactStateLabels[state]
+}
+
+export function flowArtifactInputResolutionLabel(resolution: FlowArtifactInputResolution) {
+  return artifactInputResolutionLabels[resolution]
 }

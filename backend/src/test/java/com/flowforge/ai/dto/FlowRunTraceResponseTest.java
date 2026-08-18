@@ -87,6 +87,7 @@ class FlowRunTraceResponseTest {
         assertThat(restored.replayedFromTaskId()).isEqualTo(sourceRunId);
         assertThat(restored.executionPlan().version()).isEqualTo("flow-plan-v1");
         assertThat(restored.executionPlan().steps().get(0).inputArtifact()).isNull();
+        assertThat(restored.executionPlan().steps().get(0).inputResolution()).isNull();
         assertThat(restored.executionPlan().steps().get(0).outputArtifact()).isNull();
         assertThat(restored.nodes()).singleElement().satisfies(node -> {
             assertThat(node.nodeId()).isEqualTo("ai-task-1");
@@ -160,6 +161,7 @@ class FlowRunTraceResponseTest {
         assertThat(restored).isEqualTo(trace);
         assertThat(restored.executionPlan().version()).isEqualTo("flow-plan-v2");
         assertThat(restored.executionPlan().steps().get(0).inputArtifact()).isEqualTo(inputArtifact);
+        assertThat(restored.executionPlan().steps().get(0).inputResolution()).isNull();
         assertThat(restored.executionPlan().steps().get(0).outputArtifact()).isEqualTo(outputArtifact);
         assertThat(restored.nodes().get(0).outputArtifact().state()).isEqualTo("materialized");
         assertThat(restored.nodes().get(0).outputArtifact().contentFingerprint()).isEqualTo("42f34ab4");
