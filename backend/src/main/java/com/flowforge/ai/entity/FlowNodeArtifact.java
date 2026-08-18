@@ -62,6 +62,24 @@ public class FlowNodeArtifact {
     @Column(name = "content_fingerprint", updatable = false, length = 64)
     private String contentFingerprint;
 
+    @Column(name = "input_artifact_key", updatable = false, length = 240)
+    private String inputArtifactKey;
+
+    @Column(name = "input_artifact_type", updatable = false, length = 60)
+    private String inputArtifactType;
+
+    @Column(name = "input_artifact_storage", updatable = false, length = 40)
+    private String inputArtifactStorage;
+
+    @Column(name = "input_artifact_state", updatable = false, length = 24)
+    private String inputArtifactState;
+
+    @Column(name = "input_resolution", updatable = false, length = 40)
+    private String inputResolution;
+
+    @Column(name = "input_content_fingerprint", updatable = false, length = 64)
+    private String inputContentFingerprint;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
