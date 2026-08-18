@@ -103,6 +103,46 @@ class FlowNodeArtifactQueryServiceTest {
                 .hasMessage("Flow node artifact not found");
     }
 
+    @Test
+    void keepsLegacyArtifactsReadableWithoutInventingLineage() {
+        UUID taskId = UUID.randomUUID();
+        FlowNodeArtifact legacyArtifact = FlowNodeArtifact.builder()
+                .id(UUID.randomUUID())
+                .taskId(taskId)
+                .flowId(UUID.randomUUID())
+                .nodeId("input-legacy")
+                .sequenceNumber(1)
+                .artifactKey("node:input-legacy:context-contribution")
+                .artifactType("context-contribution")
+                .state("materialized")
+                .mediaType("text/plain")
+                .payload("Legacy context")
+                .contentFingerprint("a".repeat(64))
+                .createdAt(LocalDateTime.of(2026, 8, 17, 9, 0))
+                .build();
+        when(taskRepository.existsById(taskId)).thenReturn(true);
+        when(artifactRepository.findByTaskIdOrderBySequenceNumberAsc(taskId))
+                .thenReturn(List.of(legacyArtifact));
+        when(artifactRepository.findByTaskIdAndArtifactKey(taskId, legacyArtifact.getArtifactKey()))
+                .thenReturn(Optional.of(legacyArtifact));
+
+        FlowNodeArtifactSummaryResponse summary = queryService.listForTask(taskId).get(0);
+        FlowNodeArtifactDetailResponse detail = queryService.getForTask(taskId, legacyArtifact.getArtifactKey());
+
+        assertThat(summary.inputArtifactKey()).isNull();
+        assertThat(summary.inputArtifactType()).isNull();
+        assertThat(summary.inputArtifactStorage()).isNull();
+        assertThat(summary.inputArtifactState()).isNull();
+        assertThat(summary.inputResolution()).isNull();
+        assertThat(summary.inputContentFingerprint()).isNull();
+        assertThat(detail.inputArtifactKey()).isNull();
+        assertThat(detail.inputArtifactType()).isNull();
+        assertThat(detail.inputArtifactStorage()).isNull();
+        assertThat(detail.inputArtifactState()).isNull();
+        assertThat(detail.inputResolution()).isNull();
+        assertThat(detail.inputContentFingerprint()).isNull();
+    }
+
     private FlowNodeArtifact artifact(
             UUID taskId,
             String nodeId,

@@ -116,8 +116,9 @@ Current Stage 3 capabilities:
 - Provider gateway errors return the saved failed run identity only after failure persistence succeeds, allowing AI Command and Flow Space to reopen the exact immutable failure context instead of locating it through timestamps or transient client state.
 - Run comparison explains whether two results used the same Provider input, preferring persisted SHA-256 fingerprints and explicitly falling back to exact stored input text for legacy records instead of overstating verification.
 - Runtime contract tests lock preview and execution to the same exact Provider input and fingerprint, preserve modern run identity through JSON round trips, and keep legacy trace fields explicitly unknown until a real runtime supplied them.
-- Flow previews and immutable run traces now share `flow-plan-v3`, a deterministic linear node plan that records dependencies, node responsibilities, independently addressable output artifact contracts, and the single AI Task Provider boundary while keeping legacy plans readable.
+- Flow previews and immutable run traces now share `flow-plan-v4`, a deterministic linear node plan that records dependencies, node responsibilities, independently addressable artifact contracts, `compiled-reference` input resolution, and the single AI Task Provider boundary while keeping legacy plans readable.
 - Successful and failed Flow runs atomically persist one `node-artifact` record per planned node. Materialized payloads are fingerprint-verified and inspectable inside the run trace, while skipped and failed outputs remain explicitly payload-free.
+- Current node artifacts preserve navigable upstream lineage with key, contract, storage, state, resolution, and available content fingerprint. This explains the single compiled request without claiming that downstream nodes already load persisted payloads or invoke the Provider independently.
 - Flow Space explains each selected node's runtime role and predecessor context during creation, so users can design the execution path without mistaking compiled Input, Prompt, or Output nodes for independent model calls.
 - Provider HTTP calls use explicit configurable connect and read timeouts, convert transport failures into stable gateway errors, and preserve failed runs for recovery instead of hanging the workspace indefinitely.
 - Provider HTTP status failures are translated into actionable authentication, rate-limit, timeout, request, or availability messages without exposing raw upstream response bodies to the workspace or History.
@@ -167,7 +168,7 @@ Current Stage 3 priorities:
 1. Make Flow creation and editing calmer and more predictable.
 2. Preserve complete execution context for comparison and reuse.
 3. Improve the Prompt / Flow / Result reuse loop.
-4. Define how downstream nodes resolve and validate persisted upstream artifacts without breaking immutable historical replay.
+4. Design a future `persisted-artifact` resolution contract without changing the honest `single-pass` behavior of existing runs.
 5. Introduce true node-level execution only after per-node Provider provenance and explicit stop, skip, and retry policy are real backend contracts.
 
 ---

@@ -166,4 +166,59 @@ class FlowRunTraceResponseTest {
         assertThat(restored.nodes().get(0).outputArtifact().state()).isEqualTo("materialized");
         assertThat(restored.nodes().get(0).outputArtifact().contentFingerprint()).isEqualTo("42f34ab4");
     }
+
+    @Test
+    void preservesV4InputResolutionAcrossJsonRoundTrips() throws Exception {
+        FlowArtifactContractResponse inputArtifact = new FlowArtifactContractResponse(
+                "node:input-1:context-contribution",
+                "context-contribution",
+                "node-artifact"
+        );
+        FlowArtifactContractResponse outputArtifact = new FlowArtifactContractResponse(
+                "node:ai-task-1:provider-result",
+                "provider-result",
+                "node-artifact"
+        );
+        FlowRunTraceResponse trace = new FlowRunTraceResponse(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "completed",
+                "single-pass",
+                1,
+                "flow-compiler-v1",
+                "provider-input-fingerprint",
+                "compiled-flow",
+                null,
+                new FlowExecutionPlanResponse(
+                        "flow-plan-v4",
+                        "linear",
+                        List.of(new FlowExecutionStepResponse(
+                                2,
+                                "ai-task-1",
+                                "ai-task",
+                                "Generate result",
+                                "invoke-provider",
+                                List.of("input-1"),
+                                true,
+                                inputArtifact,
+                                "compiled-reference",
+                                outputArtifact
+                        ))
+                ),
+                List.of()
+        );
+
+        FlowRunTraceResponse restored = objectMapper.readValue(
+                objectMapper.writeValueAsString(trace),
+                FlowRunTraceResponse.class
+        );
+
+        assertThat(restored).isEqualTo(trace);
+        assertThat(restored.executionPlan().version()).isEqualTo("flow-plan-v4");
+        assertThat(restored.executionPlan().steps()).singleElement().satisfies(step -> {
+            assertThat(step.inputArtifact()).isEqualTo(inputArtifact);
+            assertThat(step.inputResolution()).isEqualTo("compiled-reference");
+            assertThat(step.outputArtifact()).isEqualTo(outputArtifact);
+        });
+    }
 }

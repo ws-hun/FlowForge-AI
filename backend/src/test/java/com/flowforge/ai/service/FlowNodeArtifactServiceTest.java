@@ -198,6 +198,158 @@ class FlowNodeArtifactServiceTest {
                 );
     }
 
+    @Test
+    void rejectsLineageWhenPlanOrderDoesNotMatchNodeTrace() {
+        Task task = Task.builder().id(UUID.randomUUID()).build();
+        UUID flowId = UUID.randomUUID();
+        FlowRunTraceResponse trace = trace(flowId, List.of(node(
+                "input-1",
+                "input",
+                "Context",
+                "context-contribution",
+                "Product context",
+                compiler.fingerprint("Product context")
+        )));
+        FlowExecutionStepResponse step = trace.executionPlan().steps().get(0);
+        FlowExecutionStepResponse mismatchedStep = new FlowExecutionStepResponse(
+                step.sequence(),
+                "input-other",
+                step.nodeType(),
+                step.title(),
+                step.operation(),
+                step.dependsOnNodeIds(),
+                step.providerBoundary(),
+                step.inputArtifact(),
+                step.inputResolution(),
+                step.outputArtifact()
+        );
+
+        assertThatThrownBy(() -> artifactService.persist(
+                task,
+                snapshot(flowId),
+                withSteps(trace, List.of(mismatchedStep)),
+                null
+        ))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Flow artifact plan order does not match node trace");
+
+        verifyNoInteractions(artifactRepository);
+    }
+
+    @Test
+    void rejectsLineageWhenOutputContractDoesNotMatchNodeTrace() {
+        Task task = Task.builder().id(UUID.randomUUID()).build();
+        UUID flowId = UUID.randomUUID();
+        FlowRunTraceResponse trace = trace(flowId, List.of(node(
+                "input-1",
+                "input",
+                "Context",
+                "context-contribution",
+                "Product context",
+                compiler.fingerprint("Product context")
+        )));
+        FlowExecutionStepResponse step = trace.executionPlan().steps().get(0);
+        FlowExecutionStepResponse mismatchedStep = new FlowExecutionStepResponse(
+                step.sequence(),
+                step.nodeId(),
+                step.nodeType(),
+                step.title(),
+                step.operation(),
+                step.dependsOnNodeIds(),
+                step.providerBoundary(),
+                step.inputArtifact(),
+                step.inputResolution(),
+                new FlowArtifactContractResponse(
+                        "node:input-1:unexpected-output",
+                        "unexpected-output",
+                        "node-artifact"
+                )
+        );
+
+        assertThatThrownBy(() -> artifactService.persist(
+                task,
+                snapshot(flowId),
+                withSteps(trace, List.of(mismatchedStep)),
+                null
+        ))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Flow artifact output contract does not match node trace");
+
+        verifyNoInteractions(artifactRepository);
+    }
+
+    @Test
+    void rejectsLineageWhenInputDoesNotResolveToPriorNodeOutput() {
+        Task task = Task.builder().id(UUID.randomUUID()).build();
+        UUID flowId = UUID.randomUUID();
+        FlowRunTraceResponse trace = trace(flowId, List.of(
+                node(
+                        "input-1",
+                        "input",
+                        "Context",
+                        "context-contribution",
+                        "Product context",
+                        compiler.fingerprint("Product context")
+                ),
+                node(
+                        "prompt-1",
+                        "prompt",
+                        "Instructions",
+                        "instruction-contribution",
+                        "Write a concise plan",
+                        compiler.fingerprint("Write a concise plan")
+                )
+        ));
+        FlowExecutionStepResponse firstStep = trace.executionPlan().steps().get(0);
+        FlowExecutionStepResponse secondStep = trace.executionPlan().steps().get(1);
+        FlowExecutionStepResponse unresolvedStep = new FlowExecutionStepResponse(
+                secondStep.sequence(),
+                secondStep.nodeId(),
+                secondStep.nodeType(),
+                secondStep.title(),
+                secondStep.operation(),
+                secondStep.dependsOnNodeIds(),
+                secondStep.providerBoundary(),
+                new FlowArtifactContractResponse(
+                        "node:missing:context-contribution",
+                        "context-contribution",
+                        "node-artifact"
+                ),
+                secondStep.inputResolution(),
+                secondStep.outputArtifact()
+        );
+
+        assertThatThrownBy(() -> artifactService.persist(
+                task,
+                snapshot(flowId),
+                withSteps(trace, List.of(firstStep, unresolvedStep)),
+                null
+        ))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Flow artifact input does not resolve to a prior node output");
+
+        verifyNoInteractions(artifactRepository);
+    }
+
+    private FlowRunTraceResponse withSteps(
+            FlowRunTraceResponse trace,
+            List<FlowExecutionStepResponse> steps
+    ) {
+        return new FlowRunTraceResponse(
+                trace.runId(),
+                trace.flowId(),
+                trace.status(),
+                trace.executionMode(),
+                trace.providerCallCount(),
+                trace.compilerVersion(),
+                trace.executionInputFingerprint(),
+                trace.inputSource(),
+                trace.replayedFromTaskId(),
+                new FlowExecutionPlanResponse(trace.executionPlan().version(), "linear", steps),
+                trace.nodes()
+        );
+    }
+
     private FlowRunTraceResponse trace(UUID flowId, List<FlowNodeRunTraceResponse> nodes) {
         List<FlowExecutionStepResponse> steps = new ArrayList<>();
         FlowArtifactContractResponse previousArtifact = new FlowArtifactContractResponse(

@@ -138,10 +138,11 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Recoverable Provider Failures | Done | Provider 失败响应关联已保存运行，AI Command 与 Flow Space 可精确打开失败上下文，不再依赖时间窗口猜测 |
 | Stage 3 | Verified Run Input Comparison | Done | 运行对比优先使用 Provider 输入指纹判断输入是否一致，旧记录则诚实回退到固定执行文本 |
 | Stage 3 | Flow Runtime Contract Verification | Done | 自动化测试锁定预览、真实 Provider 输入、历史保存输入、编译器版本与运行轨迹指纹的一致性 |
-| Stage 3 | Versioned Node Execution Plan | Done | Preview 与不可变运行轨迹共享 `flow-plan-v3`，固定节点顺序、直接依赖、输入输出产物契约与唯一 Provider 边界 |
+| Stage 3 | Versioned Node Execution Plan | Done | Preview 与不可变运行轨迹共享 `flow-plan-v4`，固定节点顺序、直接依赖、输入输出产物契约、输入解析方式与唯一 Provider 边界 |
 | Stage 3 | Node Runtime Role Guidance | Done | Flow canvas 与 Inspector 解释每个节点如何参与执行，并明确当前只有 AI Task 触发 Provider 调用 |
 | Stage 3 | Immutable Node Artifact Records | Done | 成功和失败轨迹保存节点产物状态、真实存储来源与内容指纹，失败或跳过节点不伪造输出 |
 | Stage 3 | Addressable Node Artifact Payloads | Done | 每个现代 Flow 节点产物独立落库、按运行与稳定 Key 读取，并可在运行轨迹内按需检查和复制 |
+| Stage 3 | Navigable Node Artifact Lineage | Done | 当前节点产物保存真实上游 Key、契约、状态、解析方式与指纹，可从运行轨迹按需回看已物化上游 |
 | Foundation | Frontend Bundle Splitting | Done | 页面按路由懒加载，Element Plus 仅注册实际组件，入口 JS 与 CSS 不再包含整套页面和 UI 库 |
 | Future | Agents | Future Boundary | 不展示虚构 Agent 状态，用户可回到 Flow / Prompt 沉淀真实可执行资产 |
 | Future | Knowledge Base | Future Boundary | 不展示虚构索引来源，用户可先通过 Flow Context 固定真实上下文 |
@@ -310,6 +311,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | Inspector 展示节点职责、执行顺序与前置编译依赖 | Done |
 | 节点输入输出产物契约与不可变产物指纹 | Done |
 | 独立节点产物落库与运行轨迹内按需检查 | Done |
+| 节点产物上游血缘持久化与运行轨迹导航 | Done |
 | 失败运行在 Flow Space 中检查节点状态并使用固定输入重跑 | Done |
 | Flow 执行结果展示 | Done |
 | Flow 执行历史回看 | Done |
@@ -405,9 +407,9 @@ Controller -> Service -> Repository -> Entity
 | `ApiKeyCipher` | AES-256-GCM 密钥静态加密与主密钥管理 |
 | `PromptService` | Prompt 资产、收藏、版本 |
 | `WorkflowService` | Flow 草稿和节点结构 |
-| `FlowExecutionCompiler` | 将不可变 Flow 快照编译为预览与执行共享的确定性 Provider 输入和 `flow-plan-v3` 节点产物计划 |
-| `FlowNodeArtifactService` | 在 Task 事务内物化节点 payload，并校验不可变 SHA-256 指纹 |
-| `FlowNodeArtifactQueryService` | 按运行顺序读取产物元数据，并按稳定 Artifact Key 返回单个 payload |
+| `FlowExecutionCompiler` | 将不可变 Flow 快照编译为预览与执行共享的确定性 Provider 输入和 `flow-plan-v4` 节点产物计划 |
+| `FlowNodeArtifactService` | 在 Task 事务内物化节点 payload，校验不可变 SHA-256 指纹与上游产物契约 |
+| `FlowNodeArtifactQueryService` | 按运行顺序读取产物及血缘元数据，并按稳定 Artifact Key 返回单个 payload |
 | `HealthService` | 应用与 PostgreSQL 就绪探针 |
 
 数据库结构由 `backend/src/main/resources/db/migration` 下的 Flyway 迁移统一维护。Hibernate 使用 `ddl-auto: validate`，只验证实体与数据库是否一致，不会在启动时静默修改生产 schema。
@@ -693,11 +695,11 @@ Response:
 
 当前 Flow Runtime 仍把所有已保存节点编译成一个确定性输入，并执行 **一次共享 Provider 调用**。因此 `providerCallCount` 当前固定为 `1`，Flow Run Trace 是可解释的服务端运行记录，不代表每个节点都进行了独立模型调用。
 
-`executionPlan` 使用 `flow-plan-v3` 固定保存节点顺序、直接前置依赖、节点职责、输入输出产物契约和 Provider 边界。Input 与 Prompt 提供编译内容，AI Task 是唯一 `invoke-provider` 步骤，Output 定义同一请求的交付约束。Flow 目标来自不可变快照，每个现代节点输出都指向稳定的 `node-artifact` 记录。
+`executionPlan` 使用 `flow-plan-v4` 固定保存节点顺序、直接前置依赖、节点职责、输入输出产物契约、输入解析方式和 Provider 边界。Input 与 Prompt 提供编译内容，AI Task 是唯一 `invoke-provider` 步骤，Output 定义同一请求的交付约束。Flow 目标来自不可变快照，每个现代节点输出都指向稳定的 `node-artifact` 记录。
 
-现代 `flowRunTrace.nodes[].outputArtifact` 保存产物状态与内容指纹，同时在 `flow_node_artifacts` 中独立保存可寻址 payload。Input / Prompt 保存变量替换后的编译文本，AI Task 保存 Summary + Result，Output 保存 Result 文档；落库前必须重新计算并匹配 trace 指纹。Provider 失败和下游跳过不会生成虚假 payload 或指纹。旧 v1 / v2 计划与旧节点轨迹保持原样，不会根据当前 Flow 现场补造数据库产物。
+现代 `flowRunTrace.nodes[].outputArtifact` 保存产物状态与内容指纹，同时在 `flow_node_artifacts` 中独立保存可寻址 payload。Input / Prompt 保存变量替换后的编译文本，AI Task 保存 Summary + Result，Output 保存 Result 文档；落库前必须重新计算并匹配 trace 指纹。每个 v4 产物同时保存上游 Key、类型、存储、状态、输入解析方式和可用指纹，运行轨迹可按需打开并跳转到已物化上游。Provider 失败和下游跳过不会生成虚假 payload 或指纹。
 
-运行轨迹只在用户点击“查看产物”时调用单项读取 API，因此检查节点内容不会把整次运行的所有 payload 预加载到页面。独立产物已经可以寻址，但当前 Runtime 仍不会把上游产物作为下游节点的独立执行输入，也不会增加 Provider 调用次数。
+`compiled-reference` 明确表示当前血缘来自一次完整 Flow 编译引用，不表示运行时从数据库逐节点读取上游 payload。运行轨迹只在用户点击“查看产物”或“查看上游”时调用单项读取 API，因此不会预加载整次运行的所有 payload。当前 Runtime 仍执行一次共享 Provider 调用。旧 v1 / v2 / v3 计划与迁移前产物保持缺失字段为 `null`，不会根据当前 Flow 现场补造历史血缘。
 
 `executionInput` 是服务端实际提交给 AI Provider 的输入。Flow 工作区的“查看服务端执行输入”使用同一套编译逻辑，确保用户确认的内容与真实执行一致。
 
@@ -858,7 +860,7 @@ Check:
 
 ### Near Term
 
-- 定义下游节点读取与校验上游持久化产物的执行契约
+- 设计未来 `persisted-artifact` 输入解析契约，并保持现有 `single-pass` 历史语义不变
 - 设计逐节点 Provider 来源、Token、耗时和错误轨迹
 - 在明确 stop / skip / retry 策略后演进到真实 node-level execution engine
 - Prompt / Flow 复用闭环细化
