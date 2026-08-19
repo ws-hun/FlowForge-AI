@@ -232,6 +232,7 @@ import {
   flowArtifactStorageLabel,
   flowArtifactTypeLabel
 } from '@/utils/flowExecutionPlan'
+import { flowArtifactLineageStatusLabel } from '@/utils/flowArtifactLineage'
 
 const props = withDefaults(
   defineProps<{
@@ -401,19 +402,7 @@ function artifactInputFingerprintLabel(detail: FlowNodeArtifactDetail | undefine
 }
 
 function lineageStatusLabel(lineage: FlowNodeArtifactLineage | undefined) {
-  if (!lineage) {
-    return ''
-  }
-  if (lineage.complete) {
-    return '已追溯到 Flow 快照目标'
-  }
-  const labels: Record<string, string> = {
-    'legacy-record': '旧记录，来源字段不可用',
-    'missing-upstream-artifact': '上游产物缺失，路径在此停止',
-    'cycle-detected': '检测到循环引用，路径在此停止',
-    'unsupported-input-storage': '来源存储类型暂不支持'
-  }
-  return labels[lineage.termination] || '来源链不完整'
+  return flowArtifactLineageStatusLabel(lineage)
 }
 
 function nodeTypeLabelForLineage(nodeId: string | null | undefined) {
