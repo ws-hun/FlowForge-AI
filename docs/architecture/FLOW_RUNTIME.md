@@ -62,6 +62,8 @@ Successful Tasks and their node artifacts are written in the same execution tran
 
 Artifacts can be inspected through `GET /api/tasks/{taskId}/artifacts` and `GET /api/tasks/{taskId}/artifacts/{artifactKey}`. The frontend requests one payload only when the user opens it inside the run trace. Materialized `node-artifact` inputs can be followed back to their persisted upstream payload; `flow-snapshot` inputs remain clearly identified as immutable Flow objective sources.
 
+`GET /api/tasks/{taskId}/artifacts/{artifactKey}/lineage` returns a metadata-only path from the requested node artifact to the Flow snapshot objective. It is intentionally separate from payload inspection and returns `complete` plus a termination reason such as `flow-snapshot`, `legacy-record`, `missing-upstream-artifact`, or `cycle-detected`. A path ending at `flow-snapshot` is an explainability path for the saved run; it does not activate `persisted-artifact` input resolution.
+
 These records are independently addressable and establish the persistence boundary required by a future node engine. The current runtime still does not read an upstream artifact from the database as the runtime input of a downstream node, and the Provider call count remains `1`.
 
 ## 5. Persistence And Replay
