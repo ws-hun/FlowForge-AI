@@ -1,6 +1,8 @@
 package com.flowforge.ai.controller;
 
 import com.flowforge.ai.dto.FlowNodeArtifactDetailResponse;
+import com.flowforge.ai.dto.FlowNodeArtifactLineageEntryResponse;
+import com.flowforge.ai.dto.FlowNodeArtifactLineageResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactSummaryResponse;
 import com.flowforge.ai.dto.TaskRunResponse;
 import com.flowforge.ai.exception.AiExecutionException;
@@ -251,6 +253,62 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.inputResolution").value("compiled-reference"));
 
         verify(flowNodeArtifactQueryService).getForTask(taskId, artifactKey);
+    }
+
+    @Test
+    void returnsMetadataOnlyLineagePathForAnArtifact() throws Exception {
+        UUID taskId = UUID.randomUUID();
+        String artifactKey = "node:output-1:result-document";
+        when(flowNodeArtifactQueryService.getLineageForTask(taskId, artifactKey)).thenReturn(
+                new FlowNodeArtifactLineageResponse(
+                        taskId,
+                        artifactKey,
+                        true,
+                        "flow-snapshot",
+                        List.of(
+                                new FlowNodeArtifactLineageEntryResponse(
+                                        UUID.randomUUID(),
+                                        "output-1",
+                                        3,
+                                        artifactKey,
+                                        "result-document",
+                                        "node-artifact",
+                                        "materialized",
+                                        "text/markdown",
+                                        "a".repeat(64),
+                                        "compiled-reference",
+                                        true
+                                ),
+                                new FlowNodeArtifactLineageEntryResponse(
+                                        null,
+                                        null,
+                                        null,
+                                        "flow:objective",
+                                        "flow-objective",
+                                        "flow-snapshot",
+                                        "materialized",
+                                        null,
+                                        "b".repeat(64),
+                                        null,
+                                        false
+                                )
+                        )
+                )
+        );
+
+        mockMvc.perform(get("/api/tasks/{id}/artifacts/{artifactKey}/lineage", taskId, artifactKey))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requestedArtifactKey").value(artifactKey))
+                .andExpect(jsonPath("$.complete").value(true))
+                .andExpect(jsonPath("$.termination").value("flow-snapshot"))
+                .andExpect(jsonPath("$.path").isArray())
+                .andExpect(jsonPath("$.path[0].artifactKey").value(artifactKey))
+                .andExpect(jsonPath("$.path[0].persisted").value(true))
+                .andExpect(jsonPath("$.path[1].artifactKey").value("flow:objective"))
+                .andExpect(jsonPath("$.path[1].persisted").value(false))
+                .andExpect(jsonPath("$.path[0].payload").doesNotExist());
+
+        verify(flowNodeArtifactQueryService).getLineageForTask(taskId, artifactKey);
     }
 
     @Test
