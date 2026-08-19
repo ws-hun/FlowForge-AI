@@ -138,6 +138,56 @@
                   查看上游
                 </button>
               </div>
+              <details
+                v-if="artifactDetails[node.outputArtifact.key]?.inputArtifactKey"
+                class="flow-run-trace-lineage"
+                @toggle="toggleLineage(node.outputArtifact.key, $event)"
+              >
+                <summary>
+                  <span>
+                    <strong>来源链</strong>
+                    <small>按需查看完整上游路径 · 不包含产物正文</small>
+                  </span>
+                  <Right class="flow-run-trace-lineage-chevron" />
+                </summary>
+                <div v-if="lineageLoadingKey === node.outputArtifact.key" class="flow-run-trace-lineage-loading">
+                  <Loading class="flow-run-trace-artifact-loading" />
+                  正在读取来源链
+                </div>
+                <div v-else-if="lineageDetails[node.outputArtifact.key]" class="flow-run-trace-lineage-body">
+                  <div class="flow-run-trace-lineage-status">
+                    <span :class="{ complete: lineageDetails[node.outputArtifact.key]?.complete }"></span>
+                    {{ lineageStatusLabel(lineageDetails[node.outputArtifact.key]) }}
+                  </div>
+                  <ol>
+                    <li
+                      v-for="entry in lineageDetails[node.outputArtifact.key]?.path"
+                      :key="`${entry.artifactKey}-${entry.sequence || 'source'}`"
+                      :class="{ source: !entry.persisted }"
+                    >
+                      <span class="flow-run-trace-lineage-step">{{ entry.persisted ? entry.sequence : '·' }}</span>
+                      <div>
+                        <strong>{{ flowArtifactTypeLabel(entry.artifactType) }}</strong>
+                        <small>
+                          {{ entry.persisted ? nodeTypeLabelForLineage(entry.nodeId) : 'Flow 快照目标' }}
+                          · {{ flowArtifactStorageLabel(entry.storage) }}
+                          <template v-if="entry.contentFingerprint">
+                            · SHA {{ shortFingerprint(entry.contentFingerprint) }}
+                          </template>
+                        </small>
+                      </div>
+                      <button
+                        v-if="entry.persisted"
+                        type="button"
+                        title="定位到运行轨迹中的产物"
+                        @click="revealLineageEntry(entry)"
+                      >
+                        <View />
+                      </button>
+                    </li>
+                  </ol>
+                </div>
+              </details>
               <pre>{{ artifactDetails[node.outputArtifact.key]?.payload }}</pre>
             </section>
           </Transition>
@@ -166,13 +216,15 @@ import type {
   FlowArtifactStorage,
   FlowArtifactType,
   FlowExecutionMode,
+  FlowNodeArtifactLineage,
+  FlowNodeArtifactLineageEntry,
   FlowNodeArtifactDetail,
   FlowNodeRunTrace,
   FlowNodeRunTraceStatus,
   FlowNodeType,
   FlowRunTrace
 } from '@/types'
-import { getTaskArtifact } from '@/api/tasks'
+import { getTaskArtifact, getTaskArtifactLineage } from '@/api/tasks'
 import FlowExecutionPlan from '@/components/flow/FlowExecutionPlan.vue'
 import {
   flowArtifactInputResolutionLabel,
@@ -198,8 +250,10 @@ const emit = defineEmits<{
 }>()
 
 const artifactDetails = ref<Record<string, FlowNodeArtifactDetail>>({})
+const lineageDetails = ref<Record<string, FlowNodeArtifactLineage>>({})
 const openArtifactKeys = ref<Record<string, boolean>>({})
 const loadingArtifactKey = ref('')
+const lineageLoadingKey = ref('')
 
 function canInspectArtifact(node: FlowNodeRunTrace) {
   return Boolean(
@@ -272,6 +326,43 @@ async function revealUpstreamArtifact(detail: FlowNodeArtifactDetail | undefined
   target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
 }
 
+async function toggleLineage(artifactKey: string, event: Event) {
+  const details = event.currentTarget as HTMLDetailsElement | null
+  if (!details?.open || lineageDetails.value[artifactKey]) {
+    return
+  }
+  const taskId = props.trace.runId
+  if (!taskId) {
+    return
+  }
+  lineageLoadingKey.value = artifactKey
+  try {
+    const { data } = await getTaskArtifactLineage(taskId, artifactKey)
+    lineageDetails.value[artifactKey] = data
+  } catch {
+    ElMessage.error('来源链加载失败')
+    details.open = false
+  } finally {
+    lineageLoadingKey.value = ''
+  }
+}
+
+async function revealLineageEntry(entry: FlowNodeArtifactLineageEntry) {
+  const taskId = props.trace.runId
+  if (!taskId || !entry.persisted) {
+    return
+  }
+  const detail = await loadArtifact(taskId, entry.artifactKey)
+  if (!detail) {
+    return
+  }
+  openArtifactKeys.value[entry.artifactKey] = true
+  await nextTick()
+  const target = Array.from(document.querySelectorAll<HTMLElement>('[data-artifact-key]'))
+    .find((element) => element.dataset.artifactKey === entry.artifactKey)
+  target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+}
+
 async function copyArtifact(artifactKey: string) {
   try {
     await navigator.clipboard.writeText(artifactDetails.value[artifactKey]?.payload || '')
@@ -307,6 +398,30 @@ function artifactInputStateLabel(detail: FlowNodeArtifactDetail | undefined) {
 
 function artifactInputFingerprintLabel(detail: FlowNodeArtifactDetail | undefined) {
   return detail?.inputContentFingerprint ? shortFingerprint(detail.inputContentFingerprint) : ''
+}
+
+function lineageStatusLabel(lineage: FlowNodeArtifactLineage | undefined) {
+  if (!lineage) {
+    return ''
+  }
+  if (lineage.complete) {
+    return '已追溯到 Flow 快照目标'
+  }
+  const labels: Record<string, string> = {
+    'legacy-record': '旧记录，来源字段不可用',
+    'missing-upstream-artifact': '上游产物缺失，路径在此停止',
+    'cycle-detected': '检测到循环引用，路径在此停止',
+    'unsupported-input-storage': '来源存储类型暂不支持'
+  }
+  return labels[lineage.termination] || '来源链不完整'
+}
+
+function nodeTypeLabelForLineage(nodeId: string | null | undefined) {
+  if (!nodeId) {
+    return '节点产物'
+  }
+  const node = props.trace.nodes.find((item) => item.nodeId === nodeId)
+  return node ? nodeTypeLabel(node.nodeType) : '节点产物'
 }
 
 function nodeTypeLabel(type: FlowNodeType) {

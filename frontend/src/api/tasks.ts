@@ -2,6 +2,7 @@ import http from './client'
 import type {
   ApiKeyConfig,
   FlowNodeArtifactDetail,
+  FlowNodeArtifactLineage,
   FlowNodeArtifactSummary,
   ProviderConnectionTestResponse,
   RunTaskPayload,
@@ -38,6 +39,12 @@ export function listTaskArtifacts(taskId: string) {
 export function getTaskArtifact(taskId: string, artifactKey: string) {
   return http.get<FlowNodeArtifactDetail>(
     `/api/tasks/${taskId}/artifacts/${encodeURIComponent(artifactKey)}`
+  )
+}
+
+export function getTaskArtifactLineage(taskId: string, artifactKey: string) {
+  return http.get<FlowNodeArtifactLineage>(
+    `/api/tasks/${taskId}/artifacts/${encodeURIComponent(artifactKey)}/lineage`
   )
 }
 

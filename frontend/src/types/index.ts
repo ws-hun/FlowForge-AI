@@ -235,6 +235,28 @@ export interface FlowNodeArtifactDetail extends FlowNodeArtifactSummary {
   payload?: string | null
 }
 
+export interface FlowNodeArtifactLineageEntry {
+  id?: string | null
+  nodeId?: string | null
+  sequence?: number | null
+  artifactKey: string
+  artifactType: FlowArtifactType
+  storage: FlowArtifactStorage
+  state: FlowArtifactState
+  mediaType?: string | null
+  contentFingerprint?: string | null
+  inputResolution?: FlowArtifactInputResolution | null
+  persisted: boolean
+}
+
+export interface FlowNodeArtifactLineage {
+  taskId: string
+  requestedArtifactKey: string
+  complete: boolean
+  termination: string
+  path: FlowNodeArtifactLineageEntry[]
+}
+
 export interface FlowExecutionStep {
   sequence: number
   nodeId: string
