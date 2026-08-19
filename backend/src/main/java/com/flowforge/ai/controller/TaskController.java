@@ -1,6 +1,7 @@
 package com.flowforge.ai.controller;
 
 import com.flowforge.ai.dto.FlowNodeArtifactDetailResponse;
+import com.flowforge.ai.dto.FlowNodeArtifactLineageResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactSummaryResponse;
 import com.flowforge.ai.dto.RunTaskRequest;
 import com.flowforge.ai.dto.TaskHistoryResponse;
@@ -53,5 +54,13 @@ public class TaskController {
             @PathVariable String artifactKey
     ) {
         return flowNodeArtifactQueryService.getForTask(id, artifactKey);
+    }
+
+    @GetMapping("/{id}/artifacts/{artifactKey}/lineage")
+    public FlowNodeArtifactLineageResponse getArtifactLineage(
+            @PathVariable UUID id,
+            @PathVariable String artifactKey
+    ) {
+        return flowNodeArtifactQueryService.getLineageForTask(id, artifactKey);
     }
 }
