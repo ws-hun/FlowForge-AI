@@ -4,6 +4,7 @@ import com.flowforge.ai.dto.FlowNodeArtifactDetailResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactLineageEntryResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactLineageResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactSummaryResponse;
+import com.flowforge.ai.dto.FlowProviderCallResponse;
 import com.flowforge.ai.entity.FlowNodeArtifact;
 import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.repository.FlowNodeArtifactRepository;
@@ -95,6 +96,7 @@ public class FlowNodeArtifactQueryService {
                         null,
                         current.getInputContentFingerprint(),
                         null,
+                        null,
                         false
                 ));
                 termination = TERMINATION_FLOW_SNAPSHOT;
@@ -146,6 +148,7 @@ public class FlowNodeArtifactQueryService {
                 artifact.getInputArtifactState(),
                 artifact.getInputResolution(),
                 artifact.getInputContentFingerprint(),
+                toProviderCallResponse(artifact),
                 artifact.getCreatedAt()
         );
     }
@@ -169,6 +172,7 @@ public class FlowNodeArtifactQueryService {
                 artifact.getInputArtifactState(),
                 artifact.getInputResolution(),
                 artifact.getInputContentFingerprint(),
+                toProviderCallResponse(artifact),
                 artifact.getCreatedAt()
         );
     }
@@ -185,7 +189,24 @@ public class FlowNodeArtifactQueryService {
                 artifact.getMediaType(),
                 artifact.getContentFingerprint(),
                 artifact.getInputResolution(),
+                toProviderCallResponse(artifact),
                 true
+        );
+    }
+
+    private FlowProviderCallResponse toProviderCallResponse(FlowNodeArtifact artifact) {
+        if (artifact.getProviderCallStatus() == null) {
+            return null;
+        }
+        return new FlowProviderCallResponse(
+                artifact.getProviderCallStatus(),
+                artifact.getProviderName(),
+                artifact.getProviderModel(),
+                artifact.getProviderInputTokens(),
+                artifact.getProviderOutputTokens(),
+                artifact.getProviderTotalTokens(),
+                artifact.getProviderDurationMs(),
+                artifact.getProviderErrorMessage()
         );
     }
 }

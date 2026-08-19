@@ -80,6 +80,30 @@ public class FlowNodeArtifact {
     @Column(name = "input_content_fingerprint", updatable = false, length = 64)
     private String inputContentFingerprint;
 
+    @Column(name = "provider_call_status", updatable = false, length = 20)
+    private String providerCallStatus;
+
+    @Column(name = "provider_name", updatable = false, length = 40)
+    private String providerName;
+
+    @Column(name = "provider_model", updatable = false, length = 120)
+    private String providerModel;
+
+    @Column(name = "provider_input_tokens", updatable = false)
+    private Integer providerInputTokens;
+
+    @Column(name = "provider_output_tokens", updatable = false)
+    private Integer providerOutputTokens;
+
+    @Column(name = "provider_total_tokens", updatable = false)
+    private Integer providerTotalTokens;
+
+    @Column(name = "provider_duration_ms", updatable = false)
+    private Long providerDurationMs;
+
+    @Column(name = "provider_error_message", updatable = false, columnDefinition = "TEXT")
+    private String providerErrorMessage;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
