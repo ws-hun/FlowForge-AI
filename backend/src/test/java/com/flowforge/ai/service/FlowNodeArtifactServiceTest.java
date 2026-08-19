@@ -48,8 +48,17 @@ class FlowNodeArtifactServiceTest {
     void persistsAddressablePayloadsInNodeOrder() {
         UUID taskId = UUID.randomUUID();
         UUID flowId = UUID.randomUUID();
-        Task task = Task.builder().id(taskId).build();
-        OpenAiTaskResult result = new OpenAiTaskResult("Focused summary", "Detailed result", "{}");
+        Task task = completedTask(taskId);
+        OpenAiTaskResult result = new OpenAiTaskResult(
+                "Focused summary",
+                "Detailed result",
+                "{}",
+                "deepseek",
+                "deepseek-chat",
+                120,
+                80,
+                200
+        );
         FlowRunTraceResponse trace = trace(flowId, List.of(
                 node(
                         "input-1",
@@ -109,6 +118,18 @@ class FlowNodeArtifactServiceTest {
                         compiler.fingerprint("Product context"),
                         compiler.fingerprint("Focused summary\nDetailed result")
                 );
+        assertThat(saved).extracting(FlowNodeArtifact::getProviderCallStatus)
+                .containsExactly(null, "completed", null);
+        assertThat(saved).extracting(FlowNodeArtifact::getProviderName)
+                .containsExactly(null, "deepseek", null);
+        assertThat(saved).extracting(FlowNodeArtifact::getProviderModel)
+                .containsExactly(null, "deepseek-chat", null);
+        assertThat(saved).extracting(FlowNodeArtifact::getProviderTotalTokens)
+                .containsExactly(null, 200, null);
+        assertThat(saved).extracting(FlowNodeArtifact::getProviderDurationMs)
+                .containsExactly(null, 840L, null);
+        assertThat(saved).extracting(FlowNodeArtifact::getProviderErrorMessage)
+                .containsOnlyNulls();
         assertThat(saved).allSatisfy(artifact -> {
             assertThat(artifact.getTaskId()).isEqualTo(taskId);
             assertThat(artifact.getFlowId()).isEqualTo(flowId);
@@ -141,7 +162,7 @@ class FlowNodeArtifactServiceTest {
     @Test
     void persistsFailedAndSkippedArtifactsWithoutInventingPayloads() {
         UUID taskId = UUID.randomUUID();
-        Task task = Task.builder().id(taskId).build();
+        Task task = failedTask(taskId);
         UUID flowId = UUID.randomUUID();
         FlowRunTraceResponse trace = trace(flowId, List.of(
                 node(
@@ -196,6 +217,14 @@ class FlowNodeArtifactServiceTest {
                         compiler.fingerprint("Product context"),
                         null
                 );
+        assertThat(saved).extracting(FlowNodeArtifact::getProviderCallStatus)
+                .containsExactly(null, "failed", null);
+        assertThat(saved).extracting(FlowNodeArtifact::getProviderName)
+                .containsExactly(null, "deepseek", null);
+        assertThat(saved).extracting(FlowNodeArtifact::getProviderDurationMs)
+                .containsExactly(null, 420L, null);
+        assertThat(saved).extracting(FlowNodeArtifact::getProviderErrorMessage)
+                .containsExactly(null, "AI API error: provider unavailable", null);
     }
 
     @Test
@@ -380,10 +409,14 @@ class FlowNodeArtifactServiceTest {
             previousArtifact = outputArtifact;
             previousNodeId = node.nodeId();
         }
+        String runStatus = nodes.stream()
+                .anyMatch(node -> "failed".equals(node.outputArtifact().state()))
+                ? Task.STATUS_FAILED
+                : Task.STATUS_COMPLETED;
         return new FlowRunTraceResponse(
                 UUID.randomUUID(),
                 flowId,
-                "completed",
+                runStatus,
                 "single-pass",
                 1,
                 "flow-compiler-v1",
@@ -393,6 +426,30 @@ class FlowNodeArtifactServiceTest {
                 new FlowExecutionPlanResponse("flow-plan-v4", "linear", steps),
                 nodes
         );
+    }
+
+    private Task completedTask(UUID taskId) {
+        return Task.builder()
+                .id(taskId)
+                .provider("deepseek")
+                .model("deepseek-chat")
+                .inputTokens(120)
+                .outputTokens(80)
+                .totalTokens(200)
+                .durationMs(840L)
+                .status(Task.STATUS_COMPLETED)
+                .build();
+    }
+
+    private Task failedTask(UUID taskId) {
+        return Task.builder()
+                .id(taskId)
+                .provider("deepseek")
+                .model("deepseek-chat")
+                .durationMs(420L)
+                .status(Task.STATUS_FAILED)
+                .errorMessage("AI API error: provider unavailable")
+                .build();
     }
 
     private FlowRunSnapshotResponse snapshot(UUID flowId) {

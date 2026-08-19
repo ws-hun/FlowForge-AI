@@ -57,6 +57,7 @@ public class FlowNodeArtifactService {
                     artifact,
                     priorArtifacts
             );
+            ProviderCallProvenance providerCall = resolveProviderCall(task, trace, index, node, artifact);
             artifacts.add(FlowNodeArtifact.builder()
                     .taskId(task.getId())
                     .flowId(trace.flowId())
@@ -74,6 +75,14 @@ public class FlowNodeArtifactService {
                     .inputArtifactState(lineage == null ? null : lineage.state())
                     .inputResolution(lineage == null ? null : lineage.resolution())
                     .inputContentFingerprint(lineage == null ? null : lineage.contentFingerprint())
+                    .providerCallStatus(providerCall == null ? null : providerCall.status())
+                    .providerName(providerCall == null ? null : providerCall.provider())
+                    .providerModel(providerCall == null ? null : providerCall.model())
+                    .providerInputTokens(providerCall == null ? null : providerCall.inputTokens())
+                    .providerOutputTokens(providerCall == null ? null : providerCall.outputTokens())
+                    .providerTotalTokens(providerCall == null ? null : providerCall.totalTokens())
+                    .providerDurationMs(providerCall == null ? null : providerCall.durationMs())
+                    .providerErrorMessage(providerCall == null ? null : providerCall.errorMessage())
                     .build());
             priorArtifacts.put(artifact.key(), artifact);
         }
@@ -155,6 +164,75 @@ public class FlowNodeArtifactService {
         }
     }
 
+    private ProviderCallProvenance resolveProviderCall(
+            Task task,
+            FlowRunTraceResponse trace,
+            int index,
+            FlowNodeRunTraceResponse node,
+            FlowNodeArtifactResponse artifact
+    ) {
+        FlowExecutionPlanResponse plan = trace.executionPlan();
+        if (plan == null || plan.steps() == null || index >= plan.steps().size()) {
+            return null;
+        }
+        FlowExecutionStepResponse step = plan.steps().get(index);
+        if (step.inputResolution() == null) {
+            return null;
+        }
+        if (!step.providerBoundary()) {
+            if ("ai-task".equals(node.nodeType())) {
+                throw new IllegalStateException("Flow AI Task artifact requires a Provider boundary");
+            }
+            return null;
+        }
+        if (!"ai-task".equals(node.nodeType()) || !"provider-result".equals(artifact.type())) {
+            throw new IllegalStateException("Flow Provider boundary must produce an AI Task result artifact");
+        }
+        if (trace.providerCallCount() == null || trace.providerCallCount() != 1) {
+            throw new IllegalStateException("Flow Provider provenance does not match the run call count");
+        }
+        if (task.getDurationMs() == null || task.getDurationMs() < 0) {
+            throw new IllegalStateException("Flow Provider provenance requires a non-negative duration");
+        }
+        verifyNonNegativeTokenCount(task.getInputTokens());
+        verifyNonNegativeTokenCount(task.getOutputTokens());
+        verifyNonNegativeTokenCount(task.getTotalTokens());
+
+        String status = task.getStatus();
+        if (!status.equals(trace.status())) {
+            throw new IllegalStateException("Flow Provider provenance does not match the run status");
+        }
+        if (Task.STATUS_COMPLETED.equals(status)) {
+            if (!"materialized".equals(artifact.state()) || task.getErrorMessage() != null) {
+                throw new IllegalStateException("Completed Flow Provider provenance does not match artifact state");
+            }
+        } else if (Task.STATUS_FAILED.equals(status)) {
+            if (!"failed".equals(artifact.state())
+                    || task.getErrorMessage() == null
+                    || task.getErrorMessage().isBlank()) {
+                throw new IllegalStateException("Failed Flow Provider provenance requires an error");
+            }
+        } else {
+            throw new IllegalStateException("Flow Provider provenance requires a terminal Task status");
+        }
+        return new ProviderCallProvenance(
+                status,
+                task.getProvider(),
+                task.getModel(),
+                task.getInputTokens(),
+                task.getOutputTokens(),
+                task.getTotalTokens(),
+                task.getDurationMs(),
+                task.getErrorMessage()
+        );
+    }
+
+    private void verifyNonNegativeTokenCount(Integer tokenCount) {
+        if (tokenCount != null && tokenCount < 0) {
+            throw new IllegalStateException("Flow Provider provenance token counts cannot be negative");
+        }
+    }
+
     private String payloadFor(FlowNodeRunTraceResponse node, OpenAiTaskResult result) {
         if (!"materialized".equals(node.outputArtifact().state())) {
             return null;
@@ -196,6 +274,18 @@ public class FlowNodeArtifactService {
             String state,
             String resolution,
             String contentFingerprint
+    ) {
+    }
+
+    private record ProviderCallProvenance(
+            String status,
+            String provider,
+            String model,
+            Integer inputTokens,
+            Integer outputTokens,
+            Integer totalTokens,
+            Long durationMs,
+            String errorMessage
     ) {
     }
 }
