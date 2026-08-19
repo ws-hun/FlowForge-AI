@@ -4,6 +4,7 @@ import com.flowforge.ai.dto.FlowNodeArtifactDetailResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactLineageEntryResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactLineageResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactSummaryResponse;
+import com.flowforge.ai.dto.FlowProviderCallResponse;
 import com.flowforge.ai.dto.TaskRunResponse;
 import com.flowforge.ai.exception.AiExecutionException;
 import com.flowforge.ai.exception.ResourceNotFoundException;
@@ -238,6 +239,16 @@ class TaskControllerTest {
                         "materialized",
                         "compiled-reference",
                         "c".repeat(64),
+                        new FlowProviderCallResponse(
+                                "completed",
+                                "deepseek",
+                                "deepseek-chat",
+                                120,
+                                80,
+                                200,
+                                840L,
+                                null
+                        ),
                         LocalDateTime.of(2026, 8, 17, 10, 31)
                 )
         );
@@ -250,7 +261,13 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.inputArtifactKey")
                         .value("node:input-1:context-contribution"))
                 .andExpect(jsonPath("$.inputArtifactStorage").value("node-artifact"))
-                .andExpect(jsonPath("$.inputResolution").value("compiled-reference"));
+                .andExpect(jsonPath("$.inputResolution").value("compiled-reference"))
+                .andExpect(jsonPath("$.providerCall.status").value("completed"))
+                .andExpect(jsonPath("$.providerCall.provider").value("deepseek"))
+                .andExpect(jsonPath("$.providerCall.model").value("deepseek-chat"))
+                .andExpect(jsonPath("$.providerCall.totalTokens").value(200))
+                .andExpect(jsonPath("$.providerCall.durationMs").value(840))
+                .andExpect(jsonPath("$.providerCall.errorMessage").doesNotExist());
 
         verify(flowNodeArtifactQueryService).getForTask(taskId, artifactKey);
     }

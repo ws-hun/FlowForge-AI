@@ -79,6 +79,15 @@ class FlowNodeArtifactQueryServiceTest {
         assertThat(response.inputArtifactState()).isEqualTo("materialized");
         assertThat(response.inputResolution()).isEqualTo("compiled-reference");
         assertThat(response.inputContentFingerprint()).hasSize(64);
+        assertThat(response.providerCall()).isNotNull();
+        assertThat(response.providerCall().status()).isEqualTo("completed");
+        assertThat(response.providerCall().provider()).isEqualTo("deepseek");
+        assertThat(response.providerCall().model()).isEqualTo("deepseek-chat");
+        assertThat(response.providerCall().inputTokens()).isEqualTo(120);
+        assertThat(response.providerCall().outputTokens()).isEqualTo(80);
+        assertThat(response.providerCall().totalTokens()).isEqualTo(200);
+        assertThat(response.providerCall().durationMs()).isEqualTo(840L);
+        assertThat(response.providerCall().errorMessage()).isNull();
     }
 
     @Test
@@ -137,12 +146,14 @@ class FlowNodeArtifactQueryServiceTest {
         assertThat(summary.inputArtifactState()).isNull();
         assertThat(summary.inputResolution()).isNull();
         assertThat(summary.inputContentFingerprint()).isNull();
+        assertThat(summary.providerCall()).isNull();
         assertThat(detail.inputArtifactKey()).isNull();
         assertThat(detail.inputArtifactType()).isNull();
         assertThat(detail.inputArtifactStorage()).isNull();
         assertThat(detail.inputArtifactState()).isNull();
         assertThat(detail.inputResolution()).isNull();
         assertThat(detail.inputContentFingerprint()).isNull();
+        assertThat(detail.providerCall()).isNull();
     }
 
     @Test
@@ -308,6 +319,13 @@ class FlowNodeArtifactQueryServiceTest {
                 .inputArtifactState("materialized")
                 .inputResolution("compiled-reference")
                 .inputContentFingerprint("b".repeat(64))
+                .providerCallStatus(nodeId.startsWith("ai-task") ? "completed" : null)
+                .providerName(nodeId.startsWith("ai-task") ? "deepseek" : null)
+                .providerModel(nodeId.startsWith("ai-task") ? "deepseek-chat" : null)
+                .providerInputTokens(nodeId.startsWith("ai-task") ? 120 : null)
+                .providerOutputTokens(nodeId.startsWith("ai-task") ? 80 : null)
+                .providerTotalTokens(nodeId.startsWith("ai-task") ? 200 : null)
+                .providerDurationMs(nodeId.startsWith("ai-task") ? 840L : null)
                 .createdAt(LocalDateTime.of(2026, 8, 17, 10, sequence))
                 .build();
     }
