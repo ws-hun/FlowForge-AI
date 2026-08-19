@@ -57,8 +57,12 @@ New direct Flow runs persist one independently addressable database artifact for
 - Every `flow-plan-v4` artifact records its upstream key, semantic type, storage owner, state, resolution method, and available content fingerprint.
 - Provider failures mark the AI Task artifact as `failed` without payload or fingerprint.
 - Downstream Output artifacts are marked `skipped` without payload or fingerprint when the Provider did not return a result.
+- The `provider-result` artifact at the unique AI Task boundary records the real call status, Provider, model, available token counts, server-measured duration, and sanitized failure message.
+- Input, Prompt, and Output artifacts never receive Provider provenance because they are compiled contributions rather than independent calls.
 
 Successful Tasks and their node artifacts are written in the same execution transaction. Failed Tasks and their materialized, failed, or skipped artifacts are written together inside the same `REQUIRES_NEW` failure-recording transaction. An artifact persistence error therefore rolls back the corresponding Task record instead of leaving partial runtime history.
+
+Provider provenance follows the same atomic boundary. A completed Task can only persist completed provenance on a materialized AI Task artifact, while a failed Task can only persist failed provenance on its failed AI Task artifact. Token fields remain null when the Provider omits usage instead of being estimated or invented.
 
 Artifacts can be inspected through `GET /api/tasks/{taskId}/artifacts` and `GET /api/tasks/{taskId}/artifacts/{artifactKey}`. The frontend requests one payload only when the user opens it inside the run trace. Materialized `node-artifact` inputs can be followed back to their persisted upstream payload; `flow-snapshot` inputs remain clearly identified as immutable Flow objective sources.
 
@@ -72,7 +76,7 @@ New direct Flow runs persist their execution plan inside `flowRunTrace` for both
 
 Legacy traces without an execution plan remain valid and deserialize with `executionPlan = null`. The frontend labels these records as legacy instead of synthesizing a plan that did not exist at run time.
 
-Legacy `flow-plan-v1` steps remain readable with null artifact contracts. Legacy `flow-plan-v2` plans retain their original `trace-content` and `task-result` storage owners. Legacy `flow-plan-v3` plans retain modern `node-artifact` contracts but have no input resolution field. Artifact records created before lineage persistence remain readable with null lineage fields. FlowForge never synthesizes missing plans, artifacts, or lineage for old runs.
+Legacy `flow-plan-v1` steps remain readable with null artifact contracts. Legacy `flow-plan-v2` plans retain their original `trace-content` and `task-result` storage owners. Legacy `flow-plan-v3` plans retain modern `node-artifact` contracts but have no input resolution field. Artifact records created before lineage or Provider provenance persistence remain readable with null lineage fields and `providerCall = null`. FlowForge never synthesizes missing plans, artifacts, lineage, or Provider calls for old runs.
 
 Exact historical reruns use the stored Task input. They do not recompile the old Flow. When the source trace has a plan, the new replay preserves that immutable plan and records `stored-input-replay` plus the source Task ID.
 
@@ -82,9 +86,9 @@ FlowForge must not switch a Flow to `node-sequential` until all of the following
 
 1. Every executable node has an explicit input and output contract.
 2. The runtime resolves dependent node inputs from persisted upstream artifacts instead of the single compiled Provider input.
-3. Provider calls are recorded per node with model, token, duration, and error provenance.
+3. Every actual Provider invocation made by the node engine is independently recorded on its owning node, including model, available token usage, duration, failure provenance, and retry attempt identity.
 4. Failure policy defines stop, skip, and retry behavior without inventing successful downstream state.
 5. Preview returns the same executable plan consumed by the runtime.
 6. Historical replay can reproduce the saved plan without consulting the current Flow editor state.
 
-Until then, the product must continue to describe Input, Prompt, and Output as compiled contributions around one AI Task Provider boundary.
+The current single AI Task boundary already preserves the provenance of its one real Provider call. This satisfies inspection for `single-pass`, but it does not satisfy independent node invocation or retry semantics. Until every upgrade condition is real, the product must continue to describe Input, Prompt, and Output as compiled contributions around one AI Task Provider boundary.

@@ -120,6 +120,7 @@ Current Stage 3 capabilities:
 - Successful and failed Flow runs atomically persist one `node-artifact` record per planned node. Materialized payloads are fingerprint-verified and inspectable inside the run trace, while skipped and failed outputs remain explicitly payload-free.
 - Current node artifacts preserve navigable upstream lineage with key, contract, storage, state, resolution, and available content fingerprint. This explains the single compiled request without claiming that downstream nodes already load persisted payloads or invoke the Provider independently.
 - Run traces can now reveal a metadata-only lineage path from any persisted node artifact back to the immutable Flow objective, with explicit incomplete-history and cycle termination states; this is explainability navigation, not node execution.
+- The unique AI Task `provider-result` artifact now preserves the real Provider, model, available token usage, duration, completion state, and sanitized failure provenance in the same transaction as the Task. Legacy artifacts remain null, and compiled Input, Prompt, and Output contributions never receive fabricated call metadata.
 - Flow Space explains each selected node's runtime role and predecessor context during creation, so users can design the execution path without mistaking compiled Input, Prompt, or Output nodes for independent model calls.
 - Provider HTTP calls use explicit configurable connect and read timeouts, convert transport failures into stable gateway errors, and preserve failed runs for recovery instead of hanging the workspace indefinitely.
 - Provider HTTP status failures are translated into actionable authentication, rate-limit, timeout, request, or availability messages without exposing raw upstream response bodies to the workspace or History.
@@ -170,7 +171,7 @@ Current Stage 3 priorities:
 2. Preserve complete execution context for comparison and reuse.
 3. Improve the Prompt / Flow / Result reuse loop.
 4. Design a future `persisted-artifact` resolution contract without changing the honest `single-pass` behavior of existing runs.
-5. Introduce true node-level execution only after per-node Provider provenance and explicit stop, skip, and retry policy are real backend contracts.
+5. Define `node-sequential` stop, skip, retry, and per-attempt provenance contracts before introducing true node-level execution.
 
 ---
 

@@ -144,6 +144,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Addressable Node Artifact Payloads | Done | 每个现代 Flow 节点产物独立落库、按运行与稳定 Key 读取，并可在运行轨迹内按需检查和复制 |
 | Stage 3 | Navigable Node Artifact Lineage | Done | 当前节点产物保存真实上游 Key、契约、状态、解析方式与指纹，可从运行轨迹按需回看已物化上游 |
 | Stage 3 | Complete Artifact Lineage Path | Done | 运行轨迹可按需查看从节点产物回到 Flow 快照目标的 metadata-only 来源链，并诚实显示旧记录、断链和循环终止状态 |
+| Stage 3 | Node Provider Provenance | Done | 唯一 AI Task 边界保存真实 Provider、模型、Token、耗时和失败来源，Input、Prompt 与 Output 节点不伪造调用信息 |
 | Foundation | Frontend Bundle Splitting | Done | 页面按路由懒加载，Element Plus 仅注册实际组件，入口 JS 与 CSS 不再包含整套页面和 UI 库 |
 | Future | Agents | Future Boundary | 不展示虚构 Agent 状态，用户可回到 Flow / Prompt 沉淀真实可执行资产 |
 | Future | Knowledge Base | Future Boundary | 不展示虚构索引来源，用户可先通过 Flow Context 固定真实上下文 |
@@ -313,6 +314,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | 节点输入输出产物契约与不可变产物指纹 | Done |
 | 独立节点产物落库与运行轨迹内按需检查 | Done |
 | 节点产物上游血缘持久化与运行轨迹导航 | Done |
+| AI Task 节点真实 Provider 来源、Token、耗时与失败信息 | Done |
 | 失败运行在 Flow Space 中检查节点状态并使用固定输入重跑 | Done |
 | Flow 执行结果展示 | Done |
 | Flow 执行历史回看 | Done |
@@ -409,8 +411,8 @@ Controller -> Service -> Repository -> Entity
 | `PromptService` | Prompt 资产、收藏、版本 |
 | `WorkflowService` | Flow 草稿和节点结构 |
 | `FlowExecutionCompiler` | 将不可变 Flow 快照编译为预览与执行共享的确定性 Provider 输入和 `flow-plan-v4` 节点产物计划 |
-| `FlowNodeArtifactService` | 在 Task 事务内物化节点 payload，校验不可变 SHA-256 指纹与上游产物契约 |
-| `FlowNodeArtifactQueryService` | 按运行顺序读取产物及血缘元数据，并按稳定 Artifact Key 返回单个 payload |
+| `FlowNodeArtifactService` | 在 Task 事务内物化节点 payload，校验不可变 SHA-256 指纹、上游产物契约与唯一 AI Task Provider 来源 |
+| `FlowNodeArtifactQueryService` | 按运行顺序读取产物、血缘与 Provider 来源，并按稳定 Artifact Key 返回单个 payload |
 | `HealthService` | 应用与 PostgreSQL 就绪探针 |
 
 数据库结构由 `backend/src/main/resources/db/migration` 下的 Flyway 迁移统一维护。Hibernate 使用 `ddl-auto: validate`，只验证实体与数据库是否一致，不会在启动时静默修改生产 schema。
@@ -723,7 +725,9 @@ AI Command 中尚未执行的输入与来源上下文保存在当前浏览器的
 
 从比较界面选择“用此结果继续”后，AI Command 只要求用户填写新的推进方向。请求通过 `continuedFromTaskId` 指向来源 Task，后端从数据库读取其 Summary、Result 和原始来源快照，再编译新的执行输入；浏览器不需要回传或复制完整历史结果。
 
-当 Provider 调用失败时，API 仍按原错误返回 `502 Bad Gateway`，同时使用独立事务原子保存 `failed` Task 与节点产物状态。失败记录包含服务端执行输入、Provider / Model、Prompt / Flow 来源、运行快照、已准备节点 payload 和错误信息，可以直接通过精确重跑恢复；AI Task 与下游 Output 不会获得虚假内容。
+当 Provider 调用失败时，API 仍按原错误返回 `502 Bad Gateway`，同时使用独立事务原子保存 `failed` Task 与节点产物状态。失败记录包含服务端执行输入、Provider / Model、Prompt / Flow 来源、运行快照、已准备节点 payload 和已清洗错误信息，可以直接通过精确重跑恢复；AI Task 的 `provider-result` 产物会保存这次真实失败调用的来源，下游 Output 不会获得虚假内容。
+
+现代 Flow 运行会把本次唯一真实 Provider 调用绑定到 AI Task 节点产物。`providerCall` 包含成功或失败状态、Provider、模型、可用 Token、服务端耗时和失败信息；Provider 未返回用量时 Token 字段保持 `null`。旧产物以及 Input、Prompt、Output 节点返回 `providerCall: null`，系统不会根据当前配置补写历史或伪造节点调用。
 
 ### Provider
 
@@ -863,8 +867,8 @@ Check:
 ### Near Term
 
 - 设计未来 `persisted-artifact` 输入解析契约，并保持现有 `single-pass` 历史语义不变
-- 设计逐节点 Provider 来源、Token、耗时和错误轨迹
-- 在明确 stop / skip / retry 策略后演进到真实 node-level execution engine
+- 定义 `node-sequential` 的 stop / skip / retry 与逐节点重试来源契约
+- 在运行时真正从上游产物解析输入后演进到 node-level execution engine
 - Prompt / Flow 复用闭环细化
 - More complete onboarding and empty states
 

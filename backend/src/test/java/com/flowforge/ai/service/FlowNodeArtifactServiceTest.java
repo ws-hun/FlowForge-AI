@@ -360,6 +360,124 @@ class FlowNodeArtifactServiceTest {
         verifyNoInteractions(artifactRepository);
     }
 
+    @Test
+    void rejectsProviderProvenanceOnANonAiTaskBoundary() {
+        UUID flowId = UUID.randomUUID();
+        FlowRunTraceResponse trace = trace(flowId, List.of(node(
+                "input-1",
+                "input",
+                "Context",
+                "context-contribution",
+                "Product context",
+                compiler.fingerprint("Product context")
+        )));
+        FlowExecutionStepResponse step = trace.executionPlan().steps().get(0);
+        FlowExecutionStepResponse falseBoundary = new FlowExecutionStepResponse(
+                step.sequence(),
+                step.nodeId(),
+                step.nodeType(),
+                step.title(),
+                step.operation(),
+                step.dependsOnNodeIds(),
+                true,
+                step.inputArtifact(),
+                step.inputResolution(),
+                step.outputArtifact()
+        );
+
+        assertThatThrownBy(() -> artifactService.persist(
+                completedTask(UUID.randomUUID()),
+                snapshot(flowId),
+                withSteps(trace, List.of(falseBoundary)),
+                null
+        ))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Flow Provider boundary must produce an AI Task result artifact");
+
+        verifyNoInteractions(artifactRepository);
+    }
+
+    @Test
+    void rejectsAnAiTaskArtifactWithoutAProviderBoundary() {
+        UUID flowId = UUID.randomUUID();
+        OpenAiTaskResult result = new OpenAiTaskResult(
+                "Focused summary",
+                "Detailed result",
+                "{}",
+                "deepseek",
+                "deepseek-chat",
+                120,
+                80,
+                200
+        );
+        FlowRunTraceResponse trace = trace(flowId, List.of(node(
+                "ai-task-1",
+                "ai-task",
+                "Provider result",
+                "provider-result",
+                "Execution guidance",
+                compiler.fingerprint("Focused summary\nDetailed result")
+        )));
+        FlowExecutionStepResponse step = trace.executionPlan().steps().get(0);
+        FlowExecutionStepResponse missingBoundary = new FlowExecutionStepResponse(
+                step.sequence(),
+                step.nodeId(),
+                step.nodeType(),
+                step.title(),
+                step.operation(),
+                step.dependsOnNodeIds(),
+                false,
+                step.inputArtifact(),
+                step.inputResolution(),
+                step.outputArtifact()
+        );
+
+        assertThatThrownBy(() -> artifactService.persist(
+                completedTask(UUID.randomUUID()),
+                snapshot(flowId),
+                withSteps(trace, List.of(missingBoundary)),
+                result
+        ))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Flow AI Task artifact requires a Provider boundary");
+
+        verifyNoInteractions(artifactRepository);
+    }
+
+    @Test
+    void rejectsProviderProvenanceWhenTaskAndTraceStatusDiffer() {
+        UUID flowId = UUID.randomUUID();
+        OpenAiTaskResult result = new OpenAiTaskResult(
+                "Focused summary",
+                "Detailed result",
+                "{}",
+                "deepseek",
+                "deepseek-chat",
+                120,
+                80,
+                200
+        );
+        FlowRunTraceResponse trace = trace(flowId, List.of(node(
+                "ai-task-1",
+                "ai-task",
+                "Provider result",
+                "provider-result",
+                "Execution guidance",
+                compiler.fingerprint("Focused summary\nDetailed result")
+        )));
+
+        assertThatThrownBy(() -> artifactService.persist(
+                failedTask(UUID.randomUUID()),
+                snapshot(flowId),
+                trace,
+                result
+        ))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Flow Provider provenance does not match the run status");
+
+        verifyNoInteractions(artifactRepository);
+    }
+
     private FlowRunTraceResponse withSteps(
             FlowRunTraceResponse trace,
             List<FlowExecutionStepResponse> steps
