@@ -200,6 +200,17 @@ export type FlowArtifactStorage = 'flow-snapshot' | 'trace-content' | 'task-resu
 export type FlowArtifactState = 'materialized' | 'failed' | 'skipped'
 export type FlowArtifactInputResolution = 'compiled-reference' | 'persisted-artifact'
 
+export interface FlowProviderCall {
+  status: 'completed' | 'failed'
+  provider?: string | null
+  model?: string | null
+  inputTokens?: number | null
+  outputTokens?: number | null
+  totalTokens?: number | null
+  durationMs: number
+  errorMessage?: string | null
+}
+
 export interface FlowArtifactContract {
   key: string
   type: FlowArtifactType
@@ -228,6 +239,7 @@ export interface FlowNodeArtifactSummary {
   inputArtifactState?: FlowArtifactState | null
   inputResolution?: FlowArtifactInputResolution | null
   inputContentFingerprint?: string | null
+  providerCall?: FlowProviderCall | null
   createdAt: string
 }
 
@@ -246,6 +258,7 @@ export interface FlowNodeArtifactLineageEntry {
   mediaType?: string | null
   contentFingerprint?: string | null
   inputResolution?: FlowArtifactInputResolution | null
+  providerCall?: FlowProviderCall | null
   persisted: boolean
 }
 

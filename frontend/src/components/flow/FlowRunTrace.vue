@@ -82,8 +82,8 @@
                   loadingArtifactKey === node.outputArtifact.key
                     ? '加载中'
                     : artifactIsOpen(node.outputArtifact.key)
-                      ? '收起产物'
-                      : '查看产物'
+                      ? artifactCloseLabel(node)
+                      : artifactActionLabel(node)
                 }}
               </button>
             </div>
@@ -105,6 +105,37 @@
                   <CopyDocument />
                 </button>
               </header>
+              <div
+                v-if="artifactDetails[node.outputArtifact.key]?.providerCall"
+                class="flow-run-trace-provider-call"
+                :class="artifactDetails[node.outputArtifact.key]?.providerCall?.status"
+              >
+                <span></span>
+                <div>
+                  <small>真实 Provider 调用</small>
+                  <strong>
+                    {{ providerCallSource(artifactDetails[node.outputArtifact.key]) || 'Provider 来源未报告' }}
+                  </strong>
+                  <p>
+                    {{ providerCallStatus(artifactDetails[node.outputArtifact.key]) }}
+                    <template v-if="providerCallMetrics(artifactDetails[node.outputArtifact.key])">
+                      · {{ providerCallMetrics(artifactDetails[node.outputArtifact.key]) }}
+                    </template>
+                  </p>
+                  <p
+                    v-if="artifactDetails[node.outputArtifact.key]?.providerCall?.errorMessage"
+                    class="flow-run-trace-provider-error"
+                  >
+                    {{ artifactDetails[node.outputArtifact.key]?.providerCall?.errorMessage }}
+                  </p>
+                </div>
+              </div>
+              <p
+                v-else-if="node.outputArtifact.state === 'failed'"
+                class="flow-run-trace-provider-legacy"
+              >
+                此运行未保存节点级 Provider 来源，可查看节点错误与 Task 执行来源。
+              </p>
               <div
                 v-if="artifactDetails[node.outputArtifact.key]?.inputArtifactKey"
                 class="flow-run-trace-artifact-lineage"
@@ -174,6 +205,12 @@
                           <template v-if="entry.contentFingerprint">
                             · SHA {{ shortFingerprint(entry.contentFingerprint) }}
                           </template>
+                          <template v-if="entry.providerCall">
+                            · {{ flowProviderCallSource(entry.providerCall) || 'Provider 来源未报告' }}
+                            <template v-if="flowProviderCallMetrics(entry.providerCall)">
+                              · {{ flowProviderCallMetrics(entry.providerCall) }}
+                            </template>
+                          </template>
                         </small>
                       </div>
                       <button
@@ -188,7 +225,7 @@
                   </ol>
                 </div>
               </details>
-              <pre>{{ artifactDetails[node.outputArtifact.key]?.payload }}</pre>
+              <pre v-if="artifactDetails[node.outputArtifact.key]?.payload">{{ artifactDetails[node.outputArtifact.key]?.payload }}</pre>
             </section>
           </Transition>
           <button
@@ -233,6 +270,11 @@ import {
   flowArtifactTypeLabel
 } from '@/utils/flowExecutionPlan'
 import { flowArtifactLineageStatusLabel } from '@/utils/flowArtifactLineage'
+import {
+  flowProviderCallMetrics,
+  flowProviderCallSource,
+  flowProviderCallStatusLabel
+} from '@/utils/flowProviderCall'
 
 const props = withDefaults(
   defineProps<{
@@ -260,8 +302,19 @@ function canInspectArtifact(node: FlowNodeRunTrace) {
   return Boolean(
     props.trace.runId
       && node.outputArtifact?.storage === 'node-artifact'
-      && node.outputArtifact.state === 'materialized'
+      && (
+        node.outputArtifact.state === 'materialized'
+        || (node.outputArtifact.type === 'provider-result' && node.outputArtifact.state === 'failed')
+      )
   )
+}
+
+function artifactActionLabel(node: FlowNodeRunTrace) {
+  return node.outputArtifact?.state === 'failed' ? '查看调用' : '查看产物'
+}
+
+function artifactCloseLabel(node: FlowNodeRunTrace) {
+  return node.outputArtifact?.state === 'failed' ? '收起调用' : '收起产物'
 }
 
 function artifactIsOpen(artifactKey: string) {
@@ -399,6 +452,18 @@ function artifactInputStateLabel(detail: FlowNodeArtifactDetail | undefined) {
 
 function artifactInputFingerprintLabel(detail: FlowNodeArtifactDetail | undefined) {
   return detail?.inputContentFingerprint ? shortFingerprint(detail.inputContentFingerprint) : ''
+}
+
+function providerCallSource(detail: FlowNodeArtifactDetail | undefined) {
+  return flowProviderCallSource(detail?.providerCall)
+}
+
+function providerCallMetrics(detail: FlowNodeArtifactDetail | undefined) {
+  return flowProviderCallMetrics(detail?.providerCall)
+}
+
+function providerCallStatus(detail: FlowNodeArtifactDetail | undefined) {
+  return flowProviderCallStatusLabel(detail?.providerCall)
 }
 
 function lineageStatusLabel(lineage: FlowNodeArtifactLineage | undefined) {
