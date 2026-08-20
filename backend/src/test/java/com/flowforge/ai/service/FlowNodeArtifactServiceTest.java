@@ -9,8 +9,10 @@ import com.flowforge.ai.dto.FlowRunSnapshotResponse;
 import com.flowforge.ai.dto.FlowRunTraceResponse;
 import com.flowforge.ai.dto.OpenAiTaskResult;
 import com.flowforge.ai.entity.FlowNodeArtifact;
+import com.flowforge.ai.entity.FlowProviderAttempt;
 import com.flowforge.ai.entity.Task;
 import com.flowforge.ai.repository.FlowNodeArtifactRepository;
+import com.flowforge.ai.repository.FlowProviderAttemptRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,12 +38,19 @@ class FlowNodeArtifactServiceTest {
     @Mock
     private FlowNodeArtifactRepository artifactRepository;
 
+    @Mock
+    private FlowProviderAttemptRepository providerAttemptRepository;
+
     private final FlowExecutionCompiler compiler = new FlowExecutionCompiler();
     private FlowNodeArtifactService artifactService;
 
     @BeforeEach
     void setUp() {
-        artifactService = new FlowNodeArtifactService(artifactRepository, compiler);
+        artifactService = new FlowNodeArtifactService(
+                artifactRepository,
+                providerAttemptRepository,
+                compiler
+        );
     }
 
     @Test
@@ -86,6 +95,7 @@ class FlowNodeArtifactServiceTest {
                 )
         ));
         when(artifactRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(providerAttemptRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         List<FlowNodeArtifact> saved = artifactService.persist(task, snapshot(flowId), trace, result);
 
@@ -138,6 +148,24 @@ class FlowNodeArtifactServiceTest {
                     .isEqualTo(compiler.fingerprint(artifact.getPayload()));
         });
         verify(artifactRepository).saveAll(saved);
+        @SuppressWarnings("unchecked")
+        org.mockito.ArgumentCaptor<List<FlowProviderAttempt>> attemptCaptor =
+                org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(providerAttemptRepository).saveAll(attemptCaptor.capture());
+        assertThat(attemptCaptor.getValue()).singleElement().satisfies(attempt -> {
+            assertThat(attempt.getArtifactId()).isEqualTo(saved.get(1).getId());
+            assertThat(attempt.getAttemptNumber()).isEqualTo(1);
+            assertThat(attempt.getTriggerType()).isEqualTo("initial");
+            assertThat(attempt.getPreviousAttemptId()).isNull();
+            assertThat(attempt.getStatus()).isEqualTo("completed");
+            assertThat(attempt.getProvider()).isEqualTo("deepseek");
+            assertThat(attempt.getModel()).isEqualTo("deepseek-chat");
+            assertThat(attempt.getInputTokens()).isEqualTo(120);
+            assertThat(attempt.getOutputTokens()).isEqualTo(80);
+            assertThat(attempt.getTotalTokens()).isEqualTo(200);
+            assertThat(attempt.getDurationMs()).isEqualTo(840L);
+            assertThat(attempt.getErrorMessage()).isNull();
+        });
     }
 
     @Test
@@ -156,7 +184,7 @@ class FlowNodeArtifactServiceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Flow node artifact fingerprint does not match its payload");
 
-        verifyNoInteractions(artifactRepository);
+        verifyNoInteractions(artifactRepository, providerAttemptRepository);
     }
 
     @Test
@@ -194,6 +222,7 @@ class FlowNodeArtifactServiceTest {
                 )
         ));
         when(artifactRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(providerAttemptRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         List<FlowNodeArtifact> saved = artifactService.persist(task, snapshot(flowId), trace, null);
 
@@ -225,6 +254,18 @@ class FlowNodeArtifactServiceTest {
                 .containsExactly(null, 420L, null);
         assertThat(saved).extracting(FlowNodeArtifact::getProviderErrorMessage)
                 .containsExactly(null, "AI API error: provider unavailable", null);
+        @SuppressWarnings("unchecked")
+        org.mockito.ArgumentCaptor<List<FlowProviderAttempt>> attemptCaptor =
+                org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(providerAttemptRepository).saveAll(attemptCaptor.capture());
+        assertThat(attemptCaptor.getValue()).singleElement().satisfies(attempt -> {
+            assertThat(attempt.getArtifactId()).isEqualTo(saved.get(1).getId());
+            assertThat(attempt.getAttemptNumber()).isEqualTo(1);
+            assertThat(attempt.getTriggerType()).isEqualTo("initial");
+            assertThat(attempt.getStatus()).isEqualTo("failed");
+            assertThat(attempt.getDurationMs()).isEqualTo(420L);
+            assertThat(attempt.getErrorMessage()).isEqualTo("AI API error: provider unavailable");
+        });
     }
 
     @Test
@@ -262,7 +303,7 @@ class FlowNodeArtifactServiceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Flow artifact plan order does not match node trace");
 
-        verifyNoInteractions(artifactRepository);
+        verifyNoInteractions(artifactRepository, providerAttemptRepository);
     }
 
     @Test
@@ -304,7 +345,7 @@ class FlowNodeArtifactServiceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Flow artifact output contract does not match node trace");
 
-        verifyNoInteractions(artifactRepository);
+        verifyNoInteractions(artifactRepository, providerAttemptRepository);
     }
 
     @Test
@@ -357,7 +398,7 @@ class FlowNodeArtifactServiceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Flow artifact input does not resolve to a prior node output");
 
-        verifyNoInteractions(artifactRepository);
+        verifyNoInteractions(artifactRepository, providerAttemptRepository);
     }
 
     @Test
@@ -394,7 +435,7 @@ class FlowNodeArtifactServiceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Flow Provider boundary must produce an AI Task result artifact");
 
-        verifyNoInteractions(artifactRepository);
+        verifyNoInteractions(artifactRepository, providerAttemptRepository);
     }
 
     @Test
@@ -441,7 +482,7 @@ class FlowNodeArtifactServiceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Flow AI Task artifact requires a Provider boundary");
 
-        verifyNoInteractions(artifactRepository);
+        verifyNoInteractions(artifactRepository, providerAttemptRepository);
     }
 
     @Test
@@ -475,7 +516,7 @@ class FlowNodeArtifactServiceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Flow Provider provenance does not match the run status");
 
-        verifyNoInteractions(artifactRepository);
+        verifyNoInteractions(artifactRepository, providerAttemptRepository);
     }
 
     private FlowRunTraceResponse withSteps(

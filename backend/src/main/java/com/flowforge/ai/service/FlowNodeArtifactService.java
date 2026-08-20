@@ -9,8 +9,10 @@ import com.flowforge.ai.dto.FlowRunSnapshotResponse;
 import com.flowforge.ai.dto.FlowRunTraceResponse;
 import com.flowforge.ai.dto.OpenAiTaskResult;
 import com.flowforge.ai.entity.FlowNodeArtifact;
+import com.flowforge.ai.entity.FlowProviderAttempt;
 import com.flowforge.ai.entity.Task;
 import com.flowforge.ai.repository.FlowNodeArtifactRepository;
+import com.flowforge.ai.repository.FlowProviderAttemptRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -20,12 +22,14 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class FlowNodeArtifactService {
 
     private final FlowNodeArtifactRepository artifactRepository;
+    private final FlowProviderAttemptRepository providerAttemptRepository;
     private final FlowExecutionCompiler flowExecutionCompiler;
 
     @Transactional(propagation = Propagation.MANDATORY)
@@ -60,6 +64,7 @@ public class FlowNodeArtifactService {
             );
             ProviderCallProvenance providerCall = resolveProviderCall(task, trace, index, node, artifact);
             artifacts.add(FlowNodeArtifact.builder()
+                    .id(UUID.randomUUID())
                     .taskId(task.getId())
                     .flowId(trace.flowId())
                     .nodeId(node.nodeId())
@@ -90,7 +95,32 @@ public class FlowNodeArtifactService {
         if (artifacts.isEmpty()) {
             return List.of();
         }
-        return artifactRepository.saveAll(artifacts);
+        List<FlowNodeArtifact> savedArtifacts = artifactRepository.saveAll(artifacts);
+        persistProviderAttempts(savedArtifacts);
+        return savedArtifacts;
+    }
+
+    private void persistProviderAttempts(List<FlowNodeArtifact> artifacts) {
+        List<FlowProviderAttempt> attempts = artifacts.stream()
+                .filter(artifact -> artifact.getProviderCallStatus() != null)
+                .map(artifact -> FlowProviderAttempt.builder()
+                        .id(UUID.randomUUID())
+                        .artifactId(artifact.getId())
+                        .attemptNumber(1)
+                        .triggerType(FlowProviderAttempt.TRIGGER_INITIAL)
+                        .status(artifact.getProviderCallStatus())
+                        .provider(artifact.getProviderName())
+                        .model(artifact.getProviderModel())
+                        .inputTokens(artifact.getProviderInputTokens())
+                        .outputTokens(artifact.getProviderOutputTokens())
+                        .totalTokens(artifact.getProviderTotalTokens())
+                        .durationMs(artifact.getProviderDurationMs())
+                        .errorMessage(artifact.getProviderErrorMessage())
+                        .build())
+                .toList();
+        if (!attempts.isEmpty()) {
+            providerAttemptRepository.saveAll(attempts);
+        }
     }
 
     private ArtifactInputLineage resolveInputLineage(
