@@ -1,8 +1,11 @@
 package com.flowforge.ai.service;
 
 import com.flowforge.ai.dto.FlowExecutionFailurePolicyResponse;
+import com.flowforge.ai.dto.FlowExecutionPlanResponse;
 import com.flowforge.ai.dto.FlowNodeDto;
+import com.flowforge.ai.dto.FlowNodeRunTraceResponse;
 import com.flowforge.ai.dto.FlowRunSnapshotResponse;
+import com.flowforge.ai.dto.FlowRunTraceResponse;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -11,6 +14,8 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class FlowExecutionCompilerTest {
 
@@ -116,6 +121,85 @@ class FlowExecutionCompilerTest {
         assertThat(compiler.findMissingVariables(snapshot)).containsExactly("audience");
         assertThat(compiler.applyVariables("For {audience} and {unknown}", Map.of("audience", "teams")))
                 .isEqualTo("For teams and {unknown}");
+    }
+
+    @Test
+    void validatesTheCurrentStopSkipNoRetryPolicyAgainstPersistedNodeStates() {
+        FlowExecutionCompiler.Compilation compilation = compiler.compile(
+                snapshot(Map.of("audience", "product teams"))
+        );
+
+        assertThatCode(() -> compiler.validateFailurePolicy(trace(
+                "failed",
+                compilation.plan(),
+                List.of("prepared", "prepared", "prepared", "failed", "skipped")
+        ))).doesNotThrowAnyException();
+
+        assertThatThrownBy(() -> compiler.validateFailurePolicy(trace(
+                "failed",
+                compilation.plan(),
+                List.of("prepared", "prepared", "prepared", "failed", "completed")
+        )))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Flow failure policy requires downstream nodes to be skipped");
+    }
+
+    @Test
+    void rejectsAPlanThatClaimsRetriesInTheSinglePassRuntime() {
+        FlowExecutionCompiler.Compilation compilation = compiler.compile(
+                snapshot(Map.of("audience", "product teams"))
+        );
+        FlowExecutionPlanResponse retryingPlan = new FlowExecutionPlanResponse(
+                compilation.plan().version(),
+                compilation.plan().scheduling(),
+                compilation.plan().steps(),
+                new FlowExecutionFailurePolicyResponse(
+                        "flow-failure-policy-v1",
+                        "stop-run",
+                        "skip",
+                        "fixed",
+                        2
+                )
+        );
+
+        assertThatThrownBy(() -> compiler.validateFailurePolicy(trace(
+                "completed",
+                retryingPlan,
+                List.of("prepared", "prepared", "prepared", "completed", "completed")
+        )))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Unsupported Flow failure policy");
+    }
+
+    private FlowRunTraceResponse trace(
+            String status,
+            FlowExecutionPlanResponse plan,
+            List<String> nodeStatuses
+    ) {
+        List<FlowNodeRunTraceResponse> nodes = plan.steps().stream()
+                .map(step -> new FlowNodeRunTraceResponse(
+                        step.nodeId(),
+                        step.nodeType(),
+                        step.title(),
+                        nodeStatuses.get(step.sequence() - 1),
+                        "compiled",
+                        null,
+                        null
+                ))
+                .toList();
+        return new FlowRunTraceResponse(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                status,
+                "single-pass",
+                1,
+                "flow-compiler-v1",
+                "fingerprint",
+                "compiled-flow",
+                null,
+                plan,
+                nodes
+        );
     }
 
     private FlowRunSnapshotResponse snapshot(Map<String, String> variableValues) {

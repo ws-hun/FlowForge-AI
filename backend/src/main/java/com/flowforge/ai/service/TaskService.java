@@ -465,7 +465,7 @@ public class TaskService {
                         errorMessage
                 ))
                 .toList();
-        return new FlowRunTraceResponse(
+        FlowRunTraceResponse trace = new FlowRunTraceResponse(
                 source.taskId(),
                 snapshot.flowId(),
                 completed ? Task.STATUS_COMPLETED : Task.STATUS_FAILED,
@@ -478,6 +478,8 @@ public class TaskService {
                 source.executionPlan(),
                 nodes
         );
+        flowExecutionCompiler.validateFailurePolicy(trace);
+        return trace;
     }
 
     private FlowNodeRunTraceResponse buildFlowNodeRunTrace(

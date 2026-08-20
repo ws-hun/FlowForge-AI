@@ -38,6 +38,7 @@ public class FlowNodeArtifactService {
         if (trace == null || trace.nodes() == null) {
             return List.of();
         }
+        flowExecutionCompiler.validateFailurePolicy(trace);
 
         List<FlowNodeArtifact> artifacts = new ArrayList<>();
         Map<String, FlowNodeArtifactResponse> priorArtifacts = new LinkedHashMap<>();

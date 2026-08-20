@@ -6,7 +6,9 @@ import com.flowforge.ai.dto.FlowArtifactContractResponse;
 import com.flowforge.ai.dto.FlowExecutionPlanResponse;
 import com.flowforge.ai.dto.FlowExecutionStepResponse;
 import com.flowforge.ai.dto.FlowNodeDto;
+import com.flowforge.ai.dto.FlowNodeRunTraceResponse;
 import com.flowforge.ai.dto.FlowRunSnapshotResponse;
+import com.flowforge.ai.dto.FlowRunTraceResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -200,6 +202,62 @@ public class FlowExecutionCompiler {
         }
         matcher.appendTail(compiled);
         return compiled.toString();
+    }
+
+    void validateFailurePolicy(FlowRunTraceResponse trace) {
+        if (trace == null || trace.executionPlan() == null
+                || trace.executionPlan().failurePolicy() == null) {
+            return;
+        }
+
+        FlowExecutionPlanResponse plan = trace.executionPlan();
+        FlowExecutionFailurePolicyResponse policy = plan.failurePolicy();
+        if (!FAILURE_POLICY_VERSION.equals(policy.version())
+                || !"stop-run".equals(policy.onProviderFailure())
+                || !"skip".equals(policy.downstreamNodeAction())
+                || !"none".equals(policy.retryStrategy())
+                || policy.maxAttempts() != 1) {
+            throw new IllegalStateException("Unsupported Flow failure policy");
+        }
+        if (!EXECUTION_MODE.equals(trace.executionMode())
+                || trace.providerCallCount() == null
+                || trace.providerCallCount() != PROVIDER_CALL_COUNT) {
+            throw new IllegalStateException("Flow failure policy does not match single-pass execution");
+        }
+        if (trace.nodes() == null || plan.steps() == null
+                || trace.nodes().size() != plan.steps().size()) {
+            throw new IllegalStateException("Flow failure policy requires aligned node trace and plan");
+        }
+
+        int failedIndex = -1;
+        for (int index = 0; index < trace.nodes().size(); index++) {
+            FlowNodeRunTraceResponse node = trace.nodes().get(index);
+            FlowExecutionStepResponse step = plan.steps().get(index);
+            if (!node.nodeId().equals(step.nodeId())) {
+                throw new IllegalStateException("Flow failure policy requires aligned node trace and plan");
+            }
+            if ("failed".equals(node.status())) {
+                if (failedIndex >= 0 || !"ai-task".equals(node.nodeType()) || !step.providerBoundary()) {
+                    throw new IllegalStateException("Flow failure policy allows one failed AI Task boundary");
+                }
+                failedIndex = index;
+            }
+        }
+
+        if ("completed".equals(trace.status())) {
+            if (failedIndex >= 0 || trace.nodes().stream().anyMatch(node -> "skipped".equals(node.status()))) {
+                throw new IllegalStateException("Completed Flow run violates its failure policy");
+            }
+            return;
+        }
+        if (!"failed".equals(trace.status()) || failedIndex < 0) {
+            throw new IllegalStateException("Failed Flow run requires a failed AI Task boundary");
+        }
+        for (int index = failedIndex + 1; index < trace.nodes().size(); index++) {
+            if (!"skipped".equals(trace.nodes().get(index).status())) {
+                throw new IllegalStateException("Flow failure policy requires downstream nodes to be skipped");
+            }
+        }
     }
 
     private FlowExecutionSectionResponse compileNodeSection(
