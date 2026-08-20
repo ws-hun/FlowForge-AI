@@ -10,10 +10,11 @@ This is a real and reproducible runtime. It is not yet a node-level execution en
 
 ## 2. Versioned Contracts
 
-The runtime exposes two independent versions:
+The runtime exposes three independent versions:
 
 - `flow-compiler-v1` defines how the exact Provider input is produced.
 - `flow-plan-v4` defines how saved nodes are ordered, what responsibility each node has, which persisted artifact enters and leaves each step, and how the upstream reference was resolved.
+- `flow-failure-policy-v1` defines the current terminal behavior: stop the run after Provider failure, skip downstream nodes, allow one attempt, and perform no automatic retry.
 
 The compiler also produces a SHA-256 fingerprint of the exact UTF-8 Provider input. Preview, Provider invocation, persisted Task input, and Run Trace must agree on that value.
 
@@ -46,6 +47,8 @@ The current input resolution method is `compiled-reference`. It records that a s
 
 The plan order must match the immutable node snapshot and the persisted node trace order. The number of Provider boundary steps must match `providerCallCount`.
 
+New plans embed `flow-failure-policy-v1`. Preview and execution therefore expose the same failure behavior before a run begins and after it becomes immutable. Trace generation and artifact persistence both reject mismatched terminal states: a failed run has one failed AI Task boundary and every later node is `skipped`; a completed run cannot contain failed or skipped nodes. This policy describes the current single Provider attempt and is not a user-configurable retry engine.
+
 ## 4. Node Artifact Records
 
 New direct Flow runs persist one independently addressable database artifact for every planned node output:
@@ -76,7 +79,7 @@ New direct Flow runs persist their execution plan inside `flowRunTrace` for both
 
 Legacy traces without an execution plan remain valid and deserialize with `executionPlan = null`. The frontend labels these records as legacy instead of synthesizing a plan that did not exist at run time.
 
-Legacy `flow-plan-v1` steps remain readable with null artifact contracts. Legacy `flow-plan-v2` plans retain their original `trace-content` and `task-result` storage owners. Legacy `flow-plan-v3` plans retain modern `node-artifact` contracts but have no input resolution field. Artifact records created before lineage or Provider provenance persistence remain readable with null lineage fields and `providerCall = null`. FlowForge never synthesizes missing plans, artifacts, lineage, or Provider calls for old runs.
+Legacy `flow-plan-v1` steps remain readable with null artifact contracts. Legacy `flow-plan-v2` plans retain their original `trace-content` and `task-result` storage owners. Legacy `flow-plan-v3` plans retain modern `node-artifact` contracts but have no input resolution field. Plans persisted before failure policy support remain readable with `failurePolicy = null`. Artifact records created before lineage or Provider provenance persistence remain readable with null lineage fields and `providerCall = null`. FlowForge never synthesizes missing plans, policies, artifacts, lineage, or Provider calls for old runs.
 
 Exact historical reruns use the stored Task input. They do not recompile the old Flow. When the source trace has a plan, the new replay preserves that immutable plan and records `stored-input-replay` plus the source Task ID.
 
@@ -87,7 +90,7 @@ FlowForge must not switch a Flow to `node-sequential` until all of the following
 1. Every executable node has an explicit input and output contract.
 2. The runtime resolves dependent node inputs from persisted upstream artifacts instead of the single compiled Provider input.
 3. Every actual Provider invocation made by the node engine is independently recorded on its owning node, including model, available token usage, duration, failure provenance, and retry attempt identity.
-4. Failure policy defines stop, skip, and retry behavior without inventing successful downstream state.
+4. The node engine extends the current single-pass stop/skip/no-retry baseline with explicit per-node retry attempts, recovery state, and terminal propagation without inventing successful downstream state.
 5. Preview returns the same executable plan consumed by the runtime.
 6. Historical replay can reproduce the saved plan without consulting the current Flow editor state.
 

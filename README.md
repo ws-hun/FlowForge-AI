@@ -145,6 +145,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Navigable Node Artifact Lineage | Done | 当前节点产物保存真实上游 Key、契约、状态、解析方式与指纹，可从运行轨迹按需回看已物化上游 |
 | Stage 3 | Complete Artifact Lineage Path | Done | 运行轨迹可按需查看从节点产物回到 Flow 快照目标的 metadata-only 来源链，并诚实显示旧记录、断链和循环终止状态 |
 | Stage 3 | Node Provider Provenance | Done | 唯一 AI Task 边界保存真实 Provider、模型、Token、耗时和失败来源，Input、Prompt 与 Output 节点不伪造调用信息 |
+| Stage 3 | Versioned Flow Failure Policy | Done | Preview 与运行轨迹共享 `flow-failure-policy-v1`，固定 Provider 失败即停止、下游跳过、单次尝试且不自动重试 |
 | Foundation | Frontend Bundle Splitting | Done | 页面按路由懒加载，Element Plus 仅注册实际组件，入口 JS 与 CSS 不再包含整套页面和 UI 库 |
 | Future | Agents | Future Boundary | 不展示虚构 Agent 状态，用户可回到 Flow / Prompt 沉淀真实可执行资产 |
 | Future | Knowledge Base | Future Boundary | 不展示虚构索引来源，用户可先通过 Flow Context 固定真实上下文 |
@@ -315,6 +316,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | 独立节点产物落库与运行轨迹内按需检查 | Done |
 | 节点产物上游血缘持久化与运行轨迹导航 | Done |
 | AI Task 节点真实 Provider 来源、Token、耗时与失败信息 | Done |
+| 版本化失败策略（停止运行 / 下游跳过 / 不自动重试） | Done |
 | 失败运行在 Flow Space 中检查节点状态并使用固定输入重跑 | Done |
 | Flow 执行结果展示 | Done |
 | Flow 执行历史回看 | Done |
@@ -410,7 +412,7 @@ Controller -> Service -> Repository -> Entity
 | `ApiKeyCipher` | AES-256-GCM 密钥静态加密与主密钥管理 |
 | `PromptService` | Prompt 资产、收藏、版本 |
 | `WorkflowService` | Flow 草稿和节点结构 |
-| `FlowExecutionCompiler` | 将不可变 Flow 快照编译为预览与执行共享的确定性 Provider 输入和 `flow-plan-v4` 节点产物计划 |
+| `FlowExecutionCompiler` | 将不可变 Flow 快照编译为确定性 Provider 输入、`flow-plan-v4` 节点产物计划与版本化失败策略，并校验运行轨迹状态 |
 | `FlowNodeArtifactService` | 在 Task 事务内物化节点 payload，校验不可变 SHA-256 指纹、上游产物契约与唯一 AI Task Provider 来源 |
 | `FlowNodeArtifactQueryService` | 按运行顺序读取产物、血缘与 Provider 来源，并按稳定 Artifact Key 返回单个 payload |
 | `HealthService` | 应用与 PostgreSQL 就绪探针 |
@@ -701,6 +703,8 @@ Response:
 
 `executionPlan` 使用 `flow-plan-v4` 固定保存节点顺序、直接前置依赖、节点职责、输入输出产物契约、输入解析方式和 Provider 边界。Input 与 Prompt 提供编译内容，AI Task 是唯一 `invoke-provider` 步骤，Output 定义同一请求的交付约束。Flow 目标来自不可变快照，每个现代节点输出都指向稳定的 `node-artifact` 记录。
 
+新计划同时保存 `flow-failure-policy-v1`：Provider 失败时停止本次运行，后续节点标记为 `skipped`，本次调用最多尝试 `1` 次且不会自动重试。服务端在生成轨迹和持久化节点产物前都会校验该策略，Preview 与历史 Execution Path 复用同一说明。旧计划没有策略字段时保持 `failurePolicy: null`，不会补造历史行为。
+
 现代 `flowRunTrace.nodes[].outputArtifact` 保存产物状态与内容指纹，同时在 `flow_node_artifacts` 中独立保存可寻址 payload。Input / Prompt 保存变量替换后的编译文本，AI Task 保存 Summary + Result，Output 保存 Result 文档；落库前必须重新计算并匹配 trace 指纹。每个 v4 产物同时保存上游 Key、类型、存储、状态、输入解析方式和可用指纹，运行轨迹可按需打开并跳转到已物化上游。Provider 失败和下游跳过不会生成虚假 payload 或指纹。
 
 `compiled-reference` 明确表示当前血缘来自一次完整 Flow 编译引用，不表示运行时从数据库逐节点读取上游 payload。运行轨迹只在用户点击“查看产物”或“查看上游”时调用单项读取 API；“来源链”另行按需读取 metadata-only 路径，因此不会预加载整次运行的所有 payload。路径回到 `flow-snapshot` 只代表这次历史运行的可解释来源，不代表已经启用 `persisted-artifact` 执行。当前 Runtime 仍执行一次共享 Provider 调用。旧 v1 / v2 / v3 计划与迁移前产物保持缺失字段为 `null`，不会根据当前 Flow 现场补造历史血缘。
@@ -867,7 +871,7 @@ Check:
 ### Near Term
 
 - 设计未来 `persisted-artifact` 输入解析契约，并保持现有 `single-pass` 历史语义不变
-- 定义 `node-sequential` 的 stop / skip / retry 与逐节点重试来源契约
+- 将当前 no-retry 基线扩展为 `node-sequential` 的逐节点 retry attempt、恢复与来源契约
 - 在运行时真正从上游产物解析输入后演进到 node-level execution engine
 - Prompt / Flow 复用闭环细化
 - More complete onboarding and empty states
