@@ -1,6 +1,7 @@
 package com.flowforge.ai.service;
 
 import com.flowforge.ai.dto.FlowExecutionSectionResponse;
+import com.flowforge.ai.dto.FlowExecutionFailurePolicyResponse;
 import com.flowforge.ai.dto.FlowArtifactContractResponse;
 import com.flowforge.ai.dto.FlowExecutionPlanResponse;
 import com.flowforge.ai.dto.FlowExecutionStepResponse;
@@ -29,6 +30,15 @@ public class FlowExecutionCompiler {
     static final String PLAN_VERSION = "flow-plan-v4";
     static final String PLAN_SCHEDULING = "linear";
     static final String INPUT_RESOLUTION = "compiled-reference";
+    static final String FAILURE_POLICY_VERSION = "flow-failure-policy-v1";
+    static final FlowExecutionFailurePolicyResponse SINGLE_PASS_FAILURE_POLICY =
+            new FlowExecutionFailurePolicyResponse(
+                    FAILURE_POLICY_VERSION,
+                    "stop-run",
+                    "skip",
+                    "none",
+                    1
+            );
     private static final Pattern FLOW_VARIABLE_PATTERN = Pattern.compile("\\{[a-zA-Z0-9_\\u4e00-\\u9fa5-]+}");
 
     Compilation compile(FlowRunSnapshotResponse snapshot) {
@@ -140,7 +150,12 @@ public class FlowExecutionCompiler {
             previousNodeId = node.id();
             previousArtifact = outputArtifact;
         }
-        return new FlowExecutionPlanResponse(PLAN_VERSION, PLAN_SCHEDULING, List.copyOf(steps));
+        return new FlowExecutionPlanResponse(
+                PLAN_VERSION,
+                PLAN_SCHEDULING,
+                List.copyOf(steps),
+                SINGLE_PASS_FAILURE_POLICY
+        );
     }
 
     String fingerprint(String executionInput) {

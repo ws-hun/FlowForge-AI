@@ -1,5 +1,6 @@
 package com.flowforge.ai.service;
 
+import com.flowforge.ai.dto.FlowExecutionFailurePolicyResponse;
 import com.flowforge.ai.dto.FlowNodeDto;
 import com.flowforge.ai.dto.FlowRunSnapshotResponse;
 import org.junit.jupiter.api.Test;
@@ -49,6 +50,15 @@ class FlowExecutionCompilerTest {
                 );
         assertThat(compilation.plan().version()).isEqualTo("flow-plan-v4");
         assertThat(compilation.plan().scheduling()).isEqualTo("linear");
+        assertThat(compilation.plan().failurePolicy()).isEqualTo(
+                new FlowExecutionFailurePolicyResponse(
+                        "flow-failure-policy-v1",
+                        "stop-run",
+                        "skip",
+                        "none",
+                        1
+                )
+        );
         assertThat(compilation.plan().steps())
                 .extracting(step -> step.nodeId())
                 .containsExactly("input-1", "input-2", "prompt-1", "ai-task-1", "output-1");

@@ -8,6 +8,14 @@ import java.util.List;
 public record FlowExecutionPlanResponse(
         String version,
         String scheduling,
-        List<FlowExecutionStepResponse> steps
+        List<FlowExecutionStepResponse> steps,
+        FlowExecutionFailurePolicyResponse failurePolicy
 ) {
+    public FlowExecutionPlanResponse(
+            String version,
+            String scheduling,
+            List<FlowExecutionStepResponse> steps
+    ) {
+        this(version, scheduling, steps, null);
+    }
 }
