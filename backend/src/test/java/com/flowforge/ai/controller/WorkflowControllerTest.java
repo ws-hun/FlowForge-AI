@@ -3,6 +3,7 @@ package com.flowforge.ai.controller;
 import com.flowforge.ai.dto.FlowExecutionPreviewRequest;
 import com.flowforge.ai.dto.FlowExecutionPreviewResponse;
 import com.flowforge.ai.dto.FlowArtifactContractResponse;
+import com.flowforge.ai.dto.FlowExecutionFailurePolicyResponse;
 import com.flowforge.ai.dto.FlowExecutionPlanResponse;
 import com.flowforge.ai.dto.FlowExecutionSectionResponse;
 import com.flowforge.ai.dto.FlowExecutionStepResponse;
@@ -124,7 +125,14 @@ class WorkflowControllerTest {
                                         "context-contribution",
                                         "node-artifact"
                                 )
-                        ))
+                        )),
+                        new FlowExecutionFailurePolicyResponse(
+                                "flow-failure-policy-v1",
+                                "stop-run",
+                                "skip",
+                                "none",
+                                1
+                        )
                 ),
                 true,
                 List.of(),
@@ -147,6 +155,14 @@ class WorkflowControllerTest {
                 .andExpect(jsonPath("$.compilerVersion").value("flow-compiler-v1"))
                 .andExpect(jsonPath("$.executionInputFingerprint").value("8f2a4a8bd2f30ec4880b55df102d714d1f05d5dc7e60d7cc15bfc5bf5f660b8a"))
                 .andExpect(jsonPath("$.executionPlan.version").value("flow-plan-v4"))
+                .andExpect(jsonPath("$.executionPlan.failurePolicy.version")
+                        .value("flow-failure-policy-v1"))
+                .andExpect(jsonPath("$.executionPlan.failurePolicy.onProviderFailure")
+                        .value("stop-run"))
+                .andExpect(jsonPath("$.executionPlan.failurePolicy.downstreamNodeAction")
+                        .value("skip"))
+                .andExpect(jsonPath("$.executionPlan.failurePolicy.retryStrategy").value("none"))
+                .andExpect(jsonPath("$.executionPlan.failurePolicy.maxAttempts").value(1))
                 .andExpect(jsonPath("$.executionPlan.steps[0].operation").value("supply-context"))
                 .andExpect(jsonPath("$.executionPlan.steps[0].inputArtifact.type").value("flow-objective"))
                 .andExpect(jsonPath("$.executionPlan.steps[0].inputResolution").value("compiled-reference"))

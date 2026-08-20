@@ -244,6 +244,13 @@ class TaskServiceTest {
         assertThat(response.flowRunTrace().inputSource()).isEqualTo("compiled-flow");
         assertThat(response.flowRunTrace().replayedFromTaskId()).isNull();
         assertThat(response.flowRunTrace().executionPlan().version()).isEqualTo("flow-plan-v4");
+        assertThat(response.flowRunTrace().executionPlan().failurePolicy()).satisfies(policy -> {
+            assertThat(policy.version()).isEqualTo("flow-failure-policy-v1");
+            assertThat(policy.onProviderFailure()).isEqualTo("stop-run");
+            assertThat(policy.downstreamNodeAction()).isEqualTo("skip");
+            assertThat(policy.retryStrategy()).isEqualTo("none");
+            assertThat(policy.maxAttempts()).isEqualTo(1);
+        });
         assertThat(response.flowRunTrace().executionPlan().steps())
                 .allSatisfy(step -> assertThat(step.inputResolution()).isEqualTo("compiled-reference"));
         assertThat(response.flowRunTrace().executionPlan().steps())
@@ -604,6 +611,13 @@ class TaskServiceTest {
                 .isEqualTo(new FlowExecutionCompiler().fingerprint(failedTask.getInput()));
         assertThat(trace.inputSource()).isEqualTo("compiled-flow");
         assertThat(trace.replayedFromTaskId()).isNull();
+        assertThat(trace.executionPlan().failurePolicy()).satisfies(policy -> {
+            assertThat(policy.version()).isEqualTo("flow-failure-policy-v1");
+            assertThat(policy.onProviderFailure()).isEqualTo("stop-run");
+            assertThat(policy.downstreamNodeAction()).isEqualTo("skip");
+            assertThat(policy.retryStrategy()).isEqualTo("none");
+            assertThat(policy.maxAttempts()).isEqualTo(1);
+        });
         assertThat(trace.executionPlan().steps())
                 .extracting(step -> step.nodeId())
                 .containsExactlyElementsOf(trace.nodes().stream().map(FlowNodeRunTraceResponse::nodeId).toList());
@@ -985,6 +999,13 @@ class TaskServiceTest {
         assertThat(response.missingVariables()).isEmpty();
         assertThat(response.incompleteNodes()).isEmpty();
         assertThat(response.executionPlan().version()).isEqualTo("flow-plan-v4");
+        assertThat(response.executionPlan().failurePolicy()).satisfies(policy -> {
+            assertThat(policy.version()).isEqualTo("flow-failure-policy-v1");
+            assertThat(policy.onProviderFailure()).isEqualTo("stop-run");
+            assertThat(policy.downstreamNodeAction()).isEqualTo("skip");
+            assertThat(policy.retryStrategy()).isEqualTo("none");
+            assertThat(policy.maxAttempts()).isEqualTo(1);
+        });
         assertThat(response.executionPlan().steps())
                 .extracting(step -> step.nodeId())
                 .containsExactly("input-1", "prompt-1", "ai-task-1", "output-1");

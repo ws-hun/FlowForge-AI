@@ -86,6 +86,7 @@ class FlowRunTraceResponseTest {
         assertThat(restored.runId()).isEqualTo(runId);
         assertThat(restored.replayedFromTaskId()).isEqualTo(sourceRunId);
         assertThat(restored.executionPlan().version()).isEqualTo("flow-plan-v1");
+        assertThat(restored.executionPlan().failurePolicy()).isNull();
         assertThat(restored.executionPlan().steps().get(0).inputArtifact()).isNull();
         assertThat(restored.executionPlan().steps().get(0).inputResolution()).isNull();
         assertThat(restored.executionPlan().steps().get(0).outputArtifact()).isNull();
@@ -168,7 +169,7 @@ class FlowRunTraceResponseTest {
     }
 
     @Test
-    void preservesV4InputResolutionAcrossJsonRoundTrips() throws Exception {
+    void preservesV4InputResolutionAndFailurePolicyAcrossJsonRoundTrips() throws Exception {
         FlowArtifactContractResponse inputArtifact = new FlowArtifactContractResponse(
                 "node:input-1:context-contribution",
                 "context-contribution",
@@ -203,7 +204,14 @@ class FlowRunTraceResponseTest {
                                 inputArtifact,
                                 "compiled-reference",
                                 outputArtifact
-                        ))
+                        )),
+                        new FlowExecutionFailurePolicyResponse(
+                                "flow-failure-policy-v1",
+                                "stop-run",
+                                "skip",
+                                "none",
+                                1
+                        )
                 ),
                 List.of()
         );
@@ -215,6 +223,15 @@ class FlowRunTraceResponseTest {
 
         assertThat(restored).isEqualTo(trace);
         assertThat(restored.executionPlan().version()).isEqualTo("flow-plan-v4");
+        assertThat(restored.executionPlan().failurePolicy()).isEqualTo(
+                new FlowExecutionFailurePolicyResponse(
+                        "flow-failure-policy-v1",
+                        "stop-run",
+                        "skip",
+                        "none",
+                        1
+                )
+        );
         assertThat(restored.executionPlan().steps()).singleElement().satisfies(step -> {
             assertThat(step.inputArtifact()).isEqualTo(inputArtifact);
             assertThat(step.inputResolution()).isEqualTo("compiled-reference");
