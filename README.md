@@ -413,8 +413,8 @@ Controller -> Service -> Repository -> Entity
 | `PromptService` | Prompt 资产、收藏、版本 |
 | `WorkflowService` | Flow 草稿和节点结构 |
 | `FlowExecutionCompiler` | 将不可变 Flow 快照编译为确定性 Provider 输入、`flow-plan-v4` 节点产物计划与版本化失败策略，并校验运行轨迹状态 |
-| `FlowNodeArtifactService` | 在 Task 事务内物化节点 payload，校验不可变 SHA-256 指纹、上游产物契约与唯一 AI Task Provider 来源 |
-| `FlowNodeArtifactQueryService` | 按运行顺序读取产物、血缘与 Provider 来源，并按稳定 Artifact Key 返回单个 payload |
+| `FlowNodeArtifactService` | 在 Task 事务内物化节点 payload，校验不可变 SHA-256 指纹、上游产物契约，并为唯一 AI Task Provider 调用保存初始 Attempt |
+| `FlowNodeArtifactQueryService` | 按运行顺序读取产物、血缘与 Provider 来源，批量解析最新 Attempt 摘要，并按稳定 Artifact Key 返回单个 payload 与完整 Attempt 历史 |
 | `HealthService` | 应用与 PostgreSQL 就绪探针 |
 
 数据库结构由 `backend/src/main/resources/db/migration` 下的 Flyway 迁移统一维护。Hibernate 使用 `ddl-auto: validate`，只验证实体与数据库是否一致，不会在启动时静默修改生产 schema。
@@ -429,6 +429,7 @@ prompt_versions
 flows
 flow_versions
 flow_node_artifacts
+flow_provider_attempts
 ```
 
 ### Frontend
@@ -731,7 +732,11 @@ AI Command 中尚未执行的输入与来源上下文保存在当前浏览器的
 
 当 Provider 调用失败时，API 仍按原错误返回 `502 Bad Gateway`，同时使用独立事务原子保存 `failed` Task 与节点产物状态。失败记录包含服务端执行输入、Provider / Model、Prompt / Flow 来源、运行快照、已准备节点 payload 和已清洗错误信息，可以直接通过精确重跑恢复；AI Task 的 `provider-result` 产物会保存这次真实失败调用的来源，下游 Output 不会获得虚假内容。
 
-现代 Flow 运行会把本次唯一真实 Provider 调用绑定到 AI Task 节点产物。`providerCall` 包含成功或失败状态、Provider、模型、可用 Token、服务端耗时和失败信息；Provider 未返回用量时 Token 字段保持 `null`。旧产物以及 Input、Prompt、Output 节点返回 `providerCall: null`，系统不会根据当前配置补写历史或伪造节点调用。
+现代 Flow 运行会把本次唯一真实 Provider 调用绑定到 AI Task 节点产物。每个新运行都会在 `flow_provider_attempts` 中保存唯一的 `initial #1`，包含成功或失败状态、Provider、模型、可用 Token、服务端耗时和失败信息；Provider 未返回用量时 Token 字段保持 `null`。Attempt 与 Task、节点产物在同一成功或失败事务中提交。
+
+产物列表与来源链只返回最新 Attempt 的 `providerCall` 摘要，并通过批量查询避免逐产物读取；`GET /api/tasks/{taskId}/artifacts/{artifactKey}` 在用户打开 AI Task 产物时额外返回完整 `providerAttempts` 时间线。V7 迁移会把 V6 已保存的 Provider provenance 确定性回填为 `initial #1`，更早且没有真实来源的记录仍保持为空。Input、Prompt、Output 节点不会获得伪造 Attempt。
+
+Attempt 表是未来 retry / recovery 的持久化基础，不代表运行时已经启用重试。当前 `single-pass` 仍只调用 Provider 一次，`providerCallCount` 仍为 `1`，不会创建 `automatic-retry` 或 `manual-recovery`，也没有启用 `node-sequential`。
 
 ### Provider
 
@@ -871,7 +876,8 @@ Check:
 ### Near Term
 
 - 设计未来 `persisted-artifact` 输入解析契约，并保持现有 `single-pass` 历史语义不变
-- 将当前 no-retry 基线扩展为 `node-sequential` 的逐节点 retry attempt、恢复与来源契约
+- 在现有独立 Attempt 历史之上定义 retry / recovery 状态转换，并保持当前运行严格 no-retry
+- 完成逐节点输入解析与调用边界后，再启用 `node-sequential` 执行
 - 在运行时真正从上游产物解析输入后演进到 node-level execution engine
 - Prompt / Flow 复用闭环细化
 - More complete onboarding and empty states
