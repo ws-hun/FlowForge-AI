@@ -28,7 +28,7 @@ spring:
     locations: classpath:db/migration
 
 flowforge:
-  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  frontend-url: ${FRONTEND_URL:http://localhost:10086}
   ai:
     http:
       connect-timeout: ${FLOWFORGE_AI_CONNECT_TIMEOUT:10s}

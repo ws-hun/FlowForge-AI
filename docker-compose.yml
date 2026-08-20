@@ -29,7 +29,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-flowforge}
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-flowforge}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-flowforge}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:10086}
       FLOWFORGE_AI_CONNECT_TIMEOUT: ${FLOWFORGE_AI_CONNECT_TIMEOUT:-10s}
       FLOWFORGE_AI_READ_TIMEOUT: ${FLOWFORGE_AI_READ_TIMEOUT:-120s}
       FLOWFORGE_ENCRYPTION_KEY: ${FLOWFORGE_ENCRYPTION_KEY:-}
@@ -48,7 +48,7 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "5173:80"
+      - "10086:80"
 
 volumes:
   postgres-data:

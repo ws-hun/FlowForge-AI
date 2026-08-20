@@ -474,7 +474,7 @@ docker compose up --build
 Services:
 
 ```text
-Frontend  http://localhost:5173
+Frontend  http://localhost:10086
 Backend   http://localhost:8080
 Postgres  localhost:5432
 ```
@@ -494,7 +494,7 @@ Password  flowforge
 Open:
 
 ```text
-http://localhost:5173/api-keys
+http://localhost:10086/api-keys
 ```
 
 DeepSeek default:
@@ -554,7 +554,7 @@ npm run dev
 Frontend default:
 
 ```text
-http://localhost:5173
+http://localhost:10086
 ```
 
 Vite dev proxy forwards `/api` to:
@@ -576,7 +576,7 @@ SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/flowforge
 SPRING_DATASOURCE_USERNAME=flowforge
 SPRING_DATASOURCE_PASSWORD=flowforge
 
-FRONTEND_URL=http://localhost:5173
+FRONTEND_URL=http://localhost:10086
 FLOWFORGE_AI_CONNECT_TIMEOUT=10s
 FLOWFORGE_AI_READ_TIMEOUT=120s
 FLOWFORGE_ENCRYPTION_KEY=
