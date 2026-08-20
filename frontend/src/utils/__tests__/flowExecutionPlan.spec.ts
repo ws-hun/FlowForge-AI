@@ -4,6 +4,7 @@ import {
   flowArtifactStorageLabel,
   flowArtifactStateLabel,
   flowArtifactTypeLabel,
+  flowExecutionFailurePolicySummary,
   flowExecutionOperationForNode,
   flowExecutionOperationLabel,
   flowNodeRuntimeDescription,
@@ -41,5 +42,15 @@ describe('flow execution plan labels', () => {
     expect(flowArtifactStateLabel('skipped')).toBe('已跳过')
     expect(flowArtifactInputResolutionLabel('compiled-reference')).toBe('单次编译引用')
     expect(flowArtifactInputResolutionLabel('persisted-artifact')).toBe('持久化产物输入')
+  })
+
+  it('explains the persisted single-pass failure policy without implying retries', () => {
+    expect(flowExecutionFailurePolicySummary({
+      version: 'flow-failure-policy-v1',
+      onProviderFailure: 'stop-run',
+      downstreamNodeAction: 'skip',
+      retryStrategy: 'none',
+      maxAttempts: 1
+    })).toBe('Provider 失败时停止本次运行 · 下游节点跳过 · 不自动重试')
   })
 })

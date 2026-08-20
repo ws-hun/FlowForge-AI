@@ -283,10 +283,19 @@ export interface FlowExecutionStep {
   outputArtifact?: FlowArtifactContract | null
 }
 
+export interface FlowExecutionFailurePolicy {
+  version: string
+  onProviderFailure: 'stop-run'
+  downstreamNodeAction: 'skip'
+  retryStrategy: 'none'
+  maxAttempts: number
+}
+
 export interface FlowExecutionPlan {
   version: string
   scheduling: 'linear'
   steps: FlowExecutionStep[]
+  failurePolicy?: FlowExecutionFailurePolicy | null
 }
 
 export interface FlowNodeRunTrace {

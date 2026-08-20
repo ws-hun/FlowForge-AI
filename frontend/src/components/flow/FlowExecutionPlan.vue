@@ -8,6 +8,12 @@
       <small>{{ plan.version }} · {{ schedulingLabel }} · {{ providerStepCount }} 次 AI 调用</small>
     </header>
 
+    <div v-if="failurePolicySummary" class="flow-execution-plan-policy">
+      <span>Failure Policy</span>
+      <p>{{ failurePolicySummary }}</p>
+      <small>{{ plan.failurePolicy?.version }}</small>
+    </div>
+
     <div class="flow-execution-plan-path">
       <article
         v-for="step in plan.steps"
@@ -58,6 +64,7 @@ import {
   flowArtifactInputResolutionLabel,
   flowArtifactStorageLabel,
   flowArtifactTypeLabel,
+  flowExecutionFailurePolicySummary,
   flowExecutionOperationLabel,
   flowNodeTypeLabel
 } from '@/utils/flowExecutionPlan'
@@ -86,4 +93,7 @@ const emit = defineEmits<{
 
 const providerStepCount = computed(() => props.plan.steps.filter((step) => step.providerBoundary).length)
 const schedulingLabel = computed(() => props.plan.scheduling === 'linear' ? '顺序计划' : props.plan.scheduling)
+const failurePolicySummary = computed(() => props.plan.failurePolicy
+  ? flowExecutionFailurePolicySummary(props.plan.failurePolicy)
+  : '')
 </script>

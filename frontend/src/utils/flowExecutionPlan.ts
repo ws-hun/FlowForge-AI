@@ -3,6 +3,7 @@ import type {
   FlowArtifactStorage,
   FlowArtifactState,
   FlowArtifactType,
+  FlowExecutionFailurePolicy,
   FlowExecutionOperation,
   FlowNodeType
 } from '@/types'
@@ -91,4 +92,18 @@ export function flowArtifactStateLabel(state: FlowArtifactState) {
 
 export function flowArtifactInputResolutionLabel(resolution: FlowArtifactInputResolution) {
   return artifactInputResolutionLabels[resolution]
+}
+
+export function flowExecutionFailurePolicySummary(policy: FlowExecutionFailurePolicy) {
+  const providerFailure = policy.onProviderFailure === 'stop-run'
+    ? 'Provider 失败时停止本次运行'
+    : policy.onProviderFailure
+  const downstream = policy.downstreamNodeAction === 'skip'
+    ? '下游节点跳过'
+    : policy.downstreamNodeAction
+  const retry = policy.retryStrategy === 'none' && policy.maxAttempts === 1
+    ? '不自动重试'
+    : `最多尝试 ${policy.maxAttempts} 次`
+
+  return `${providerFailure} · ${downstream} · ${retry}`
 }
