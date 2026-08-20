@@ -5,6 +5,7 @@ import com.flowforge.ai.dto.FlowNodeArtifactLineageEntryResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactLineageResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactSummaryResponse;
 import com.flowforge.ai.dto.FlowProviderCallResponse;
+import com.flowforge.ai.dto.FlowProviderAttemptResponse;
 import com.flowforge.ai.dto.TaskRunResponse;
 import com.flowforge.ai.exception.AiExecutionException;
 import com.flowforge.ai.exception.ResourceNotFoundException;
@@ -249,6 +250,21 @@ class TaskControllerTest {
                                 840L,
                                 null
                         ),
+                        List.of(new FlowProviderAttemptResponse(
+                                UUID.randomUUID(),
+                                1,
+                                "initial",
+                                null,
+                                "completed",
+                                "deepseek",
+                                "deepseek-chat",
+                                120,
+                                80,
+                                200,
+                                840L,
+                                null,
+                                LocalDateTime.of(2026, 8, 17, 10, 31)
+                        )),
                         LocalDateTime.of(2026, 8, 17, 10, 31)
                 )
         );
@@ -267,7 +283,14 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.providerCall.model").value("deepseek-chat"))
                 .andExpect(jsonPath("$.providerCall.totalTokens").value(200))
                 .andExpect(jsonPath("$.providerCall.durationMs").value(840))
-                .andExpect(jsonPath("$.providerCall.errorMessage").doesNotExist());
+                .andExpect(jsonPath("$.providerCall.errorMessage").doesNotExist())
+                .andExpect(jsonPath("$.providerAttempts").isArray())
+                .andExpect(jsonPath("$.providerAttempts[0].attemptNumber").value(1))
+                .andExpect(jsonPath("$.providerAttempts[0].triggerType").value("initial"))
+                .andExpect(jsonPath("$.providerAttempts[0].previousAttemptId").doesNotExist())
+                .andExpect(jsonPath("$.providerAttempts[0].status").value("completed"))
+                .andExpect(jsonPath("$.providerAttempts[0].totalTokens").value(200))
+                .andExpect(jsonPath("$.providerAttempts[0].durationMs").value(840));
 
         verify(flowNodeArtifactQueryService).getForTask(taskId, artifactKey);
     }

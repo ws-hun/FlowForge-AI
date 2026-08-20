@@ -5,9 +5,12 @@ import com.flowforge.ai.dto.FlowNodeArtifactLineageEntryResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactLineageResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactSummaryResponse;
 import com.flowforge.ai.dto.FlowProviderCallResponse;
+import com.flowforge.ai.dto.FlowProviderAttemptResponse;
 import com.flowforge.ai.entity.FlowNodeArtifact;
+import com.flowforge.ai.entity.FlowProviderAttempt;
 import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.repository.FlowNodeArtifactRepository;
+import com.flowforge.ai.repository.FlowProviderAttemptRepository;
 import com.flowforge.ai.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,13 +35,19 @@ public class FlowNodeArtifactQueryService {
 
     private final TaskRepository taskRepository;
     private final FlowNodeArtifactRepository artifactRepository;
+    private final FlowProviderAttemptRepository providerAttemptRepository;
 
     @Transactional(readOnly = true)
     public List<FlowNodeArtifactSummaryResponse> listForTask(UUID taskId) {
         requireTask(taskId);
-        return artifactRepository.findByTaskIdOrderBySequenceNumberAsc(taskId)
+        List<FlowNodeArtifact> artifacts = artifactRepository.findByTaskIdOrderBySequenceNumberAsc(taskId);
+        Map<UUID, List<FlowProviderAttemptResponse>> attempts = providerAttemptsByArtifact(artifacts);
+        return artifacts
                 .stream()
-                .map(this::toSummaryResponse)
+                .map(artifact -> toSummaryResponse(
+                        artifact,
+                        attempts.getOrDefault(artifact.getId(), List.of())
+                ))
                 .toList();
     }
 
@@ -47,7 +56,12 @@ public class FlowNodeArtifactQueryService {
         requireTask(taskId);
         FlowNodeArtifact artifact = artifactRepository.findByTaskIdAndArtifactKey(taskId, artifactKey)
                 .orElseThrow(() -> new ResourceNotFoundException("Flow node artifact not found"));
-        return toDetailResponse(artifact);
+        List<FlowProviderAttemptResponse> attempts = providerAttemptRepository
+                .findByArtifactIdOrderByAttemptNumberAsc(artifact.getId())
+                .stream()
+                .map(this::toProviderAttemptResponse)
+                .toList();
+        return toDetailResponse(artifact, attempts);
     }
 
     @Transactional(readOnly = true)
@@ -62,6 +76,9 @@ public class FlowNodeArtifactQueryService {
                         (first, ignored) -> first,
                         LinkedHashMap::new
                 ));
+        Map<UUID, List<FlowProviderAttemptResponse>> attempts = providerAttemptsByArtifact(
+                List.copyOf(artifacts.values())
+        );
         FlowNodeArtifact requestedArtifact = artifacts.get(artifactKey);
         if (requestedArtifact == null) {
             throw new ResourceNotFoundException("Flow node artifact not found");
@@ -78,7 +95,10 @@ public class FlowNodeArtifactQueryService {
                 termination = TERMINATION_CYCLE;
                 break;
             }
-            path.add(toLineageEntry(current));
+            path.add(toLineageEntry(
+                    current,
+                    attempts.getOrDefault(current.getId(), List.of())
+            ));
 
             if (current.getInputArtifactKey() == null) {
                 termination = TERMINATION_LEGACY_RECORD;
@@ -130,7 +150,10 @@ public class FlowNodeArtifactQueryService {
         }
     }
 
-    private FlowNodeArtifactSummaryResponse toSummaryResponse(FlowNodeArtifact artifact) {
+    private FlowNodeArtifactSummaryResponse toSummaryResponse(
+            FlowNodeArtifact artifact,
+            List<FlowProviderAttemptResponse> attempts
+    ) {
         return new FlowNodeArtifactSummaryResponse(
                 artifact.getId(),
                 artifact.getTaskId(),
@@ -148,12 +171,15 @@ public class FlowNodeArtifactQueryService {
                 artifact.getInputArtifactState(),
                 artifact.getInputResolution(),
                 artifact.getInputContentFingerprint(),
-                toProviderCallResponse(artifact),
+                toProviderCallResponse(artifact, attempts),
                 artifact.getCreatedAt()
         );
     }
 
-    private FlowNodeArtifactDetailResponse toDetailResponse(FlowNodeArtifact artifact) {
+    private FlowNodeArtifactDetailResponse toDetailResponse(
+            FlowNodeArtifact artifact,
+            List<FlowProviderAttemptResponse> attempts
+    ) {
         return new FlowNodeArtifactDetailResponse(
                 artifact.getId(),
                 artifact.getTaskId(),
@@ -172,12 +198,16 @@ public class FlowNodeArtifactQueryService {
                 artifact.getInputArtifactState(),
                 artifact.getInputResolution(),
                 artifact.getInputContentFingerprint(),
-                toProviderCallResponse(artifact),
+                toProviderCallResponse(artifact, attempts),
+                attempts,
                 artifact.getCreatedAt()
         );
     }
 
-    private FlowNodeArtifactLineageEntryResponse toLineageEntry(FlowNodeArtifact artifact) {
+    private FlowNodeArtifactLineageEntryResponse toLineageEntry(
+            FlowNodeArtifact artifact,
+            List<FlowProviderAttemptResponse> attempts
+    ) {
         return new FlowNodeArtifactLineageEntryResponse(
                 artifact.getId(),
                 artifact.getNodeId(),
@@ -189,9 +219,29 @@ public class FlowNodeArtifactQueryService {
                 artifact.getMediaType(),
                 artifact.getContentFingerprint(),
                 artifact.getInputResolution(),
-                toProviderCallResponse(artifact),
+                toProviderCallResponse(artifact, attempts),
                 true
         );
+    }
+
+    private Map<UUID, List<FlowProviderAttemptResponse>> providerAttemptsByArtifact(
+            List<FlowNodeArtifact> artifacts
+    ) {
+        if (artifacts.isEmpty()) {
+            return Map.of();
+        }
+        return providerAttemptRepository.findByArtifactIdInOrderByArtifactIdAscAttemptNumberAsc(
+                        artifacts.stream().map(FlowNodeArtifact::getId).toList()
+                )
+                .stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        FlowProviderAttempt::getArtifactId,
+                        LinkedHashMap::new,
+                        java.util.stream.Collectors.mapping(
+                                this::toProviderAttemptResponse,
+                                java.util.stream.Collectors.toList()
+                        )
+                ));
     }
 
     private FlowProviderCallResponse toProviderCallResponse(FlowNodeArtifact artifact) {
@@ -207,6 +257,44 @@ public class FlowNodeArtifactQueryService {
                 artifact.getProviderTotalTokens(),
                 artifact.getProviderDurationMs(),
                 artifact.getProviderErrorMessage()
+        );
+    }
+
+    private FlowProviderCallResponse toProviderCallResponse(
+            FlowNodeArtifact artifact,
+            List<FlowProviderAttemptResponse> attempts
+    ) {
+        if (attempts.isEmpty()) {
+            return toProviderCallResponse(artifact);
+        }
+        FlowProviderAttemptResponse latest = attempts.get(attempts.size() - 1);
+        return new FlowProviderCallResponse(
+                latest.status(),
+                latest.provider(),
+                latest.model(),
+                latest.inputTokens(),
+                latest.outputTokens(),
+                latest.totalTokens(),
+                latest.durationMs(),
+                latest.errorMessage()
+        );
+    }
+
+    private FlowProviderAttemptResponse toProviderAttemptResponse(FlowProviderAttempt attempt) {
+        return new FlowProviderAttemptResponse(
+                attempt.getId(),
+                attempt.getAttemptNumber(),
+                attempt.getTriggerType(),
+                attempt.getPreviousAttemptId(),
+                attempt.getStatus(),
+                attempt.getProvider(),
+                attempt.getModel(),
+                attempt.getInputTokens(),
+                attempt.getOutputTokens(),
+                attempt.getTotalTokens(),
+                attempt.getDurationMs(),
+                attempt.getErrorMessage(),
+                attempt.getCreatedAt()
         );
     }
 }

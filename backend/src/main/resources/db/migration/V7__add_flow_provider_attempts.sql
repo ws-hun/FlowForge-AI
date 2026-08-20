@@ -65,7 +65,7 @@ INSERT INTO flow_provider_attempts (
     created_at
 )
 SELECT
-    md5(random()::TEXT || clock_timestamp()::TEXT || id::TEXT)::UUID,
+    md5(id::TEXT || ':provider-attempt:1')::UUID,
     id,
     1,
     'initial',

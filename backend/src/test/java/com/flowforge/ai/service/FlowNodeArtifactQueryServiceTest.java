@@ -5,8 +5,10 @@ import com.flowforge.ai.dto.FlowNodeArtifactLineageEntryResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactLineageResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactSummaryResponse;
 import com.flowforge.ai.entity.FlowNodeArtifact;
+import com.flowforge.ai.entity.FlowProviderAttempt;
 import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.repository.FlowNodeArtifactRepository;
+import com.flowforge.ai.repository.FlowProviderAttemptRepository;
 import com.flowforge.ai.repository.TaskRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,11 +35,18 @@ class FlowNodeArtifactQueryServiceTest {
     @Mock
     private FlowNodeArtifactRepository artifactRepository;
 
+    @Mock
+    private FlowProviderAttemptRepository providerAttemptRepository;
+
     private FlowNodeArtifactQueryService queryService;
 
     @BeforeEach
     void setUp() {
-        queryService = new FlowNodeArtifactQueryService(taskRepository, artifactRepository);
+        queryService = new FlowNodeArtifactQueryService(
+                taskRepository,
+                artifactRepository,
+                providerAttemptRepository
+        );
     }
 
     @Test
@@ -62,12 +71,48 @@ class FlowNodeArtifactQueryServiceTest {
     }
 
     @Test
+    void usesTheLatestAttemptForCompactArtifactSummaries() {
+        UUID taskId = UUID.randomUUID();
+        FlowNodeArtifact artifact = artifact(taskId, "ai-task-1", 1, "provider-result", "Result");
+        FlowProviderAttempt initial = attempt(artifact.getId());
+        FlowProviderAttempt retry = FlowProviderAttempt.builder()
+                .id(UUID.randomUUID())
+                .artifactId(artifact.getId())
+                .attemptNumber(2)
+                .triggerType("automatic-retry")
+                .previousAttemptId(initial.getId())
+                .status("completed")
+                .provider("openai")
+                .model("gpt-4.1")
+                .totalTokens(260)
+                .durationMs(1020L)
+                .createdAt(LocalDateTime.of(2026, 8, 17, 10, 3))
+                .build();
+        when(taskRepository.existsById(taskId)).thenReturn(true);
+        when(artifactRepository.findByTaskIdOrderBySequenceNumberAsc(taskId))
+                .thenReturn(List.of(artifact));
+        when(providerAttemptRepository.findByArtifactIdInOrderByArtifactIdAscAttemptNumberAsc(
+                List.of(artifact.getId())
+        )).thenReturn(List.of(initial, retry));
+
+        FlowNodeArtifactSummaryResponse response = queryService.listForTask(taskId).get(0);
+
+        assertThat(response.providerCall().provider()).isEqualTo("openai");
+        assertThat(response.providerCall().model()).isEqualTo("gpt-4.1");
+        assertThat(response.providerCall().totalTokens()).isEqualTo(260);
+        assertThat(response.providerCall().durationMs()).isEqualTo(1020L);
+    }
+
+    @Test
     void returnsOneAddressableArtifactPayload() {
         UUID taskId = UUID.randomUUID();
         FlowNodeArtifact artifact = artifact(taskId, "ai-task-1", 2, "provider-result", "Summary\nResult");
         when(taskRepository.existsById(taskId)).thenReturn(true);
         when(artifactRepository.findByTaskIdAndArtifactKey(taskId, artifact.getArtifactKey()))
                 .thenReturn(Optional.of(artifact));
+        FlowProviderAttempt attempt = attempt(artifact.getId());
+        when(providerAttemptRepository.findByArtifactIdOrderByAttemptNumberAsc(artifact.getId()))
+                .thenReturn(List.of(attempt));
 
         FlowNodeArtifactDetailResponse response = queryService.getForTask(taskId, artifact.getArtifactKey());
 
@@ -88,6 +133,55 @@ class FlowNodeArtifactQueryServiceTest {
         assertThat(response.providerCall().totalTokens()).isEqualTo(200);
         assertThat(response.providerCall().durationMs()).isEqualTo(840L);
         assertThat(response.providerCall().errorMessage()).isNull();
+        assertThat(response.providerAttempts()).singleElement().satisfies(providerAttempt -> {
+            assertThat(providerAttempt.id()).isEqualTo(attempt.getId());
+            assertThat(providerAttempt.attemptNumber()).isEqualTo(1);
+            assertThat(providerAttempt.triggerType()).isEqualTo("initial");
+            assertThat(providerAttempt.previousAttemptId()).isNull();
+            assertThat(providerAttempt.status()).isEqualTo("completed");
+            assertThat(providerAttempt.provider()).isEqualTo("deepseek");
+            assertThat(providerAttempt.model()).isEqualTo("deepseek-chat");
+            assertThat(providerAttempt.totalTokens()).isEqualTo(200);
+            assertThat(providerAttempt.durationMs()).isEqualTo(840L);
+            assertThat(providerAttempt.errorMessage()).isNull();
+        });
+    }
+
+    @Test
+    void usesTheLatestPersistedAttemptAsTheDetailCallSummary() {
+        UUID taskId = UUID.randomUUID();
+        FlowNodeArtifact artifact = artifact(taskId, "ai-task-1", 2, "provider-result", "Summary\nResult");
+        FlowProviderAttempt initial = attempt(artifact.getId());
+        FlowProviderAttempt recovery = FlowProviderAttempt.builder()
+                .id(UUID.randomUUID())
+                .artifactId(artifact.getId())
+                .attemptNumber(2)
+                .triggerType("manual-recovery")
+                .previousAttemptId(initial.getId())
+                .status("completed")
+                .provider("openai")
+                .model("gpt-4.1")
+                .inputTokens(160)
+                .outputTokens(90)
+                .totalTokens(250)
+                .durationMs(960L)
+                .createdAt(LocalDateTime.of(2026, 8, 17, 10, 3))
+                .build();
+        when(taskRepository.existsById(taskId)).thenReturn(true);
+        when(artifactRepository.findByTaskIdAndArtifactKey(taskId, artifact.getArtifactKey()))
+                .thenReturn(Optional.of(artifact));
+        when(providerAttemptRepository.findByArtifactIdOrderByAttemptNumberAsc(artifact.getId()))
+                .thenReturn(List.of(initial, recovery));
+
+        FlowNodeArtifactDetailResponse response = queryService.getForTask(taskId, artifact.getArtifactKey());
+
+        assertThat(response.providerAttempts())
+                .extracting(providerAttempt -> providerAttempt.attemptNumber())
+                .containsExactly(1, 2);
+        assertThat(response.providerCall().provider()).isEqualTo("openai");
+        assertThat(response.providerCall().model()).isEqualTo("gpt-4.1");
+        assertThat(response.providerCall().totalTokens()).isEqualTo(250);
+        assertThat(response.providerCall().durationMs()).isEqualTo(960L);
     }
 
     @Test
@@ -136,6 +230,8 @@ class FlowNodeArtifactQueryServiceTest {
                 .thenReturn(List.of(legacyArtifact));
         when(artifactRepository.findByTaskIdAndArtifactKey(taskId, legacyArtifact.getArtifactKey()))
                 .thenReturn(Optional.of(legacyArtifact));
+        when(providerAttemptRepository.findByArtifactIdOrderByAttemptNumberAsc(legacyArtifact.getId()))
+                .thenReturn(List.of());
 
         FlowNodeArtifactSummaryResponse summary = queryService.listForTask(taskId).get(0);
         FlowNodeArtifactDetailResponse detail = queryService.getForTask(taskId, legacyArtifact.getArtifactKey());
@@ -154,6 +250,7 @@ class FlowNodeArtifactQueryServiceTest {
         assertThat(detail.inputResolution()).isNull();
         assertThat(detail.inputContentFingerprint()).isNull();
         assertThat(detail.providerCall()).isNull();
+        assertThat(detail.providerAttempts()).isEmpty();
     }
 
     @Test
@@ -327,6 +424,23 @@ class FlowNodeArtifactQueryServiceTest {
                 .providerTotalTokens(nodeId.startsWith("ai-task") ? 200 : null)
                 .providerDurationMs(nodeId.startsWith("ai-task") ? 840L : null)
                 .createdAt(LocalDateTime.of(2026, 8, 17, 10, sequence))
+                .build();
+    }
+
+    private FlowProviderAttempt attempt(UUID artifactId) {
+        return FlowProviderAttempt.builder()
+                .id(UUID.randomUUID())
+                .artifactId(artifactId)
+                .attemptNumber(1)
+                .triggerType("initial")
+                .status("completed")
+                .provider("deepseek")
+                .model("deepseek-chat")
+                .inputTokens(120)
+                .outputTokens(80)
+                .totalTokens(200)
+                .durationMs(840L)
+                .createdAt(LocalDateTime.of(2026, 8, 17, 10, 2))
                 .build();
     }
 }
