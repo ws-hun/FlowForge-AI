@@ -211,6 +211,14 @@ export interface FlowProviderCall {
   errorMessage?: string | null
 }
 
+export interface FlowProviderAttempt extends FlowProviderCall {
+  id: string
+  attemptNumber: number
+  triggerType: 'initial' | 'automatic-retry' | 'manual-recovery'
+  previousAttemptId?: string | null
+  createdAt: string
+}
+
 export interface FlowArtifactContract {
   key: string
   type: FlowArtifactType
@@ -245,6 +253,7 @@ export interface FlowNodeArtifactSummary {
 
 export interface FlowNodeArtifactDetail extends FlowNodeArtifactSummary {
   payload?: string | null
+  providerAttempts?: FlowProviderAttempt[]
 }
 
 export interface FlowNodeArtifactLineageEntry {

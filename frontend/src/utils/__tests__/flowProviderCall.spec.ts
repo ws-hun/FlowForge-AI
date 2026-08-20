@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  flowProviderAttemptTriggerLabel,
   flowProviderCallMetrics,
   flowProviderCallSource,
   flowProviderCallStatusLabel
@@ -42,5 +43,11 @@ describe('flow provider call presentation', () => {
     expect(flowProviderCallSource(null)).toBe('')
     expect(flowProviderCallMetrics(undefined)).toBe('')
     expect(flowProviderCallStatusLabel(null)).toBe('')
+  })
+
+  it('distinguishes initial, retry, and recovery attempt triggers', () => {
+    expect(flowProviderAttemptTriggerLabel('initial')).toBe('初始调用')
+    expect(flowProviderAttemptTriggerLabel('automatic-retry')).toBe('自动重试')
+    expect(flowProviderAttemptTriggerLabel('manual-recovery')).toBe('手动恢复')
   })
 })

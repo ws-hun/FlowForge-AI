@@ -105,8 +105,12 @@
                   <CopyDocument />
                 </button>
               </header>
+              <FlowProviderAttempts
+                v-if="artifactDetails[node.outputArtifact.key]?.providerAttempts?.length"
+                :attempts="artifactDetails[node.outputArtifact.key]?.providerAttempts || []"
+              />
               <div
-                v-if="artifactDetails[node.outputArtifact.key]?.providerCall"
+                v-else-if="artifactDetails[node.outputArtifact.key]?.providerCall"
                 class="flow-run-trace-provider-call"
                 :class="artifactDetails[node.outputArtifact.key]?.providerCall?.status"
               >
@@ -263,6 +267,7 @@ import type {
 } from '@/types'
 import { getTaskArtifact, getTaskArtifactLineage } from '@/api/tasks'
 import FlowExecutionPlan from '@/components/flow/FlowExecutionPlan.vue'
+import FlowProviderAttempts from '@/components/flow/FlowProviderAttempts.vue'
 import {
   flowArtifactInputResolutionLabel,
   flowArtifactStateLabel,

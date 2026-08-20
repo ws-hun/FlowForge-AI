@@ -1,4 +1,4 @@
-import type { FlowProviderCall } from '@/types'
+import type { FlowProviderAttempt, FlowProviderCall } from '@/types'
 import {
   formatExecutionDuration,
   formatProviderName,
@@ -26,4 +26,13 @@ export function flowProviderCallStatusLabel(call: FlowProviderCall | null | unde
     return ''
   }
   return call.status === 'failed' ? '调用失败' : '调用完成'
+}
+
+export function flowProviderAttemptTriggerLabel(trigger: FlowProviderAttempt['triggerType']) {
+  const labels: Record<FlowProviderAttempt['triggerType'], string> = {
+    initial: '初始调用',
+    'automatic-retry': '自动重试',
+    'manual-recovery': '手动恢复'
+  }
+  return labels[trigger]
 }

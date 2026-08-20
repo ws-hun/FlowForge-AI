@@ -3734,6 +3734,136 @@ a {
   }
 }
 
+.flow-provider-attempts {
+  display: grid;
+  gap: 10px;
+  padding: 11px 12px;
+  border-bottom: 1px solid tokens.$border;
+  background: rgba(79, 124, 255, 0.025);
+
+  > header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+
+    > div {
+      display: grid;
+      gap: 2px;
+    }
+
+    span,
+    small {
+      color: tokens.$text-muted;
+      font-family: tokens.$mono;
+      font-size: 9px;
+    }
+
+    span {
+      color: tokens.$primary;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    strong {
+      color: tokens.$text-primary;
+      font-size: 11px;
+    }
+  }
+
+  ol {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 9px;
+    min-width: 0;
+
+    &.failed .flow-provider-attempt-index {
+      border-color: rgba(239, 68, 68, 0.22);
+      background: rgba(239, 68, 68, 0.06);
+      color: tokens.$error;
+    }
+  }
+}
+
+.flow-provider-attempt-index {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(34, 197, 94, 0.22);
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.06);
+  color: tokens.$success;
+  font-family: tokens.$mono;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.flow-provider-attempt-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+
+  > header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+
+    > div {
+      display: grid;
+      gap: 1px;
+      min-width: 0;
+    }
+
+    small,
+    em {
+      color: tokens.$text-muted;
+      font-family: tokens.$mono;
+      font-size: 9px;
+      font-style: normal;
+    }
+
+    strong {
+      overflow-wrap: anywhere;
+      color: tokens.$text-primary;
+      font-size: 11px;
+    }
+
+    em {
+      flex: 0 0 auto;
+      color: tokens.$success;
+      font-weight: 700;
+    }
+  }
+
+  p {
+    margin: 0;
+    color: tokens.$text-muted;
+    font-family: tokens.$mono;
+    font-size: 9px;
+    line-height: 1.5;
+  }
+
+  .flow-provider-attempt-error {
+    color: tokens.$error;
+    white-space: pre-wrap;
+  }
+
+  .failed & > header em {
+    color: tokens.$error;
+  }
+}
+
 .flow-run-trace-provider-legacy {
   margin: 0;
   padding: 10px 12px;
