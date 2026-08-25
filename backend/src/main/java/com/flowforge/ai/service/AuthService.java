@@ -1,6 +1,8 @@
 package com.flowforge.ai.service;
 
 import com.flowforge.ai.dto.AuthCredentialsRequest;
+import com.flowforge.ai.dto.AuthPasswordChangeRequest;
+import com.flowforge.ai.dto.AuthProfileUpdateRequest;
 import com.flowforge.ai.dto.AuthSessionResult;
 import com.flowforge.ai.dto.AuthSetupRequest;
 import com.flowforge.ai.dto.AuthStatusResponse;
@@ -91,13 +93,33 @@ public class AuthService {
         return issueSession(candidate.orElseThrow());
     }
 
+    @Transactional
+    public AuthStatusResponse updateProfile(String rawToken, AuthProfileUpdateRequest request) {
+        WorkspaceUser user = requireAuthenticatedSession(rawToken).getUser();
+        user.setDisplayName(request.displayName().trim());
+        workspaceUserRepository.saveAndFlush(user);
+        return new AuthStatusResponse(false, true, toResponse(user));
+    }
+
+    @Transactional
+    public AuthSessionResult changePassword(String rawToken, AuthPasswordChangeRequest request) {
+        WorkspaceUser user = requireAuthenticatedSession(rawToken).getUser();
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new AuthenticationRequiredException("当前密码不正确");
+        }
+        if (passwordEncoder.matches(request.newPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("新密码必须与当前密码不同");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        workspaceUserRepository.saveAndFlush(user);
+        authSessionRepository.deleteByUserId(user.getId());
+        return issueSession(user);
+    }
+
     @Transactional(readOnly = true)
     public Optional<AuthUserResponse> findAuthenticatedUser(String rawToken) {
-        if (rawToken == null || rawToken.isBlank()) {
-            return Optional.empty();
-        }
-        return authSessionRepository
-                .findByTokenHashAndExpiresAtAfter(hashToken(rawToken), LocalDateTime.now())
+        return findAuthenticatedSession(rawToken)
                 .map(AuthSession::getUser)
                 .map(this::toResponse);
     }
@@ -127,6 +149,21 @@ public class AuthService {
 
         AuthStatusResponse status = new AuthStatusResponse(false, true, toResponse(user));
         return new AuthSessionResult(rawToken, status);
+    }
+
+    private AuthSession requireAuthenticatedSession(String rawToken) {
+        return findAuthenticatedSession(rawToken)
+                .orElseThrow(() -> new AuthenticationRequiredException("登录已失效，请重新登录"));
+    }
+
+    private Optional<AuthSession> findAuthenticatedSession(String rawToken) {
+        if (rawToken == null || rawToken.isBlank()) {
+            return Optional.empty();
+        }
+        return authSessionRepository.findByTokenHashAndExpiresAtAfter(
+                hashToken(rawToken),
+                LocalDateTime.now()
+        );
     }
 
     private AuthUserResponse toResponse(WorkspaceUser user) {

@@ -44,7 +44,11 @@ public class AuthInterceptor implements org.springframework.web.servlet.HandlerI
     }
 
     private boolean isPublicPath(String requestUri) {
-        return "/api/health".equals(requestUri) || requestUri.startsWith("/api/auth/");
+        return "/api/health".equals(requestUri)
+                || "/api/auth/status".equals(requestUri)
+                || "/api/auth/setup".equals(requestUri)
+                || "/api/auth/login".equals(requestUri)
+                || "/api/auth/logout".equals(requestUri);
     }
 
     private void verifyRequestOrigin(HttpServletRequest request) {

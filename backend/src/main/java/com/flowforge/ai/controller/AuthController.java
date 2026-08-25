@@ -1,6 +1,8 @@
 package com.flowforge.ai.controller;
 
 import com.flowforge.ai.dto.AuthCredentialsRequest;
+import com.flowforge.ai.dto.AuthPasswordChangeRequest;
+import com.flowforge.ai.dto.AuthProfileUpdateRequest;
 import com.flowforge.ai.dto.AuthSessionResult;
 import com.flowforge.ai.dto.AuthSetupRequest;
 import com.flowforge.ai.dto.AuthStatusResponse;
@@ -14,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -50,6 +53,25 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthStatusResponse> login(@Valid @RequestBody AuthCredentialsRequest request) {
         return authenticatedResponse(authService.login(request), HttpStatus.OK);
+    }
+
+    @PatchMapping("/me")
+    public AuthStatusResponse updateProfile(
+            HttpServletRequest httpRequest,
+            @Valid @RequestBody AuthProfileUpdateRequest request
+    ) {
+        return authService.updateProfile(readSessionToken(httpRequest), request);
+    }
+
+    @PostMapping("/me/password")
+    public ResponseEntity<AuthStatusResponse> changePassword(
+            HttpServletRequest httpRequest,
+            @Valid @RequestBody AuthPasswordChangeRequest request
+    ) {
+        return authenticatedResponse(
+                authService.changePassword(readSessionToken(httpRequest), request),
+                HttpStatus.OK
+        );
     }
 
     @PostMapping("/logout")
