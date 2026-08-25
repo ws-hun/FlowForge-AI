@@ -17,6 +17,7 @@ Stage 1 and Stage 2 are now the reusable foundation:
 - Stage 1 provides structured AI task execution, Provider configuration, provenance, token usage, and history.
 - Stage 2 provides reusable Prompt assets, variables, history, and version recovery.
 - Stage 3 connects those assets into persisted, executable Flows.
+- The workspace now has a single-owner authentication boundary so local creative assets are not exposed anonymously; team identity, invitations, permissions, and resource-level tenancy remain future work.
 
 The current Workflow runtime compiles a saved Flow snapshot into one deterministic Provider request. It must not be presented as a true multi-step engine until node-level execution is implemented on the backend.
 
@@ -101,6 +102,7 @@ Current Stage 3 capabilities:
 - Workspace continuation paths reopen the active Flow, continue the latest successful Result, and deep-link into recent Prompt assets without turning the home screen into a dashboard.
 - Global creation search provides one calm entry point for AI Command, Flow Space, Prompt assets, and immutable Results without introducing dense navigation.
 - Local workspace identity preferences keep Settings, Profile, and the global shell consistent, while explicitly reporting session-only fallback when browser persistence is unavailable and never pretending that remote synchronization exists.
+- First-run workspace setup creates one owner identity, then protects the creative workspace with a BCrypt password and a revocable server-side HttpOnly session; this is single-owner access, not multi-user tenancy.
 - Future modules remain outside the primary navigation and use honest workspace boundaries that route users back to currently executable creation paths instead of presenting fake Agent, Knowledge, or Analytics state.
 - Route-level code splitting and scoped Element Plus registration keep the calm workspace shell lightweight while loading complex creation surfaces only when opened.
 - Docker readiness follows the real dependency chain from PostgreSQL to the backend database probe and then to the Nginx frontend proxy.

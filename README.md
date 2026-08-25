@@ -513,6 +513,12 @@ Base URL  https://api.openai.com/v1
 Model     gpt-4o-mini
 ```
 
+### First-time Workspace Setup
+
+打开 `http://localhost:10086/auth`。第一次启动会显示工作区所有者创建页；创建一个显示名称、邮箱和至少 10 个字符的密码后，系统会自动进入 Workspace。创建完成后注册入口关闭，后续从同一页面登录。
+
+当前认证模型是单工作区所有者：所有 Flow、Prompt、Task、Provider 配置和历史记录属于当前本地工作区。此阶段已经完成真实登录态、退出和接口保护，但还没有宣称多用户、团队权限或资源级 `user_id` 隔离。
+
 ## Local Development
 
 ### Requirements
@@ -529,6 +535,14 @@ PostgreSQL 16+
 ```bash
 docker compose up postgres
 ```
+
+如果本机已经安装 Homebrew PostgreSQL，也可以不启动 Docker：
+
+```bash
+brew services start postgresql@15
+```
+
+只要本机 `flowforge` 数据库、`flowforge` 用户和 `5432` 端口可用，Spring Boot 会自动执行 Flyway 迁移。
 
 ### Start Backend
 
@@ -579,6 +593,8 @@ SPRING_DATASOURCE_PASSWORD=flowforge
 FRONTEND_URL=http://localhost:10086
 FLOWFORGE_AI_CONNECT_TIMEOUT=10s
 FLOWFORGE_AI_READ_TIMEOUT=120s
+FLOWFORGE_AUTH_SESSION_DURATION=30d
+FLOWFORGE_SECURE_COOKIE=false
 FLOWFORGE_ENCRYPTION_KEY=
 ```
 
@@ -594,11 +610,26 @@ openssl rand -base64 32
 
 Provider HTTP 连接超时默认为 `10s`，响应读取超时默认为 `120s`。可通过 `FLOWFORGE_AI_CONNECT_TIMEOUT` 和 `FLOWFORGE_AI_READ_TIMEOUT` 使用 Spring Duration 格式调整，例如 `5s`、`90s` 或 `2m`。超时和连接失败会作为可恢复的 Provider 失败保存到 History。
 
+认证会话默认有效 `30d`，可通过 `FLOWFORGE_AUTH_SESSION_DURATION` 使用 Spring Duration 格式调整。开发环境通过 HTTP 使用 Cookie 时保持 `FLOWFORGE_SECURE_COOKIE=false`；部署到 HTTPS 后应设置为 `true`，使浏览器仅通过安全连接发送会话 Cookie。
+
 Provider 的鉴权失败、频率限制、请求拒绝和服务不可用会转换为稳定的产品错误；原始上游错误响应体不会直接返回到浏览器或写入 History。
 
 首次升级到 Flyway 版本时，已有 Hibernate 数据库会在版本 `0` 建立基线，再执行 `V1` 兼容迁移；全新数据库会直接从 `V1` 创建。后续 schema 变更必须新增迁移文件，禁止重新启用 `ddl-auto: update`。
 
 ## API Overview
+
+### Authentication
+
+```http
+GET  /api/auth/status
+POST /api/auth/setup
+POST /api/auth/login
+POST /api/auth/logout
+```
+
+`/api/auth/status` 与 `/api/health` 可公开访问；首次安装且没有所有者时，`setupRequired` 为 `true`。`setup` 只允许成功一次。登录和初始化会返回 HttpOnly、SameSite=Lax 的 `flowforge_session` Cookie，服务端只保存其 SHA-256 摘要；会话默认有效 30 天。
+
+除健康检查和认证端点外，所有 `/api/**` 请求都需要有效会话。非 GET 请求还会校验浏览器来源，避免把登录 Cookie 当作跨站写请求凭证。正式 HTTPS 部署时应设置 `FLOWFORGE_SECURE_COOKIE=true`。
 
 ### Health
 
@@ -826,6 +857,9 @@ FlowForge avoids storing real AI API keys in source code.
 | Provider activation stored in DB | Done |
 | API Key encrypted at rest with AES-256-GCM | Done |
 | Random nonce per encryption | Done |
+| Single workspace owner authentication | Done |
+| BCrypt password hashing | Done |
+| HttpOnly server-side session cookie | Done |
 | Local master key excluded from Git | Done |
 | Docker master key persisted outside PostgreSQL | Done |
 

@@ -1,5 +1,7 @@
 # Flow Runtime Contract
 
+Authentication is a product boundary outside the Flow runtime. A valid workspace-owner session is required before a Flow, Task, Prompt, Provider configuration, or History API can be read or mutated. Runtime records are currently scoped to the single local workspace; this contract does not claim multi-user ownership or team permissions.
+
 ## 1. Current Runtime
 
 FlowForge currently executes saved Flows in `single-pass` mode.
