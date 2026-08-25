@@ -45,6 +45,64 @@
           </div>
         </template>
 
+        <template v-else-if="activeSection === 'account'">
+          <div class="settings-section-heading">
+            <span class="section-kicker">Workspace Owner</span>
+            <h2>账户与安全</h2>
+            <p>更新当前工作区所有者资料。修改密码后，其他浏览器会话会立即失效。</p>
+          </div>
+
+          <div class="settings-account-section">
+            <div class="settings-account-identity">
+              <div class="profile-avatar settings-account-avatar">{{ auth.userInitial }}</div>
+              <div>
+                <strong>{{ auth.user?.email }}</strong>
+                <span>单工作区所有者</span>
+              </div>
+            </div>
+            <div class="settings-form">
+              <label>
+                <span>显示名称</span>
+                <input v-model="accountDraft.displayName" class="quiet-input" maxlength="80" />
+              </label>
+            </div>
+            <div class="settings-save-row">
+              <span>{{ accountSaveStateLabel }}</span>
+              <button type="button" class="primary-button" :disabled="!canSaveAccount || auth.loading" @click="saveAccount">
+                保存账户资料
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-password-section">
+            <div class="settings-subheading">
+              <strong>修改密码</strong>
+              <span>至少 10 个字符</span>
+            </div>
+            <div class="settings-form settings-password-form">
+              <label>
+                <span>当前密码</span>
+                <input v-model="passwordDraft.currentPassword" class="quiet-input" type="password" autocomplete="current-password" />
+              </label>
+              <label>
+                <span>新密码</span>
+                <input v-model="passwordDraft.newPassword" class="quiet-input" type="password" autocomplete="new-password" />
+              </label>
+              <label>
+                <span>确认新密码</span>
+                <input v-model="passwordDraft.confirmPassword" class="quiet-input" type="password" autocomplete="new-password" />
+              </label>
+            </div>
+            <p v-if="passwordError" class="settings-form-error">{{ passwordError }}</p>
+            <div class="settings-save-row">
+              <span>保存后当前会话会自动续期</span>
+              <button type="button" class="secondary-button" :disabled="!canChangePassword || auth.loading" @click="savePassword">
+                更新密码
+              </button>
+            </div>
+          </div>
+        </template>
+
         <template v-else-if="activeSection === 'provider'">
           <div class="settings-section-heading">
             <span class="section-kicker">AI Provider</span>
@@ -91,15 +149,18 @@
 import { computed, reactive, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Key, Setting, Sunny } from '@element-plus/icons-vue'
+import { Key, Lock, Setting, Sunny } from '@element-plus/icons-vue'
+import { useAuthStore } from '@/stores/auth'
 import { useWorkspaceStore } from '@/stores/workspace'
 
-type SettingsSection = 'workspace' | 'provider' | 'appearance'
+type SettingsSection = 'workspace' | 'account' | 'provider' | 'appearance'
 
 const workspace = useWorkspaceStore()
+const auth = useAuthStore()
 const activeSection = ref<SettingsSection>('workspace')
 const sections: Array<{ id: SettingsSection; label: string; icon: Component }> = [
   { id: 'workspace', label: '工作区', icon: Setting },
+  { id: 'account', label: '账户与安全', icon: Lock },
   { id: 'provider', label: 'Provider', icon: Key },
   { id: 'appearance', label: '界面', icon: Sunny }
 ]
@@ -112,6 +173,17 @@ const preferencesChanged = computed(() =>
 )
 const canSavePreferences = computed(() =>
   Boolean(preferencesChanged.value && draft.workspaceName.trim() && draft.profileName.trim())
+)
+const accountDraft = reactive({
+  displayName: auth.user?.displayName || ''
+})
+const accountChanged = computed(() => accountDraft.displayName.trim() !== (auth.user?.displayName || ''))
+const canSaveAccount = computed(() => Boolean(accountChanged.value && accountDraft.displayName.trim()))
+const accountSaveStateLabel = computed(() => accountChanged.value ? '有尚未保存的账户修改' : '账户资料已同步')
+const passwordDraft = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
+const passwordError = ref('')
+const canChangePassword = computed(() =>
+  Boolean(passwordDraft.currentPassword && passwordDraft.newPassword.length >= 10 && passwordDraft.confirmPassword.length >= 10)
 )
 const preferenceSaveStateLabel = computed(() => {
   if (preferencesChanged.value) {
@@ -143,5 +215,35 @@ function savePreferences() {
     return
   }
   ElMessage.success('本地工作区偏好已保存')
+}
+
+async function saveAccount() {
+  const result = await auth.updateProfile(accountDraft.displayName.trim())
+  if (!result.ok) {
+    ElMessage.error(result.message)
+    return
+  }
+  accountDraft.displayName = auth.user?.displayName || accountDraft.displayName.trim()
+  ElMessage.success('账户资料已更新')
+}
+
+async function savePassword() {
+  passwordError.value = ''
+  if (passwordDraft.newPassword !== passwordDraft.confirmPassword) {
+    passwordError.value = '两次输入的新密码不一致'
+    return
+  }
+  const result = await auth.changePassword({
+    currentPassword: passwordDraft.currentPassword,
+    newPassword: passwordDraft.newPassword
+  })
+  if (!result.ok) {
+    passwordError.value = result.message
+    return
+  }
+  passwordDraft.currentPassword = ''
+  passwordDraft.newPassword = ''
+  passwordDraft.confirmPassword = ''
+  ElMessage.success('密码已更新，当前会话已续期')
 }
 </script>

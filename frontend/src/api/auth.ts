@@ -1,5 +1,11 @@
 import http from './client'
-import type { AuthCredentials, AuthSetupPayload, AuthStatus } from '@/types'
+import type {
+  AuthCredentials,
+  AuthPasswordChangePayload,
+  AuthProfileUpdatePayload,
+  AuthSetupPayload,
+  AuthStatus
+} from '@/types'
 
 export function getAuthStatus() {
   return http.get<AuthStatus>('/api/auth/status')
@@ -15,4 +21,12 @@ export function login(payload: AuthCredentials) {
 
 export function logout() {
   return http.post<void>('/api/auth/logout')
+}
+
+export function updateProfile(payload: AuthProfileUpdatePayload) {
+  return http.patch<AuthStatus>('/api/auth/me', payload)
+}
+
+export function changePassword(payload: AuthPasswordChangePayload) {
+  return http.post<AuthStatus>('/api/auth/me/password', payload)
 }

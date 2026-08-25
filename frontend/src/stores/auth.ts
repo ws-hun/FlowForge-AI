@@ -1,12 +1,19 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import {
+  changePassword as changePasswordRequest,
   getAuthStatus,
   login as loginRequest,
   logout as logoutRequest,
-  setupWorkspaceOwner
+  setupWorkspaceOwner,
+  updateProfile as updateProfileRequest
 } from '@/api/auth'
-import type { AuthCredentials, AuthSetupPayload, AuthUser } from '@/types'
+import type {
+  AuthCredentials,
+  AuthPasswordChangePayload,
+  AuthSetupPayload,
+  AuthUser
+} from '@/types'
 
 export const useAuthStore = defineStore('auth', () => {
   let bootstrapPromise: Promise<boolean> | null = null
@@ -100,6 +107,40 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function updateProfile(displayName: string) {
+    loading.value = true
+    connectionError.value = ''
+    try {
+      const { data } = await updateProfileRequest({ displayName })
+      applyStatus(data)
+      return { ok: true as const, message: '' }
+    } catch (error: any) {
+      return {
+        ok: false as const,
+        message: error.response?.data?.message || '账户资料保存失败，请稍后重试'
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function changePassword(payload: AuthPasswordChangePayload) {
+    loading.value = true
+    connectionError.value = ''
+    try {
+      const { data } = await changePasswordRequest(payload)
+      applyStatus(data)
+      return { ok: true as const, message: '' }
+    } catch (error: any) {
+      return {
+        ok: false as const,
+        message: error.response?.data?.message || '密码修改失败，请稍后重试'
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
   function applyStatus(status: { setupRequired: boolean; authenticated: boolean; user?: AuthUser | null }) {
     setupRequired.value = status.setupRequired
     user.value = status.authenticated ? status.user || null : null
@@ -116,6 +157,8 @@ export const useAuthStore = defineStore('auth', () => {
     bootstrap,
     login,
     setup,
-    logout
+    logout,
+    updateProfile,
+    changePassword
   }
 })

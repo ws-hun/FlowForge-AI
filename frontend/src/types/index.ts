@@ -395,3 +395,12 @@ export interface AuthCredentials {
 export interface AuthSetupPayload extends AuthCredentials {
   displayName: string
 }
+
+export interface AuthProfileUpdatePayload {
+  displayName: string
+}
+
+export interface AuthPasswordChangePayload {
+  currentPassword: string
+  newPassword: string
+}

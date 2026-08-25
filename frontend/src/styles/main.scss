@@ -6374,6 +6374,75 @@ a {
   }
 }
 
+.settings-account-section,
+.settings-password-section {
+  display: grid;
+  gap: 14px;
+  padding: 4px 0 18px;
+  border-bottom: 1px solid tokens.$border;
+}
+
+.settings-password-section {
+  padding-top: 18px;
+  border-bottom: 0;
+}
+
+.settings-account-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  > div:last-child {
+    display: grid;
+    gap: 4px;
+  }
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 14px;
+  }
+
+  span {
+    color: tokens.$text-muted;
+    font-size: 12px;
+  }
+}
+
+.settings-account-avatar {
+  width: 40px;
+  height: 40px;
+  font-size: 14px;
+}
+
+.settings-subheading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 15px;
+  }
+
+  span {
+    color: tokens.$text-muted;
+    font-size: 12px;
+  }
+}
+
+.settings-password-form {
+  max-width: 620px;
+  padding: 0;
+}
+
+.settings-form-error {
+  margin: 0;
+  color: tokens.$error;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .settings-save-row {
   display: flex;
   align-items: center;
