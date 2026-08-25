@@ -1,9 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
+import { useAuthStore } from '@/stores/auth'
+import { safeAuthRedirect } from '@/utils/authRedirect'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+    {
+      path: '/auth',
+      name: 'auth',
+      component: () => import('@/views/AuthView.vue'),
+      meta: { public: true }
+    },
     {
       path: '/',
       component: AppLayout,
@@ -22,6 +30,26 @@ const router = createRouter({
       ]
     }
   ]
+})
+
+router.beforeEach(async (to) => {
+  const auth = useAuthStore()
+  await auth.bootstrap()
+
+  if (to.meta.public) {
+    if (auth.authenticated) {
+      return safeAuthRedirect(to.query.redirect)
+    }
+    return true
+  }
+
+  if (!auth.authenticated) {
+    return {
+      name: 'auth',
+      query: { redirect: to.fullPath }
+    }
+  }
+  return true
 })
 
 export default router

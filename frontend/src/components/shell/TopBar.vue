@@ -38,7 +38,34 @@
       <button type="button" class="search-pill" title="搜索" aria-label="打开全局搜索" @click="searchOpen = true">
         <Search />
       </button>
-      <RouterLink to="/profile" class="user-avatar" :title="workspace.profileName">{{ workspace.profileInitial }}</RouterLink>
+      <div ref="userMenuRef" class="top-user-menu">
+        <button
+          type="button"
+          class="user-avatar"
+          :title="auth.user?.displayName"
+          :aria-expanded="userMenuOpen"
+          aria-haspopup="menu"
+          @click="userMenuOpen = !userMenuOpen"
+        >
+          {{ auth.userInitial }}
+        </button>
+        <Transition name="menu-fade">
+          <div v-if="userMenuOpen" class="user-popover" role="menu">
+            <div class="user-popover-identity">
+              <strong>{{ auth.user?.displayName }}</strong>
+              <small>{{ auth.user?.email }}</small>
+            </div>
+            <RouterLink to="/profile" role="menuitem" @click="userMenuOpen = false">
+              <User />
+              <span>个人空间</span>
+            </RouterLink>
+            <button type="button" role="menuitem" :disabled="auth.loading" @click="signOut">
+              <SwitchButton />
+              <span>退出登录</span>
+            </button>
+          </div>
+        </Transition>
+      </div>
     </div>
 
     <GlobalSearchDialog :open="searchOpen" @close="searchOpen = false" />
@@ -47,14 +74,18 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Search } from '@element-plus/icons-vue'
+import { Search, SwitchButton, User } from '@element-plus/icons-vue'
 import GlobalSearchDialog from '@/components/shell/GlobalSearchDialog.vue'
 import logo from '@/assets/icons/logo.png'
 import { getHealth } from '@/api/system'
 import { useWorkspaceStore } from '@/stores/workspace'
+import { useAuthStore } from '@/stores/auth'
 
 const searchOpen = ref(false)
+const userMenuOpen = ref(false)
+const userMenuRef = ref<HTMLElement | null>(null)
 const workspace = useWorkspaceStore()
+const auth = useAuthStore()
 const healthState = ref<'checking' | 'ready' | 'offline'>('checking')
 let healthTimer: number | null = null
 const systemStatus = computed(() => {
@@ -107,10 +138,22 @@ function handleOffline() {
   healthState.value = 'offline'
 }
 
+function handleOutsideClick(event: MouseEvent) {
+  if (userMenuRef.value && !userMenuRef.value.contains(event.target as Node)) {
+    userMenuOpen.value = false
+  }
+}
+
+async function signOut() {
+  await auth.logout()
+  window.location.assign('/auth')
+}
+
 onMounted(() => {
   window.addEventListener('keydown', handleSearchShortcut)
   window.addEventListener('online', refreshHealth)
   window.addEventListener('offline', handleOffline)
+  document.addEventListener('click', handleOutsideClick)
   void refreshHealth()
   healthTimer = window.setInterval(refreshHealth, 30_000)
 })
@@ -119,6 +162,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleSearchShortcut)
   window.removeEventListener('online', refreshHealth)
   window.removeEventListener('offline', handleOffline)
+  document.removeEventListener('click', handleOutsideClick)
   if (healthTimer !== null) {
     window.clearInterval(healthTimer)
   }

@@ -33,7 +33,7 @@
               <input v-model="draft.workspaceName" class="quiet-input" maxlength="80" />
             </label>
             <label>
-              <span>个人显示名</span>
+              <span>本地创作显示名</span>
               <input v-model="draft.profileName" class="quiet-input" maxlength="80" />
             </label>
           </div>

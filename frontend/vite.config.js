@@ -11,6 +11,7 @@ export default defineConfig({
   server: {
     port: 10086,
     strictPort: true,
+    allowedHosts: ['local.wshun.cloud'],
     proxy: {
       '/api': {
         target: 'http://localhost:8080',

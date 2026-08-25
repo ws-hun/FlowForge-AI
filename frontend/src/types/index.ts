@@ -375,3 +375,23 @@ export interface SaveFlowPayload {
   sourceFlowVersionId?: string | null
   revision?: number
 }
+export interface AuthUser {
+  id: string
+  email: string
+  displayName: string
+}
+
+export interface AuthStatus {
+  setupRequired: boolean
+  authenticated: boolean
+  user?: AuthUser | null
+}
+
+export interface AuthCredentials {
+  email: string
+  password: string
+}
+
+export interface AuthSetupPayload extends AuthCredentials {
+  displayName: string
+}
