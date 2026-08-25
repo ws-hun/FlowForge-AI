@@ -2,6 +2,8 @@ package com.flowforge.ai.controller;
 
 import com.flowforge.ai.dto.ErrorResponse;
 import com.flowforge.ai.exception.AiExecutionException;
+import com.flowforge.ai.exception.AuthenticationRequiredException;
+import com.flowforge.ai.exception.RequestOriginDeniedException;
 import com.flowforge.ai.exception.ResourceConflictException;
 import com.flowforge.ai.exception.ResourceNotFoundException;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +42,18 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_GATEWAY)
     public ErrorResponse handleAiExecution(AiExecutionException ex) {
         return new ErrorResponse(ex.getMessage(), LocalDateTime.now(), ex.getRunId());
+    }
+
+    @ExceptionHandler(AuthenticationRequiredException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ErrorResponse handleAuthenticationRequired(AuthenticationRequiredException ex) {
+        return new ErrorResponse(ex.getMessage(), LocalDateTime.now());
+    }
+
+    @ExceptionHandler(RequestOriginDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErrorResponse handleRequestOriginDenied(RequestOriginDeniedException ex) {
+        return new ErrorResponse(ex.getMessage(), LocalDateTime.now());
     }
 
     @ExceptionHandler(IllegalStateException.class)

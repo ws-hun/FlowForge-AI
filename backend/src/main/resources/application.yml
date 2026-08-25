@@ -36,3 +36,7 @@ flowforge:
   security:
     encryption-key: ${FLOWFORGE_ENCRYPTION_KEY:}
     key-file: ${FLOWFORGE_KEY_FILE:.flowforge/master.key}
+  auth:
+    enabled: ${FLOWFORGE_AUTH_ENABLED:true}
+    session-duration: ${FLOWFORGE_AUTH_SESSION_DURATION:30d}
+    secure-cookie: ${FLOWFORGE_SECURE_COOKIE:false}
