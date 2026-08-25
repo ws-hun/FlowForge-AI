@@ -68,6 +68,8 @@ config/
 
 Authentication is implemented as a small boundary around the single local workspace: `AuthController` exposes first-run setup, login, status, and logout; `AuthService` hashes passwords with BCrypt and stores only SHA-256 session token digests; `AuthWebConfig` protects every non-public `/api/**` route and validates non-GET request origins. Existing creative assets intentionally remain workspace-scoped until a future multi-user tenancy design can add ownership and permission contracts consistently.
 
+Public authentication routes use an exact allowlist rather than the `/api/auth/**` prefix. Owner profile and password endpoints require the same workspace session as creative APIs. A password change verifies the current BCrypt credential, deletes every existing session for the owner, and issues one fresh cookie so stale browsers cannot retain access.
+
 Flow execution compilation is isolated in `FlowExecutionCompiler`. It converts one immutable Flow snapshot into the exact Provider input, execution mode, call count, compiler version, SHA-256 input fingerprint, structured preview sections, and a versioned deterministic node execution plan used by both preview and execution paths.
 
 The current `flow-plan-v4` contract uses linear scheduling and identifies Input, Prompt, AI Task, and Output responsibilities together with stable input/output artifact contracts and a versioned input resolution method. AI Task is the only Provider boundary, so the number of boundary steps must remain equal to the persisted Provider call count. New plans also carry `flow-failure-policy-v1`: stop the run on Provider failure, skip downstream nodes, make one attempt, and perform no automatic retry. See [FLOW_RUNTIME.md](./FLOW_RUNTIME.md).

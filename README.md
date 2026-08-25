@@ -625,11 +625,15 @@ GET  /api/auth/status
 POST /api/auth/setup
 POST /api/auth/login
 POST /api/auth/logout
+PATCH /api/auth/me
+POST /api/auth/me/password
 ```
 
 `/api/auth/status` 与 `/api/health` 可公开访问；首次安装且没有所有者时，`setupRequired` 为 `true`。`setup` 只允许成功一次。登录和初始化会返回 HttpOnly、SameSite=Lax 的 `flowforge_session` Cookie，服务端只保存其 SHA-256 摘要；会话默认有效 30 天。
 
 除健康检查和认证端点外，所有 `/api/**` 请求都需要有效会话。非 GET 请求还会校验浏览器来源，避免把登录 Cookie 当作跨站写请求凭证。正式 HTTPS 部署时应设置 `FLOWFORGE_SECURE_COOKIE=true`。
+
+登录后可在 Settings 的“账户与安全”中更新所有者显示名称或修改密码。密码修改会校验当前密码、撤销该所有者的全部旧会话，并为当前浏览器签发新的 HttpOnly Cookie；其他浏览器需要重新登录。公开认证路由使用精确白名单，`/api/auth/me` 与未知的 `/api/auth/**` 路径不会因共享前缀而绕过认证。
 
 ### Health
 

@@ -47,6 +47,16 @@ class AuthInterceptorTest {
     }
 
     @Test
+    void protectsOwnerAndUnknownAuthenticationPaths() {
+        when(authService.findAuthenticatedUser(null)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> preHandle("POST", "/api/auth/me", null, null))
+                .isInstanceOf(AuthenticationRequiredException.class);
+        assertThatThrownBy(() -> preHandle("GET", "/api/auth/unknown", null, null))
+                .isInstanceOf(AuthenticationRequiredException.class);
+    }
+
+    @Test
     void acceptsAValidCookieAndExposesTheAuthenticatedOwner() {
         AuthUserResponse user = new AuthUserResponse(UUID.randomUUID(), "owner@example.com", "Owner");
         when(authService.findAuthenticatedUser("raw-token")).thenReturn(Optional.of(user));

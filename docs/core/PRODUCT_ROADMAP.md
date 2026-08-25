@@ -103,6 +103,7 @@ Current Stage 3 capabilities:
 - Global creation search provides one calm entry point for AI Command, Flow Space, Prompt assets, and immutable Results without introducing dense navigation.
 - Local workspace identity preferences keep Settings, Profile, and the global shell consistent, while explicitly reporting session-only fallback when browser persistence is unavailable and never pretending that remote synchronization exists.
 - First-run workspace setup creates one owner identity, then protects the creative workspace with a BCrypt password and a revocable server-side HttpOnly session; this is single-owner access, not multi-user tenancy.
+- Workspace owner settings can update the authenticated identity and rotate the password without exposing a user-management surface; password changes revoke every prior session and keep only a newly issued current-browser session.
 - Future modules remain outside the primary navigation and use honest workspace boundaries that route users back to currently executable creation paths instead of presenting fake Agent, Knowledge, or Analytics state.
 - Route-level code splitting and scoped Element Plus registration keep the calm workspace shell lightweight while loading complex creation surfaces only when opened.
 - Docker readiness follows the real dependency chain from PostgreSQL to the backend database probe and then to the Nginx frontend proxy.

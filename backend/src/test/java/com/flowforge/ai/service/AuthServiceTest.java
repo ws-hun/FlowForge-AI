@@ -1,6 +1,8 @@
 package com.flowforge.ai.service;
 
 import com.flowforge.ai.dto.AuthCredentialsRequest;
+import com.flowforge.ai.dto.AuthPasswordChangeRequest;
+import com.flowforge.ai.dto.AuthProfileUpdateRequest;
 import com.flowforge.ai.dto.AuthSetupRequest;
 import com.flowforge.ai.entity.AuthSession;
 import com.flowforge.ai.entity.WorkspaceUser;
@@ -130,5 +132,71 @@ class AuthServiceTest {
 
         authService.logout("raw-session-token");
         verify(authSessionRepository).deleteByTokenHash(any());
+    }
+
+    @Test
+    void updatesTheAuthenticatedOwnerProfile() {
+        WorkspaceUser user = owner("Flow Creator", "old-password-value");
+        AuthSession session = sessionFor(user);
+        when(authSessionRepository.findByTokenHashAndExpiresAtAfter(any(), any())).thenReturn(Optional.of(session));
+
+        var result = authService.updateProfile("raw-session-token", new AuthProfileUpdateRequest(" New Name "));
+
+        assertThat(user.getDisplayName()).isEqualTo("New Name");
+        assertThat(result.user().displayName()).isEqualTo("New Name");
+        verify(workspaceUserRepository).saveAndFlush(user);
+    }
+
+    @Test
+    void rotatesEverySessionAfterChangingThePassword() {
+        WorkspaceUser user = owner("Flow Creator", "old-password-value");
+        AuthSession session = sessionFor(user);
+        when(authSessionRepository.findByTokenHashAndExpiresAtAfter(any(), any())).thenReturn(Optional.of(session));
+        when(authSessionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = authService.changePassword(
+                "raw-session-token",
+                new AuthPasswordChangeRequest("old-password-value", "new-password-value")
+        );
+
+        assertThat(passwordEncoder.matches("new-password-value", user.getPasswordHash())).isTrue();
+        assertThat(result.token()).hasSize(43);
+        verify(authSessionRepository).deleteByUserId(user.getId());
+        verify(authSessionRepository).save(any(AuthSession.class));
+    }
+
+    @Test
+    void rejectsPasswordChangeWithTheWrongCurrentPassword() {
+        WorkspaceUser user = owner("Flow Creator", "old-password-value");
+        when(authSessionRepository.findByTokenHashAndExpiresAtAfter(any(), any()))
+                .thenReturn(Optional.of(sessionFor(user)));
+
+        assertThatThrownBy(() -> authService.changePassword(
+                "raw-session-token",
+                new AuthPasswordChangeRequest("wrong-password", "new-password-value")
+        ))
+                .isInstanceOf(AuthenticationRequiredException.class)
+                .hasMessage("当前密码不正确");
+
+        verify(workspaceUserRepository, never()).saveAndFlush(any());
+        verify(authSessionRepository, never()).deleteByUserId(any());
+    }
+
+    private WorkspaceUser owner(String displayName, String rawPassword) {
+        return WorkspaceUser.builder()
+                .id(UUID.randomUUID())
+                .email("owner@example.com")
+                .displayName(displayName)
+                .passwordHash(passwordEncoder.encode(rawPassword))
+                .build();
+    }
+
+    private AuthSession sessionFor(WorkspaceUser user) {
+        return AuthSession.builder()
+                .id(UUID.randomUUID())
+                .user(user)
+                .tokenHash("hash")
+                .expiresAt(LocalDateTime.now().plusDays(1))
+                .build();
     }
 }
