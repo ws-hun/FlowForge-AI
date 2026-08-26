@@ -31,12 +31,27 @@
         </div>
       </li>
     </ol>
+
+    <div
+      v-if="policy"
+      class="flow-provider-attempt-policy"
+      :class="policy.currentState"
+    >
+      <span></span>
+      <div>
+        <strong>{{ flowProviderAttemptPolicyTitle(policy) }}</strong>
+        <p>{{ flowProviderAttemptPolicyDescription(policy) }}</p>
+      </div>
+      <small>{{ policy.version }}</small>
+    </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import type { FlowProviderAttempt } from '@/types'
+import type { FlowProviderAttempt, FlowProviderAttemptPolicy } from '@/types'
 import {
+  flowProviderAttemptPolicyDescription,
+  flowProviderAttemptPolicyTitle,
   flowProviderAttemptTriggerLabel,
   flowProviderCallMetrics,
   flowProviderCallSource,
@@ -45,5 +60,6 @@ import {
 
 defineProps<{
   attempts: FlowProviderAttempt[]
+  policy?: FlowProviderAttemptPolicy | null
 }>()
 </script>

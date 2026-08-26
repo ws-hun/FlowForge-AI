@@ -1,4 +1,8 @@
-import type { FlowProviderAttempt, FlowProviderCall } from '@/types'
+import type {
+  FlowProviderAttempt,
+  FlowProviderAttemptPolicy,
+  FlowProviderCall
+} from '@/types'
 import {
   formatExecutionDuration,
   formatProviderName,
@@ -35,4 +39,30 @@ export function flowProviderAttemptTriggerLabel(trigger: FlowProviderAttempt['tr
     'manual-recovery': '手动恢复'
   }
   return labels[trigger]
+}
+
+export function flowProviderAttemptPolicyTitle(
+  policy: FlowProviderAttemptPolicy | null | undefined
+) {
+  if (!policy) return ''
+  const labels: Record<FlowProviderAttemptPolicy['currentState'], string> = {
+    'not-recorded': '调用链未记录',
+    completed: '调用链已完成',
+    failed: '本次调用已停止'
+  }
+  return labels[policy.currentState]
+}
+
+export function flowProviderAttemptPolicyDescription(
+  policy: FlowProviderAttemptPolicy | null | undefined
+) {
+  if (!policy) return ''
+  if (policy.currentState === 'not-recorded') {
+    return '旧运行没有 Attempt 契约，FlowForge 不会补造重试状态。'
+  }
+  if (policy.currentState === 'failed'
+    && policy.failedRunRecoveryAction === 'create-new-run') {
+    return '当前不会在原产物上自动重试；恢复执行会创建一条新的可比较运行。'
+  }
+  return '当前不会在已完成产物上追加重试。'
 }

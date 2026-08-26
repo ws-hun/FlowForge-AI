@@ -108,6 +108,7 @@
               <FlowProviderAttempts
                 v-if="artifactDetails[node.outputArtifact.key]?.providerAttempts?.length"
                 :attempts="artifactDetails[node.outputArtifact.key]?.providerAttempts || []"
+                :policy="artifactDetails[node.outputArtifact.key]?.providerAttemptPolicy"
               />
               <div
                 v-else-if="artifactDetails[node.outputArtifact.key]?.providerCall"

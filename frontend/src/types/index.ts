@@ -219,6 +219,15 @@ export interface FlowProviderAttempt extends FlowProviderCall {
   createdAt: string
 }
 
+export interface FlowProviderAttemptPolicy {
+  version: string
+  currentState: 'not-recorded' | 'completed' | 'failed'
+  recordedAttempts: number
+  automaticRetryEnabled: boolean
+  sameArtifactRecoveryEnabled: boolean
+  failedRunRecoveryAction: 'none' | 'create-new-run'
+}
+
 export interface FlowArtifactContract {
   key: string
   type: FlowArtifactType
@@ -254,6 +263,7 @@ export interface FlowNodeArtifactSummary {
 export interface FlowNodeArtifactDetail extends FlowNodeArtifactSummary {
   payload?: string | null
   providerAttempts?: FlowProviderAttempt[]
+  providerAttemptPolicy?: FlowProviderAttemptPolicy | null
 }
 
 export interface FlowNodeArtifactLineageEntry {
