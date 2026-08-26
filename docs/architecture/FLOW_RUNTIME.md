@@ -12,12 +12,13 @@ This is a real and reproducible runtime. It is not yet a node-level execution en
 
 ## 2. Versioned Contracts
 
-The runtime exposes three independent versions:
+The runtime exposes five independent versions:
 
 - `flow-compiler-v1` defines how the exact Provider input is produced.
 - `flow-plan-v4` defines how saved nodes are ordered, what responsibility each node has, which persisted artifact enters and leaves each step, and how the upstream reference was resolved.
 - `flow-failure-policy-v1` defines the current terminal behavior: stop the run after Provider failure, skip downstream nodes, allow one attempt, and perform no automatic retry.
 - `flow-input-resolution-v1` defines the active input mode, the reserved persisted-artifact mode, and the runtime boundary required before that mode can be enabled.
+- `flow-provider-attempt-policy-v1` defines how persisted Provider attempts form one valid chain and where failed-run recovery creates a new run instead of mutating history.
 
 The compiler also produces a SHA-256 fingerprint of the exact UTF-8 Provider input. Preview, Provider invocation, persisted Task input, and Run Trace must agree on that value.
 
@@ -72,6 +73,8 @@ New direct Flow runs persist one independently addressable database artifact for
 Successful Tasks and their node artifacts are written in the same execution transaction. Failed Tasks and their materialized, failed, or skipped artifacts are written together inside the same `REQUIRES_NEW` failure-recording transaction. An artifact persistence error therefore rolls back the corresponding Task record instead of leaving partial runtime history.
 
 Provider attempts follow the same atomic boundary. A completed Task can only persist a completed `initial #1` on a materialized AI Task artifact, while a failed Task can only persist a failed `initial #1` on its failed AI Task artifact. Token fields remain null when the Provider omits usage instead of being estimated or invented. The current runtime never creates `automatic-retry` or `manual-recovery` attempts.
+
+Artifact detail evaluates `flow-provider-attempt-policy-v1` before returning an attempt timeline. Attempt numbers must start at one and remain contiguous, the first trigger must be `initial`, every later attempt must directly reference the immediately preceding failed attempt, and a completed attempt is terminal. The current policy disables both automatic retry and same-artifact manual recovery. Recovering a failed run uses the existing rerun path to create a new immutable Task, preserving the original failed attempt for inspection and comparison.
 
 Artifacts can be inspected through `GET /api/tasks/{taskId}/artifacts` and `GET /api/tasks/{taskId}/artifacts/{artifactKey}`. The collection exposes only the latest attempt as the compatibility `providerCall` summary, resolved in one batch query. Artifact detail additionally returns the complete ordered `providerAttempts` history and its payload only when the user opens it inside the run trace. Materialized `node-artifact` inputs can be followed back to their persisted upstream payload; `flow-snapshot` inputs remain clearly identified as immutable Flow objective sources.
 

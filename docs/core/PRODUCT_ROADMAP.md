@@ -127,6 +127,7 @@ Current Stage 3 capabilities:
 - The unique AI Task `provider-result` artifact now preserves the real Provider, model, available token usage, duration, completion state, and sanitized failure provenance in the same transaction as the Task. Legacy artifacts remain null, and compiled Input, Prompt, and Output contributions never receive fabricated call metadata.
 - Every new Flow run now saves its single real Provider invocation as an independent `initial #1` attempt. Artifact detail reveals the complete attempt timeline on demand, while collections and lineage expose only one batch-resolved latest summary. V7 backfills real V6 provenance without inventing missing legacy history.
 - Provider attempt persistence is a foundation for future retry and recovery, not an active retry engine: the current runtime creates no retry attempts, keeps `providerCallCount = 1`, and remains `single-pass` rather than `node-sequential`.
+- Provider attempt detail now carries `flow-provider-attempt-policy-v1`: contiguous chains can only continue from a failed attempt, completed attempts are terminal, and current recovery creates a new immutable run instead of rewriting the original artifact.
 - New Flow previews and immutable traces share `flow-failure-policy-v1`: one Provider attempt, stop the run on failure, skip downstream nodes, and never imply an automatic retry. Runtime persistence validates these states while older plans remain honestly policy-free.
 - Flow Space explains each selected node's runtime role and predecessor context during creation, so users can design the execution path without mistaking compiled Input, Prompt, or Output nodes for independent model calls.
 - Provider HTTP calls use explicit configurable connect and read timeouts, convert transport failures into stable gateway errors, and preserve failed runs for recovery instead of hanging the workspace indefinitely.
@@ -178,7 +179,7 @@ Current Stage 3 priorities:
 2. Preserve complete execution context for comparison and reuse.
 3. Improve the Prompt / Flow / Result reuse loop.
 4. Design a future `persisted-artifact` resolution contract without changing the honest `single-pass` behavior of existing runs.
-5. Define recovery and retry state transitions on top of the persisted Attempt history before introducing true `node-sequential` execution.
+5. Keep the versioned Attempt transition contract stable while designing true per-node recovery before introducing `node-sequential` execution.
 
 ---
 

@@ -140,6 +140,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Flow Runtime Contract Verification | Done | 自动化测试锁定预览、真实 Provider 输入、历史保存输入、编译器版本与运行轨迹指纹的一致性 |
 | Stage 3 | Versioned Node Execution Plan | Done | Preview 与不可变运行轨迹共享 `flow-plan-v4`，固定节点顺序、直接依赖、输入输出产物契约、输入解析方式与唯一 Provider 边界 |
 | Stage 3 | Versioned Input Resolution Contract | Done | `flow-input-resolution-v1` 明确当前 `compiled-reference`，为未来 `persisted-artifact` 逐节点运行时保留升级边界 |
+| Stage 3 | Provider Attempt Recovery Contract | Done | `flow-provider-attempt-policy-v1` 校验真实调用链，明确当前不在原产物上重试，失败恢复会创建新的可比较运行 |
 | Stage 3 | Node Runtime Role Guidance | Done | Flow canvas 与 Inspector 解释每个节点如何参与执行，并明确当前只有 AI Task 触发 Provider 调用 |
 | Stage 3 | Immutable Node Artifact Records | Done | 成功和失败轨迹保存节点产物状态、真实存储来源与内容指纹，失败或跳过节点不伪造输出 |
 | Stage 3 | Addressable Node Artifact Payloads | Done | 每个现代 Flow 节点产物独立落库、按运行与稳定 Key 读取，并可在运行轨迹内按需检查和复制 |
@@ -775,6 +776,8 @@ AI Command 中尚未执行的输入与来源上下文保存在当前浏览器的
 产物列表与来源链只返回最新 Attempt 的 `providerCall` 摘要，并通过批量查询避免逐产物读取；`GET /api/tasks/{taskId}/artifacts/{artifactKey}` 在用户打开 AI Task 产物时额外返回完整 `providerAttempts` 时间线。V7 迁移会把 V6 已保存的 Provider provenance 确定性回填为 `initial #1`，更早且没有真实来源的记录仍保持为空。Input、Prompt、Output 节点不会获得伪造 Attempt。
 
 Attempt 表是未来 retry / recovery 的持久化基础，不代表运行时已经启用重试。当前 `single-pass` 仍只调用 Provider 一次，`providerCallCount` 仍为 `1`，不会创建 `automatic-retry` 或 `manual-recovery`，也没有启用 `node-sequential`。
+
+Artifact 详情同时返回 `flow-provider-attempt-policy-v1`。服务端要求 Attempt 从 `initial #1` 开始、编号连续、后续 Attempt 必须直接引用前一个失败 Attempt，并拒绝在已完成 Attempt 后追加调用。当前自动重试和同一 Artifact 恢复均为关闭状态；失败运行的可用恢复方式是创建新的不可变运行，保留原失败记录用于比较。
 
 ### Provider
 
