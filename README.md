@@ -139,6 +139,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Verified Run Input Comparison | Done | 运行对比优先使用 Provider 输入指纹判断输入是否一致，旧记录则诚实回退到固定执行文本 |
 | Stage 3 | Flow Runtime Contract Verification | Done | 自动化测试锁定预览、真实 Provider 输入、历史保存输入、编译器版本与运行轨迹指纹的一致性 |
 | Stage 3 | Versioned Node Execution Plan | Done | Preview 与不可变运行轨迹共享 `flow-plan-v4`，固定节点顺序、直接依赖、输入输出产物契约、输入解析方式与唯一 Provider 边界 |
+| Stage 3 | Versioned Input Resolution Contract | Done | `flow-input-resolution-v1` 明确当前 `compiled-reference`，为未来 `persisted-artifact` 逐节点运行时保留升级边界 |
 | Stage 3 | Node Runtime Role Guidance | Done | Flow canvas 与 Inspector 解释每个节点如何参与执行，并明确当前只有 AI Task 触发 Provider 调用 |
 | Stage 3 | Immutable Node Artifact Records | Done | 成功和失败轨迹保存节点产物状态、真实存储来源与内容指纹，失败或跳过节点不伪造输出 |
 | Stage 3 | Addressable Node Artifact Payloads | Done | 每个现代 Flow 节点产物独立落库、按运行与稳定 Key 读取，并可在运行轨迹内按需检查和复制 |
@@ -738,6 +739,8 @@ Response:
 当前 Flow Runtime 仍把所有已保存节点编译成一个确定性输入，并执行 **一次共享 Provider 调用**。因此 `providerCallCount` 当前固定为 `1`，Flow Run Trace 是可解释的服务端运行记录，不代表每个节点都进行了独立模型调用。
 
 `executionPlan` 使用 `flow-plan-v4` 固定保存节点顺序、直接前置依赖、节点职责、输入输出产物契约、输入解析方式和 Provider 边界。Input 与 Prompt 提供编译内容，AI Task 是唯一 `invoke-provider` 步骤，Output 定义同一请求的交付约束。Flow 目标来自不可变快照，每个现代节点输出都指向稳定的 `node-artifact` 记录。
+
+计划同时携带 `flow-input-resolution-v1`：当前启用的输入解析是 `compiled-reference`，`persisted-artifact` 仅作为未来 `node-sequential-runtime` 的保留契约，当前不会从数据库逐节点读取产物，也不会增加 Provider 调用次数。
 
 新计划同时保存 `flow-failure-policy-v1`：Provider 失败时停止本次运行，后续节点标记为 `skipped`，本次调用最多尝试 `1` 次且不会自动重试。服务端在生成轨迹和持久化节点产物前都会校验该策略，Preview 与历史 Execution Path 复用同一说明。旧计划没有策略字段时保持 `failurePolicy: null`，不会补造历史行为。
 

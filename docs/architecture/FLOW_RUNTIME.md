@@ -17,6 +17,7 @@ The runtime exposes three independent versions:
 - `flow-compiler-v1` defines how the exact Provider input is produced.
 - `flow-plan-v4` defines how saved nodes are ordered, what responsibility each node has, which persisted artifact enters and leaves each step, and how the upstream reference was resolved.
 - `flow-failure-policy-v1` defines the current terminal behavior: stop the run after Provider failure, skip downstream nodes, allow one attempt, and perform no automatic retry.
+- `flow-input-resolution-v1` defines the active input mode, the reserved persisted-artifact mode, and the runtime boundary required before that mode can be enabled.
 
 The compiler also produces a SHA-256 fingerprint of the exact UTF-8 Provider input. Preview, Provider invocation, persisted Task input, and Run Trace must agree on that value.
 
@@ -46,6 +47,8 @@ The current operations are:
 Each artifact contract has a stable key, semantic type, and storage owner. The Flow objective enters from `flow-snapshot`; every modern node output is owned by an independently persisted `node-artifact` record. A later step can therefore reference the stable key of its predecessor output without copying payloads into the execution plan.
 
 The current input resolution method is `compiled-reference`. It records that a step's upstream contribution was resolved while the complete Flow snapshot was compiled into one Provider input. It does not mean that the runtime loaded the predecessor payload from the artifact table or executed the downstream node separately.
+
+New `flow-plan-v4` previews and traces also carry `flow-input-resolution-v1`. This contract makes the upgrade boundary explicit: `compiled-reference` is active, `persisted-artifact` is defined as a supported future mode, and it remains disabled until the `node-sequential-runtime` can resolve each node input from a persisted upstream artifact. A contract that activates `persisted-artifact` early is rejected by the runtime validator.
 
 The plan order must match the immutable node snapshot and the persisted node trace order. The number of Provider boundary steps must match `providerCallCount`.
 
