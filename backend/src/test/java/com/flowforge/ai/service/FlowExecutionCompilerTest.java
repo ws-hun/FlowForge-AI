@@ -64,6 +64,15 @@ class FlowExecutionCompilerTest {
                         1
                 )
         );
+        assertThat(compilation.plan().inputResolutionContract()).isEqualTo(
+                new com.flowforge.ai.dto.FlowInputResolutionContractResponse(
+                        "flow-input-resolution-v1",
+                        "compiled-reference",
+                        List.of("compiled-reference", "persisted-artifact"),
+                        false,
+                        "node-sequential-runtime"
+                )
+        );
         assertThat(compilation.plan().steps())
                 .extracting(step -> step.nodeId())
                 .containsExactly("input-1", "input-2", "prompt-1", "ai-task-1", "output-1");
@@ -169,6 +178,34 @@ class FlowExecutionCompilerTest {
         )))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Unsupported Flow failure policy");
+    }
+
+    @Test
+    void rejectsAnInputContractThatActivatesPersistedArtifactsEarly() {
+        FlowExecutionCompiler.Compilation compilation = compiler.compile(
+                snapshot(Map.of("audience", "product teams"))
+        );
+        FlowExecutionPlanResponse invalidPlan = new FlowExecutionPlanResponse(
+                compilation.plan().version(),
+                compilation.plan().scheduling(),
+                compilation.plan().steps(),
+                compilation.plan().failurePolicy(),
+                new com.flowforge.ai.dto.FlowInputResolutionContractResponse(
+                        "flow-input-resolution-v1",
+                        "persisted-artifact",
+                        List.of("compiled-reference", "persisted-artifact"),
+                        true,
+                        "node-sequential-runtime"
+                )
+        );
+
+        assertThatThrownBy(() -> compiler.validateFailurePolicy(trace(
+                "completed",
+                invalidPlan,
+                List.of("prepared", "prepared", "prepared", "completed", "completed")
+        )))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Unsupported Flow input resolution contract");
     }
 
     private FlowRunTraceResponse trace(

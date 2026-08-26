@@ -9,13 +9,23 @@ public record FlowExecutionPlanResponse(
         String version,
         String scheduling,
         List<FlowExecutionStepResponse> steps,
-        FlowExecutionFailurePolicyResponse failurePolicy
+        FlowExecutionFailurePolicyResponse failurePolicy,
+        FlowInputResolutionContractResponse inputResolutionContract
 ) {
     public FlowExecutionPlanResponse(
             String version,
             String scheduling,
             List<FlowExecutionStepResponse> steps
     ) {
-        this(version, scheduling, steps, null);
+        this(version, scheduling, steps, null, null);
+    }
+
+    public FlowExecutionPlanResponse(
+            String version,
+            String scheduling,
+            List<FlowExecutionStepResponse> steps,
+            FlowExecutionFailurePolicyResponse failurePolicy
+    ) {
+        this(version, scheduling, steps, failurePolicy, null);
     }
 }

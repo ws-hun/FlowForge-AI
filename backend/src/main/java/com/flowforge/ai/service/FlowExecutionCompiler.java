@@ -5,6 +5,7 @@ import com.flowforge.ai.dto.FlowExecutionFailurePolicyResponse;
 import com.flowforge.ai.dto.FlowArtifactContractResponse;
 import com.flowforge.ai.dto.FlowExecutionPlanResponse;
 import com.flowforge.ai.dto.FlowExecutionStepResponse;
+import com.flowforge.ai.dto.FlowInputResolutionContractResponse;
 import com.flowforge.ai.dto.FlowNodeDto;
 import com.flowforge.ai.dto.FlowNodeRunTraceResponse;
 import com.flowforge.ai.dto.FlowRunSnapshotResponse;
@@ -32,6 +33,16 @@ public class FlowExecutionCompiler {
     static final String PLAN_VERSION = "flow-plan-v4";
     static final String PLAN_SCHEDULING = "linear";
     static final String INPUT_RESOLUTION = "compiled-reference";
+    static final String PERSISTED_ARTIFACT_RESOLUTION = "persisted-artifact";
+    static final String INPUT_RESOLUTION_CONTRACT_VERSION = "flow-input-resolution-v1";
+    static final FlowInputResolutionContractResponse INPUT_RESOLUTION_CONTRACT =
+            new FlowInputResolutionContractResponse(
+                    INPUT_RESOLUTION_CONTRACT_VERSION,
+                    INPUT_RESOLUTION,
+                    List.of(INPUT_RESOLUTION, PERSISTED_ARTIFACT_RESOLUTION),
+                    false,
+                    "node-sequential-runtime"
+            );
     static final String FAILURE_POLICY_VERSION = "flow-failure-policy-v1";
     static final FlowExecutionFailurePolicyResponse SINGLE_PASS_FAILURE_POLICY =
             new FlowExecutionFailurePolicyResponse(
@@ -156,7 +167,8 @@ public class FlowExecutionCompiler {
                 PLAN_VERSION,
                 PLAN_SCHEDULING,
                 List.copyOf(steps),
-                SINGLE_PASS_FAILURE_POLICY
+                SINGLE_PASS_FAILURE_POLICY,
+                INPUT_RESOLUTION_CONTRACT
         );
     }
 
@@ -205,12 +217,15 @@ public class FlowExecutionCompiler {
     }
 
     void validateFailurePolicy(FlowRunTraceResponse trace) {
-        if (trace == null || trace.executionPlan() == null
-                || trace.executionPlan().failurePolicy() == null) {
+        if (trace == null || trace.executionPlan() == null) {
             return;
         }
 
         FlowExecutionPlanResponse plan = trace.executionPlan();
+        validateInputResolutionContract(plan);
+        if (plan.failurePolicy() == null) {
+            return;
+        }
         FlowExecutionFailurePolicyResponse policy = plan.failurePolicy();
         if (!FAILURE_POLICY_VERSION.equals(policy.version())
                 || !"stop-run".equals(policy.onProviderFailure())
@@ -257,6 +272,21 @@ public class FlowExecutionCompiler {
             if (!"skipped".equals(trace.nodes().get(index).status())) {
                 throw new IllegalStateException("Flow failure policy requires downstream nodes to be skipped");
             }
+        }
+    }
+
+    void validateInputResolutionContract(FlowExecutionPlanResponse plan) {
+        if (plan == null || plan.inputResolutionContract() == null) {
+            return;
+        }
+        FlowInputResolutionContractResponse contract = plan.inputResolutionContract();
+        if (!INPUT_RESOLUTION_CONTRACT_VERSION.equals(contract.version())
+                || !INPUT_RESOLUTION.equals(contract.activeResolution())
+                || !List.of(INPUT_RESOLUTION, PERSISTED_ARTIFACT_RESOLUTION)
+                .equals(contract.supportedResolutions())
+                || contract.persistedArtifactEnabled()
+                || !"node-sequential-runtime".equals(contract.persistedArtifactActivation())) {
+            throw new IllegalStateException("Unsupported Flow input resolution contract");
         }
     }
 

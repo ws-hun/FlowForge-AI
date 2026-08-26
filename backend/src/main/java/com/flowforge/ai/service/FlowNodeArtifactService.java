@@ -132,6 +132,7 @@ public class FlowNodeArtifactService {
             Map<String, FlowNodeArtifactResponse> priorArtifacts
     ) {
         FlowExecutionPlanResponse plan = trace.executionPlan();
+        flowExecutionCompiler.validateInputResolutionContract(plan);
         if (plan == null || plan.steps() == null || index >= plan.steps().size()) {
             return null;
         }

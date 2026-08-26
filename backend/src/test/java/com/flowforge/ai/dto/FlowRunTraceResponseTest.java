@@ -211,6 +211,13 @@ class FlowRunTraceResponseTest {
                                 "skip",
                                 "none",
                                 1
+                        ),
+                        new FlowInputResolutionContractResponse(
+                                "flow-input-resolution-v1",
+                                "compiled-reference",
+                                List.of("compiled-reference", "persisted-artifact"),
+                                false,
+                                "node-sequential-runtime"
                         )
                 ),
                 List.of()
@@ -230,6 +237,15 @@ class FlowRunTraceResponseTest {
                         "skip",
                         "none",
                         1
+                )
+        );
+        assertThat(restored.executionPlan().inputResolutionContract()).isEqualTo(
+                new FlowInputResolutionContractResponse(
+                        "flow-input-resolution-v1",
+                        "compiled-reference",
+                        List.of("compiled-reference", "persisted-artifact"),
+                        false,
+                        "node-sequential-runtime"
                 )
         );
         assertThat(restored.executionPlan().steps()).singleElement().satisfies(step -> {
