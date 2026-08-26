@@ -36,6 +36,7 @@ public class FlowNodeArtifactQueryService {
     private final TaskRepository taskRepository;
     private final FlowNodeArtifactRepository artifactRepository;
     private final FlowProviderAttemptRepository providerAttemptRepository;
+    private final FlowProviderAttemptPolicy providerAttemptPolicy;
 
     @Transactional(readOnly = true)
     public List<FlowNodeArtifactSummaryResponse> listForTask(UUID taskId) {
@@ -200,6 +201,7 @@ public class FlowNodeArtifactQueryService {
                 artifact.getInputContentFingerprint(),
                 toProviderCallResponse(artifact, attempts),
                 attempts,
+                providerAttemptPolicy.evaluate(attempts),
                 artifact.getCreatedAt()
         );
     }
@@ -264,6 +266,7 @@ public class FlowNodeArtifactQueryService {
             FlowNodeArtifact artifact,
             List<FlowProviderAttemptResponse> attempts
     ) {
+        providerAttemptPolicy.evaluate(attempts);
         if (attempts.isEmpty()) {
             return toProviderCallResponse(artifact);
         }
