@@ -45,7 +45,8 @@ class FlowNodeArtifactQueryServiceTest {
         queryService = new FlowNodeArtifactQueryService(
                 taskRepository,
                 artifactRepository,
-                providerAttemptRepository
+                providerAttemptRepository,
+                new FlowProviderAttemptPolicy()
         );
     }
 
@@ -74,7 +75,7 @@ class FlowNodeArtifactQueryServiceTest {
     void usesTheLatestAttemptForCompactArtifactSummaries() {
         UUID taskId = UUID.randomUUID();
         FlowNodeArtifact artifact = artifact(taskId, "ai-task-1", 1, "provider-result", "Result");
-        FlowProviderAttempt initial = attempt(artifact.getId());
+        FlowProviderAttempt initial = failedAttempt(artifact.getId());
         FlowProviderAttempt retry = FlowProviderAttempt.builder()
                 .id(UUID.randomUUID())
                 .artifactId(artifact.getId())
@@ -133,6 +134,13 @@ class FlowNodeArtifactQueryServiceTest {
         assertThat(response.providerCall().totalTokens()).isEqualTo(200);
         assertThat(response.providerCall().durationMs()).isEqualTo(840L);
         assertThat(response.providerCall().errorMessage()).isNull();
+        assertThat(response.providerAttemptPolicy().version())
+                .isEqualTo("flow-provider-attempt-policy-v1");
+        assertThat(response.providerAttemptPolicy().currentState()).isEqualTo("completed");
+        assertThat(response.providerAttemptPolicy().recordedAttempts()).isEqualTo(1);
+        assertThat(response.providerAttemptPolicy().automaticRetryEnabled()).isFalse();
+        assertThat(response.providerAttemptPolicy().sameArtifactRecoveryEnabled()).isFalse();
+        assertThat(response.providerAttemptPolicy().failedRunRecoveryAction()).isEqualTo("none");
         assertThat(response.providerAttempts()).singleElement().satisfies(providerAttempt -> {
             assertThat(providerAttempt.id()).isEqualTo(attempt.getId());
             assertThat(providerAttempt.attemptNumber()).isEqualTo(1);
@@ -151,7 +159,7 @@ class FlowNodeArtifactQueryServiceTest {
     void usesTheLatestPersistedAttemptAsTheDetailCallSummary() {
         UUID taskId = UUID.randomUUID();
         FlowNodeArtifact artifact = artifact(taskId, "ai-task-1", 2, "provider-result", "Summary\nResult");
-        FlowProviderAttempt initial = attempt(artifact.getId());
+        FlowProviderAttempt initial = failedAttempt(artifact.getId());
         FlowProviderAttempt recovery = FlowProviderAttempt.builder()
                 .id(UUID.randomUUID())
                 .artifactId(artifact.getId())
@@ -182,6 +190,8 @@ class FlowNodeArtifactQueryServiceTest {
         assertThat(response.providerCall().model()).isEqualTo("gpt-4.1");
         assertThat(response.providerCall().totalTokens()).isEqualTo(250);
         assertThat(response.providerCall().durationMs()).isEqualTo(960L);
+        assertThat(response.providerAttemptPolicy().currentState()).isEqualTo("completed");
+        assertThat(response.providerAttemptPolicy().recordedAttempts()).isEqualTo(2);
     }
 
     @Test
@@ -251,6 +261,8 @@ class FlowNodeArtifactQueryServiceTest {
         assertThat(detail.inputContentFingerprint()).isNull();
         assertThat(detail.providerCall()).isNull();
         assertThat(detail.providerAttempts()).isEmpty();
+        assertThat(detail.providerAttemptPolicy().currentState()).isEqualTo("not-recorded");
+        assertThat(detail.providerAttemptPolicy().recordedAttempts()).isZero();
     }
 
     @Test
@@ -440,6 +452,21 @@ class FlowNodeArtifactQueryServiceTest {
                 .outputTokens(80)
                 .totalTokens(200)
                 .durationMs(840L)
+                .createdAt(LocalDateTime.of(2026, 8, 17, 10, 2))
+                .build();
+    }
+
+    private FlowProviderAttempt failedAttempt(UUID artifactId) {
+        return FlowProviderAttempt.builder()
+                .id(UUID.randomUUID())
+                .artifactId(artifactId)
+                .attemptNumber(1)
+                .triggerType("initial")
+                .status("failed")
+                .provider("deepseek")
+                .model("deepseek-chat")
+                .durationMs(840L)
+                .errorMessage("Provider unavailable")
                 .createdAt(LocalDateTime.of(2026, 8, 17, 10, 2))
                 .build();
     }

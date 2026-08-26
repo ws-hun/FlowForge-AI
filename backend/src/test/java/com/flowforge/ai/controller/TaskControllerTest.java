@@ -6,6 +6,7 @@ import com.flowforge.ai.dto.FlowNodeArtifactLineageResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactSummaryResponse;
 import com.flowforge.ai.dto.FlowProviderCallResponse;
 import com.flowforge.ai.dto.FlowProviderAttemptResponse;
+import com.flowforge.ai.dto.FlowProviderAttemptPolicyResponse;
 import com.flowforge.ai.dto.TaskRunResponse;
 import com.flowforge.ai.exception.AiExecutionException;
 import com.flowforge.ai.exception.ResourceNotFoundException;
@@ -265,6 +266,14 @@ class TaskControllerTest {
                                 null,
                                 LocalDateTime.of(2026, 8, 17, 10, 31)
                         )),
+                        new FlowProviderAttemptPolicyResponse(
+                                "flow-provider-attempt-policy-v1",
+                                "completed",
+                                1,
+                                false,
+                                false,
+                                "none"
+                        ),
                         LocalDateTime.of(2026, 8, 17, 10, 31)
                 )
         );
@@ -290,7 +299,14 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.providerAttempts[0].previousAttemptId").doesNotExist())
                 .andExpect(jsonPath("$.providerAttempts[0].status").value("completed"))
                 .andExpect(jsonPath("$.providerAttempts[0].totalTokens").value(200))
-                .andExpect(jsonPath("$.providerAttempts[0].durationMs").value(840));
+                .andExpect(jsonPath("$.providerAttempts[0].durationMs").value(840))
+                .andExpect(jsonPath("$.providerAttemptPolicy.version")
+                        .value("flow-provider-attempt-policy-v1"))
+                .andExpect(jsonPath("$.providerAttemptPolicy.currentState").value("completed"))
+                .andExpect(jsonPath("$.providerAttemptPolicy.recordedAttempts").value(1))
+                .andExpect(jsonPath("$.providerAttemptPolicy.automaticRetryEnabled").value(false))
+                .andExpect(jsonPath("$.providerAttemptPolicy.sameArtifactRecoveryEnabled").value(false))
+                .andExpect(jsonPath("$.providerAttemptPolicy.failedRunRecoveryAction").value("none"));
 
         verify(flowNodeArtifactQueryService).getForTask(taskId, artifactKey);
     }
