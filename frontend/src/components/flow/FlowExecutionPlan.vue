@@ -14,6 +14,15 @@
       <small>{{ plan.failurePolicy?.version }}</small>
     </div>
 
+    <div v-if="plan.inputResolutionContract" class="flow-execution-plan-resolution">
+      <span>Input Contract</span>
+      <strong>{{ flowArtifactInputResolutionLabel(plan.inputResolutionContract.activeResolution) }}</strong>
+      <p v-if="!plan.inputResolutionContract.persistedArtifactEnabled">
+        当前仍由单次编译解析；持久化产物输入将在逐节点运行时启用。
+      </p>
+      <small>{{ plan.inputResolutionContract.version }}</small>
+    </div>
+
     <div class="flow-execution-plan-path">
       <article
         v-for="step in plan.steps"

@@ -300,11 +300,20 @@ export interface FlowExecutionFailurePolicy {
   maxAttempts: number
 }
 
+export interface FlowInputResolutionContract {
+  version: string
+  activeResolution: FlowArtifactInputResolution
+  supportedResolutions: FlowArtifactInputResolution[]
+  persistedArtifactEnabled: boolean
+  persistedArtifactActivation: string
+}
+
 export interface FlowExecutionPlan {
   version: string
   scheduling: 'linear'
   steps: FlowExecutionStep[]
   failurePolicy?: FlowExecutionFailurePolicy | null
+  inputResolutionContract?: FlowInputResolutionContract | null
 }
 
 export interface FlowNodeRunTrace {

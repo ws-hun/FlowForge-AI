@@ -53,4 +53,5 @@ describe('flow execution plan labels', () => {
       maxAttempts: 1
     })).toBe('Provider 失败时停止本次运行 · 下游节点跳过 · 不自动重试')
   })
+
 })
