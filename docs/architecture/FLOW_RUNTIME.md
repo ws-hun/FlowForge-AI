@@ -92,6 +92,8 @@ Legacy `flow-plan-v1` steps remain readable with null artifact contracts. Legacy
 
 Exact historical reruns use the stored Task input. They do not recompile the old Flow. When the source trace has a plan, the new replay preserves that immutable plan and records `stored-input-replay` plus the source Task ID.
 
+Failed historical runs use `POST /api/tasks/{id}/recover` to create a new immutable Task. The new Task records `recoveryOfTaskId`, preserves the exact failed input and saved Flow snapshot, and marks its trace as `stored-input-recovery`. A recovery is a new single-pass execution with one Provider call; it never mutates the source Task, its node artifacts, or its Attempt history. The existing rerun endpoint routes failed sources through the same identity so older clients cannot accidentally erase the distinction.
+
 ## 6. Upgrade Boundary
 
 FlowForge must not switch a Flow to `node-sequential` until all of the following are real backend capabilities:

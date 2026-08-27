@@ -92,6 +92,8 @@ Direct Flow execution assigns the persisted Task UUID before the Provider reques
 
 When Provider execution fails, `TaskService` persists the failed Task in a separate transaction and attaches its UUID to the `AiExecutionException` only after that write succeeds. The `502` response can therefore expose an optional `runId` that always refers to a real recoverable History entry.
 
+Failed-run recovery uses `POST /api/tasks/{id}/recover`. `TaskService` reuses the failed Task's immutable input, Flow snapshot, and saved execution plan, then creates a new Task with `recovery_of_task_id` and `stored-input-recovery` trace provenance. The source Task and its artifacts remain immutable; the legacy rerun endpoint delegates failed sources to this same recovery identity while preserving normal rerun semantics for completed sources.
+
 The runtime contract test suite requires one saved Flow snapshot and Run Brief to produce byte-for-byte identical preview, Provider, persisted Task, and response inputs. It also requires the preview fingerprint and persisted trace fingerprint to match, the preview and trace execution plans to be identical, plan step order to match persisted node trace order, and persisted node payloads to match their trace fingerprints.
 
 ---
