@@ -9,9 +9,11 @@ import com.flowforge.ai.dto.FlowRunSnapshotResponse;
 import com.flowforge.ai.dto.FlowRunTraceResponse;
 import com.flowforge.ai.dto.OpenAiTaskResult;
 import com.flowforge.ai.entity.FlowNodeArtifact;
+import com.flowforge.ai.entity.FlowProviderInputReference;
 import com.flowforge.ai.entity.FlowProviderAttempt;
 import com.flowforge.ai.entity.Task;
 import com.flowforge.ai.repository.FlowNodeArtifactRepository;
+import com.flowforge.ai.repository.FlowProviderInputReferenceRepository;
 import com.flowforge.ai.repository.FlowProviderAttemptRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,6 +43,9 @@ class FlowNodeArtifactServiceTest {
     @Mock
     private FlowProviderAttemptRepository providerAttemptRepository;
 
+    @Mock
+    private FlowProviderInputReferenceRepository providerInputReferenceRepository;
+
     private final FlowExecutionCompiler compiler = new FlowExecutionCompiler();
     private FlowNodeArtifactService artifactService;
 
@@ -49,6 +54,7 @@ class FlowNodeArtifactServiceTest {
         artifactService = new FlowNodeArtifactService(
                 artifactRepository,
                 providerAttemptRepository,
+                providerInputReferenceRepository,
                 compiler
         );
     }
@@ -166,6 +172,7 @@ class FlowNodeArtifactServiceTest {
             assertThat(attempt.getDurationMs()).isEqualTo(840L);
             assertThat(attempt.getErrorMessage()).isNull();
         });
+        verifyNoInteractions(providerInputReferenceRepository);
     }
 
     @Test
@@ -266,6 +273,66 @@ class FlowNodeArtifactServiceTest {
             assertThat(attempt.getDurationMs()).isEqualTo(420L);
             assertThat(attempt.getErrorMessage()).isEqualTo("AI API error: provider unavailable");
         });
+    }
+
+    @Test
+    void persistsOrderedProviderInputReferencesForCurrentPlans() {
+        UUID taskId = UUID.randomUUID();
+        UUID flowId = UUID.randomUUID();
+        FlowRunSnapshotResponse snapshot = currentSnapshot(flowId);
+        FlowRunTraceResponse trace = currentTrace(snapshot);
+        OpenAiTaskResult result = new OpenAiTaskResult(
+                "Focused summary",
+                "Detailed result",
+                "{}",
+                "deepseek",
+                "deepseek-chat",
+                120,
+                80,
+                200
+        );
+        when(artifactRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(providerAttemptRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(providerInputReferenceRepository.saveAll(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<FlowNodeArtifact> saved = artifactService.persist(
+                completedTask(taskId),
+                snapshot,
+                trace,
+                result
+        );
+
+        @SuppressWarnings("unchecked")
+        org.mockito.ArgumentCaptor<List<FlowProviderInputReference>> referenceCaptor =
+                org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(providerInputReferenceRepository).saveAll(referenceCaptor.capture());
+        List<FlowProviderInputReference> references = referenceCaptor.getValue();
+        FlowNodeArtifact providerArtifact = saved.get(2);
+        assertThat(references).extracting(FlowProviderInputReference::getInputOrder)
+                .containsExactly(1, 2, 3);
+        assertThat(references).extracting(FlowProviderInputReference::getArtifactKey)
+                .containsExactly(
+                        "flow:objective",
+                        "node:input-1:context-contribution",
+                        "node:prompt-1:instruction-contribution"
+                );
+        assertThat(references).extracting(FlowProviderInputReference::getProviderArtifactId)
+                .containsOnly(providerArtifact.getId());
+        assertThat(references).extracting(FlowProviderInputReference::getArtifactState)
+                .containsOnly("materialized");
+        assertThat(references).extracting(FlowProviderInputReference::getInputResolution)
+                .containsOnly("compiled-reference");
+        assertThat(references).extracting(FlowProviderInputReference::getContentFingerprint)
+                .containsExactly(
+                        compiler.fingerprint("Flow objective"),
+                        compiler.fingerprint("Product context"),
+                        compiler.fingerprint("Write a concise plan")
+                );
+        assertThat(references).extracting(FlowProviderInputReference::getSourceArtifactId)
+                .containsExactly(null, saved.get(0).getId(), saved.get(1).getId());
+        assertThat(references).extracting(FlowProviderInputReference::getSourceNodeId)
+                .containsExactly(null, "input-1", "prompt-1");
     }
 
     @Test
@@ -584,6 +651,100 @@ class FlowNodeArtifactServiceTest {
                 null,
                 new FlowExecutionPlanResponse("flow-plan-v4", "linear", steps),
                 nodes
+        );
+    }
+
+    private FlowRunSnapshotResponse currentSnapshot(UUID flowId) {
+        return new FlowRunSnapshotResponse(
+                flowId,
+                "Provider Inputs",
+                "Flow objective",
+                List.of(
+                        new com.flowforge.ai.dto.FlowNodeDto(
+                                "input-1", "input", "Context", "Saved context",
+                                "Product context", null, null
+                        ),
+                        new com.flowforge.ai.dto.FlowNodeDto(
+                                "prompt-1", "prompt", "Instructions", "Saved instructions",
+                                "Write a concise plan", null, null
+                        ),
+                        new com.flowforge.ai.dto.FlowNodeDto(
+                                "ai-task-1", "ai-task", "Provider result", "Execution guidance",
+                                "Make tradeoffs explicit", null, null
+                        ),
+                        new com.flowforge.ai.dto.FlowNodeDto(
+                                "output-1", "output", "Result document", "Delivery focus",
+                                "Return next actions", null, null
+                        )
+                ),
+                null,
+                null,
+                null,
+                null,
+                LocalDateTime.of(2026, 8, 27, 10, 0),
+                "",
+                Map.of()
+        );
+    }
+
+    private FlowRunTraceResponse currentTrace(FlowRunSnapshotResponse snapshot) {
+        List<FlowNodeRunTraceResponse> nodes = List.of(
+                currentNode(
+                        "input-1", "input", "Context", "prepared", "context-contribution",
+                        "Product context", "Product context"
+                ),
+                currentNode(
+                        "prompt-1", "prompt", "Instructions", "prepared", "instruction-contribution",
+                        "Write a concise plan", "Write a concise plan"
+                ),
+                currentNode(
+                        "ai-task-1", "ai-task", "Provider result", "completed", "provider-result",
+                        "Make tradeoffs explicit", "Focused summary\nDetailed result"
+                ),
+                currentNode(
+                        "output-1", "output", "Result document", "completed", "result-document",
+                        "Return next actions", "Detailed result"
+                )
+        );
+        return new FlowRunTraceResponse(
+                UUID.randomUUID(),
+                snapshot.flowId(),
+                Task.STATUS_COMPLETED,
+                "single-pass",
+                1,
+                "flow-compiler-v1",
+                "provider-input-fingerprint",
+                "compiled-flow",
+                null,
+                compiler.compilePlan(snapshot.nodes()),
+                nodes
+        );
+    }
+
+    private FlowNodeRunTraceResponse currentNode(
+            String nodeId,
+            String nodeType,
+            String title,
+            String status,
+            String artifactType,
+            String compiledContent,
+            String artifactPayload
+    ) {
+        return new FlowNodeRunTraceResponse(
+                nodeId,
+                nodeType,
+                title,
+                status,
+                compiledContent,
+                null,
+                null,
+                new FlowNodeArtifactResponse(
+                        "node:" + nodeId + ":" + artifactType,
+                        artifactType,
+                        "node-artifact",
+                        "materialized",
+                        compiler.fingerprint(artifactPayload)
+                )
         );
     }
 

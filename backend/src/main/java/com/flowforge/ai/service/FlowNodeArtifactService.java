@@ -9,9 +9,11 @@ import com.flowforge.ai.dto.FlowRunSnapshotResponse;
 import com.flowforge.ai.dto.FlowRunTraceResponse;
 import com.flowforge.ai.dto.OpenAiTaskResult;
 import com.flowforge.ai.entity.FlowNodeArtifact;
+import com.flowforge.ai.entity.FlowProviderInputReference;
 import com.flowforge.ai.entity.FlowProviderAttempt;
 import com.flowforge.ai.entity.Task;
 import com.flowforge.ai.repository.FlowNodeArtifactRepository;
+import com.flowforge.ai.repository.FlowProviderInputReferenceRepository;
 import com.flowforge.ai.repository.FlowProviderAttemptRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,6 +32,7 @@ public class FlowNodeArtifactService {
 
     private final FlowNodeArtifactRepository artifactRepository;
     private final FlowProviderAttemptRepository providerAttemptRepository;
+    private final FlowProviderInputReferenceRepository providerInputReferenceRepository;
     private final FlowExecutionCompiler flowExecutionCompiler;
 
     @Transactional(propagation = Propagation.MANDATORY)
@@ -96,8 +99,102 @@ public class FlowNodeArtifactService {
             return List.of();
         }
         List<FlowNodeArtifact> savedArtifacts = artifactRepository.saveAll(artifacts);
+        persistProviderInputReferences(snapshot, trace, savedArtifacts);
         persistProviderAttempts(savedArtifacts);
         return savedArtifacts;
+    }
+
+    private void persistProviderInputReferences(
+            FlowRunSnapshotResponse snapshot,
+            FlowRunTraceResponse trace,
+            List<FlowNodeArtifact> artifacts
+    ) {
+        FlowExecutionPlanResponse plan = trace.executionPlan();
+        if (plan == null || !FlowExecutionCompiler.PLAN_VERSION.equals(plan.version())) {
+            return;
+        }
+        flowExecutionCompiler.validateProviderInputArtifacts(plan);
+        FlowExecutionStepResponse providerStep = plan.steps().stream()
+                .filter(FlowExecutionStepResponse::providerBoundary)
+                .findFirst()
+                .orElseThrow();
+        FlowNodeArtifact providerArtifact = artifacts.stream()
+                .filter(artifact -> providerStep.nodeId().equals(artifact.getNodeId()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "Flow Provider input references require a persisted Provider artifact"
+                ));
+        Map<String, FlowNodeArtifact> artifactsByKey = artifacts.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        FlowNodeArtifact::getArtifactKey,
+                        artifact -> artifact,
+                        (first, ignored) -> first,
+                        LinkedHashMap::new
+                ));
+
+        List<FlowProviderInputReference> references = new ArrayList<>();
+        List<FlowArtifactContractResponse> inputs = providerStep.providerInputArtifacts();
+        for (int index = 0; index < inputs.size(); index++) {
+            FlowArtifactContractResponse input = inputs.get(index);
+            if ("flow-snapshot".equals(input.storage())) {
+                if (index != 0 || snapshot == null || !trace.flowId().equals(snapshot.flowId())) {
+                    throw new IllegalStateException("Flow Provider objective reference does not match snapshot");
+                }
+                references.add(providerInputReference(
+                        providerArtifact,
+                        index + 1,
+                        input,
+                        "materialized",
+                        providerStep.inputResolution(),
+                        flowExecutionCompiler.fingerprint(snapshot.description()),
+                        null
+                ));
+                continue;
+            }
+
+            FlowNodeArtifact sourceArtifact = artifactsByKey.get(input.key());
+            if (sourceArtifact == null
+                    || sourceArtifact.getSequenceNumber() >= providerArtifact.getSequenceNumber()
+                    || !input.type().equals(sourceArtifact.getArtifactType())) {
+                throw new IllegalStateException(
+                        "Flow Provider input reference does not resolve to a prior node artifact"
+                );
+            }
+            references.add(providerInputReference(
+                    providerArtifact,
+                    index + 1,
+                    input,
+                    sourceArtifact.getState(),
+                    providerStep.inputResolution(),
+                    sourceArtifact.getContentFingerprint(),
+                    sourceArtifact
+            ));
+        }
+        providerInputReferenceRepository.saveAll(references);
+    }
+
+    private FlowProviderInputReference providerInputReference(
+            FlowNodeArtifact providerArtifact,
+            int inputOrder,
+            FlowArtifactContractResponse input,
+            String state,
+            String resolution,
+            String contentFingerprint,
+            FlowNodeArtifact sourceArtifact
+    ) {
+        return FlowProviderInputReference.builder()
+                .id(UUID.randomUUID())
+                .providerArtifactId(providerArtifact.getId())
+                .inputOrder(inputOrder)
+                .artifactKey(input.key())
+                .artifactType(input.type())
+                .artifactStorage(input.storage())
+                .artifactState(state)
+                .inputResolution(resolution)
+                .contentFingerprint(contentFingerprint)
+                .sourceArtifactId(sourceArtifact == null ? null : sourceArtifact.getId())
+                .sourceNodeId(sourceArtifact == null ? null : sourceArtifact.getNodeId())
+                .build();
     }
 
     private void persistProviderAttempts(List<FlowNodeArtifact> artifacts) {
