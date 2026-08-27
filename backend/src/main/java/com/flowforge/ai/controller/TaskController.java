@@ -38,6 +38,11 @@ public class TaskController {
         return taskService.rerunTask(id);
     }
 
+    @PostMapping("/{id}/recover")
+    public TaskRunResponse recoverTask(@PathVariable UUID id) {
+        return taskService.recoverTask(id);
+    }
+
     @GetMapping
     public List<TaskHistoryResponse> listTasks() {
         return taskService.listTasks();

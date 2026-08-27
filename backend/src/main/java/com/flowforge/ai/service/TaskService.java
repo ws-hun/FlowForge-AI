@@ -40,6 +40,7 @@ public class TaskService {
 
     private static final String FLOW_INPUT_SOURCE_COMPILED = "compiled-flow";
     private static final String FLOW_INPUT_SOURCE_REPLAY = "stored-input-replay";
+    private static final String FLOW_INPUT_SOURCE_RECOVERY = "stored-input-recovery";
 
     private final OpenAiService openAiService;
     private final TaskRepository taskRepository;
@@ -92,6 +93,7 @@ public class TaskService {
                             continuedFromTask.getSourceFlowTitle(),
                             flowRunSnapshot,
                             null,
+                            null,
                             continuedFromTask.getId(),
                             null,
                             false,
@@ -123,6 +125,7 @@ public class TaskService {
                         flowRunSnapshot,
                         null,
                         null,
+                        null,
                         inputVariantSourceTask == null ? null : inputVariantSourceTask.getId(),
                         sourceFlow != null,
                         compiledExecution == null ? null : compiledExecution.executionMode(),
@@ -140,6 +143,20 @@ public class TaskService {
     public TaskRunResponse rerunTask(UUID taskId) {
         Task sourceTask = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Task run not found"));
+        return replayTask(sourceTask, Task.STATUS_FAILED.equals(sourceTask.getStatus()));
+    }
+
+    @Transactional
+    public TaskRunResponse recoverTask(UUID taskId) {
+        Task sourceTask = taskRepository.findById(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Task run not found"));
+        if (!Task.STATUS_FAILED.equals(sourceTask.getStatus())) {
+            throw new IllegalArgumentException("Only failed task runs can be recovered");
+        }
+        return replayTask(sourceTask, true);
+    }
+
+    private TaskRunResponse replayTask(Task sourceTask, boolean recovery) {
         FlowRunSnapshotResponse flowRunSnapshot = deserializeFlowRunSnapshot(sourceTask.getSourceFlowSnapshotJson());
         FlowRunTraceResponse sourceTrace = deserializeFlowRunTrace(sourceTask.getFlowRunTraceJson());
 
@@ -152,7 +169,8 @@ public class TaskService {
                         sourceTask.getSourceFlowId(),
                         sourceTask.getSourceFlowTitle(),
                         flowRunSnapshot,
-                        sourceTask.getId(),
+                        recovery ? null : sourceTask.getId(),
+                        recovery ? sourceTask.getId() : null,
                         sourceTask.getContinuedFromTaskId(),
                         sourceTask.getInputVariantOfTaskId(),
                         flowRunSnapshot != null
@@ -162,7 +180,9 @@ public class TaskService {
                         sourceTrace == null ? FlowExecutionCompiler.PROVIDER_CALL_COUNT : sourceTrace.providerCallCount(),
                         sourceTrace == null ? null : sourceTrace.compilerVersion(),
                         flowRunSnapshot == null ? null : flowExecutionCompiler.fingerprint(sourceTask.getInput()),
-                        flowRunSnapshot == null ? null : FLOW_INPUT_SOURCE_REPLAY,
+                        flowRunSnapshot == null
+                                ? null
+                                : recovery ? FLOW_INPUT_SOURCE_RECOVERY : FLOW_INPUT_SOURCE_REPLAY,
                         flowRunSnapshot == null ? null : sourceTask.getId(),
                         sourceTrace == null ? null : sourceTrace.executionPlan()
                 )
@@ -212,6 +232,7 @@ public class TaskService {
                 aiResult.totalTokens(),
                 durationMs,
                 source.rerunOfTaskId(),
+                source.recoveryOfTaskId(),
                 source.continuedFromTaskId(),
                 source.inputVariantOfTaskId(),
                 executionInput,
@@ -264,6 +285,7 @@ public class TaskService {
                 .id(source.taskId())
                 .input(executionInput)
                 .rerunOfTaskId(source.rerunOfTaskId())
+                .recoveryOfTaskId(source.recoveryOfTaskId())
                 .continuedFromTaskId(source.continuedFromTaskId())
                 .inputVariantOfTaskId(source.inputVariantOfTaskId())
                 .sourcePromptId(source.promptId())
@@ -624,6 +646,7 @@ public class TaskService {
                 task.getTotalTokens(),
                 task.getDurationMs(),
                 task.getRerunOfTaskId(),
+                task.getRecoveryOfTaskId(),
                 task.getContinuedFromTaskId(),
                 task.getInputVariantOfTaskId(),
                 StringUtils.hasText(task.getStatus()) ? task.getStatus() : Task.STATUS_COMPLETED,
@@ -646,6 +669,7 @@ public class TaskService {
             String flowTitle,
             FlowRunSnapshotResponse flowRunSnapshot,
             UUID rerunOfTaskId,
+            UUID recoveryOfTaskId,
             UUID continuedFromTaskId,
             UUID inputVariantOfTaskId,
             boolean flowExecution,
