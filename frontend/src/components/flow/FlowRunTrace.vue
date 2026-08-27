@@ -507,6 +507,7 @@ function shortRunId(runId: string) {
 }
 
 function inputSourceLabel(source: FlowRunTrace['inputSource']) {
+  if (source === 'stored-input-recovery') return '失败输入恢复'
   return source === 'stored-input-replay' ? '历史输入重放' : '当前 Flow 编译'
 }
 

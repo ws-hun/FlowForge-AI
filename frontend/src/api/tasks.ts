@@ -32,6 +32,10 @@ export function rerunTask(id: string) {
   return http.post<TaskRunResponse>(`/api/tasks/${id}/rerun`)
 }
 
+export function recoverTask(id: string) {
+  return http.post<TaskRunResponse>(`/api/tasks/${id}/recover`)
+}
+
 export function listTaskArtifacts(taskId: string) {
   return http.get<FlowNodeArtifactSummary[]>(`/api/tasks/${taskId}/artifacts`)
 }

@@ -351,9 +351,9 @@
                 type="button"
                 class="secondary-button"
                 :disabled="workspace.running"
-                @click="rerunSelectedFlowRun"
+                @click="recoverSelectedFlowRun"
               >
-                {{ workspace.running ? '重跑中...' : '使用当前 Provider 重跑' }}
+                {{ workspace.running ? '恢复中...' : '创建恢复运行' }}
               </button>
               <template v-else>
                 <button type="button" class="secondary-button" @click="useLatestResultAsRunContext">
@@ -2439,6 +2439,24 @@ async function rerunSelectedFlowRun() {
   if (rerun) {
     selectFlowRun(rerun)
   }
+}
+
+async function recoverSelectedFlowRun() {
+  const sourceRun = selectedFlowRun.value
+  const flowId = workspace.activeFlow?.id
+  if (!sourceRun || !flowId) return
+  if (!workspace.activeProvider) {
+    ElMessage.warning('请先配置并激活 AI Provider')
+    goToApiKeys()
+    return
+  }
+
+  const result = await workspace.recoverHistoricalTask(sourceRun.id)
+  await loadFlowRuns(flowId)
+  const recovery = result?.taskId
+    ? flowRuns.value.find((run) => run.id === result.taskId)
+    : flowRuns.value.find((run) => run.recoveryOfTaskId === sourceRun.id)
+  if (recovery) selectFlowRun(recovery)
 }
 
 function openSelectedRunHistory() {

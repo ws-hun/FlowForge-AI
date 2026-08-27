@@ -27,6 +27,7 @@ export interface TaskRunResponse {
   totalTokens?: number | null
   durationMs?: number | null
   rerunOfTaskId?: string | null
+  recoveryOfTaskId?: string | null
   continuedFromTaskId?: string | null
   inputVariantOfTaskId?: string | null
   executionInput: string
@@ -47,6 +48,7 @@ export interface TaskHistoryItem {
   totalTokens?: number | null
   durationMs?: number | null
   rerunOfTaskId?: string | null
+  recoveryOfTaskId?: string | null
   continuedFromTaskId?: string | null
   inputVariantOfTaskId?: string | null
   status?: 'completed' | 'failed' | null
@@ -345,7 +347,7 @@ export interface FlowRunTrace {
   providerCallCount: number
   compilerVersion?: string | null
   executionInputFingerprint?: string | null
-  inputSource?: 'compiled-flow' | 'stored-input-replay' | null
+  inputSource?: 'compiled-flow' | 'stored-input-replay' | 'stored-input-recovery' | null
   replayedFromTaskId?: string | null
   executionPlan?: FlowExecutionPlan | null
   nodes: FlowNodeRunTrace[]

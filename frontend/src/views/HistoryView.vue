@@ -113,9 +113,9 @@
                 type="button"
                 class="ghost-button"
                 :disabled="workspace.running"
-                @click="rerunHistoryTask(task.id)"
+                @click="replayHistoryTask(task)"
               >
-                {{ workspace.running ? '执行中...' : '使用当前 Provider 重跑' }}
+                {{ workspace.running ? '执行中...' : isFailed(task) ? '创建恢复运行' : '使用当前 Provider 重跑' }}
               </button>
             </div>
           </div>
@@ -124,7 +124,7 @@
               <div v-if="isFailed(task)" class="failed-run-detail">
                 <span class="section-kicker">Execution Error</span>
                 <strong>{{ task.errorMessage || task.result }}</strong>
-                <p>执行输入、来源和 Flow 快照已保留，可以使用当前 Provider 重新运行。</p>
+                <p>执行输入、来源和 Flow 快照已保留。恢复会创建新的运行，不会改写这条失败记录。</p>
               </div>
               <AiResultDocument
                 v-else
@@ -307,8 +307,25 @@ async function rerunHistoryTask(taskId: string) {
   }
 }
 
+async function replayHistoryTask(task: TaskHistoryItem) {
+  if (isFailed(task)) {
+    const result = await workspace.recoverHistoricalTask(task.id)
+    const targetRun = result?.taskId
+      ? workspace.tasks.find((item) => item.id === result.taskId) || null
+      : null
+    if (targetRun) {
+      openComparison(task, targetRun, 'rerun')
+    }
+    return
+  }
+  await rerunHistoryTask(task.id)
+}
+
 function lineageSource(task: TaskHistoryItem) {
-  const sourceTaskId = task.rerunOfTaskId || task.continuedFromTaskId || task.inputVariantOfTaskId
+  const sourceTaskId = task.rerunOfTaskId
+    || task.recoveryOfTaskId
+    || task.continuedFromTaskId
+    || task.inputVariantOfTaskId
   if (!sourceTaskId) {
     return null
   }
@@ -317,6 +334,7 @@ function lineageSource(task: TaskHistoryItem) {
 
 function lineageLabel(task: TaskHistoryItem) {
   if (task.rerunOfTaskId) return '重跑自'
+  if (task.recoveryOfTaskId) return '恢复自'
   if (task.continuedFromTaskId) return '继续自'
   return '输入变体自'
 }
@@ -328,6 +346,7 @@ function isFailed(task: TaskHistoryItem) {
 function historyRunKind(task: TaskHistoryItem) {
   if (task.continuedFromTaskId) return 'Continuation'
   if (task.rerunOfTaskId) return 'Rerun'
+  if (task.recoveryOfTaskId) return 'Recovery'
   if (task.inputVariantOfTaskId) return 'Input Variant'
   if (task.sourceFlowId) return 'Flow Run'
   if (task.sourcePromptId) return 'Prompt Run'
@@ -362,11 +381,15 @@ function canCompareWithSource(task: TaskHistoryItem) {
   if (task.rerunOfTaskId) {
     return true
   }
+  if (task.recoveryOfTaskId) {
+    return true
+  }
   return !isFailed(sourceRun) && !isFailed(task)
 }
 
 function lineageMode(task: TaskHistoryItem): 'rerun' | 'continuation' | 'input-variant' {
   if (task.rerunOfTaskId) return 'rerun'
+  if (task.recoveryOfTaskId) return 'rerun'
   if (task.continuedFromTaskId) return 'continuation'
   return 'input-variant'
 }
