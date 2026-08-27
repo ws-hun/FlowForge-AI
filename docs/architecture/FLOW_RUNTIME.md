@@ -15,7 +15,7 @@ This is a real and reproducible runtime. It is not yet a node-level execution en
 The runtime exposes five independent versions:
 
 - `flow-compiler-v1` defines how the exact Provider input is produced.
-- `flow-plan-v4` defines how saved nodes are ordered, what responsibility each node has, which persisted artifact enters and leaves each step, and how the upstream reference was resolved.
+- `flow-plan-v5` defines how saved nodes are ordered, what responsibility each node has, which persisted artifact enters and leaves each step, which declared inputs converge at the Provider boundary, and how upstream references were resolved.
 - `flow-failure-policy-v1` defines the current terminal behavior: stop the run after Provider failure, skip downstream nodes, allow one attempt, and perform no automatic retry.
 - `flow-input-resolution-v1` defines the active input mode, the reserved persisted-artifact mode, and the runtime boundary required before that mode can be enabled.
 - `flow-provider-attempt-policy-v1` defines how persisted Provider attempts form one valid chain and where failed-run recovery creates a new run instead of mutating history.
@@ -24,16 +24,17 @@ The compiler also produces a SHA-256 fingerprint of the exact UTF-8 Provider inp
 
 ## 3. Execution Plan
 
-`flow-plan-v4` uses deterministic linear scheduling.
+`flow-plan-v5` uses deterministic linear scheduling.
 
 Each step contains:
 
 - Stable sequence number.
 - Saved node ID and node type.
 - Runtime operation.
-- Direct predecessor dependency.
+- Declared node dependencies.
 - Whether the step is the Provider boundary.
 - Stable input and output artifact contracts.
+- An ordered Provider input artifact list on the AI Task boundary.
 - A versioned input resolution method.
 
 The current operations are:
@@ -47,9 +48,13 @@ The current operations are:
 
 Each artifact contract has a stable key, semantic type, and storage owner. The Flow objective enters from `flow-snapshot`; every modern node output is owned by an independently persisted `node-artifact` record. A later step can therefore reference the stable key of its predecessor output without copying payloads into the execution plan.
 
+The AI Task is the one fan-in boundary. Its `providerInputArtifacts` begin with `flow:objective`, followed by every preceding Input and Prompt output in immutable snapshot order. Its `dependsOnNodeIds` contain those same contribution nodes in the same order. Runtime validation rejects duplicate keys, unknown or reordered artifacts, unsupported source node types, and dependencies that drift from the declared inputs.
+
+This fan-in is a plan contract, not a claim that every part of the compiled request is loaded from an artifact. AI Task execution guidance and Output delivery focus are still read directly from their saved node definitions by the single-pass compiler. The runtime combines those values with the declared objective, Input, and Prompt contributions into one Provider request.
+
 The current input resolution method is `compiled-reference`. It records that a step's upstream contribution was resolved while the complete Flow snapshot was compiled into one Provider input. It does not mean that the runtime loaded the predecessor payload from the artifact table or executed the downstream node separately.
 
-New `flow-plan-v4` previews and traces also carry `flow-input-resolution-v1`. This contract makes the upgrade boundary explicit: `compiled-reference` is active, `persisted-artifact` is defined as a supported future mode, and it remains disabled until the `node-sequential-runtime` can resolve each node input from a persisted upstream artifact. A contract that activates `persisted-artifact` early is rejected by the runtime validator.
+New `flow-plan-v5` previews and traces also carry `flow-input-resolution-v1`. This contract makes the upgrade boundary explicit: `compiled-reference` is active, `persisted-artifact` is defined as a supported future mode, and it remains disabled until the `node-sequential-runtime` can resolve each node input from a persisted upstream artifact. A contract that activates `persisted-artifact` early is rejected by the runtime validator.
 
 The plan order must match the immutable node snapshot and the persisted node trace order. The number of Provider boundary steps must match `providerCallCount`.
 
@@ -63,7 +68,7 @@ New direct Flow runs persist one independently addressable database artifact for
 - AI Task payloads contain the persisted Summary and Result with `text/markdown` media type.
 - Output payloads contain the persisted Result document with `text/markdown` media type.
 - Every materialized payload is verified against the SHA-256 fingerprint stored in the immutable run trace before persistence.
-- Every `flow-plan-v4` artifact records its upstream key, semantic type, storage owner, state, resolution method, and available content fingerprint.
+- Every modern artifact records its upstream key, semantic type, storage owner, state, resolution method, and available content fingerprint.
 - Provider failures mark the AI Task artifact as `failed` without payload or fingerprint.
 - Downstream Output artifacts are marked `skipped` without payload or fingerprint when the Provider did not return a result.
 - The `provider-result` artifact at the unique AI Task boundary owns the real Provider call history.
@@ -88,7 +93,7 @@ New direct Flow runs persist their execution plan inside `flowRunTrace` for both
 
 Legacy traces without an execution plan remain valid and deserialize with `executionPlan = null`. The frontend labels these records as legacy instead of synthesizing a plan that did not exist at run time.
 
-Legacy `flow-plan-v1` steps remain readable with null artifact contracts. Legacy `flow-plan-v2` plans retain their original `trace-content` and `task-result` storage owners. Legacy `flow-plan-v3` plans retain modern `node-artifact` contracts but have no input resolution field. Plans persisted before failure policy support remain readable with `failurePolicy = null`. V7 deterministically backfills V6 Provider provenance as `initial #1`; artifacts created before real Provider provenance remain readable with an empty attempt history and `providerCall = null`. FlowForge never synthesizes missing plans, policies, artifacts, lineage, or Provider calls from current state.
+Legacy `flow-plan-v1` steps remain readable with null artifact contracts. Legacy `flow-plan-v2` plans retain their original `trace-content` and `task-result` storage owners. Legacy `flow-plan-v3` plans retain modern `node-artifact` contracts but have no input resolution field. Legacy `flow-plan-v4` plans retain input resolution and failure policy while `providerInputArtifacts` remains null. V7 deterministically backfills V6 Provider provenance as `initial #1`; artifacts created before real Provider provenance remain readable with an empty attempt history and `providerCall = null`. FlowForge never synthesizes missing plans, policies, artifacts, lineage, Provider fan-in, or Provider calls from current state.
 
 Exact historical reruns use the stored Task input. They do not recompile the old Flow. When the source trace has a plan, the new replay preserves that immutable plan and records `stored-input-replay` plus the source Task ID.
 

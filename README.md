@@ -138,7 +138,8 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Recoverable Provider Failures | Done | Provider 失败响应关联已保存运行，AI Command 与 Flow Space 可精确打开失败上下文，不再依赖时间窗口猜测 |
 | Stage 3 | Verified Run Input Comparison | Done | 运行对比优先使用 Provider 输入指纹判断输入是否一致，旧记录则诚实回退到固定执行文本 |
 | Stage 3 | Flow Runtime Contract Verification | Done | 自动化测试锁定预览、真实 Provider 输入、历史保存输入、编译器版本与运行轨迹指纹的一致性 |
-| Stage 3 | Versioned Node Execution Plan | Done | Preview 与不可变运行轨迹共享 `flow-plan-v4`，固定节点顺序、直接依赖、输入输出产物契约、输入解析方式与唯一 Provider 边界 |
+| Stage 3 | Versioned Node Execution Plan | Done | Preview 与不可变运行轨迹共享 `flow-plan-v5`，固定节点顺序、输入输出产物契约、输入解析方式与唯一 Provider 边界 |
+| Stage 3 | Provider Input Fan-in Contract | Done | AI Task 明确声明 Flow 目标及全部上游 Input / Prompt 产物，并校验有序依赖；当前仍只编译并调用一次 Provider |
 | Stage 3 | Versioned Input Resolution Contract | Done | `flow-input-resolution-v1` 明确当前 `compiled-reference`，为未来 `persisted-artifact` 逐节点运行时保留升级边界 |
 | Stage 3 | Provider Attempt Recovery Contract | Done | `flow-provider-attempt-policy-v1` 校验真实调用链，明确当前不在原产物上重试，失败恢复会创建新的可比较运行 |
 | Stage 3 | Failed Run Recovery Identity | Done | `POST /api/tasks/{id}/recover` 从失败运行创建新的不可变运行，并以 `recoveryOfTaskId` 保留来源关系 |
@@ -415,7 +416,7 @@ Controller -> Service -> Repository -> Entity
 | `ApiKeyCipher` | AES-256-GCM 密钥静态加密与主密钥管理 |
 | `PromptService` | Prompt 资产、收藏、版本 |
 | `WorkflowService` | Flow 草稿和节点结构 |
-| `FlowExecutionCompiler` | 将不可变 Flow 快照编译为确定性 Provider 输入、`flow-plan-v4` 节点产物计划与版本化失败策略，并校验运行轨迹状态 |
+| `FlowExecutionCompiler` | 将不可变 Flow 快照编译为确定性 Provider 输入、`flow-plan-v5` 节点产物与 Provider fan-in 计划、版本化失败策略，并校验运行轨迹状态 |
 | `FlowNodeArtifactService` | 在 Task 事务内物化节点 payload，校验不可变 SHA-256 指纹、上游产物契约，并为唯一 AI Task Provider 调用保存初始 Attempt |
 | `FlowNodeArtifactQueryService` | 按运行顺序读取产物、血缘与 Provider 来源，批量解析最新 Attempt 摘要，并按稳定 Artifact Key 返回单个 payload 与完整 Attempt 历史 |
 | `HealthService` | 应用与 PostgreSQL 就绪探针 |
@@ -740,13 +741,15 @@ Response:
 
 当前 Flow Runtime 仍把所有已保存节点编译成一个确定性输入，并执行 **一次共享 Provider 调用**。因此 `providerCallCount` 当前固定为 `1`，Flow Run Trace 是可解释的服务端运行记录，不代表每个节点都进行了独立模型调用。
 
-`executionPlan` 使用 `flow-plan-v4` 固定保存节点顺序、直接前置依赖、节点职责、输入输出产物契约、输入解析方式和 Provider 边界。Input 与 Prompt 提供编译内容，AI Task 是唯一 `invoke-provider` 步骤，Output 定义同一请求的交付约束。Flow 目标来自不可变快照，每个现代节点输出都指向稳定的 `node-artifact` 记录。
+`executionPlan` 使用 `flow-plan-v5` 固定保存节点顺序、节点职责、输入输出产物契约、输入解析方式和 Provider 边界。Input 与 Prompt 提供编译内容，AI Task 是唯一 `invoke-provider` 步骤，Output 定义同一请求的交付约束。Flow 目标来自不可变快照，每个现代节点输出都指向稳定的 `node-artifact` 记录。
+
+AI Task 的 `providerInputArtifacts` 按顺序声明 `flow:objective` 以及它之前所有 Input / Prompt 输出，`dependsOnNodeIds` 与这些节点严格一致。这个 fan-in 是可检查的计划契约，不是逐节点执行：当前编译器仍直接从不可变快照读取 AI Task 自身执行指令和 Output 交付重点，把所有内容编译成一个请求，也不会从数据库逐项加载这些 Artifact。
 
 计划同时携带 `flow-input-resolution-v1`：当前启用的输入解析是 `compiled-reference`，`persisted-artifact` 仅作为未来 `node-sequential-runtime` 的保留契约，当前不会从数据库逐节点读取产物，也不会增加 Provider 调用次数。
 
 新计划同时保存 `flow-failure-policy-v1`：Provider 失败时停止本次运行，后续节点标记为 `skipped`，本次调用最多尝试 `1` 次且不会自动重试。服务端在生成轨迹和持久化节点产物前都会校验该策略，Preview 与历史 Execution Path 复用同一说明。旧计划没有策略字段时保持 `failurePolicy: null`，不会补造历史行为。
 
-现代 `flowRunTrace.nodes[].outputArtifact` 保存产物状态与内容指纹，同时在 `flow_node_artifacts` 中独立保存可寻址 payload。Input / Prompt 保存变量替换后的编译文本，AI Task 保存 Summary + Result，Output 保存 Result 文档；落库前必须重新计算并匹配 trace 指纹。每个 v4 产物同时保存上游 Key、类型、存储、状态、输入解析方式和可用指纹，运行轨迹可按需打开并跳转到已物化上游。Provider 失败和下游跳过不会生成虚假 payload 或指纹。
+现代 `flowRunTrace.nodes[].outputArtifact` 保存产物状态与内容指纹，同时在 `flow_node_artifacts` 中独立保存可寻址 payload。Input / Prompt 保存变量替换后的编译文本，AI Task 保存 Summary + Result，Output 保存 Result 文档；落库前必须重新计算并匹配 trace 指纹。每个现代产物同时保存上游 Key、类型、存储、状态、输入解析方式和可用指纹，运行轨迹可按需打开并跳转到已物化上游。Provider 失败和下游跳过不会生成虚假 payload 或指纹。
 
 `compiled-reference` 明确表示当前血缘来自一次完整 Flow 编译引用，不表示运行时从数据库逐节点读取上游 payload。运行轨迹只在用户点击“查看产物”或“查看上游”时调用单项读取 API；“来源链”另行按需读取 metadata-only 路径，因此不会预加载整次运行的所有 payload。路径回到 `flow-snapshot` 只代表这次历史运行的可解释来源，不代表已经启用 `persisted-artifact` 执行。当前 Runtime 仍执行一次共享 Provider 调用。旧 v1 / v2 / v3 计划与迁移前产物保持缺失字段为 `null`，不会根据当前 Flow 现场补造历史血缘。
 
