@@ -41,7 +41,7 @@
           <div v-if="sourceRun.status === 'failed'" class="failed-run-detail run-comparison-failure">
             <span class="section-kicker">Execution Error</span>
             <strong>{{ sourceRun.errorMessage || sourceRun.result }}</strong>
-            <p>这次失败记录及其节点状态保持不变，可与后续重跑结果直接核对。</p>
+            <p>这次失败记录及其节点状态保持不变，可与后续恢复结果直接核对。</p>
           </div>
           <AiResultDocument
             v-else
@@ -79,7 +79,7 @@
           <div v-if="targetRun.status === 'failed'" class="failed-run-detail run-comparison-failure">
             <span class="section-kicker">Execution Error</span>
             <strong>{{ targetRun.errorMessage || targetRun.result }}</strong>
-            <p>重跑仍未完成，固定输入、Provider 来源和节点失败位置已经保留。</p>
+            <p>{{ targetFailureDescription }}</p>
           </div>
           <AiResultDocument
             v-else
@@ -116,7 +116,7 @@ const props = withDefaults(defineProps<{
   open: boolean
   sourceRun: TaskHistoryItem | null
   targetRun: TaskHistoryItem | null
-  mode?: 'rerun' | 'continuation' | 'input-variant'
+  mode?: 'rerun' | 'recovery' | 'continuation' | 'input-variant'
 }>(), {
   mode: 'rerun'
 })
@@ -127,10 +127,17 @@ const emit = defineEmits<{
 }>()
 
 const targetLabel = computed(() => {
+  if (props.mode === 'recovery') return '恢复运行'
   if (props.mode === 'continuation') return '继续结果'
   if (props.mode === 'input-variant') return '输入变体'
   return '本次重跑'
 })
+
+const targetFailureDescription = computed(() =>
+  props.mode === 'recovery'
+    ? '恢复运行仍未完成，固定输入、Provider 来源和节点失败位置已经保留。'
+    : '重跑仍未完成，固定输入、Provider 来源和节点失败位置已经保留。'
+)
 
 const inputComparison = computed(() =>
   props.sourceRun && props.targetRun

@@ -239,7 +239,7 @@ const historyRouteReady = ref(false)
 const comparisonOpen = ref(false)
 const comparisonSource = ref<TaskHistoryItem | null>(null)
 const comparisonTarget = ref<TaskHistoryItem | null>(null)
-const comparisonMode = ref<'rerun' | 'continuation' | 'input-variant'>('rerun')
+const comparisonMode = ref<'rerun' | 'recovery' | 'continuation' | 'input-variant'>('rerun')
 type HistoryScope = 'all' | 'flow' | 'prompt' | 'failed'
 const historyQuery = ref('')
 const historyScope = ref<HistoryScope>('all')
@@ -314,7 +314,7 @@ async function replayHistoryTask(task: TaskHistoryItem) {
       ? workspace.tasks.find((item) => item.id === result.taskId) || null
       : null
     if (targetRun) {
-      openComparison(task, targetRun, 'rerun')
+      openComparison(task, targetRun, 'recovery')
     }
     return
   }
@@ -387,9 +387,9 @@ function canCompareWithSource(task: TaskHistoryItem) {
   return !isFailed(sourceRun) && !isFailed(task)
 }
 
-function lineageMode(task: TaskHistoryItem): 'rerun' | 'continuation' | 'input-variant' {
+function lineageMode(task: TaskHistoryItem): 'rerun' | 'recovery' | 'continuation' | 'input-variant' {
   if (task.rerunOfTaskId) return 'rerun'
-  if (task.recoveryOfTaskId) return 'rerun'
+  if (task.recoveryOfTaskId) return 'recovery'
   if (task.continuedFromTaskId) return 'continuation'
   return 'input-variant'
 }
@@ -397,7 +397,7 @@ function lineageMode(task: TaskHistoryItem): 'rerun' | 'continuation' | 'input-v
 function openComparison(
   sourceRun: TaskHistoryItem,
   targetRun: TaskHistoryItem,
-  mode: 'rerun' | 'continuation' | 'input-variant'
+  mode: 'rerun' | 'recovery' | 'continuation' | 'input-variant'
 ) {
   comparisonSource.value = sourceRun
   comparisonTarget.value = targetRun
