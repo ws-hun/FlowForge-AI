@@ -168,6 +168,51 @@ class TaskControllerTest {
     }
 
     @Test
+    void recoversAFailedTaskThroughTheRestEndpoint() throws Exception {
+        UUID sourceTaskId = UUID.randomUUID();
+        UUID newTaskId = UUID.randomUUID();
+        when(taskService.recoverTask(sourceTaskId)).thenReturn(new TaskRunResponse(
+                "Recovered result",
+                "Recovered content",
+                "{}",
+                "deepseek",
+                "deepseek-chat",
+                300,
+                120,
+                420,
+                760L,
+                null,
+                sourceTaskId,
+                null,
+                null,
+                "Exact failed execution input",
+                newTaskId,
+                null,
+                null
+        ));
+
+        mockMvc.perform(post("/api/tasks/{id}/recover", sourceTaskId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.taskId").value(newTaskId.toString()))
+                .andExpect(jsonPath("$.recoveryOfTaskId").value(sourceTaskId.toString()))
+                .andExpect(jsonPath("$.rerunOfTaskId").doesNotExist())
+                .andExpect(jsonPath("$.executionInput").value("Exact failed execution input"));
+
+        verify(taskService).recoverTask(sourceTaskId);
+    }
+
+    @Test
+    void rejectsRecoveryForANonFailedTask() throws Exception {
+        UUID taskId = UUID.randomUUID();
+        when(taskService.recoverTask(taskId))
+                .thenThrow(new IllegalArgumentException("Only failed task runs can be recovered"));
+
+        mockMvc.perform(post("/api/tasks/{id}/recover", taskId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Only failed task runs can be recovered"));
+    }
+
+    @Test
     void returnsNotFoundWhenTheSourceTaskIsMissing() throws Exception {
         UUID taskId = UUID.randomUUID();
         when(taskService.rerunTask(taskId)).thenThrow(new ResourceNotFoundException("Task run not found"));

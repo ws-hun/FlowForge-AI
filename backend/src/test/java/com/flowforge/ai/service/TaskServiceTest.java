@@ -880,6 +880,150 @@ class TaskServiceTest {
     }
 
     @Test
+    void recoversAFailedFlowAsANewImmutableRun() throws Exception {
+        UUID sourceTaskId = UUID.randomUUID();
+        UUID flowId = UUID.randomUUID();
+        FlowRunSnapshotResponse snapshot = new FlowRunSnapshotResponse(
+                flowId,
+                "Release recovery",
+                "Recover a failed release analysis",
+                List.of(new FlowNodeDto(
+                        "ai-task-1",
+                        "ai-task",
+                        "Release analysis",
+                        "Analysis",
+                        "Assess release readiness.",
+                        null,
+                        null
+                )),
+                null,
+                null,
+                null,
+                null,
+                LocalDateTime.of(2026, 8, 27, 10, 0),
+                "Use the preserved incident context.",
+                Map.of()
+        );
+        FlowExecutionCompiler compiler = new FlowExecutionCompiler();
+        ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
+        Task sourceTask = Task.builder()
+                .id(sourceTaskId)
+                .input("Exact failed Flow input")
+                .summary("AI 执行失败")
+                .result("Provider unavailable")
+                .status(Task.STATUS_FAILED)
+                .sourceFlowId(flowId)
+                .sourceFlowTitle("Release recovery")
+                .sourceFlowSnapshotJson(mapper.writeValueAsString(snapshot))
+                .flowRunTraceJson(mapper.writeValueAsString(new FlowRunTraceResponse(
+                        sourceTaskId,
+                        flowId,
+                        Task.STATUS_FAILED,
+                        "single-pass",
+                        1,
+                        "flow-compiler-v1",
+                        compiler.fingerprint("Exact failed Flow input"),
+                        "compiled-flow",
+                        null,
+                        compiler.compilePlan(snapshot.nodes()),
+                        List.of()
+                )))
+                .createdAt(LocalDateTime.now().minusMinutes(5))
+                .build();
+        when(taskRepository.findById(sourceTaskId)).thenReturn(Optional.of(sourceTask));
+        when(openAiService.processTask(sourceTask.getInput()))
+                .thenReturn(new OpenAiTaskResult("Recovered", "Release can continue", "{}"));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        TaskRunResponse response = taskService.recoverTask(sourceTaskId);
+
+        verify(openAiService).processTask("Exact failed Flow input");
+        verify(taskRepository).save(taskCaptor.capture());
+        Task recovery = taskCaptor.getValue();
+        assertThat(recovery.getId()).isNotEqualTo(sourceTaskId);
+        assertThat(recovery.getRecoveryOfTaskId()).isEqualTo(sourceTaskId);
+        assertThat(recovery.getRerunOfTaskId()).isNull();
+        assertThat(response.recoveryOfTaskId()).isEqualTo(sourceTaskId);
+        assertThat(response.rerunOfTaskId()).isNull();
+        assertThat(response.flowRunTrace().inputSource()).isEqualTo("stored-input-recovery");
+        assertThat(response.flowRunTrace().replayedFromTaskId()).isEqualTo(sourceTaskId);
+        assertThat(response.flowRunTrace().providerCallCount()).isEqualTo(1);
+        assertThat(response.flowRunTrace().runId()).isEqualTo(response.taskId());
+    }
+
+    @Test
+    void keepsTheLegacyRerunEndpointRecoveryAwareForFailedSources() {
+        UUID sourceTaskId = UUID.randomUUID();
+        Task sourceTask = Task.builder()
+                .id(sourceTaskId)
+                .input("Exact failed task input")
+                .summary("AI 执行失败")
+                .result("Provider unavailable")
+                .status(Task.STATUS_FAILED)
+                .createdAt(LocalDateTime.now().minusMinutes(5))
+                .build();
+        when(taskRepository.findById(sourceTaskId)).thenReturn(Optional.of(sourceTask));
+        when(openAiService.processTask(sourceTask.getInput()))
+                .thenReturn(new OpenAiTaskResult("Recovered", "Result", "{}"));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        TaskRunResponse response = taskService.rerunTask(sourceTaskId);
+
+        verify(taskRepository).save(taskCaptor.capture());
+        assertThat(taskCaptor.getValue().getRecoveryOfTaskId()).isEqualTo(sourceTaskId);
+        assertThat(taskCaptor.getValue().getRerunOfTaskId()).isNull();
+        assertThat(response.recoveryOfTaskId()).isEqualTo(sourceTaskId);
+        assertThat(response.rerunOfTaskId()).isNull();
+    }
+
+    @Test
+    void rejectsRecoveryForACompletedRun() {
+        UUID sourceTaskId = UUID.randomUUID();
+        Task sourceTask = Task.builder()
+                .id(sourceTaskId)
+                .status(Task.STATUS_COMPLETED)
+                .build();
+        when(taskRepository.findById(sourceTaskId)).thenReturn(Optional.of(sourceTask));
+
+        assertThatThrownBy(() -> taskService.recoverTask(sourceTaskId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Only failed task runs can be recovered");
+
+        verifyNoInteractions(openAiService, promptRepository, workflowRepository, taskFailureRecorder);
+    }
+
+    @Test
+    void preservesRecoveryIdentityWhenTheNewRunAlsoFails() {
+        UUID sourceTaskId = UUID.randomUUID();
+        Task sourceTask = Task.builder()
+                .id(sourceTaskId)
+                .input("Exact failed task input")
+                .summary("AI 执行失败")
+                .result("Provider unavailable")
+                .status(Task.STATUS_FAILED)
+                .createdAt(LocalDateTime.now().minusMinutes(5))
+                .build();
+        AiExecutionException failure = new AiExecutionException(
+                "deepseek",
+                "deepseek-chat",
+                "AI API error: provider unavailable",
+                new IllegalStateException("provider unavailable")
+        );
+        when(taskRepository.findById(sourceTaskId)).thenReturn(Optional.of(sourceTask));
+        when(openAiService.processTask(sourceTask.getInput())).thenThrow(failure);
+
+        assertThatThrownBy(() -> taskService.recoverTask(sourceTaskId)).isSameAs(failure);
+
+        verify(taskFailureRecorder).record(taskCaptor.capture(), any(), any());
+        Task failedRecovery = taskCaptor.getValue();
+        assertThat(failedRecovery.getId()).isNotEqualTo(sourceTaskId);
+        assertThat(failedRecovery.getRecoveryOfTaskId()).isEqualTo(sourceTaskId);
+        assertThat(failedRecovery.getRerunOfTaskId()).isNull();
+        assertThat(failedRecovery.getStatus()).isEqualTo(Task.STATUS_FAILED);
+        assertThat(failure.getRunId()).isEqualTo(failedRecovery.getId());
+    }
+
+    @Test
     void rejectsRerunWhenTheSourceTaskDoesNotExist() {
         UUID taskId = UUID.randomUUID();
         when(taskRepository.findById(taskId)).thenReturn(Optional.empty());
