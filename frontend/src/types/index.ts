@@ -241,6 +241,18 @@ export interface FlowNodeArtifact extends FlowArtifactContract {
   contentFingerprint?: string | null
 }
 
+export interface FlowProviderInputReference {
+  inputOrder: number
+  artifactKey: string
+  artifactType: FlowArtifactType
+  artifactStorage: FlowArtifactStorage
+  artifactState: FlowArtifactState
+  inputResolution: FlowArtifactInputResolution
+  contentFingerprint?: string | null
+  sourceArtifactId?: string | null
+  sourceNodeId?: string | null
+}
+
 export interface FlowNodeArtifactSummary {
   id: string
   taskId: string
@@ -264,6 +276,7 @@ export interface FlowNodeArtifactSummary {
 
 export interface FlowNodeArtifactDetail extends FlowNodeArtifactSummary {
   payload?: string | null
+  providerInputReferences?: FlowProviderInputReference[]
   providerAttempts?: FlowProviderAttempt[]
   providerAttemptPolicy?: FlowProviderAttemptPolicy | null
 }

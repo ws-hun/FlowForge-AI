@@ -141,6 +141,44 @@
               >
                 此运行未保存节点级 Provider 来源，可查看节点错误与 Task 执行来源。
               </p>
+              <section
+                v-if="artifactDetails[node.outputArtifact.key]?.providerInputReferences?.length"
+                class="flow-provider-input-references"
+              >
+                <div class="flow-provider-input-references-heading">
+                  <span>Declared Inputs</span>
+                  <small>
+                    {{ artifactDetails[node.outputArtifact.key]?.providerInputReferences?.length }} 个已保存引用
+                  </small>
+                </div>
+                <ol>
+                  <li
+                    v-for="reference in artifactDetails[node.outputArtifact.key]?.providerInputReferences"
+                    :key="reference.artifactKey"
+                  >
+                    <span>{{ reference.inputOrder }}</span>
+                    <div>
+                      <strong>{{ flowArtifactTypeLabel(reference.artifactType) }}</strong>
+                      <small>
+                        {{ providerInputSourceLabel(reference.sourceNodeId) }}
+                        · {{ flowArtifactInputResolutionLabel(reference.inputResolution) }}
+                        <template v-if="reference.contentFingerprint">
+                          · SHA {{ shortFingerprint(reference.contentFingerprint) }}
+                        </template>
+                      </small>
+                    </div>
+                    <button
+                      v-if="reference.artifactStorage === 'node-artifact' && reference.artifactState === 'materialized'"
+                      type="button"
+                      title="定位到已声明输入产物"
+                      :disabled="loadingArtifactKey === reference.artifactKey"
+                      @click="revealProviderInputReference(reference.artifactKey)"
+                    >
+                      <View />
+                    </button>
+                  </li>
+                </ol>
+              </section>
               <div
                 v-if="artifactDetails[node.outputArtifact.key]?.inputArtifactKey"
                 class="flow-run-trace-artifact-lineage"
@@ -386,6 +424,22 @@ async function revealUpstreamArtifact(detail: FlowNodeArtifactDetail | undefined
   target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
 }
 
+async function revealProviderInputReference(artifactKey: string) {
+  const taskId = props.trace.runId
+  if (!taskId) {
+    return
+  }
+  const inputArtifact = await loadArtifact(taskId, artifactKey)
+  if (!inputArtifact) {
+    return
+  }
+  openArtifactKeys.value[artifactKey] = true
+  await nextTick()
+  const target = Array.from(document.querySelectorAll<HTMLElement>('[data-artifact-key]'))
+    .find((element) => element.dataset.artifactKey === artifactKey)
+  target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+}
+
 async function toggleLineage(artifactKey: string, event: Event) {
   const details = event.currentTarget as HTMLDetailsElement | null
   if (!details?.open || lineageDetails.value[artifactKey]) {
@@ -482,6 +536,14 @@ function nodeTypeLabelForLineage(nodeId: string | null | undefined) {
   }
   const node = props.trace.nodes.find((item) => item.nodeId === nodeId)
   return node ? nodeTypeLabel(node.nodeType) : '节点产物'
+}
+
+function providerInputSourceLabel(nodeId: string | null | undefined) {
+  if (!nodeId) {
+    return 'Flow 快照目标'
+  }
+  const node = props.trace.nodes.find((item) => item.nodeId === nodeId)
+  return node ? `${nodeTypeLabel(node.nodeType)} · ${node.title}` : '节点产物'
 }
 
 function nodeTypeLabel(type: FlowNodeType) {
