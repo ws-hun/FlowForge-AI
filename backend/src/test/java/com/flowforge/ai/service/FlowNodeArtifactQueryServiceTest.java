@@ -5,9 +5,11 @@ import com.flowforge.ai.dto.FlowNodeArtifactLineageEntryResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactLineageResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactSummaryResponse;
 import com.flowforge.ai.entity.FlowNodeArtifact;
+import com.flowforge.ai.entity.FlowProviderInputReference;
 import com.flowforge.ai.entity.FlowProviderAttempt;
 import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.repository.FlowNodeArtifactRepository;
+import com.flowforge.ai.repository.FlowProviderInputReferenceRepository;
 import com.flowforge.ai.repository.FlowProviderAttemptRepository;
 import com.flowforge.ai.repository.TaskRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +38,9 @@ class FlowNodeArtifactQueryServiceTest {
     private FlowNodeArtifactRepository artifactRepository;
 
     @Mock
+    private FlowProviderInputReferenceRepository providerInputReferenceRepository;
+
+    @Mock
     private FlowProviderAttemptRepository providerAttemptRepository;
 
     private FlowNodeArtifactQueryService queryService;
@@ -45,6 +50,7 @@ class FlowNodeArtifactQueryServiceTest {
         queryService = new FlowNodeArtifactQueryService(
                 taskRepository,
                 artifactRepository,
+                providerInputReferenceRepository,
                 providerAttemptRepository,
                 new FlowProviderAttemptPolicy()
         );
@@ -114,6 +120,17 @@ class FlowNodeArtifactQueryServiceTest {
         FlowProviderAttempt attempt = attempt(artifact.getId());
         when(providerAttemptRepository.findByArtifactIdOrderByAttemptNumberAsc(artifact.getId()))
                 .thenReturn(List.of(attempt));
+        when(providerInputReferenceRepository.findByProviderArtifactIdOrderByInputOrderAsc(artifact.getId()))
+                .thenReturn(List.of(
+                        providerInputReference(artifact, 1, "flow:objective", null, null),
+                        providerInputReference(
+                                artifact,
+                                2,
+                                "node:input-1:context-contribution",
+                                UUID.randomUUID(),
+                                "input-1"
+                        )
+                ));
 
         FlowNodeArtifactDetailResponse response = queryService.getForTask(taskId, artifact.getArtifactKey());
 
@@ -134,6 +151,11 @@ class FlowNodeArtifactQueryServiceTest {
         assertThat(response.providerCall().totalTokens()).isEqualTo(200);
         assertThat(response.providerCall().durationMs()).isEqualTo(840L);
         assertThat(response.providerCall().errorMessage()).isNull();
+        assertThat(response.providerInputReferences())
+                .extracting(reference -> reference.artifactKey())
+                .containsExactly("flow:objective", "node:input-1:context-contribution");
+        assertThat(response.providerInputReferences().get(0).sourceArtifactId()).isNull();
+        assertThat(response.providerInputReferences().get(1).sourceNodeId()).isEqualTo("input-1");
         assertThat(response.providerAttemptPolicy().version())
                 .isEqualTo("flow-provider-attempt-policy-v1");
         assertThat(response.providerAttemptPolicy().currentState()).isEqualTo("completed");
@@ -260,6 +282,7 @@ class FlowNodeArtifactQueryServiceTest {
         assertThat(detail.inputResolution()).isNull();
         assertThat(detail.inputContentFingerprint()).isNull();
         assertThat(detail.providerCall()).isNull();
+        assertThat(detail.providerInputReferences()).isEmpty();
         assertThat(detail.providerAttempts()).isEmpty();
         assertThat(detail.providerAttemptPolicy().currentState()).isEqualTo("not-recorded");
         assertThat(detail.providerAttemptPolicy().recordedAttempts()).isZero();
@@ -453,6 +476,30 @@ class FlowNodeArtifactQueryServiceTest {
                 .totalTokens(200)
                 .durationMs(840L)
                 .createdAt(LocalDateTime.of(2026, 8, 17, 10, 2))
+                .build();
+    }
+
+    private FlowProviderInputReference providerInputReference(
+            FlowNodeArtifact providerArtifact,
+            int inputOrder,
+            String artifactKey,
+            UUID sourceArtifactId,
+            String sourceNodeId
+    ) {
+        boolean objective = sourceArtifactId == null;
+        return FlowProviderInputReference.builder()
+                .id(UUID.randomUUID())
+                .providerArtifactId(providerArtifact.getId())
+                .inputOrder(inputOrder)
+                .artifactKey(artifactKey)
+                .artifactType(objective ? "flow-objective" : "context-contribution")
+                .artifactStorage(objective ? "flow-snapshot" : "node-artifact")
+                .artifactState("materialized")
+                .inputResolution("compiled-reference")
+                .contentFingerprint("c".repeat(64))
+                .sourceArtifactId(sourceArtifactId)
+                .sourceNodeId(sourceNodeId)
+                .createdAt(LocalDateTime.of(2026, 8, 27, 10, inputOrder))
                 .build();
     }
 

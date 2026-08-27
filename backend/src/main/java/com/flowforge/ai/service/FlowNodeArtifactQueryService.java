@@ -5,11 +5,14 @@ import com.flowforge.ai.dto.FlowNodeArtifactLineageEntryResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactLineageResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactSummaryResponse;
 import com.flowforge.ai.dto.FlowProviderCallResponse;
+import com.flowforge.ai.dto.FlowProviderInputReferenceResponse;
 import com.flowforge.ai.dto.FlowProviderAttemptResponse;
 import com.flowforge.ai.entity.FlowNodeArtifact;
+import com.flowforge.ai.entity.FlowProviderInputReference;
 import com.flowforge.ai.entity.FlowProviderAttempt;
 import com.flowforge.ai.exception.ResourceNotFoundException;
 import com.flowforge.ai.repository.FlowNodeArtifactRepository;
+import com.flowforge.ai.repository.FlowProviderInputReferenceRepository;
 import com.flowforge.ai.repository.FlowProviderAttemptRepository;
 import com.flowforge.ai.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +38,7 @@ public class FlowNodeArtifactQueryService {
 
     private final TaskRepository taskRepository;
     private final FlowNodeArtifactRepository artifactRepository;
+    private final FlowProviderInputReferenceRepository providerInputReferenceRepository;
     private final FlowProviderAttemptRepository providerAttemptRepository;
     private final FlowProviderAttemptPolicy providerAttemptPolicy;
 
@@ -62,7 +66,12 @@ public class FlowNodeArtifactQueryService {
                 .stream()
                 .map(this::toProviderAttemptResponse)
                 .toList();
-        return toDetailResponse(artifact, attempts);
+        List<FlowProviderInputReferenceResponse> providerInputs = providerInputReferenceRepository
+                .findByProviderArtifactIdOrderByInputOrderAsc(artifact.getId())
+                .stream()
+                .map(this::toProviderInputReferenceResponse)
+                .toList();
+        return toDetailResponse(artifact, attempts, providerInputs);
     }
 
     @Transactional(readOnly = true)
@@ -179,7 +188,8 @@ public class FlowNodeArtifactQueryService {
 
     private FlowNodeArtifactDetailResponse toDetailResponse(
             FlowNodeArtifact artifact,
-            List<FlowProviderAttemptResponse> attempts
+            List<FlowProviderAttemptResponse> attempts,
+            List<FlowProviderInputReferenceResponse> providerInputs
     ) {
         return new FlowNodeArtifactDetailResponse(
                 artifact.getId(),
@@ -199,10 +209,27 @@ public class FlowNodeArtifactQueryService {
                 artifact.getInputArtifactState(),
                 artifact.getInputResolution(),
                 artifact.getInputContentFingerprint(),
+                providerInputs,
                 toProviderCallResponse(artifact, attempts),
                 attempts,
                 providerAttemptPolicy.evaluate(attempts),
                 artifact.getCreatedAt()
+        );
+    }
+
+    private FlowProviderInputReferenceResponse toProviderInputReferenceResponse(
+            FlowProviderInputReference reference
+    ) {
+        return new FlowProviderInputReferenceResponse(
+                reference.getInputOrder(),
+                reference.getArtifactKey(),
+                reference.getArtifactType(),
+                reference.getArtifactStorage(),
+                reference.getArtifactState(),
+                reference.getInputResolution(),
+                reference.getContentFingerprint(),
+                reference.getSourceArtifactId(),
+                reference.getSourceNodeId()
         );
     }
 
