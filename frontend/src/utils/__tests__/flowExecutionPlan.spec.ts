@@ -8,7 +8,8 @@ import {
   flowExecutionOperationForNode,
   flowExecutionOperationLabel,
   flowNodeRuntimeDescription,
-  flowNodeTypeLabel
+  flowNodeTypeLabel,
+  flowProviderInputSummary
 } from '@/utils/flowExecutionPlan'
 
 describe('flow execution plan labels', () => {
@@ -52,6 +53,16 @@ describe('flow execution plan labels', () => {
       retryStrategy: 'none',
       maxAttempts: 1
     })).toBe('Provider 失败时停止本次运行 · 下游节点跳过 · 不自动重试')
+  })
+
+  it('summarizes the declared provider fan-in without implying sequential execution', () => {
+    expect(flowProviderInputSummary([
+      { key: 'flow:objective', type: 'flow-objective', storage: 'flow-snapshot' },
+      { key: 'node:input-1:context-contribution', type: 'context-contribution', storage: 'node-artifact' },
+      { key: 'node:input-2:context-contribution', type: 'context-contribution', storage: 'node-artifact' },
+      { key: 'node:prompt-1:instruction-contribution', type: 'instruction-contribution', storage: 'node-artifact' }
+    ])).toBe('汇入 4 个已声明输入 · Flow 目标 · 上下文产物 x 2 · 指令产物')
+    expect(flowProviderInputSummary(null)).toBe('')
   })
 
 })

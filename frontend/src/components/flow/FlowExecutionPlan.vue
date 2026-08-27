@@ -43,6 +43,13 @@
             </div>
             <small>输出记录于 {{ flowArtifactStorageLabel(step.outputArtifact.storage) }}</small>
           </div>
+          <div
+            v-if="step.providerBoundary && step.providerInputArtifacts?.length"
+            class="flow-provider-input-summary"
+          >
+            <span>Provider Input</span>
+            <p>{{ flowProviderInputSummary(step.providerInputArtifacts) }}</p>
+          </div>
           <small>
             {{ step.dependsOnNodeIds.length ? '承接前置编译内容' : '执行起点' }}
             <template v-if="step.inputResolution">
@@ -75,7 +82,8 @@ import {
   flowArtifactTypeLabel,
   flowExecutionFailurePolicySummary,
   flowExecutionOperationLabel,
-  flowNodeTypeLabel
+  flowNodeTypeLabel,
+  flowProviderInputSummary
 } from '@/utils/flowExecutionPlan'
 
 const props = withDefaults(

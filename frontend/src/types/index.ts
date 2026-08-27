@@ -300,6 +300,7 @@ export interface FlowExecutionStep {
   dependsOnNodeIds: string[]
   providerBoundary: boolean
   inputArtifact?: FlowArtifactContract | null
+  providerInputArtifacts?: FlowArtifactContract[] | null
   inputResolution?: FlowArtifactInputResolution | null
   outputArtifact?: FlowArtifactContract | null
 }

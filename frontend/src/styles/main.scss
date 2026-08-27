@@ -5600,6 +5600,27 @@ a {
   }
 }
 
+.flow-provider-input-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 3px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(79, 124, 255, 0.12);
+
+  span {
+    color: tokens.$primary;
+    font-family: tokens.$mono;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  p {
+    color: tokens.$text-secondary;
+  }
+}
+
 .flow-execution-artifact-path {
   display: grid;
   gap: 4px;

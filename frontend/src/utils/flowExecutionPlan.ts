@@ -1,4 +1,5 @@
 import type {
+  FlowArtifactContract,
   FlowArtifactInputResolution,
   FlowArtifactStorage,
   FlowArtifactState,
@@ -92,6 +93,22 @@ export function flowArtifactStateLabel(state: FlowArtifactState) {
 
 export function flowArtifactInputResolutionLabel(resolution: FlowArtifactInputResolution) {
   return artifactInputResolutionLabels[resolution]
+}
+
+export function flowProviderInputSummary(artifacts: FlowArtifactContract[] | null | undefined) {
+  if (!artifacts?.length) {
+    return ''
+  }
+
+  const typeCounts = new Map<FlowArtifactType, number>()
+  artifacts.forEach((artifact) => {
+    typeCounts.set(artifact.type, (typeCounts.get(artifact.type) || 0) + 1)
+  })
+  const types = Array.from(typeCounts.entries()).map(([type, count]) => (
+    `${flowArtifactTypeLabel(type)}${count > 1 ? ` x ${count}` : ''}`
+  ))
+
+  return `汇入 ${artifacts.length} 个已声明输入 · ${types.join(' · ')}`
 }
 
 export function flowExecutionFailurePolicySummary(policy: FlowExecutionFailurePolicy) {
