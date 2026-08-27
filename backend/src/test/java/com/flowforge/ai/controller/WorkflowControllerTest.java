@@ -108,24 +108,58 @@ class WorkflowControllerTest {
                         "Prepare a focused launch"
                 )),
                 new FlowExecutionPlanResponse(
-                        "flow-plan-v4",
+                        "flow-plan-v5",
                         "linear",
-                        List.of(new FlowExecutionStepResponse(
-                                1,
-                                "input-1",
-                                "input",
-                                "Intent",
-                                "supply-context",
-                                List.of(),
-                                false,
-                                new FlowArtifactContractResponse("flow:objective", "flow-objective", "flow-snapshot"),
-                                "compiled-reference",
-                                new FlowArtifactContractResponse(
-                                        "node:input-1:context-contribution",
-                                        "context-contribution",
-                                        "node-artifact"
+                        List.of(
+                                new FlowExecutionStepResponse(
+                                        1,
+                                        "input-1",
+                                        "input",
+                                        "Intent",
+                                        "supply-context",
+                                        List.of(),
+                                        false,
+                                        new FlowArtifactContractResponse(
+                                                "flow:objective", "flow-objective", "flow-snapshot"
+                                        ),
+                                        "compiled-reference",
+                                        new FlowArtifactContractResponse(
+                                                "node:input-1:context-contribution",
+                                                "context-contribution",
+                                                "node-artifact"
+                                        )
+                                ),
+                                new FlowExecutionStepResponse(
+                                        2,
+                                        "ai-task-1",
+                                        "ai-task",
+                                        "Execute",
+                                        "invoke-provider",
+                                        List.of("input-1"),
+                                        true,
+                                        new FlowArtifactContractResponse(
+                                                "node:input-1:context-contribution",
+                                                "context-contribution",
+                                                "node-artifact"
+                                        ),
+                                        List.of(
+                                                new FlowArtifactContractResponse(
+                                                        "flow:objective", "flow-objective", "flow-snapshot"
+                                                ),
+                                                new FlowArtifactContractResponse(
+                                                        "node:input-1:context-contribution",
+                                                        "context-contribution",
+                                                        "node-artifact"
+                                                )
+                                        ),
+                                        "compiled-reference",
+                                        new FlowArtifactContractResponse(
+                                                "node:ai-task-1:provider-result",
+                                                "provider-result",
+                                                "node-artifact"
+                                        )
                                 )
-                        )),
+                        ),
                         new FlowExecutionFailurePolicyResponse(
                                 "flow-failure-policy-v1",
                                 "stop-run",
@@ -154,7 +188,7 @@ class WorkflowControllerTest {
                 .andExpect(jsonPath("$.providerCallCount").value(1))
                 .andExpect(jsonPath("$.compilerVersion").value("flow-compiler-v1"))
                 .andExpect(jsonPath("$.executionInputFingerprint").value("8f2a4a8bd2f30ec4880b55df102d714d1f05d5dc7e60d7cc15bfc5bf5f660b8a"))
-                .andExpect(jsonPath("$.executionPlan.version").value("flow-plan-v4"))
+                .andExpect(jsonPath("$.executionPlan.version").value("flow-plan-v5"))
                 .andExpect(jsonPath("$.executionPlan.failurePolicy.version")
                         .value("flow-failure-policy-v1"))
                 .andExpect(jsonPath("$.executionPlan.failurePolicy.onProviderFailure")
@@ -167,6 +201,11 @@ class WorkflowControllerTest {
                 .andExpect(jsonPath("$.executionPlan.steps[0].inputArtifact.type").value("flow-objective"))
                 .andExpect(jsonPath("$.executionPlan.steps[0].inputResolution").value("compiled-reference"))
                 .andExpect(jsonPath("$.executionPlan.steps[0].outputArtifact.type").value("context-contribution"))
+                .andExpect(jsonPath("$.executionPlan.steps[1].providerInputArtifacts.length()").value(2))
+                .andExpect(jsonPath("$.executionPlan.steps[1].providerInputArtifacts[0].key")
+                        .value("flow:objective"))
+                .andExpect(jsonPath("$.executionPlan.steps[1].providerInputArtifacts[1].key")
+                        .value("node:input-1:context-contribution"))
                 .andExpect(jsonPath("$.executionInput").value("Flow: Launch brief\n本次运行上下文:\nFocus on the first release."))
                 .andExpect(jsonPath("$.flowRunSnapshot.flowId").value(flowId.toString()))
                 .andExpect(jsonPath("$.flowRunSnapshot.variableValues.audience").value("product teams"))

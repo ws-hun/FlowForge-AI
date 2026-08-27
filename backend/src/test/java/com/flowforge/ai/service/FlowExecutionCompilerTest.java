@@ -2,6 +2,8 @@ package com.flowforge.ai.service;
 
 import com.flowforge.ai.dto.FlowExecutionFailurePolicyResponse;
 import com.flowforge.ai.dto.FlowExecutionPlanResponse;
+import com.flowforge.ai.dto.FlowExecutionStepResponse;
+import com.flowforge.ai.dto.FlowArtifactContractResponse;
 import com.flowforge.ai.dto.FlowNodeDto;
 import com.flowforge.ai.dto.FlowNodeRunTraceResponse;
 import com.flowforge.ai.dto.FlowRunSnapshotResponse;
@@ -53,7 +55,7 @@ class FlowExecutionCompilerTest {
                         "delivery-focus",
                         "response-contract"
                 );
-        assertThat(compilation.plan().version()).isEqualTo("flow-plan-v4");
+        assertThat(compilation.plan().version()).isEqualTo("flow-plan-v5");
         assertThat(compilation.plan().scheduling()).isEqualTo("linear");
         assertThat(compilation.plan().failurePolicy()).isEqualTo(
                 new FlowExecutionFailurePolicyResponse(
@@ -100,13 +102,31 @@ class FlowExecutionCompilerTest {
             assertThat(steps.get(2).dependsOnNodeIds()).containsExactly("input-2");
             assertThat(steps.get(2).inputArtifact()).isEqualTo(steps.get(1).outputArtifact());
             assertThat(steps.get(2).outputArtifact().type()).isEqualTo("instruction-contribution");
-            assertThat(steps.get(3).dependsOnNodeIds()).containsExactly("prompt-1");
+            assertThat(steps.get(3).dependsOnNodeIds())
+                    .containsExactly("input-1", "input-2", "prompt-1");
             assertThat(steps.get(3).providerBoundary()).isTrue();
             assertThat(steps.get(3).inputArtifact()).isEqualTo(steps.get(2).outputArtifact());
+            assertThat(steps.get(3).providerInputArtifacts())
+                    .extracting(FlowArtifactContractResponse::key)
+                    .containsExactly(
+                            "flow:objective",
+                            "node:input-1:context-contribution",
+                            "node:input-2:context-contribution",
+                            "node:prompt-1:instruction-contribution"
+                    );
+            assertThat(steps.get(3).providerInputArtifacts())
+                    .extracting(FlowArtifactContractResponse::type)
+                    .containsExactly(
+                            "flow-objective",
+                            "context-contribution",
+                            "context-contribution",
+                            "instruction-contribution"
+                    );
             assertThat(steps.get(3).outputArtifact().type()).isEqualTo("provider-result");
             assertThat(steps.get(3).outputArtifact().storage()).isEqualTo("node-artifact");
             assertThat(steps.get(4).dependsOnNodeIds()).containsExactly("ai-task-1");
             assertThat(steps.get(4).providerBoundary()).isFalse();
+            assertThat(steps.get(4).providerInputArtifacts()).isNull();
             assertThat(steps.get(4).inputArtifact()).isEqualTo(steps.get(3).outputArtifact());
             assertThat(steps.get(4).outputArtifact().type()).isEqualTo("result-document");
             assertThat(steps.get(4).outputArtifact().storage()).isEqualTo("node-artifact");
@@ -206,6 +226,100 @@ class FlowExecutionCompilerTest {
         )))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Unsupported Flow input resolution contract");
+    }
+
+    @Test
+    void rejectsDuplicateArtifactsAtTheProviderBoundary() {
+        FlowExecutionPlanResponse plan = compiler.compile(snapshot(Map.of("audience", "product teams"))).plan();
+        FlowExecutionStepResponse providerStep = providerStep(plan);
+        List<FlowArtifactContractResponse> inputs = providerStep.providerInputArtifacts();
+        FlowExecutionPlanResponse invalidPlan = replaceProviderStep(
+                plan,
+                providerStep.dependsOnNodeIds(),
+                List.of(inputs.get(0), inputs.get(1), inputs.get(1), inputs.get(3))
+        );
+
+        assertThatThrownBy(() -> compiler.validateProviderInputArtifacts(invalidPlan))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Flow Provider input artifact contract is invalid");
+    }
+
+    @Test
+    void rejectsArtifactsThatDoNotBelongToAnUpstreamContributionNode() {
+        FlowExecutionPlanResponse plan = compiler.compile(snapshot(Map.of("audience", "product teams"))).plan();
+        FlowExecutionStepResponse providerStep = providerStep(plan);
+        List<FlowArtifactContractResponse> inputs = providerStep.providerInputArtifacts();
+        FlowExecutionPlanResponse invalidPlan = replaceProviderStep(
+                plan,
+                providerStep.dependsOnNodeIds(),
+                List.of(
+                        inputs.get(0),
+                        inputs.get(1),
+                        new FlowArtifactContractResponse(
+                                "node:unknown:context-contribution",
+                                "context-contribution",
+                                "node-artifact"
+                        ),
+                        inputs.get(3)
+                )
+        );
+
+        assertThatThrownBy(() -> compiler.validateProviderInputArtifacts(invalidPlan))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Flow Provider input artifact contract is invalid");
+    }
+
+    @Test
+    void rejectsProviderDependenciesThatDoNotMatchTheDeclaredFanIn() {
+        FlowExecutionPlanResponse plan = compiler.compile(snapshot(Map.of("audience", "product teams"))).plan();
+        FlowExecutionStepResponse providerStep = providerStep(plan);
+        FlowExecutionPlanResponse invalidPlan = replaceProviderStep(
+                plan,
+                List.of("input-1", "prompt-1"),
+                providerStep.providerInputArtifacts()
+        );
+
+        assertThatThrownBy(() -> compiler.validateProviderInputArtifacts(invalidPlan))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Flow Provider input dependencies do not match artifacts");
+    }
+
+    private FlowExecutionStepResponse providerStep(FlowExecutionPlanResponse plan) {
+        return plan.steps().stream()
+                .filter(FlowExecutionStepResponse::providerBoundary)
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private FlowExecutionPlanResponse replaceProviderStep(
+            FlowExecutionPlanResponse plan,
+            List<String> dependencies,
+            List<FlowArtifactContractResponse> providerInputs
+    ) {
+        List<FlowExecutionStepResponse> steps = plan.steps().stream()
+                .map(step -> step.providerBoundary()
+                        ? new FlowExecutionStepResponse(
+                                step.sequence(),
+                                step.nodeId(),
+                                step.nodeType(),
+                                step.title(),
+                                step.operation(),
+                                dependencies,
+                                true,
+                                step.inputArtifact(),
+                                providerInputs,
+                                step.inputResolution(),
+                                step.outputArtifact()
+                        )
+                        : step)
+                .toList();
+        return new FlowExecutionPlanResponse(
+                plan.version(),
+                plan.scheduling(),
+                steps,
+                plan.failurePolicy(),
+                plan.inputResolutionContract()
+        );
     }
 
     private FlowRunTraceResponse trace(

@@ -243,7 +243,7 @@ class TaskServiceTest {
                 .isEqualTo(new FlowExecutionCompiler().fingerprint(executionInput));
         assertThat(response.flowRunTrace().inputSource()).isEqualTo("compiled-flow");
         assertThat(response.flowRunTrace().replayedFromTaskId()).isNull();
-        assertThat(response.flowRunTrace().executionPlan().version()).isEqualTo("flow-plan-v4");
+        assertThat(response.flowRunTrace().executionPlan().version()).isEqualTo("flow-plan-v5");
         assertThat(response.flowRunTrace().executionPlan().failurePolicy()).satisfies(policy -> {
             assertThat(policy.version()).isEqualTo("flow-failure-policy-v1");
             assertThat(policy.onProviderFailure()).isEqualTo("stop-run");
@@ -259,6 +259,14 @@ class TaskServiceTest {
                 .satisfies(step -> {
                     assertThat(step.nodeId()).isEqualTo("ai-task-1");
                     assertThat(step.operation()).isEqualTo("invoke-provider");
+                    assertThat(step.providerInputArtifacts())
+                            .extracting(artifact -> artifact.key())
+                            .containsExactly(
+                                    "flow:objective",
+                                    "node:input-1:context-contribution",
+                                    "node:input-2:context-contribution",
+                                    "node:prompt-1:instruction-contribution"
+                            );
                 });
         assertThat(response.flowRunTrace().executionPlan().steps())
                 .extracting(step -> step.nodeId())
@@ -887,15 +895,35 @@ class TaskServiceTest {
                 flowId,
                 "Release recovery",
                 "Recover a failed release analysis",
-                List.of(new FlowNodeDto(
-                        "ai-task-1",
-                        "ai-task",
-                        "Release analysis",
-                        "Analysis",
-                        "Assess release readiness.",
-                        null,
-                        null
-                )),
+                List.of(
+                        new FlowNodeDto(
+                                "input-1",
+                                "input",
+                                "Incident context",
+                                "Preserved recovery context",
+                                "Use the saved incident evidence.",
+                                null,
+                                null
+                        ),
+                        new FlowNodeDto(
+                                "ai-task-1",
+                                "ai-task",
+                                "Release analysis",
+                                "Analysis",
+                                "Assess release readiness.",
+                                null,
+                                null
+                        ),
+                        new FlowNodeDto(
+                                "output-1",
+                                "output",
+                                "Recovery decision",
+                                "Expected result",
+                                "Return a decisive recovery recommendation.",
+                                null,
+                                null
+                        )
+                ),
                 null,
                 null,
                 null,
@@ -1042,7 +1070,20 @@ class TaskServiceTest {
                 .id(flowId)
                 .title("Empty Brief Flow")
                 .description("Run from saved Flow state")
-                .nodesJson(new ObjectMapper().writeValueAsString(List.of()))
+                .nodesJson(new ObjectMapper().writeValueAsString(List.of(
+                        new FlowNodeDto(
+                                "input-1", "input", "Context", "Saved context",
+                                "Use the saved Flow context.", null, null
+                        ),
+                        new FlowNodeDto(
+                                "ai-task-1", "ai-task", "Execute", "Execution guidance",
+                                "Create the result.", null, null
+                        ),
+                        new FlowNodeDto(
+                                "output-1", "output", "Result", "Delivery focus",
+                                "Return a concise result.", null, null
+                        )
+                )))
                 .createdAt(LocalDateTime.now().minusMinutes(1))
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -1142,7 +1183,7 @@ class TaskServiceTest {
         assertThat(response.executable()).isTrue();
         assertThat(response.missingVariables()).isEmpty();
         assertThat(response.incompleteNodes()).isEmpty();
-        assertThat(response.executionPlan().version()).isEqualTo("flow-plan-v4");
+        assertThat(response.executionPlan().version()).isEqualTo("flow-plan-v5");
         assertThat(response.executionPlan().failurePolicy()).satisfies(policy -> {
             assertThat(policy.version()).isEqualTo("flow-failure-policy-v1");
             assertThat(policy.onProviderFailure()).isEqualTo("stop-run");

@@ -250,8 +250,69 @@ class FlowRunTraceResponseTest {
         );
         assertThat(restored.executionPlan().steps()).singleElement().satisfies(step -> {
             assertThat(step.inputArtifact()).isEqualTo(inputArtifact);
+            assertThat(step.providerInputArtifacts()).isNull();
             assertThat(step.inputResolution()).isEqualTo("compiled-reference");
             assertThat(step.outputArtifact()).isEqualTo(outputArtifact);
+        });
+    }
+
+    @Test
+    void preservesV5ProviderInputFanInAcrossJsonRoundTrips() throws Exception {
+        FlowArtifactContractResponse objective = new FlowArtifactContractResponse(
+                "flow:objective",
+                "flow-objective",
+                "flow-snapshot"
+        );
+        FlowArtifactContractResponse context = new FlowArtifactContractResponse(
+                "node:input-1:context-contribution",
+                "context-contribution",
+                "node-artifact"
+        );
+        FlowArtifactContractResponse instruction = new FlowArtifactContractResponse(
+                "node:prompt-1:instruction-contribution",
+                "instruction-contribution",
+                "node-artifact"
+        );
+        FlowExecutionStepResponse providerStep = new FlowExecutionStepResponse(
+                3,
+                "ai-task-1",
+                "ai-task",
+                "Generate result",
+                "invoke-provider",
+                List.of("input-1", "prompt-1"),
+                true,
+                instruction,
+                List.of(objective, context, instruction),
+                "compiled-reference",
+                new FlowArtifactContractResponse(
+                        "node:ai-task-1:provider-result",
+                        "provider-result",
+                        "node-artifact"
+                )
+        );
+        FlowRunTraceResponse trace = new FlowRunTraceResponse(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "completed",
+                "single-pass",
+                1,
+                "flow-compiler-v1",
+                "provider-input-fingerprint",
+                "compiled-flow",
+                null,
+                new FlowExecutionPlanResponse("flow-plan-v5", "linear", List.of(providerStep)),
+                List.of()
+        );
+
+        FlowRunTraceResponse restored = objectMapper.readValue(
+                objectMapper.writeValueAsString(trace),
+                FlowRunTraceResponse.class
+        );
+
+        assertThat(restored).isEqualTo(trace);
+        assertThat(restored.executionPlan().steps()).singleElement().satisfies(step -> {
+            assertThat(step.providerInputArtifacts()).containsExactly(objective, context, instruction);
+            assertThat(step.dependsOnNodeIds()).containsExactly("input-1", "prompt-1");
         });
     }
 }
