@@ -137,10 +137,12 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Traceable Flow Run Identity | Done | 每次 Flow 执行在调用 Provider 前获得稳定运行 ID，轨迹可区分当前 Flow 编译与历史输入重放并关联来源运行 |
 | Stage 3 | Recoverable Provider Failures | Done | Provider 失败响应关联已保存运行，AI Command 与 Flow Space 可精确打开失败上下文，不再依赖时间窗口猜测 |
 | Stage 3 | Verified Run Input Comparison | Done | 运行对比优先使用 Provider 输入指纹判断输入是否一致，旧记录则诚实回退到固定执行文本 |
+| Stage 3 | Verified Provider Fan-in Comparison | Done | 运行对比使用不可变 v5 执行计划核对有序 Provider 输入声明；旧运行缺少声明时不根据当前 Flow 推断 |
 | Stage 3 | Flow Runtime Contract Verification | Done | 自动化测试锁定预览、真实 Provider 输入、历史保存输入、编译器版本与运行轨迹指纹的一致性 |
 | Stage 3 | Versioned Node Execution Plan | Done | Preview 与不可变运行轨迹共享 `flow-plan-v5`，固定节点顺序、输入输出产物契约、输入解析方式与唯一 Provider 边界 |
 | Stage 3 | Provider Input Fan-in Contract | Done | AI Task 明确声明 Flow 目标及全部上游 Input / Prompt 产物，并校验有序依赖；当前仍只编译并调用一次 Provider |
 | Stage 3 | Persisted Provider Input References | Done | 新运行把 AI Task 的有序输入声明与状态、指纹原子保存，展开运行轨迹时可按需检查并定位来源 Artifact |
+| Stage 3 | Provider Input Reference Integrity | Done | Artifact Detail 读取时校验连续顺序、Provider 归属、Flow 目标首位、来源 Artifact、节点身份与内容指纹 |
 | Stage 3 | Versioned Input Resolution Contract | Done | `flow-input-resolution-v1` 明确当前 `compiled-reference`，为未来 `persisted-artifact` 逐节点运行时保留升级边界 |
 | Stage 3 | Provider Attempt Recovery Contract | Done | `flow-provider-attempt-policy-v1` 校验真实调用链，明确当前不在原产物上重试，失败恢复会创建新的可比较运行 |
 | Stage 3 | Failed Run Recovery Identity | Done | `POST /api/tasks/{id}/recover` 从失败运行创建新的不可变运行，并以 `recoveryOfTaskId` 保留来源关系 |
@@ -781,7 +783,9 @@ AI Command 中尚未执行的输入与来源上下文保存在当前浏览器的
 
 现代 Flow 运行会把本次唯一真实 Provider 调用绑定到 AI Task 节点产物。每个新运行都会在 `flow_provider_attempts` 中保存唯一的 `initial #1`，包含成功或失败状态、Provider、模型、可用 Token、服务端耗时和失败信息；Provider 未返回用量时 Token 字段保持 `null`。Attempt 与 Task、节点产物在同一成功或失败事务中提交。
 
-产物列表与来源链只返回最新 Attempt 的 `providerCall` 摘要，并通过批量查询避免逐产物读取；`GET /api/tasks/{taskId}/artifacts/{artifactKey}` 在用户打开 AI Task 产物时额外返回 `providerInputReferences` 和完整 `providerAttempts` 时间线。V7 迁移会把 V6 已保存的 Provider provenance 确定性回填为 `initial #1`，更早且没有真实来源的记录仍保持为空。Input、Prompt、Output 节点不会获得伪造 Attempt 或 Provider 输入引用。
+产物列表与来源链只返回最新 Attempt 的 `providerCall` 摘要，并通过批量查询避免逐产物读取；`GET /api/tasks/{taskId}/artifacts/{artifactKey}` 在用户打开 AI Task 产物时额外返回 `providerInputReferences` 和完整 `providerAttempts` 时间线。返回引用前，服务端会校验其连续顺序、Provider Artifact 归属、首项 Flow 目标、来源节点身份和内容指纹；引用本身只包含元数据，不复制 payload。V7 迁移会把 V6 已保存的 Provider provenance 确定性回填为 `initial #1`，更早且没有真实来源的记录仍保持为空。Input、Prompt、Output 节点不会获得伪造 Attempt 或 Provider 输入引用。
+
+运行对比会同时核对 Provider 输入指纹与 v5 执行计划中保存的有序 fan-in 声明。声明比较覆盖 Artifact key、语义类型和 storage；任一运行缺少 v5 声明时，界面明确显示无法核验，不使用当前 Flow 反向补造历史结构。
 
 Attempt 表是未来 retry / recovery 的持久化基础，不代表运行时已经启用重试。当前 `single-pass` 仍只调用 Provider 一次，`providerCallCount` 仍为 `1`，不会创建 `automatic-retry` 或 `manual-recovery`，也没有启用 `node-sequential`。
 
