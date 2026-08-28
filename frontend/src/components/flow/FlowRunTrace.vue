@@ -146,9 +146,9 @@
                 class="flow-provider-input-references"
               >
                 <div class="flow-provider-input-references-heading">
-                  <span>Declared Inputs</span>
+                  <span>Provider 输入声明</span>
                   <small>
-                    {{ artifactDetails[node.outputArtifact.key]?.providerInputReferences?.length }} 个已保存引用
+                    {{ artifactDetails[node.outputArtifact.key]?.providerInputReferences?.length }} 项 · 元数据已保存
                   </small>
                 </div>
                 <ol>
@@ -158,7 +158,12 @@
                   >
                     <span>{{ reference.inputOrder }}</span>
                     <div>
-                      <strong>{{ flowArtifactTypeLabel(reference.artifactType) }}</strong>
+                      <div class="flow-provider-input-reference-title">
+                        <strong>{{ flowArtifactTypeLabel(reference.artifactType) }}</strong>
+                        <em :class="reference.artifactState">
+                          {{ providerInputReferenceStatusLabel(reference) }}
+                        </em>
+                      </div>
                       <small>
                         {{ providerInputSourceLabel(reference.sourceNodeId) }}
                         · {{ flowArtifactInputResolutionLabel(reference.inputResolution) }}
@@ -296,6 +301,7 @@ import type {
   FlowArtifactStorage,
   FlowArtifactType,
   FlowExecutionMode,
+  FlowProviderInputReference,
   FlowNodeArtifactLineage,
   FlowNodeArtifactLineageEntry,
   FlowNodeArtifactDetail,
@@ -544,6 +550,13 @@ function providerInputSourceLabel(nodeId: string | null | undefined) {
   }
   const node = props.trace.nodes.find((item) => item.nodeId === nodeId)
   return node ? `${nodeTypeLabel(node.nodeType)} · ${node.title}` : '节点产物'
+}
+
+function providerInputReferenceStatusLabel(reference: FlowProviderInputReference) {
+  if (reference.artifactStorage === 'flow-snapshot') return 'Flow 快照'
+  if (reference.artifactState === 'failed') return '来源失败'
+  if (reference.artifactState === 'skipped') return '已跳过'
+  return reference.sourceArtifactId ? '可定位' : '已声明'
 }
 
 function nodeTypeLabel(type: FlowNodeType) {
