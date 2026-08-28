@@ -5,6 +5,7 @@ import com.flowforge.ai.dto.FlowNodeArtifactLineageEntryResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactLineageResponse;
 import com.flowforge.ai.dto.FlowNodeArtifactSummaryResponse;
 import com.flowforge.ai.dto.FlowProviderCallResponse;
+import com.flowforge.ai.dto.FlowProviderInputReferenceResponse;
 import com.flowforge.ai.dto.FlowProviderAttemptResponse;
 import com.flowforge.ai.dto.FlowProviderAttemptPolicyResponse;
 import com.flowforge.ai.dto.TaskRunResponse;
@@ -265,6 +266,7 @@ class TaskControllerTest {
     void returnsOneArtifactPayloadByItsStableKey() throws Exception {
         UUID taskId = UUID.randomUUID();
         UUID artifactId = UUID.randomUUID();
+        UUID sourceArtifactId = UUID.randomUUID();
         UUID flowId = UUID.randomUUID();
         String artifactKey = "node:ai-task-1:provider-result";
         when(flowNodeArtifactQueryService.getForTask(taskId, artifactKey)).thenReturn(
@@ -286,6 +288,30 @@ class TaskControllerTest {
                         "materialized",
                         "compiled-reference",
                         "c".repeat(64),
+                        List.of(
+                                new FlowProviderInputReferenceResponse(
+                                        1,
+                                        "flow:objective",
+                                        "flow-objective",
+                                        "flow-snapshot",
+                                        "materialized",
+                                        "compiled-reference",
+                                        "d".repeat(64),
+                                        null,
+                                        null
+                                ),
+                                new FlowProviderInputReferenceResponse(
+                                        2,
+                                        "node:input-1:context-contribution",
+                                        "context-contribution",
+                                        "node-artifact",
+                                        "materialized",
+                                        "compiled-reference",
+                                        "c".repeat(64),
+                                        sourceArtifactId,
+                                        "input-1"
+                                )
+                        ),
                         new FlowProviderCallResponse(
                                 "completed",
                                 "deepseek",
@@ -332,6 +358,18 @@ class TaskControllerTest {
                         .value("node:input-1:context-contribution"))
                 .andExpect(jsonPath("$.inputArtifactStorage").value("node-artifact"))
                 .andExpect(jsonPath("$.inputResolution").value("compiled-reference"))
+                .andExpect(jsonPath("$.providerInputReferences").isArray())
+                .andExpect(jsonPath("$.providerInputReferences.length()").value(2))
+                .andExpect(jsonPath("$.providerInputReferences[0].inputOrder").value(1))
+                .andExpect(jsonPath("$.providerInputReferences[0].artifactKey").value("flow:objective"))
+                .andExpect(jsonPath("$.providerInputReferences[0].sourceArtifactId").doesNotExist())
+                .andExpect(jsonPath("$.providerInputReferences[1].inputOrder").value(2))
+                .andExpect(jsonPath("$.providerInputReferences[1].sourceArtifactId")
+                        .value(sourceArtifactId.toString()))
+                .andExpect(jsonPath("$.providerInputReferences[1].sourceNodeId").value("input-1"))
+                .andExpect(jsonPath("$.providerInputReferences[1].contentFingerprint")
+                        .value("c".repeat(64)))
+                .andExpect(jsonPath("$.providerInputReferences[1].payload").doesNotExist())
                 .andExpect(jsonPath("$.providerCall.status").value("completed"))
                 .andExpect(jsonPath("$.providerCall.provider").value("deepseek"))
                 .andExpect(jsonPath("$.providerCall.model").value("deepseek-chat"))
@@ -354,6 +392,40 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.providerAttemptPolicy.failedRunRecoveryAction").value("none"));
 
         verify(flowNodeArtifactQueryService).getForTask(taskId, artifactKey);
+    }
+
+    @Test
+    void returnsAnEmptyProviderInputListForLegacyArtifacts() throws Exception {
+        UUID taskId = UUID.randomUUID();
+        String artifactKey = "node:legacy:provider-result";
+        when(flowNodeArtifactQueryService.getForTask(taskId, artifactKey)).thenReturn(
+                new FlowNodeArtifactDetailResponse(
+                        UUID.randomUUID(),
+                        taskId,
+                        UUID.randomUUID(),
+                        "legacy",
+                        1,
+                        artifactKey,
+                        "provider-result",
+                        "materialized",
+                        "text/markdown",
+                        "Legacy result",
+                        "a".repeat(64),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        LocalDateTime.of(2026, 8, 17, 10, 31)
+                )
+        );
+
+        mockMvc.perform(get("/api/tasks/{id}/artifacts/{artifactKey}", taskId, artifactKey))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.artifactKey").value(artifactKey))
+                .andExpect(jsonPath("$.providerInputReferences").isArray())
+                .andExpect(jsonPath("$.providerInputReferences").isEmpty());
     }
 
     @Test
