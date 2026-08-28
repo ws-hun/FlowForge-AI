@@ -40,6 +40,9 @@ class FlowNodeArtifactQueryServiceTest {
     @Mock
     private FlowProviderInputReferenceRepository providerInputReferenceRepository;
 
+    private final FlowProviderInputReferencePolicy providerInputReferencePolicy =
+            new FlowProviderInputReferencePolicy();
+
     @Mock
     private FlowProviderAttemptRepository providerAttemptRepository;
 
@@ -52,7 +55,8 @@ class FlowNodeArtifactQueryServiceTest {
                 artifactRepository,
                 providerInputReferenceRepository,
                 providerAttemptRepository,
-                new FlowProviderAttemptPolicy()
+                new FlowProviderAttemptPolicy(),
+                providerInputReferencePolicy
         );
     }
 
@@ -113,6 +117,7 @@ class FlowNodeArtifactQueryServiceTest {
     @Test
     void returnsOneAddressableArtifactPayload() {
         UUID taskId = UUID.randomUUID();
+        UUID sourceArtifactId = UUID.randomUUID();
         FlowNodeArtifact artifact = artifact(taskId, "ai-task-1", 2, "provider-result", "Summary\nResult");
         when(taskRepository.existsById(taskId)).thenReturn(true);
         when(artifactRepository.findByTaskIdAndArtifactKey(taskId, artifact.getArtifactKey()))
@@ -127,10 +132,22 @@ class FlowNodeArtifactQueryServiceTest {
                                 artifact,
                                 2,
                                 "node:input-1:context-contribution",
-                                UUID.randomUUID(),
+                                sourceArtifactId,
                                 "input-1"
                         )
                 ));
+        when(artifactRepository.findAllById(List.of(sourceArtifactId)))
+                .thenReturn(List.of(FlowNodeArtifact.builder()
+                        .id(sourceArtifactId)
+                        .taskId(taskId)
+                        .flowId(artifact.getFlowId())
+                        .nodeId("input-1")
+                        .sequenceNumber(1)
+                        .artifactKey("node:input-1:context-contribution")
+                        .artifactType("context-contribution")
+                        .state("materialized")
+                        .contentFingerprint("c".repeat(64))
+                        .build()));
 
         FlowNodeArtifactDetailResponse response = queryService.getForTask(taskId, artifact.getArtifactKey());
 

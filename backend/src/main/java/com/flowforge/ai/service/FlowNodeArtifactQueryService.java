@@ -41,6 +41,7 @@ public class FlowNodeArtifactQueryService {
     private final FlowProviderInputReferenceRepository providerInputReferenceRepository;
     private final FlowProviderAttemptRepository providerAttemptRepository;
     private final FlowProviderAttemptPolicy providerAttemptPolicy;
+    private final FlowProviderInputReferencePolicy providerInputReferencePolicy;
 
     @Transactional(readOnly = true)
     public List<FlowNodeArtifactSummaryResponse> listForTask(UUID taskId) {
@@ -66,9 +67,17 @@ public class FlowNodeArtifactQueryService {
                 .stream()
                 .map(this::toProviderAttemptResponse)
                 .toList();
-        List<FlowProviderInputReferenceResponse> providerInputs = providerInputReferenceRepository
-                .findByProviderArtifactIdOrderByInputOrderAsc(artifact.getId())
-                .stream()
+        List<FlowProviderInputReference> providerInputReferences = providerInputReferenceRepository
+                .findByProviderArtifactIdOrderByInputOrderAsc(artifact.getId());
+        List<UUID> sourceArtifactIds = providerInputReferences.stream()
+                .map(FlowProviderInputReference::getSourceArtifactId)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        List<FlowNodeArtifact> sourceArtifacts = sourceArtifactIds.isEmpty()
+                ? List.of()
+                : artifactRepository.findAllById(sourceArtifactIds);
+        providerInputReferencePolicy.validate(artifact, providerInputReferences, sourceArtifacts);
+        List<FlowProviderInputReferenceResponse> providerInputs = providerInputReferences.stream()
                 .map(this::toProviderInputReferenceResponse)
                 .toList();
         return toDetailResponse(artifact, attempts, providerInputs);
