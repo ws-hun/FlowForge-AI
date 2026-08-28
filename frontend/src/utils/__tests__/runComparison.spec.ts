@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { compareRunExecutionInputs } from '../runComparison'
-import type { FlowRunTrace, TaskHistoryItem } from '@/types'
+import { compareRunExecutionInputs, compareRunProviderInputDeclarations } from '../runComparison'
+import type { FlowArtifactContract, FlowRunTrace, TaskHistoryItem } from '@/types'
 
-function run(input: string, fingerprint?: string): TaskHistoryItem {
-  const flowRunTrace: FlowRunTrace | null = fingerprint
+function run(
+  input: string,
+  fingerprint?: string,
+  providerInputs?: FlowArtifactContract[]
+): TaskHistoryItem {
+  const flowRunTrace: FlowRunTrace | null = fingerprint || providerInputs
     ? {
         runId: 'run-1',
         flowId: 'flow-1',
@@ -11,6 +15,22 @@ function run(input: string, fingerprint?: string): TaskHistoryItem {
         executionMode: 'single-pass',
         providerCallCount: 1,
         executionInputFingerprint: fingerprint,
+        executionPlan: providerInputs
+          ? {
+              version: 'flow-plan-v5',
+              scheduling: 'linear',
+              steps: [{
+                sequence: 1,
+                nodeId: 'ai-task-1',
+                nodeType: 'ai-task',
+                title: '执行任务',
+                operation: 'invoke-provider',
+                dependsOnNodeIds: [],
+                providerBoundary: true,
+                providerInputArtifacts: providerInputs
+              }]
+            }
+          : null,
         nodes: []
       }
     : null
@@ -48,6 +68,50 @@ describe('run execution input comparison', () => {
     expect(compareRunExecutionInputs(run('Exact input'), run('Exact input\n'))).toEqual({
       relation: 'different',
       verification: 'stored-text'
+    })
+  })
+})
+
+describe('run Provider input declaration comparison', () => {
+  const objective: FlowArtifactContract = {
+    key: 'flow:objective',
+    type: 'flow-objective',
+    storage: 'flow-snapshot'
+  }
+  const context: FlowArtifactContract = {
+    key: 'node:input-1:context-contribution',
+    type: 'context-contribution',
+    storage: 'node-artifact'
+  }
+
+  it('compares ordered declarations from saved v5 execution plans', () => {
+    expect(compareRunProviderInputDeclarations(
+      run('source', 'source-sha', [objective, context]),
+      run('target', 'target-sha', [objective, context])
+    )).toEqual({
+      relation: 'same',
+      verification: 'saved-execution-plan',
+      sourceInputCount: 2,
+      targetInputCount: 2
+    })
+  })
+
+  it('reports reordered or changed declarations', () => {
+    expect(compareRunProviderInputDeclarations(
+      run('source', 'same-sha', [objective, context]),
+      run('target', 'same-sha', [context, objective])
+    ).relation).toBe('different')
+  })
+
+  it('does not infer a declaration for legacy runs', () => {
+    expect(compareRunProviderInputDeclarations(
+      run('legacy', 'same-sha'),
+      run('modern', 'same-sha', [objective, context])
+    )).toEqual({
+      relation: 'unavailable',
+      verification: 'saved-execution-plan',
+      sourceInputCount: null,
+      targetInputCount: 2
     })
   })
 })

@@ -22,6 +22,14 @@
         </div>
       </section>
 
+      <section class="run-input-comparison provider-input-comparison" :class="providerInputComparison.relation">
+        <span></span>
+        <div>
+          <strong>{{ providerInputComparisonTitle }}</strong>
+          <p>{{ providerInputComparisonDescription }}</p>
+        </div>
+      </section>
+
       <div class="run-comparison-grid">
         <section class="run-comparison-pane">
           <div class="run-comparison-pane-header">
@@ -109,7 +117,7 @@ import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import ExecutionInputArchive from '@/components/ai/ExecutionInputArchive.vue'
 import FlowRunTrace from '@/components/flow/FlowRunTrace.vue'
 import { formatExecutionSource } from '@/utils/aiProvider'
-import { compareRunExecutionInputs } from '@/utils/runComparison'
+import { compareRunExecutionInputs, compareRunProviderInputDeclarations } from '@/utils/runComparison'
 import type { TaskHistoryItem } from '@/types'
 
 const props = withDefaults(defineProps<{
@@ -156,6 +164,32 @@ const inputComparisonDescription = computed(() => {
   return inputComparison.value.relation === 'same'
     ? '历史记录缺少完整指纹，已按保存的执行输入文本确认一致。'
     : '历史记录缺少完整指纹，保存的执行输入文本存在差异。'
+})
+
+const providerInputComparison = computed(() =>
+  props.sourceRun && props.targetRun
+    ? compareRunProviderInputDeclarations(props.sourceRun, props.targetRun)
+    : {
+        relation: 'unavailable' as const,
+        verification: 'saved-execution-plan' as const,
+        sourceInputCount: null,
+        targetInputCount: null
+      }
+)
+const providerInputComparisonTitle = computed(() => {
+  if (providerInputComparison.value.relation === 'same') return 'Provider 输入结构一致'
+  if (providerInputComparison.value.relation === 'different') return 'Provider 输入结构已经变化'
+  return 'Provider 输入结构无法核验'
+})
+const providerInputComparisonDescription = computed(() => {
+  const comparison = providerInputComparison.value
+  if (comparison.relation === 'unavailable') {
+    return '至少一次运行没有保存 v5 输入声明，本次对比不根据当前 Flow 反向推断。'
+  }
+  const counts = `${comparison.sourceInputCount} 项 → ${comparison.targetInputCount} 项`
+  return comparison.relation === 'same'
+    ? `已保存的有序 Artifact 声明一致（${counts}）。`
+    : `已保存的有序 Artifact key、类型或来源发生变化（${counts}）。`
 })
 
 function handleOpenChange(value: boolean) {

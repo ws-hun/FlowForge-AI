@@ -1407,6 +1407,16 @@ a {
   &.different > span {
     background: tokens.$warning;
   }
+
+  &.unavailable > span {
+    background: tokens.$text-muted;
+  }
+}
+
+.provider-input-comparison {
+  margin-top: -8px;
+  padding-block: 11px;
+  background: tokens.$surface;
 }
 
 .run-comparison-grid {
