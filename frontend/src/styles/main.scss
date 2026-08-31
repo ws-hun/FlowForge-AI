@@ -1419,6 +1419,95 @@ a {
   background: tokens.$surface;
 }
 
+.execution-evidence-comparison {
+  margin-top: -8px;
+  background: tokens.$surface;
+}
+
+.execution-evidence-body {
+  display: grid;
+  width: 100%;
+  gap: 12px;
+}
+
+.execution-evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.execution-evidence-pane {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid tokens.$border;
+  border-radius: tokens.$radius-sm;
+  background: rgba(243, 245, 247, 0.56);
+
+  &.current {
+    border-color: rgba(79, 124, 255, 0.18);
+    background: rgba(79, 124, 255, 0.035);
+  }
+
+  > span {
+    color: tokens.$text-muted;
+    font-size: 10px;
+    font-weight: 720;
+    text-transform: uppercase;
+  }
+
+  dl {
+    display: grid;
+    gap: 7px;
+    margin: 10px 0 0;
+  }
+
+  dl > div {
+    display: grid;
+    grid-template-columns: minmax(76px, auto) minmax(0, 1fr);
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  dt,
+  dd {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  dt {
+    color: tokens.$text-muted;
+  }
+
+  dd {
+    overflow: hidden;
+    color: tokens.$text-primary;
+    font-family: tokens.$mono;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.execution-evidence-differences {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    padding: 4px 8px;
+    border-radius: tokens.$radius-sm;
+    background: rgba(245, 158, 11, 0.08);
+    color: #9a6700;
+    font-size: 10px;
+    font-weight: 680;
+  }
+}
+
 .run-comparison-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -7119,6 +7208,10 @@ a {
   }
 
   .run-comparison-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .execution-evidence-grid {
     grid-template-columns: 1fr;
   }
 
