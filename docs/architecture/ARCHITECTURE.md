@@ -92,6 +92,8 @@ The only current input resolution is `compiled-reference`: lineage and the Provi
 
 Run comparison can compare the ordered fan-in declarations preserved in two immutable `flow-plan-v5` traces. It compares saved Artifact key, semantic type, and storage in order; if either trace lacks a v5 declaration, the comparison reports the structure as unavailable instead of consulting the current Flow definition.
 
+The comparison experience treats execution provenance as independent evidence from input equality. Current v5 runs can compare saved Provider, model, terminal state, `providerCallCount`, and the guaranteed single initial Attempt boundary. Legacy Task metadata remains comparable where present, but missing call and Attempt evidence is surfaced as unknown rather than equal, different, or inferred from current configuration.
+
 Direct Flow execution assigns the persisted Task UUID before the Provider request. The same UUID becomes the run identity in successful or failed traces, while exact reruns record `stored-input-replay` and the immutable source Task UUID instead of presenting the replay as a newly compiled Flow input.
 
 When Provider execution fails, `TaskService` persists the failed Task in a separate transaction and attaches its UUID to the `AiExecutionException` only after that write succeeds. The `502` response can therefore expose an optional `runId` that always refers to a real recoverable History entry.

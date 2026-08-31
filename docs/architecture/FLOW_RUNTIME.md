@@ -102,6 +102,14 @@ Legacy `flow-plan-v1` steps remain readable with null artifact contracts. Legacy
 
 Run comparison may compare the ordered `providerInputArtifacts` stored in two immutable v5 plans. Equality means the saved key, type, and storage sequence is identical; it does not mean that payloads were loaded from the Artifact table. If either run lacks a v5 declaration, the structure remains unavailable rather than being inferred from the current Flow.
 
+The History comparison surface also separates three kinds of execution evidence:
+
+- The exact Provider input fingerprint, when both runs recorded one.
+- The ordered Provider fan-in declaration, when both runs recorded a v5 plan.
+- Provider, model, terminal status, Provider call count, and the current single-attempt boundary.
+
+The third comparison uses the saved v5 runtime contract to identify one Provider call and one initial Attempt for current Flow runs. Task-level Provider and model metadata can still be compared for older records, but missing call or Attempt fields remain `unknown`; they are never treated as differences and are never reconstructed from the current Provider Vault. A comparison can therefore report a concrete difference while also marking another field as unverifiable.
+
 Exact historical reruns use the stored Task input. They do not recompile the old Flow. When the source trace has a plan, the new replay preserves that immutable plan and records `stored-input-replay` plus the source Task ID.
 
 Failed historical runs use `POST /api/tasks/{id}/recover` to create a new immutable Task. The new Task records `recoveryOfTaskId`, preserves the exact failed input and saved Flow snapshot, and marks its trace as `stored-input-recovery`. A recovery is a new single-pass execution with one Provider call; it never mutates the source Task, its node artifacts, or its Attempt history. The existing rerun endpoint routes failed sources through the same identity so older clients cannot accidentally erase the distinction.

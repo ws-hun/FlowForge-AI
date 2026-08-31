@@ -144,6 +144,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Persisted Provider Input References | Done | 新运行把 AI Task 的有序输入声明与状态、指纹原子保存，展开运行轨迹时可按需检查并定位来源 Artifact |
 | Stage 3 | Provider Input Reference Integrity | Done | Artifact Detail 读取时校验连续顺序、Provider 归属、Flow 目标首位、来源 Artifact、节点身份与内容指纹 |
 | Stage 3 | Database-backed Provider Input Integrity | Done | V11 迁移在 PostgreSQL 层约束引用身份、合法 storage、来源字段和 64 位小写 SHA-256 指纹 |
+| Stage 3 | Runtime Evidence Comparison | Done | 运行对比独立核验输入指纹、v5 fan-in、Provider、模型、状态与单次调用边界，旧记录缺失字段保持未知 |
 | Stage 3 | Versioned Input Resolution Contract | Done | `flow-input-resolution-v1` 明确当前 `compiled-reference`，为未来 `persisted-artifact` 逐节点运行时保留升级边界 |
 | Stage 3 | Provider Attempt Recovery Contract | Done | `flow-provider-attempt-policy-v1` 校验真实调用链，明确当前不在原产物上重试，失败恢复会创建新的可比较运行 |
 | Stage 3 | Failed Run Recovery Identity | Done | `POST /api/tasks/{id}/recover` 从失败运行创建新的不可变运行，并以 `recoveryOfTaskId` 保留来源关系 |
