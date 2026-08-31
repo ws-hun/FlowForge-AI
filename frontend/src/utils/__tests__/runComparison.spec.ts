@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { compareRunExecutionInputs, compareRunProviderInputDeclarations } from '../runComparison'
+import {
+  compareRunExecutionInputs,
+  compareRunProviderExecution,
+  compareRunProviderInputDeclarations
+} from '../runComparison'
 import type { FlowArtifactContract, FlowRunTrace, TaskHistoryItem } from '@/types'
 
 function run(
   input: string,
   fingerprint?: string,
-  providerInputs?: FlowArtifactContract[]
+  providerInputs?: FlowArtifactContract[],
+  overrides: Partial<TaskHistoryItem> = {}
 ): TaskHistoryItem {
   const flowRunTrace: FlowRunTrace | null = fingerprint || providerInputs
     ? {
@@ -40,8 +45,12 @@ function run(
     input,
     summary: 'Result',
     result: 'Content',
+    provider: 'deepseek',
+    model: 'deepseek-chat',
+    status: 'completed',
     flowRunTrace,
-    createdAt: '2026-08-13T00:00:00.000Z'
+    createdAt: '2026-08-13T00:00:00.000Z',
+    ...overrides
   }
 }
 
@@ -113,5 +122,104 @@ describe('run Provider input declaration comparison', () => {
       sourceInputCount: null,
       targetInputCount: 2
     })
+  })
+})
+
+describe('run Provider execution comparison', () => {
+  const objective: FlowArtifactContract = {
+    key: 'flow:objective',
+    type: 'flow-objective',
+    storage: 'flow-snapshot'
+  }
+
+  it('confirms the same Provider execution contract for modern Flow runs', () => {
+    const source = run('source', 'same-sha', [objective])
+    const target = run('target', 'different-sha', [objective])
+
+    expect(compareRunProviderExecution(source, target)).toEqual({
+      relation: 'same',
+      verification: 'flow-runtime-contract',
+      source: {
+        provider: 'deepseek',
+        model: 'deepseek-chat',
+        status: 'completed',
+        providerCallCount: 1,
+        attemptCount: 1
+      },
+      target: {
+        provider: 'deepseek',
+        model: 'deepseek-chat',
+        status: 'completed',
+        providerCallCount: 1,
+        attemptCount: 1
+      },
+      differences: []
+    })
+  })
+
+  it('reports Provider, model, status, and call-count changes', () => {
+    const source = run('source', 'same-sha', [objective])
+    const target = run('target', 'same-sha', [objective], {
+      provider: 'openai',
+      model: 'gpt-4.1',
+      status: 'failed',
+      flowRunTrace: {
+        ...source.flowRunTrace!,
+        status: 'failed',
+        providerCallCount: 2
+      }
+    })
+
+    expect(compareRunProviderExecution(source, target)).toMatchObject({
+      relation: 'different',
+      verification: 'flow-runtime-contract',
+      differences: ['provider', 'model', 'status', 'provider-call-count', 'attempt-count']
+    })
+  })
+
+  it('keeps legacy attempt count unavailable while comparing saved task metadata', () => {
+    const source = run('source', undefined, undefined, { flowRunTrace: null })
+    const target = run('target', undefined, undefined, {
+      flowRunTrace: null,
+      model: 'gpt-4.1'
+    })
+
+    expect(compareRunProviderExecution(source, target)).toEqual({
+      relation: 'different',
+      verification: 'task-metadata',
+      source: {
+        provider: 'deepseek',
+        model: 'deepseek-chat',
+        status: 'completed',
+        providerCallCount: null,
+        attemptCount: null
+      },
+      target: {
+        provider: 'deepseek',
+        model: 'gpt-4.1',
+        status: 'completed',
+        providerCallCount: null,
+        attemptCount: null
+      },
+      differences: ['model']
+    })
+  })
+
+  it('does not infer Provider evidence for records without execution metadata', () => {
+    const source = run('source', undefined, undefined, {
+      provider: null,
+      model: null,
+      status: null,
+      flowRunTrace: null
+    })
+    const target = run('target', undefined, undefined, {
+      provider: null,
+      model: null,
+      status: null,
+      flowRunTrace: null
+    })
+
+    expect(compareRunProviderExecution(source, target).relation).toBe('unavailable')
+    expect(compareRunProviderExecution(source, target).verification).toBe('unavailable')
   })
 })

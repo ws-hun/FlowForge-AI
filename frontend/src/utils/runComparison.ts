@@ -12,6 +12,29 @@ export type RunProviderInputComparison = {
   targetInputCount: number | null
 }
 
+export type RunProviderExecutionComparison = {
+  relation: 'same' | 'different' | 'unavailable'
+  verification: 'flow-runtime-contract' | 'task-metadata' | 'unavailable'
+  source: RunProviderExecutionEvidence
+  target: RunProviderExecutionEvidence
+  differences: RunProviderExecutionDifference[]
+}
+
+export type RunProviderExecutionEvidence = {
+  provider: string | null
+  model: string | null
+  status: TaskHistoryItem['status']
+  providerCallCount: number | null
+  attemptCount: number | null
+}
+
+export type RunProviderExecutionDifference =
+  | 'provider'
+  | 'model'
+  | 'status'
+  | 'provider-call-count'
+  | 'attempt-count'
+
 export function compareRunExecutionInputs(
   sourceRun: TaskHistoryItem,
   targetRun: TaskHistoryItem
@@ -56,6 +79,36 @@ export function compareRunProviderInputDeclarations(
   }
 }
 
+export function compareRunProviderExecution(
+  sourceRun: TaskHistoryItem,
+  targetRun: TaskHistoryItem
+): RunProviderExecutionComparison {
+  const source = providerExecutionEvidence(sourceRun)
+  const target = providerExecutionEvidence(targetRun)
+  const verification = source.verification === 'unavailable' || target.verification === 'unavailable'
+    ? 'unavailable'
+    : source.verification === 'flow-runtime-contract' && target.verification === 'flow-runtime-contract'
+      ? 'flow-runtime-contract'
+      : 'task-metadata'
+
+  const differences: RunProviderExecutionDifference[] = []
+  if (source.evidence.provider !== target.evidence.provider) differences.push('provider')
+  if (source.evidence.model !== target.evidence.model) differences.push('model')
+  if (source.evidence.status !== target.evidence.status) differences.push('status')
+  if (source.evidence.providerCallCount !== target.evidence.providerCallCount) {
+    differences.push('provider-call-count')
+  }
+  if (source.evidence.attemptCount !== target.evidence.attemptCount) differences.push('attempt-count')
+
+  return {
+    relation: verification === 'unavailable' ? 'unavailable' : differences.length ? 'different' : 'same',
+    verification,
+    source: source.evidence,
+    target: target.evidence,
+    differences
+  }
+}
+
 function savedProviderInputs(run: TaskHistoryItem): FlowArtifactContract[] | null {
   const plan = run.flowRunTrace?.executionPlan
   if (plan?.version !== 'flow-plan-v5') {
@@ -76,4 +129,28 @@ function sameArtifactContracts(
       && source.type === target.type
       && source.storage === target.storage
   })
+}
+
+function providerExecutionEvidence(run: TaskHistoryItem) {
+  const trace = run.flowRunTrace
+  const modernFlow = trace?.executionPlan?.version === 'flow-plan-v5'
+  const hasTaskProviderMetadata = Boolean(run.provider || run.model || run.status)
+  const verification: RunProviderExecutionComparison['verification'] = modernFlow
+    ? 'flow-runtime-contract'
+    : hasTaskProviderMetadata
+      ? 'task-metadata'
+      : 'unavailable'
+
+  return {
+    verification,
+    evidence: {
+      provider: run.provider ?? null,
+      model: run.model ?? null,
+      status: run.status ?? null,
+      providerCallCount: modernFlow ? trace?.providerCallCount ?? null : null,
+      // Current flow-plan-v5 guarantees one persisted initial attempt per run.
+      // Older traces must remain unknown until their attempt history is queried.
+      attemptCount: modernFlow && trace?.providerCallCount === 1 ? 1 : null
+    }
+  }
 }
