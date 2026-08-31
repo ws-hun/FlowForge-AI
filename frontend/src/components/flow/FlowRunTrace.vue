@@ -161,7 +161,7 @@
                       <div class="flow-provider-input-reference-title">
                         <strong>{{ flowArtifactTypeLabel(reference.artifactType) }}</strong>
                         <em :class="reference.artifactState">
-                          {{ providerInputReferenceStatusLabel(reference) }}
+                          {{ flowProviderInputReferenceStatusLabel(reference) }}
                         </em>
                       </div>
                       <small>
@@ -301,7 +301,6 @@ import type {
   FlowArtifactStorage,
   FlowArtifactType,
   FlowExecutionMode,
-  FlowProviderInputReference,
   FlowNodeArtifactLineage,
   FlowNodeArtifactLineageEntry,
   FlowNodeArtifactDetail,
@@ -325,6 +324,7 @@ import {
   flowProviderCallSource,
   flowProviderCallStatusLabel
 } from '@/utils/flowProviderCall'
+import { flowProviderInputReferenceStatusLabel } from '@/utils/flowProviderInputReferences'
 
 const props = withDefaults(
   defineProps<{
@@ -550,13 +550,6 @@ function providerInputSourceLabel(nodeId: string | null | undefined) {
   }
   const node = props.trace.nodes.find((item) => item.nodeId === nodeId)
   return node ? `${nodeTypeLabel(node.nodeType)} · ${node.title}` : '节点产物'
-}
-
-function providerInputReferenceStatusLabel(reference: FlowProviderInputReference) {
-  if (reference.artifactStorage === 'flow-snapshot') return 'Flow 快照'
-  if (reference.artifactState === 'failed') return '来源失败'
-  if (reference.artifactState === 'skipped') return '已跳过'
-  return reference.sourceArtifactId ? '可定位' : '已声明'
 }
 
 function nodeTypeLabel(type: FlowNodeType) {
