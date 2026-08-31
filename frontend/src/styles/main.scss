@@ -1506,6 +1506,11 @@ a {
     font-size: 10px;
     font-weight: 680;
   }
+
+  li.unknown {
+    background: rgba(107, 114, 128, 0.08);
+    color: tokens.$text-secondary;
+  }
 }
 
 .run-comparison-grid {

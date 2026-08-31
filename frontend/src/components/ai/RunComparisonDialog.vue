@@ -57,9 +57,19 @@
               </dl>
             </div>
           </div>
-          <ul v-if="providerExecutionComparison.differences.length" class="execution-evidence-differences">
+          <ul
+            v-if="providerExecutionComparison.differences.length || providerExecutionComparison.unknown.length"
+            class="execution-evidence-differences"
+          >
             <li v-for="difference in providerExecutionComparison.differences" :key="difference">
               {{ providerExecutionDifferenceLabel(difference) }}
+            </li>
+            <li
+              v-for="difference in providerExecutionComparison.unknown"
+              :key="`unknown-${difference}`"
+              class="unknown"
+            >
+              {{ providerExecutionDifferenceLabel(difference) }}未核验
             </li>
           </ul>
         </div>
@@ -252,7 +262,8 @@ const providerExecutionComparison = computed(() =>
           providerCallCount: null,
           attemptCount: null
         },
-        differences: [] as RunProviderExecutionDifference[]
+        differences: [] as RunProviderExecutionDifference[],
+        unknown: [] as RunProviderExecutionDifference[]
       }
 )
 const providerExecutionComparisonTitle = computed(() => {
@@ -262,6 +273,11 @@ const providerExecutionComparisonTitle = computed(() => {
 })
 const providerExecutionComparisonDescription = computed(() => {
   const comparison = providerExecutionComparison.value
+  if (comparison.unknown.length) {
+    return comparison.relation === 'different'
+      ? '已发现可比较字段的差异，但部分历史证据缺失，未对未知字段作结论。'
+      : '部分历史证据缺失，只有双方都保存的字段参与核验。'
+  }
   if (comparison.verification === 'flow-runtime-contract') {
     return comparison.relation === 'same'
       ? '两次运行均保存了 v5 执行契约，可确认 Provider、模型和单次调用边界一致。'

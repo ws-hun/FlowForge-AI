@@ -153,7 +153,8 @@ describe('run Provider execution comparison', () => {
         providerCallCount: 1,
         attemptCount: 1
       },
-      differences: []
+      differences: [],
+      unknown: []
     })
   })
 
@@ -173,7 +174,8 @@ describe('run Provider execution comparison', () => {
     expect(compareRunProviderExecution(source, target)).toMatchObject({
       relation: 'different',
       verification: 'flow-runtime-contract',
-      differences: ['provider', 'model', 'status', 'provider-call-count', 'attempt-count']
+      differences: ['provider', 'model', 'status', 'provider-call-count'],
+      unknown: ['attempt-count']
     })
   })
 
@@ -201,7 +203,8 @@ describe('run Provider execution comparison', () => {
         providerCallCount: null,
         attemptCount: null
       },
-      differences: ['model']
+      differences: ['model'],
+      unknown: ['provider-call-count', 'attempt-count']
     })
   })
 
@@ -219,7 +222,11 @@ describe('run Provider execution comparison', () => {
       flowRunTrace: null
     })
 
-    expect(compareRunProviderExecution(source, target).relation).toBe('unavailable')
-    expect(compareRunProviderExecution(source, target).verification).toBe('unavailable')
+    expect(compareRunProviderExecution(source, target)).toMatchObject({
+      relation: 'unavailable',
+      verification: 'unavailable',
+      differences: [],
+      unknown: ['provider-call-count', 'attempt-count']
+    })
   })
 })

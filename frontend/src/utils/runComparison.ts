@@ -18,6 +18,7 @@ export type RunProviderExecutionComparison = {
   source: RunProviderExecutionEvidence
   target: RunProviderExecutionEvidence
   differences: RunProviderExecutionDifference[]
+  unknown: RunProviderExecutionDifference[]
 }
 
 export type RunProviderExecutionEvidence = {
@@ -92,21 +93,52 @@ export function compareRunProviderExecution(
       : 'task-metadata'
 
   const differences: RunProviderExecutionDifference[] = []
-  if (source.evidence.provider !== target.evidence.provider) differences.push('provider')
-  if (source.evidence.model !== target.evidence.model) differences.push('model')
-  if (source.evidence.status !== target.evidence.status) differences.push('status')
-  if (source.evidence.providerCallCount !== target.evidence.providerCallCount) {
-    differences.push('provider-call-count')
-  }
-  if (source.evidence.attemptCount !== target.evidence.attemptCount) differences.push('attempt-count')
+  const unknown: RunProviderExecutionDifference[] = []
+  compareEvidenceField(source.evidence.provider, target.evidence.provider, 'provider', differences, unknown)
+  compareEvidenceField(source.evidence.model, target.evidence.model, 'model', differences, unknown)
+  compareEvidenceField(source.evidence.status, target.evidence.status, 'status', differences, unknown)
+  compareEvidenceField(
+    source.evidence.providerCallCount,
+    target.evidence.providerCallCount,
+    'provider-call-count',
+    differences,
+    unknown,
+    true
+  )
+  compareEvidenceField(
+    source.evidence.attemptCount,
+    target.evidence.attemptCount,
+    'attempt-count',
+    differences,
+    unknown,
+    true
+  )
 
   return {
-    relation: verification === 'unavailable' ? 'unavailable' : differences.length ? 'different' : 'same',
+    relation: verification === 'unavailable' || unknown.length
+      ? differences.length ? 'different' : 'unavailable'
+      : differences.length ? 'different' : 'same',
     verification,
     source: source.evidence,
     target: target.evidence,
-    differences
+    differences,
+    unknown
   }
+}
+
+function compareEvidenceField<T>(
+  source: T | null,
+  target: T | null,
+  difference: RunProviderExecutionDifference,
+  differences: RunProviderExecutionDifference[],
+  unknown: RunProviderExecutionDifference[],
+  unknownWhenBothMissing = false
+) {
+  if (source === null || target === null) {
+    if (source !== target || unknownWhenBothMissing) unknown.push(difference)
+    return
+  }
+  if (source !== target) differences.push(difference)
 }
 
 function savedProviderInputs(run: TaskHistoryItem): FlowArtifactContract[] | null {
