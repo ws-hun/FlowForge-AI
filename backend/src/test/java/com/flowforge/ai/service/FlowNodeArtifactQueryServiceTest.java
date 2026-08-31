@@ -234,6 +234,54 @@ class FlowNodeArtifactQueryServiceTest {
     }
 
     @Test
+    void rejectsProviderInputDetailWhenItsSourceArtifactIsMissing() {
+        UUID taskId = UUID.randomUUID();
+        FlowNodeArtifact provider = artifact(taskId, "ai-task-1", 2, "provider-result", "Summary\nResult");
+        UUID missingSourceId = UUID.randomUUID();
+        when(taskRepository.existsById(taskId)).thenReturn(true);
+        when(artifactRepository.findByTaskIdAndArtifactKey(taskId, provider.getArtifactKey()))
+                .thenReturn(Optional.of(provider));
+        when(providerInputReferenceRepository.findByProviderArtifactIdOrderByInputOrderAsc(provider.getId()))
+                .thenReturn(List.of(
+                        providerInputReference(provider, 1, "flow:objective", null, null),
+                        providerInputReference(provider, 2,
+                                "node:input-1:context-contribution", missingSourceId, "input-1")
+                ));
+        when(artifactRepository.findAllById(List.of(missingSourceId))).thenReturn(List.of());
+
+        assertThatThrownBy(() -> queryService.getForTask(taskId, provider.getArtifactKey()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Persisted Flow Provider input references are inconsistent");
+    }
+
+    @Test
+    void rejectsProviderInputDetailWhenItsSourceBelongsToAnotherRun() {
+        UUID taskId = UUID.randomUUID();
+        FlowNodeArtifact provider = artifact(taskId, "ai-task-1", 2, "provider-result", "Summary\nResult");
+        FlowNodeArtifact source = artifact(
+                UUID.randomUUID(),
+                "input-1",
+                1,
+                "context-contribution",
+                "Context"
+        );
+        when(taskRepository.existsById(taskId)).thenReturn(true);
+        when(artifactRepository.findByTaskIdAndArtifactKey(taskId, provider.getArtifactKey()))
+                .thenReturn(Optional.of(provider));
+        when(providerInputReferenceRepository.findByProviderArtifactIdOrderByInputOrderAsc(provider.getId()))
+                .thenReturn(List.of(
+                        providerInputReference(provider, 1, "flow:objective", null, null),
+                        providerInputReference(provider, 2,
+                                source.getArtifactKey(), source.getId(), source.getNodeId())
+                ));
+        when(artifactRepository.findAllById(List.of(source.getId()))).thenReturn(List.of(source));
+
+        assertThatThrownBy(() -> queryService.getForTask(taskId, provider.getArtifactKey()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Persisted Flow Provider input references are inconsistent");
+    }
+
+    @Test
     void rejectsArtifactQueriesForMissingTasks() {
         UUID taskId = UUID.randomUUID();
         when(taskRepository.existsById(taskId)).thenReturn(false);
