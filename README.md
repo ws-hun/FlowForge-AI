@@ -143,6 +143,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Provider Input Fan-in Contract | Done | AI Task 明确声明 Flow 目标及全部上游 Input / Prompt 产物，并校验有序依赖；当前仍只编译并调用一次 Provider |
 | Stage 3 | Persisted Provider Input References | Done | 新运行把 AI Task 的有序输入声明与状态、指纹原子保存，展开运行轨迹时可按需检查并定位来源 Artifact |
 | Stage 3 | Provider Input Reference Integrity | Done | Artifact Detail 读取时校验连续顺序、Provider 归属、Flow 目标首位、来源 Artifact、节点身份与内容指纹 |
+| Stage 3 | Database-backed Provider Input Integrity | Done | V11 迁移在 PostgreSQL 层约束引用身份、合法 storage、来源字段和 64 位小写 SHA-256 指纹 |
 | Stage 3 | Versioned Input Resolution Contract | Done | `flow-input-resolution-v1` 明确当前 `compiled-reference`，为未来 `persisted-artifact` 逐节点运行时保留升级边界 |
 | Stage 3 | Provider Attempt Recovery Contract | Done | `flow-provider-attempt-policy-v1` 校验真实调用链，明确当前不在原产物上重试，失败恢复会创建新的可比较运行 |
 | Stage 3 | Failed Run Recovery Identity | Done | `POST /api/tasks/{id}/recover` 从失败运行创建新的不可变运行，并以 `recoveryOfTaskId` 保留来源关系 |
@@ -749,7 +750,7 @@ Response:
 
 AI Task 的 `providerInputArtifacts` 按顺序声明 `flow:objective` 以及它之前所有 Input / Prompt 输出，`dependsOnNodeIds` 与这些节点严格一致。这个 fan-in 是可检查的计划契约，不是逐节点执行：当前编译器仍直接从不可变快照读取 AI Task 自身执行指令和 Output 交付重点，把所有内容编译成一个请求，也不会从数据库逐项加载这些 Artifact。
 
-V10 起，新 v5 运行会在 `flow_provider_input_references` 中把这份有序声明绑定到 AI Task 的 `provider-result` Artifact。每条引用保存契约、状态、解析方式、可用指纹和来源节点身份，不复制 payload；Task、节点 Artifact、输入引用与 Provider Attempt 在同一成功或失败事务中提交。旧 v1-v4 运行保持引用列表为空，不会根据今天的 Flow 或计划补造来源。
+V10 起，新 v5 运行会在 `flow_provider_input_references` 中把这份有序声明绑定到 AI Task 的 `provider-result` Artifact。每条引用保存契约、状态、解析方式、可用指纹和来源节点身份，不复制 payload；Task、节点 Artifact、输入引用与 Provider Attempt 在同一成功或失败事务中提交。V11 继续在 PostgreSQL 层约束非空身份、Flow objective 与 `flow-snapshot` 的组合、node source 字段以及 64 位小写 SHA-256 指纹。旧 v1-v4 运行保持引用列表为空，不会根据今天的 Flow 或计划补造来源。
 
 计划同时携带 `flow-input-resolution-v1`：当前启用的输入解析是 `compiled-reference`，`persisted-artifact` 仅作为未来 `node-sequential-runtime` 的保留契约，当前不会从数据库逐节点读取产物，也不会增加 Provider 调用次数。
 
