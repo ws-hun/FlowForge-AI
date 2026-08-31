@@ -19,11 +19,11 @@ class FlowProviderInputReferencePolicyTest {
         UUID taskId = UUID.randomUUID();
         UUID flowId = UUID.randomUUID();
         FlowNodeArtifact input = artifact(taskId, flowId, "input-1", 1,
-                "node:input-1:context-contribution", "context-contribution", "input-sha");
+                "node:input-1:context-contribution", "context-contribution", "a".repeat(64));
         FlowNodeArtifact prompt = artifact(taskId, flowId, "prompt-1", 2,
-                "node:prompt-1:instruction-contribution", "instruction-contribution", "prompt-sha");
+                "node:prompt-1:instruction-contribution", "instruction-contribution", "b".repeat(64));
         FlowNodeArtifact provider = artifact(taskId, flowId, "ai-task-1", 3,
-                "node:ai-task-1:provider-result", "provider-result", "provider-sha");
+                "node:ai-task-1:provider-result", "provider-result", "c".repeat(64));
 
         assertThatCode(() -> policy.validate(provider, List.of(
                 objective(provider, 1),
@@ -44,7 +44,7 @@ class FlowProviderInputReferencePolicyTest {
     @Test
     void rejectsNonContiguousOrderAndAnObjectiveOutsideTheFirstPosition() {
         FlowNodeArtifact provider = artifact(UUID.randomUUID(), UUID.randomUUID(), "ai-task-1", 2,
-                "node:ai-task-1:provider-result", "provider-result", "provider-sha");
+                "node:ai-task-1:provider-result", "provider-result", "a".repeat(64));
         FlowProviderInputReference objective = objective(provider, 2);
 
         assertInvalid(provider, List.of(objective), List.of());
@@ -53,7 +53,7 @@ class FlowProviderInputReferencePolicyTest {
     @Test
     void rejectsAReferenceOwnedByAnotherProviderArtifact() {
         FlowNodeArtifact provider = artifact(UUID.randomUUID(), UUID.randomUUID(), "ai-task-1", 2,
-                "node:ai-task-1:provider-result", "provider-result", "provider-sha");
+                "node:ai-task-1:provider-result", "provider-result", "a".repeat(64));
         FlowProviderInputReference objective = objective(UUID.randomUUID(), 1);
 
         assertInvalid(provider, List.of(objective), List.of());
@@ -64,9 +64,9 @@ class FlowProviderInputReferencePolicyTest {
         UUID taskId = UUID.randomUUID();
         UUID flowId = UUID.randomUUID();
         FlowNodeArtifact provider = artifact(taskId, flowId, "ai-task-1", 2,
-                "node:ai-task-1:provider-result", "provider-result", "provider-sha");
+                "node:ai-task-1:provider-result", "provider-result", "c".repeat(64));
         FlowNodeArtifact source = artifact(taskId, flowId, "input-1", 3,
-                "node:input-1:context-contribution", "context-contribution", "input-sha");
+                "node:input-1:context-contribution", "context-contribution", "a".repeat(64));
 
         assertInvalid(provider, List.of(objective(provider, 1), reference(provider, source, 2)), List.of());
         assertInvalid(provider, List.of(objective(provider, 1), reference(provider, source, 2)), List.of(source));
@@ -77,10 +77,10 @@ class FlowProviderInputReferencePolicyTest {
         UUID taskId = UUID.randomUUID();
         UUID flowId = UUID.randomUUID();
         FlowNodeArtifact provider = artifact(taskId, flowId, "ai-task-1", 2,
-                "node:ai-task-1:provider-result", "provider-result", "provider-sha");
+                "node:ai-task-1:provider-result", "provider-result", "c".repeat(64));
         FlowNodeArtifact source = artifact(taskId, flowId, "input-1", 1,
-                "node:input-1:context-contribution", "context-contribution", "input-sha");
-        FlowProviderInputReference wrongNode = reference(provider, source, 2, "input-other", "input-sha");
+                "node:input-1:context-contribution", "context-contribution", "a".repeat(64));
+        FlowProviderInputReference wrongNode = reference(provider, source, 2, "input-other", "a".repeat(64));
         FlowProviderInputReference wrongFingerprint = reference(
                 provider,
                 source,
@@ -139,7 +139,7 @@ class FlowProviderInputReferencePolicyTest {
                 .artifactStorage("flow-snapshot")
                 .artifactState("materialized")
                 .inputResolution("compiled-reference")
-                .contentFingerprint("objective-sha")
+                .contentFingerprint("e".repeat(64))
                 .build();
     }
 
