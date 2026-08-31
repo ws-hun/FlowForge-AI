@@ -4,6 +4,7 @@ import com.flowforge.ai.entity.FlowNodeArtifact;
 import com.flowforge.ai.entity.FlowProviderInputReference;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -91,6 +92,22 @@ class FlowProviderInputReferencePolicyTest {
 
         assertInvalid(provider, List.of(objective(provider, 1), wrongNode), List.of(source));
         assertInvalid(provider, List.of(objective(provider, 1), wrongFingerprint), List.of(source));
+    }
+
+    @Test
+    void rejectsMalformedFingerprintsAndNullReferenceRows() {
+        UUID taskId = UUID.randomUUID();
+        UUID flowId = UUID.randomUUID();
+        FlowNodeArtifact provider = artifact(taskId, flowId, "ai-task-1", 2,
+                "node:ai-task-1:provider-result", "provider-result", "c".repeat(64));
+        FlowNodeArtifact source = artifact(taskId, flowId, "input-1", 1,
+                "node:input-1:context-contribution", "context-contribution", "not-a-sha");
+
+        assertInvalid(provider, List.of(objective(provider, 1), reference(provider, source, 2)), List.of(source));
+        List<FlowProviderInputReference> nullRow = new ArrayList<>();
+        nullRow.add(objective(provider, 1));
+        nullRow.add(null);
+        assertInvalid(provider, nullRow, List.of(source));
     }
 
     private void assertInvalid(

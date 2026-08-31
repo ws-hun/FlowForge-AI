@@ -45,7 +45,8 @@ public class FlowProviderInputReferencePolicy {
 
         for (int index = 0; index < references.size(); index++) {
             FlowProviderInputReference reference = references.get(index);
-            if (reference.getInputOrder() == null
+            if (reference == null
+                    || reference.getInputOrder() == null
                     || reference.getInputOrder() != index + 1
                     || !providerArtifact.getId().equals(reference.getProviderArtifactId())
                     || !artifactKeys.add(reference.getArtifactKey())
