@@ -266,6 +266,7 @@ public class FlowExecutionCompiler {
             if (!node.nodeId().equals(step.nodeId())) {
                 throw new IllegalStateException("Flow failure policy requires aligned node trace and plan");
             }
+            validateNodeTerminalState(trace.status(), node);
             if ("failed".equals(node.status())) {
                 if (failedIndex >= 0 || !"ai-task".equals(node.nodeType()) || !step.providerBoundary()) {
                     throw new IllegalStateException("Flow failure policy allows one failed AI Task boundary");
@@ -287,6 +288,18 @@ public class FlowExecutionCompiler {
             if (!"skipped".equals(trace.nodes().get(index).status())) {
                 throw new IllegalStateException("Flow failure policy requires downstream nodes to be skipped");
             }
+        }
+    }
+
+    private void validateNodeTerminalState(String runStatus, FlowNodeRunTraceResponse node) {
+        String expectedStatus = switch (node.nodeType()) {
+            case "input", "prompt" -> "prepared";
+            case "ai-task" -> "completed".equals(runStatus) ? "completed" : "failed";
+            case "output" -> "completed".equals(runStatus) ? "completed" : "skipped";
+            default -> throw new IllegalStateException("Flow failure policy contains an unsupported node type");
+        };
+        if (!expectedStatus.equals(node.status())) {
+            throw new IllegalStateException("Flow failure policy contains an invalid node terminal state");
         }
     }
 

@@ -170,7 +170,53 @@ class FlowExecutionCompilerTest {
                 List.of("prepared", "prepared", "prepared", "failed", "completed")
         )))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Flow failure policy requires downstream nodes to be skipped");
+                .hasMessage("Flow failure policy contains an invalid node terminal state");
+    }
+
+    @Test
+    void requiresPreparedContributionsAndTerminalAiTaskStates() {
+        FlowExecutionPlanResponse plan = compiler.compile(
+                snapshot(Map.of("audience", "product teams"))
+        ).plan();
+
+        assertThatThrownBy(() -> compiler.validateFailurePolicy(trace(
+                "completed",
+                plan,
+                List.of("completed", "prepared", "prepared", "completed", "completed")
+        )))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Flow failure policy contains an invalid node terminal state");
+
+        assertThatThrownBy(() -> compiler.validateFailurePolicy(trace(
+                "failed",
+                plan,
+                List.of("prepared", "prepared", "prepared", "failed", "completed")
+        )))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Flow failure policy contains an invalid node terminal state");
+    }
+
+    @Test
+    void rejectsSkippedOrFailedContributionNodesEvenWhenTheRunStatusLooksValid() {
+        FlowExecutionPlanResponse plan = compiler.compile(
+                snapshot(Map.of("audience", "product teams"))
+        ).plan();
+
+        assertThatThrownBy(() -> compiler.validateFailurePolicy(trace(
+                "completed",
+                plan,
+                List.of("prepared", "skipped", "prepared", "completed", "completed")
+        )))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Flow failure policy contains an invalid node terminal state");
+
+        assertThatThrownBy(() -> compiler.validateFailurePolicy(trace(
+                "failed",
+                plan,
+                List.of("failed", "prepared", "prepared", "failed", "skipped")
+        )))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Flow failure policy contains an invalid node terminal state");
     }
 
     @Test
