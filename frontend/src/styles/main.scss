@@ -3783,9 +3783,17 @@ a {
   .flow-run-trace-node:last-child & {
     border-bottom: 0;
   }
-}
+  }
 
-.flow-run-trace-content {
+  .flow-run-trace-status-note {
+    display: block;
+    margin-top: 5px;
+    color: tokens.$text-muted;
+    font-size: 10px;
+    line-height: 1.5;
+  }
+
+  .flow-run-trace-content {
   margin-top: 10px;
 
   summary {

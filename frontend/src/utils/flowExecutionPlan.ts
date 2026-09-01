@@ -63,6 +63,13 @@ const artifactInputResolutionLabels: Record<FlowArtifactInputResolution, string>
   'persisted-artifact': '持久化产物输入'
 }
 
+const nodeRunTraceStatusDescriptions: Record<string, string> = {
+  prepared: '已编译为共享 Provider 输入，未单独调用模型。',
+  completed: '本次运行已完成该节点对应的运行职责。',
+  failed: 'Provider 边界失败，本次运行在这里停止。',
+  skipped: '上游运行失败，当前节点未执行。'
+}
+
 export function flowNodeTypeLabel(type: FlowNodeType) {
   return nodeTypeLabels[type]
 }
@@ -89,6 +96,10 @@ export function flowArtifactStorageLabel(storage: FlowArtifactStorage) {
 
 export function flowArtifactStateLabel(state: FlowArtifactState) {
   return artifactStateLabels[state]
+}
+
+export function flowNodeRunTraceStatusDescription(status: string) {
+  return nodeRunTraceStatusDescriptions[status] || '运行状态已保存。'
 }
 
 export function flowArtifactInputResolutionLabel(resolution: FlowArtifactInputResolution) {

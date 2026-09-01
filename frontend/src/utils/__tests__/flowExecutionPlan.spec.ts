@@ -8,6 +8,7 @@ import {
   flowExecutionOperationForNode,
   flowExecutionOperationLabel,
   flowNodeRuntimeDescription,
+  flowNodeRunTraceStatusDescription,
   flowNodeTypeLabel,
   flowProviderInputSummary
 } from '@/utils/flowExecutionPlan'
@@ -63,6 +64,15 @@ describe('flow execution plan labels', () => {
       { key: 'node:prompt-1:instruction-contribution', type: 'instruction-contribution', storage: 'node-artifact' }
     ])).toBe('汇入 4 个已声明输入 · Flow 目标 · 上下文产物 x 2 · 指令产物')
     expect(flowProviderInputSummary(null)).toBe('')
+  })
+
+  it('explains single-pass node trace statuses without implying node execution', () => {
+    expect(flowNodeRunTraceStatusDescription('prepared'))
+      .toBe('已编译为共享 Provider 输入，未单独调用模型。')
+    expect(flowNodeRunTraceStatusDescription('failed'))
+      .toBe('Provider 边界失败，本次运行在这里停止。')
+    expect(flowNodeRunTraceStatusDescription('skipped'))
+      .toBe('上游运行失败，当前节点未执行。')
   })
 
 })

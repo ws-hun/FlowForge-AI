@@ -43,6 +43,7 @@
             </div>
             <em :class="node.status">{{ statusLabel(node.status) }}</em>
           </header>
+          <small class="flow-run-trace-status-note">{{ statusDescription(node.status) }}</small>
 
           <details v-if="node.compiledContent" class="flow-run-trace-content">
             <summary>编译后内容</summary>
@@ -316,7 +317,8 @@ import {
   flowArtifactInputResolutionLabel,
   flowArtifactStateLabel,
   flowArtifactStorageLabel,
-  flowArtifactTypeLabel
+  flowArtifactTypeLabel,
+  flowNodeRunTraceStatusDescription
 } from '@/utils/flowExecutionPlan'
 import { flowArtifactLineageStatusLabel } from '@/utils/flowArtifactLineage'
 import {
@@ -587,5 +589,9 @@ function statusLabel(status: FlowNodeRunTraceStatus) {
     skipped: '已跳过'
   }
   return labels[status]
+}
+
+function statusDescription(status: FlowNodeRunTraceStatus) {
+  return flowNodeRunTraceStatusDescription(status)
 }
 </script>
