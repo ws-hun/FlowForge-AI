@@ -60,6 +60,16 @@ The plan order must match the immutable node snapshot and the persisted node tra
 
 New plans embed `flow-failure-policy-v1`. Preview and execution therefore expose the same failure behavior before a run begins and after it becomes immutable. Trace generation and artifact persistence both reject mismatched terminal states: a failed run has one failed AI Task boundary and every later node is `skipped`; a completed run cannot contain failed or skipped nodes. This policy describes the current single Provider attempt and is not a user-configurable retry engine.
 
+For the current single-pass trace, node states have a deliberately narrow meaning:
+
+| Node type | Completed run | Failed run |
+| --- | --- | --- |
+| Input / Prompt | `prepared` | `prepared` |
+| AI Task | `completed` | `failed` |
+| Output | `completed` | `skipped` |
+
+`prepared` means that the saved contribution was compiled into the shared Provider input; it does not mean that the node made an independent model call. `skipped` means the downstream delivery step did not run after the Provider boundary failed. The validator rejects any other terminal combination so a trace cannot claim successful Output delivery after a failed Provider call.
+
 ## 4. Node Artifact Records
 
 New direct Flow runs persist one independently addressable database artifact for every planned node output:
