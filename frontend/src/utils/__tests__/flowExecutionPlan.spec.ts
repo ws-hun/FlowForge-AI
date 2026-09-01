@@ -75,4 +75,9 @@ describe('flow execution plan labels', () => {
       .toBe('上游运行失败，当前节点未执行。')
   })
 
+  it('explains the skipped Output state used after a Provider failure', () => {
+    expect(flowNodeRunTraceStatusDescription('skipped'))
+      .toBe('上游运行失败，当前节点未执行。')
+  })
+
 })

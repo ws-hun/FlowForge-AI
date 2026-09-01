@@ -858,7 +858,7 @@ import type {
   TaskRunResponse
 } from '@/types'
 
-type FlowNodeRunState = 'idle' | 'prepared' | 'running' | 'completed' | 'error'
+type FlowNodeRunState = 'idle' | 'prepared' | 'running' | 'completed' | 'error' | 'skipped'
 type FlowRunPhase = 'idle' | 'running' | 'completed' | 'error'
 type FlowTemplate = {
   category: string
@@ -2900,6 +2900,8 @@ function buildNodeRunStatesFromTrace(nodes: FlowNode[], run: TaskHistoryItem) {
     const traceState = traceStateByNodeId.get(node.id)
     states[node.id] = traceState === 'failed'
       ? 'error'
+      : traceState === 'skipped'
+        ? 'skipped'
       : traceState === 'completed'
         ? 'completed'
         : traceState === 'prepared'
@@ -2956,7 +2958,8 @@ function nodeStateLabel(state: FlowNodeRunState) {
     prepared: 'Prepared',
     running: 'Running',
     completed: 'Done',
-    error: 'Error'
+    error: 'Error',
+    skipped: 'Skipped'
   }
   return labels[state]
 }
@@ -2970,7 +2973,8 @@ function nodeStateTitle(state: FlowNodeRunState, node: FlowNode) {
     prepared: '已准备',
     running: '正在处理',
     completed: '已完成',
-    error: '需要检查'
+    error: '需要检查',
+    skipped: '已跳过'
   }
   return labels[state]
 }
@@ -2994,6 +2998,10 @@ function nodeStateDescription(node: FlowNode, state: FlowNodeRunState) {
 
   if (state === 'error') {
     return 'AI Task 未能完成，检查 Provider 配置后可以重新运行。'
+  }
+
+  if (state === 'skipped') {
+    return '上游 AI Task 未完成，本次运行没有执行该 Output 节点。'
   }
 
   if (node.type === 'output') {
