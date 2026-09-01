@@ -2954,12 +2954,12 @@ function connectorPrepared(index: number) {
 
 function nodeStateLabel(state: FlowNodeRunState) {
   const labels: Record<FlowNodeRunState, string> = {
-    idle: 'Ready',
-    prepared: 'Prepared',
-    running: 'Running',
-    completed: 'Done',
-    error: 'Error',
-    skipped: 'Skipped'
+    idle: '待运行',
+    prepared: '已准备',
+    running: '执行中',
+    completed: '已完成',
+    error: '失败',
+    skipped: '已跳过'
   }
   return labels[state]
 }
