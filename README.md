@@ -140,6 +140,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Verified Provider Fan-in Comparison | Done | 运行对比使用不可变 v5 执行计划核对有序 Provider 输入声明；旧运行缺少声明时不根据当前 Flow 推断 |
 | Stage 3 | Flow Runtime Contract Verification | Done | 自动化测试锁定预览、真实 Provider 输入、历史保存输入、编译器版本与运行轨迹指纹的一致性 |
 | Stage 3 | Versioned Node Execution Plan | Done | Preview 与不可变运行轨迹共享 `flow-plan-v5`，固定节点顺序、输入输出产物契约、输入解析方式与唯一 Provider 边界 |
+| Stage 3 | Execution Plan Shape Integrity | Done | 服务端在运行轨迹与节点产物落库前校验 linear 顺序、节点职责、唯一 Provider 边界、产物链和依赖声明，防止现代计划漂移 |
 | Stage 3 | Provider Input Fan-in Contract | Done | AI Task 明确声明 Flow 目标及全部上游 Input / Prompt 产物，并校验有序依赖；当前仍只编译并调用一次 Provider |
 | Stage 3 | Persisted Provider Input References | Done | 新运行把 AI Task 的有序输入声明与状态、指纹原子保存，展开运行轨迹时可按需检查并定位来源 Artifact |
 | Stage 3 | Provider Input Reference Integrity | Done | Artifact Detail 读取时校验连续顺序、Provider 归属、Flow 目标首位、来源 Artifact、节点身份与内容指纹 |

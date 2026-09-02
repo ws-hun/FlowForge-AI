@@ -58,6 +58,8 @@ New `flow-plan-v5` previews and traces also carry `flow-input-resolution-v1`. Th
 
 The plan order must match the immutable node snapshot and the persisted node trace order. The number of Provider boundary steps must match `providerCallCount`.
 
+Before a modern plan can be used for trace or artifact persistence, the runtime validates its complete shape. `flow-plan-v5` must use linear scheduling, contiguous sequence numbers, the Input -> Prompt -> AI Task -> Output type order, exactly one Input, one AI Task, and one Output, and the operation/provider-boundary flags must match each node type. Every step must point to the previous artifact, except the AI Task fan-in dependencies, and every output contract must match its stable node Artifact key. Non-Provider steps cannot carry Provider input declarations. Legacy plans bypass this modern shape validator and retain their genuinely available fields.
+
 New plans embed `flow-failure-policy-v1`. Preview and execution therefore expose the same failure behavior before a run begins and after it becomes immutable. Trace generation and artifact persistence both reject mismatched terminal states: a failed run has one failed AI Task boundary and every later node is `skipped`; a completed run cannot contain failed or skipped nodes. This policy describes the current single Provider attempt and is not a user-configurable retry engine.
 
 For the current single-pass trace, node states have a deliberately narrow meaning:
