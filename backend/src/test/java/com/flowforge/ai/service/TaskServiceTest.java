@@ -84,6 +84,7 @@ class TaskServiceTest {
                 objectMapper,
                 taskFailureRecorder,
                 new FlowExecutionCompiler(),
+                new FlowDefinitionValidator(),
                 flowNodeArtifactService
         );
     }
@@ -1235,6 +1236,15 @@ class TaskServiceTest {
                                 "Recommend one scope for {audience}.",
                                 null,
                                 null
+                        ),
+                        new FlowNodeDto(
+                                "output-1",
+                                "output",
+                                "Launch result",
+                                "The fixed launch result",
+                                "Return the recommended launch scope.",
+                                null,
+                                null
                         )
                 )))
                 .createdAt(LocalDateTime.now().minusDays(1))
@@ -1299,6 +1309,24 @@ class TaskServiceTest {
                                 "   ",
                                 null,
                                 null
+                        ),
+                        new FlowNodeDto(
+                                "ai-task-1",
+                                "ai-task",
+                                "Launch analysis",
+                                "Analyze the launch context",
+                                "Recommend a focused regional launch.",
+                                null,
+                                null
+                        ),
+                        new FlowNodeDto(
+                                "output-1",
+                                "output",
+                                "Launch brief",
+                                "Deliver the launch recommendation",
+                                "Return a concise launch brief.",
+                                null,
+                                null
                         )
                 )))
                 .createdAt(LocalDateTime.now().minusMinutes(1))
@@ -1332,6 +1360,24 @@ class TaskServiceTest {
                                 "Audience context",
                                 "The audience for this run",
                                 "Prepare this for {audience} in {region}.",
+                                null,
+                                null
+                        ),
+                        new FlowNodeDto(
+                                "ai-task-1",
+                                "ai-task",
+                                "Audience analysis",
+                                "Analyze the audience context",
+                                "Choose the most useful framing.",
+                                null,
+                                null
+                        ),
+                        new FlowNodeDto(
+                                "output-1",
+                                "output",
+                                "Audience brief",
+                                "Deliver the audience brief",
+                                "Return a concise brief.",
                                 null,
                                 null
                         )
@@ -1379,6 +1425,24 @@ class TaskServiceTest {
                                 "   ",
                                 null,
                                 null
+                        ),
+                        new FlowNodeDto(
+                                "ai-task-1",
+                                "ai-task",
+                                "Research analysis",
+                                "Analyze the research context",
+                                "Identify the highest-value findings.",
+                                null,
+                                null
+                        ),
+                        new FlowNodeDto(
+                                "output-1",
+                                "output",
+                                "Research brief",
+                                "Deliver the research findings",
+                                "Return an actionable research brief.",
+                                null,
+                                null
                         )
                 )))
                 .createdAt(LocalDateTime.now().minusMinutes(1))
@@ -1395,6 +1459,48 @@ class TaskServiceTest {
         )))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("请完善 Flow 节点: Market context");
+
+        verifyNoInteractions(openAiService, taskRepository);
+    }
+
+    @Test
+    void rejectsInvalidPersistedFlowDefinitionsBeforePreviewOrExecution() throws Exception {
+        UUID flowId = UUID.randomUUID();
+        Workflow flow = Workflow.builder()
+                .id(flowId)
+                .title("Invalid legacy flow")
+                .description("Missing its Provider and Output boundaries")
+                .nodesJson(new ObjectMapper().writeValueAsString(List.of(
+                        new FlowNodeDto(
+                                "input-1",
+                                "input",
+                                "Context",
+                                "Saved context",
+                                "Prepare a release brief.",
+                                null,
+                                null
+                        )
+                )))
+                .createdAt(LocalDateTime.now().minusMinutes(1))
+                .updatedAt(LocalDateTime.now())
+                .build();
+        when(workflowRepository.findById(flowId)).thenReturn(Optional.of(flow));
+
+        assertThatThrownBy(() -> taskService.previewFlowExecution(
+                flowId,
+                new FlowExecutionPreviewRequest(null, Map.of())
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("当前 Flow 运行模型需要且只支持一个 AI Task 节点");
+        assertThatThrownBy(() -> taskService.runTask(new RunTaskRequest(
+                "",
+                null,
+                flowId,
+                null,
+                Map.of()
+        )))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("当前 Flow 运行模型需要且只支持一个 AI Task 节点");
 
         verifyNoInteractions(openAiService, taskRepository);
     }

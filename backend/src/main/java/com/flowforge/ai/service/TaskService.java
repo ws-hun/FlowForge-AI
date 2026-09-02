@@ -49,6 +49,7 @@ public class TaskService {
     private final ObjectMapper objectMapper;
     private final TaskFailureRecorder taskFailureRecorder;
     private final FlowExecutionCompiler flowExecutionCompiler;
+    private final FlowDefinitionValidator flowDefinitionValidator;
     private final FlowNodeArtifactService flowNodeArtifactService;
 
     @Transactional
@@ -74,6 +75,7 @@ public class TaskService {
         FlowRunSnapshotResponse flowRunSnapshot = null;
         if (sourceFlow != null) {
             flowRunSnapshot = createFlowRunSnapshot(sourceFlow, request.flowRunContext(), request.flowVariableValues());
+            flowDefinitionValidator.validate(flowRunSnapshot.nodes());
         } else if (continuedFromTask != null) {
             flowRunSnapshot = deserializeFlowRunSnapshot(continuedFromTask.getSourceFlowSnapshotJson());
         }
@@ -309,6 +311,7 @@ public class TaskService {
                 request.runtimeContext(),
                 request.variableValues()
         );
+        flowDefinitionValidator.validate(flowRunSnapshot.nodes());
 
         FlowExecutionCompiler.Compilation compiledExecution = flowExecutionCompiler.compile(flowRunSnapshot);
         List<String> missingVariables = flowExecutionCompiler.findMissingVariables(flowRunSnapshot);
