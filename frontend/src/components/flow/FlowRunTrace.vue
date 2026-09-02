@@ -9,8 +9,8 @@
           <template v-if="trace.replayedFromTaskId">
             来源 <code :title="trace.replayedFromTaskId">{{ shortRunId(trace.replayedFromTaskId) }}</code> ·
           </template>
-          {{ executionModeLabel(trace.executionMode) }} · {{ trace.nodes.length }} 个节点 ·
-          {{ trace.providerCallCount }} 次 Provider 调用
+          {{ flowExecutionModeLabel(trace.executionMode) }} · {{ trace.nodes.length }} 个节点 ·
+          {{ flowProviderCallCountLabel(trace.providerCallCount) }}
           <template v-if="trace.compilerVersion"> · {{ trace.compilerVersion }}</template>
           <template v-if="trace.executionInputFingerprint">
             · <code :title="trace.executionInputFingerprint">输入 {{ shortFingerprint(trace.executionInputFingerprint) }}</code>
@@ -301,7 +301,6 @@ import type {
   FlowArtifactState,
   FlowArtifactStorage,
   FlowArtifactType,
-  FlowExecutionMode,
   FlowNodeArtifactLineage,
   FlowNodeArtifactLineageEntry,
   FlowNodeArtifactDetail,
@@ -317,8 +316,10 @@ import {
   flowArtifactStateLabel,
   flowArtifactStorageLabel,
   flowArtifactTypeLabel,
+  flowExecutionModeLabel,
   flowNodeTypeLabel,
-  flowNodeRunTraceStatusDescription
+  flowNodeRunTraceStatusDescription,
+  flowProviderCallCountLabel
 } from '@/utils/flowExecutionPlan'
 import { flowArtifactLineageStatusLabel } from '@/utils/flowArtifactLineage'
 import {
@@ -552,10 +553,6 @@ function providerInputSourceLabel(nodeId: string | null | undefined) {
   }
   const node = props.trace.nodes.find((item) => item.nodeId === nodeId)
   return node ? `${flowNodeTypeLabel(node.nodeType)} · ${node.title}` : '节点产物'
-}
-
-function executionModeLabel(mode: FlowExecutionMode | null | undefined) {
-  return mode === 'node-sequential' ? '节点顺序执行' : '单次编译执行'
 }
 
 function shortFingerprint(fingerprint: string) {

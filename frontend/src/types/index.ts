@@ -358,7 +358,7 @@ export interface FlowRunTrace {
   flowId: string
   status: 'completed' | 'failed'
   executionMode?: FlowExecutionMode | null
-  providerCallCount: number
+  providerCallCount?: number | null
   compilerVersion?: string | null
   executionInputFingerprint?: string | null
   inputSource?: 'compiled-flow' | 'stored-input-replay' | 'stored-input-recovery' | null

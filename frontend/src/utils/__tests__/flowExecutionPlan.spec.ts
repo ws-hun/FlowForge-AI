@@ -4,12 +4,14 @@ import {
   flowArtifactStorageLabel,
   flowArtifactStateLabel,
   flowArtifactTypeLabel,
+  flowExecutionModeLabel,
   flowExecutionFailurePolicySummary,
   flowExecutionOperationForNode,
   flowExecutionOperationLabel,
   flowNodeRuntimeDescription,
   flowNodeRunTraceStatusDescription,
   flowNodeTypeLabel,
+  flowProviderCallCountLabel,
   flowProviderInputSummary
 } from '@/utils/flowExecutionPlan'
 
@@ -73,6 +75,13 @@ describe('flow execution plan labels', () => {
       .toBe('Provider 边界失败，本次运行在这里停止。')
     expect(flowNodeRunTraceStatusDescription('skipped'))
       .toBe('上游运行失败，当前节点未执行。')
+  })
+
+  it('keeps missing legacy runtime evidence unknown', () => {
+    expect(flowExecutionModeLabel('single-pass')).toBe('单次编译执行')
+    expect(flowExecutionModeLabel(null)).toBe('运行模式未记录')
+    expect(flowProviderCallCountLabel(1)).toBe('1 次 Provider 调用')
+    expect(flowProviderCallCountLabel(undefined)).toBe('调用次数未记录')
   })
 
   it('explains the skipped Output state used after a Provider failure', () => {

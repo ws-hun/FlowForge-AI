@@ -5,6 +5,7 @@ import type {
   FlowArtifactState,
   FlowArtifactType,
   FlowExecutionFailurePolicy,
+  FlowExecutionMode,
   FlowExecutionOperation,
   FlowNodeType
 } from '@/types'
@@ -100,6 +101,16 @@ export function flowArtifactStateLabel(state: FlowArtifactState) {
 
 export function flowNodeRunTraceStatusDescription(status: string) {
   return nodeRunTraceStatusDescriptions[status] || '运行状态已保存。'
+}
+
+export function flowExecutionModeLabel(mode: FlowExecutionMode | null | undefined) {
+  if (mode === 'single-pass') return '单次编译执行'
+  if (mode === 'node-sequential') return '节点顺序执行'
+  return '运行模式未记录'
+}
+
+export function flowProviderCallCountLabel(count: number | null | undefined) {
+  return typeof count === 'number' ? `${count} 次 Provider 调用` : '调用次数未记录'
 }
 
 export function flowArtifactInputResolutionLabel(resolution: FlowArtifactInputResolution) {
