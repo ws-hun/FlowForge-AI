@@ -746,6 +746,8 @@ Response:
 
 `flowRunTrace` 仅为直接 Flow 运行生成，并由服务端随 Task 不可变保存。它记录每个快照节点在本次运行中的 `prepared`、`completed`、`failed` 或 `skipped` 状态；成功与失败记录都会保留，历史精确重跑会为新 Task 生成新的轨迹。Continuation 与手工编辑的历史输入变体不会继承轨迹，以免被误认为原 Flow 执行。
 
+旧运行缺少 `executionMode` 或 `providerCallCount` 时，运行轨迹会明确显示“未记录”，不会使用当前 single-pass 契约反向补造历史执行证据。
+
 当前 single-pass 的状态语义保持固定：Input / Prompt 始终是编译贡献并显示为 `prepared`；AI Task 是唯一 Provider 边界，成功为 `completed`、失败为 `failed`；Output 只有在 Provider 成功后为 `completed`，失败运行中为 `skipped`。这套状态不代表每个节点都独立调用了模型。
 
 当前 Flow Runtime 仍把所有已保存节点编译成一个确定性输入，并执行 **一次共享 Provider 调用**。因此 `providerCallCount` 当前固定为 `1`，Flow Run Trace 是可解释的服务端运行记录，不代表每个节点都进行了独立模型调用。
