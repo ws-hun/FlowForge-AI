@@ -188,6 +188,63 @@ class FlowExecutionCompilerTest {
     }
 
     @Test
+    void rejectsAPlanWithNonContiguousSequenceNumbers() {
+        FlowExecutionPlanResponse plan = compiler.compile(
+                snapshot(Map.of("audience", "product teams"))
+        ).plan();
+        FlowExecutionPlanResponse invalidPlan = replaceStep(
+                plan,
+                "prompt-1",
+                step -> copyStep(step, 8, step.providerBoundary(), step.inputArtifact())
+        );
+
+        assertThatThrownBy(() -> compiler.validateExecutionPlan(invalidPlan))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Flow execution plan shape is invalid");
+    }
+
+    @Test
+    void rejectsAPlanWithADriftedProviderBoundary() {
+        FlowExecutionPlanResponse plan = compiler.compile(
+                snapshot(Map.of("audience", "product teams"))
+        ).plan();
+        FlowExecutionPlanResponse invalidPlan = replaceStep(
+                plan,
+                "output-1",
+                step -> copyStep(step, step.sequence(), true, step.inputArtifact())
+        );
+
+        assertThatThrownBy(() -> compiler.validateExecutionPlan(invalidPlan))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Flow execution plan shape is invalid");
+    }
+
+    @Test
+    void rejectsAPlanWithABrokenArtifactChain() {
+        FlowExecutionPlanResponse plan = compiler.compile(
+                snapshot(Map.of("audience", "product teams"))
+        ).plan();
+        FlowExecutionPlanResponse invalidPlan = replaceStep(
+                plan,
+                "output-1",
+                step -> copyStep(
+                        step,
+                        step.sequence(),
+                        step.providerBoundary(),
+                        new FlowArtifactContractResponse(
+                                "flow:objective",
+                                "flow-objective",
+                                "flow-snapshot"
+                        )
+                )
+        );
+
+        assertThatThrownBy(() -> compiler.validateExecutionPlan(invalidPlan))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Flow execution plan shape is invalid");
+    }
+
+    @Test
     void reportsMissingVariablesInFirstUseOrderAndPreservesUnresolvedTokens() {
         FlowRunSnapshotResponse snapshot = snapshot(Map.of("audience", ""));
 
@@ -409,6 +466,44 @@ class FlowExecutionCompilerTest {
                 steps,
                 plan.failurePolicy(),
                 plan.inputResolutionContract()
+        );
+    }
+
+    private FlowExecutionPlanResponse replaceStep(
+            FlowExecutionPlanResponse plan,
+            String nodeId,
+            java.util.function.UnaryOperator<FlowExecutionStepResponse> replacement
+    ) {
+        List<FlowExecutionStepResponse> steps = plan.steps().stream()
+                .map(step -> nodeId.equals(step.nodeId()) ? replacement.apply(step) : step)
+                .toList();
+        return new FlowExecutionPlanResponse(
+                plan.version(),
+                plan.scheduling(),
+                steps,
+                plan.failurePolicy(),
+                plan.inputResolutionContract()
+        );
+    }
+
+    private FlowExecutionStepResponse copyStep(
+            FlowExecutionStepResponse step,
+            int sequence,
+            boolean providerBoundary,
+            FlowArtifactContractResponse inputArtifact
+    ) {
+        return new FlowExecutionStepResponse(
+                sequence,
+                step.nodeId(),
+                step.nodeType(),
+                step.title(),
+                step.operation(),
+                step.dependsOnNodeIds(),
+                providerBoundary,
+                inputArtifact,
+                step.providerInputArtifacts(),
+                step.inputResolution(),
+                step.outputArtifact()
         );
     }
 
