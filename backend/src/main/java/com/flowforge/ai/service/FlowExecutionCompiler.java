@@ -44,6 +44,12 @@ public class FlowExecutionCompiler {
                     "node-sequential-runtime"
             );
     static final String FAILURE_POLICY_VERSION = "flow-failure-policy-v1";
+    private static final Map<String, Integer> NODE_ORDER = Map.of(
+            "input", 0,
+            "prompt", 1,
+            "ai-task", 2,
+            "output", 3
+    );
     static final FlowExecutionFailurePolicyResponse SINGLE_PASS_FAILURE_POLICY =
             new FlowExecutionFailurePolicyResponse(
                     FAILURE_POLICY_VERSION,
@@ -236,6 +242,7 @@ public class FlowExecutionCompiler {
         }
 
         FlowExecutionPlanResponse plan = trace.executionPlan();
+        validateExecutionPlan(plan);
         validateInputResolutionContract(plan);
         validateProviderInputArtifacts(plan);
         if (plan.failurePolicy() == null) {
@@ -291,6 +298,83 @@ public class FlowExecutionCompiler {
         }
     }
 
+    void validateExecutionPlan(FlowExecutionPlanResponse plan) {
+        if (plan == null || !PLAN_VERSION.equals(plan.version())) {
+            return;
+        }
+        if (!PLAN_SCHEDULING.equals(plan.scheduling()) || plan.steps() == null || plan.steps().isEmpty()) {
+            throw new IllegalStateException("Flow execution plan shape is invalid");
+        }
+
+        Set<String> nodeIds = new LinkedHashSet<>();
+        List<String> providerDependencyNodeIds = new ArrayList<>();
+        FlowArtifactContractResponse previousArtifact = new FlowArtifactContractResponse(
+                "flow:objective",
+                "flow-objective",
+                "flow-snapshot"
+        );
+        String previousNodeId = null;
+        int previousOrder = -1;
+        int inputCount = 0;
+        int providerCount = 0;
+        int outputCount = 0;
+
+        for (int index = 0; index < plan.steps().size(); index++) {
+            FlowExecutionStepResponse step = plan.steps().get(index);
+            if (step == null
+                    || step.sequence() != index + 1
+                    || !StringUtils.hasText(step.nodeId())
+                    || !nodeIds.add(step.nodeId())) {
+                throw new IllegalStateException("Flow execution plan shape is invalid");
+            }
+
+            Integer nodeOrder = NODE_ORDER.get(step.nodeType());
+            if (nodeOrder == null || nodeOrder < previousOrder) {
+                throw new IllegalStateException("Flow execution plan shape is invalid");
+            }
+            previousOrder = nodeOrder;
+
+            boolean providerBoundary = "ai-task".equals(step.nodeType());
+            if (!operationFor(step.nodeType()).equals(step.operation())
+                    || step.providerBoundary() != providerBoundary
+                    || !INPUT_RESOLUTION.equals(step.inputResolution())) {
+                throw new IllegalStateException("Flow execution plan shape is invalid");
+            }
+
+            FlowArtifactContractResponse expectedInput = previousArtifact;
+            FlowArtifactContractResponse expectedOutput = outputArtifactFor(step.nodeId(), step.nodeType());
+            List<String> expectedDependencies = providerBoundary
+                    ? List.copyOf(providerDependencyNodeIds)
+                    : previousNodeId == null ? List.of() : List.of(previousNodeId);
+            if (!expectedInput.equals(step.inputArtifact())
+                    || !expectedOutput.equals(step.outputArtifact())
+                    || !expectedDependencies.equals(step.dependsOnNodeIds())) {
+                throw new IllegalStateException("Flow execution plan shape is invalid");
+            }
+            if (!providerBoundary && step.providerInputArtifacts() != null) {
+                throw new IllegalStateException("Flow execution plan shape is invalid");
+            }
+
+            switch (step.nodeType()) {
+                case "input" -> inputCount++;
+                case "ai-task" -> providerCount++;
+                case "output" -> outputCount++;
+                default -> {
+                    // Prompt nodes are optional and may be repeated.
+                }
+            }
+            if ("input".equals(step.nodeType()) || "prompt".equals(step.nodeType())) {
+                providerDependencyNodeIds.add(step.nodeId());
+            }
+            previousNodeId = step.nodeId();
+            previousArtifact = step.outputArtifact();
+        }
+
+        if (inputCount == 0 || providerCount != 1 || outputCount != 1) {
+            throw new IllegalStateException("Flow execution plan shape is invalid");
+        }
+    }
+
     private void validateNodeTerminalState(String runStatus, FlowNodeRunTraceResponse node) {
         String expectedStatus = switch (node.nodeType()) {
             case "input", "prompt" -> "prepared";
@@ -338,7 +422,8 @@ public class FlowExecutionCompiler {
             throw new IllegalStateException("Flow Provider input contract requires objective and node inputs");
         }
         FlowArtifactContractResponse objective = inputs.get(0);
-        if (!"flow:objective".equals(objective.key())
+        if (objective == null
+                || !"flow:objective".equals(objective.key())
                 || !"flow-objective".equals(objective.type())
                 || !"flow-snapshot".equals(objective.storage())) {
             throw new IllegalStateException("Flow Provider input objective contract is invalid");
@@ -423,15 +508,19 @@ public class FlowExecutionCompiler {
     }
 
     private FlowArtifactContractResponse outputArtifactFor(FlowNodeDto node) {
-        String artifactType = switch (node.type()) {
+        return outputArtifactFor(node.id(), node.type());
+    }
+
+    private FlowArtifactContractResponse outputArtifactFor(String nodeId, String nodeType) {
+        String artifactType = switch (nodeType) {
             case "input" -> "context-contribution";
             case "prompt" -> "instruction-contribution";
             case "ai-task" -> "provider-result";
             case "output" -> "result-document";
-            default -> throw new IllegalArgumentException("Unsupported Flow node type: " + node.type());
+            default -> throw new IllegalArgumentException("Unsupported Flow node type: " + nodeType);
         };
         return new FlowArtifactContractResponse(
-                "node:" + node.id() + ":" + artifactType,
+                "node:" + nodeId + ":" + artifactType,
                 artifactType,
                 "node-artifact"
         );

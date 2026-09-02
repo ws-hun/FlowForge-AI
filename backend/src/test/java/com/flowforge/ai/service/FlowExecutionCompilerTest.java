@@ -144,6 +144,50 @@ class FlowExecutionCompilerTest {
     }
 
     @Test
+    void acceptsTheCompleteSinglePassExecutionPlanShape() {
+        FlowExecutionPlanResponse plan = compiler.compile(
+                snapshot(Map.of("audience", "product teams"))
+        ).plan();
+
+        assertThatCode(() -> compiler.validateExecutionPlan(plan)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void rejectsAPlanWhoseNodeResponsibilityDriftsFromItsOperation() {
+        FlowExecutionPlanResponse plan = compiler.compile(
+                snapshot(Map.of("audience", "product teams"))
+        ).plan();
+        List<FlowExecutionStepResponse> invalidSteps = plan.steps().stream()
+                .map(step -> "ai-task".equals(step.nodeType())
+                        ? new FlowExecutionStepResponse(
+                        step.sequence(),
+                        step.nodeId(),
+                        step.nodeType(),
+                        step.title(),
+                        "define-delivery",
+                        step.dependsOnNodeIds(),
+                        step.providerBoundary(),
+                        step.inputArtifact(),
+                        step.providerInputArtifacts(),
+                        step.inputResolution(),
+                        step.outputArtifact()
+                )
+                        : step)
+                .toList();
+        FlowExecutionPlanResponse invalidPlan = new FlowExecutionPlanResponse(
+                plan.version(),
+                plan.scheduling(),
+                invalidSteps,
+                plan.failurePolicy(),
+                plan.inputResolutionContract()
+        );
+
+        assertThatThrownBy(() -> compiler.validateExecutionPlan(invalidPlan))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Flow execution plan shape is invalid");
+    }
+
+    @Test
     void reportsMissingVariablesInFirstUseOrderAndPreservesUnresolvedTokens() {
         FlowRunSnapshotResponse snapshot = snapshot(Map.of("audience", ""));
 

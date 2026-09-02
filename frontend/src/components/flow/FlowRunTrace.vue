@@ -38,7 +38,7 @@
         <div class="flow-run-trace-node-body">
           <header>
             <div>
-              <span>{{ nodeTypeLabel(node.nodeType) }}</span>
+              <span>{{ flowNodeTypeLabel(node.nodeType) }}</span>
               <strong>{{ node.title }}</strong>
             </div>
             <em :class="node.status">{{ statusLabel(node.status) }}</em>
@@ -307,7 +307,6 @@ import type {
   FlowNodeArtifactDetail,
   FlowNodeRunTrace,
   FlowNodeRunTraceStatus,
-  FlowNodeType,
   FlowRunTrace
 } from '@/types'
 import { getTaskArtifact, getTaskArtifactLineage } from '@/api/tasks'
@@ -318,6 +317,7 @@ import {
   flowArtifactStateLabel,
   flowArtifactStorageLabel,
   flowArtifactTypeLabel,
+  flowNodeTypeLabel,
   flowNodeRunTraceStatusDescription
 } from '@/utils/flowExecutionPlan'
 import { flowArtifactLineageStatusLabel } from '@/utils/flowArtifactLineage'
@@ -543,7 +543,7 @@ function nodeTypeLabelForLineage(nodeId: string | null | undefined) {
     return '节点产物'
   }
   const node = props.trace.nodes.find((item) => item.nodeId === nodeId)
-  return node ? nodeTypeLabel(node.nodeType) : '节点产物'
+  return node ? flowNodeTypeLabel(node.nodeType) : '节点产物'
 }
 
 function providerInputSourceLabel(nodeId: string | null | undefined) {
@@ -551,17 +551,7 @@ function providerInputSourceLabel(nodeId: string | null | undefined) {
     return 'Flow 快照目标'
   }
   const node = props.trace.nodes.find((item) => item.nodeId === nodeId)
-  return node ? `${nodeTypeLabel(node.nodeType)} · ${node.title}` : '节点产物'
-}
-
-function nodeTypeLabel(type: FlowNodeType) {
-  const labels: Record<FlowNodeType, string> = {
-    input: 'Input',
-    prompt: 'Prompt',
-    'ai-task': 'AI Task',
-    output: 'Output'
-  }
-  return labels[type]
+  return node ? `${flowNodeTypeLabel(node.nodeType)} · ${node.title}` : '节点产物'
 }
 
 function executionModeLabel(mode: FlowExecutionMode | null | undefined) {
