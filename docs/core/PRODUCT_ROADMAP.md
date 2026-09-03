@@ -167,7 +167,7 @@ Current Stage 3 capabilities:
 - Reusing historical Flow Run settings remains one action for empty or unchanged briefs, while protecting meaningful current context with an explicit replacement decision.
 - Failed Flow runs can be reopened in Flow Space, restore their persisted node states, rerun the exact historical input, and compare the immutable failure with its recovery run.
 - Every node-backed execution section can reopen its exact Flow node from Flow Space or AI Command, keeping inspection connected to editing.
-- Preview readiness issues are actionable: missing variables focus their Run Brief field and incomplete nodes reopen their exact Inspector context.
+- Preview readiness issues are actionable: missing variables focus their Run Brief field, while nodes with missing title, description, or content reopen their exact Inspector context before execution.
 - History uses readable run titles while preserving the exact stored server input for inspection, copying, failed-run recovery, and run comparison.
 - History remains a calm timeline while supporting local discovery across run content, source assets, Provider metadata, Flow runs, Prompt runs, and failures.
 - Any historical server input can branch into an editable AI Command variant with explicit run lineage and without inheriting a stale Flow snapshot.
