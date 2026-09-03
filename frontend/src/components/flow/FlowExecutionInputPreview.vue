@@ -79,11 +79,11 @@
             :class="{ 'is-active': activeView === 'raw' }"
             @click="activeView = 'raw'"
           >
-            Raw 输入
+            原始输入
           </button>
         </div>
         <span>
-          {{ executionModeLabel(preview.executionMode) }} · {{ preview.sections.length }} 个执行段 ·
+          {{ flowExecutionModeLabel(preview.executionMode) }} · {{ preview.sections.length }} 个执行段 ·
           {{ preview.providerCallCount }} 次 Provider 调用 · {{ preview.compilerVersion }} ·
           <code :title="preview.executionInputFingerprint">输入 {{ shortFingerprint(preview.executionInputFingerprint) }}</code>
         </span>
@@ -136,6 +136,7 @@ import { CopyDocument, RefreshRight, Right } from '@element-plus/icons-vue'
 import { previewFlowExecution } from '@/api/flows'
 import FlowExecutionPlan from '@/components/flow/FlowExecutionPlan.vue'
 import type { FlowExecutionPreviewResponse, FlowExecutionSectionKind } from '@/types'
+import { flowExecutionModeLabel } from '@/utils/flowExecutionPlan'
 
 const props = withDefaults(
   defineProps<{
@@ -261,10 +262,6 @@ function sectionKindLabel(kind: FlowExecutionSectionKind) {
   return sectionKindLabels[kind]
 }
 
-function executionModeLabel(mode: FlowExecutionPreviewResponse['executionMode']) {
-  return mode === 'node-sequential' ? 'Node sequential' : 'Single-pass'
-}
-
 function shortFingerprint(fingerprint: string | null | undefined) {
   return fingerprint ? fingerprint.slice(0, 10) : 'unknown'
 }
@@ -290,7 +287,7 @@ async function copyExecutionInput() {
     await navigator.clipboard.writeText(preview.value.executionInput)
     ElMessage.success('完整执行输入已复制')
   } catch {
-    ElMessage.error('复制失败，请在 Raw 输入中手动复制')
+    ElMessage.error('复制失败，请在原始输入中手动复制')
   }
 }
 </script>
