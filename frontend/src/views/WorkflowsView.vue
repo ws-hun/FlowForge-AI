@@ -191,13 +191,13 @@
               :class="[
                 node.type,
                 `is-${nodeStatus(node.id)}`,
-                { active: selectedNode?.id === node.id, 'is-incomplete': nodeNeedsContent(node) }
+                { active: selectedNode?.id === node.id, 'is-incomplete': flowNodeNeedsAttention(node) }
               ]"
               @click="selectFlowNode(node.id)"
             >
               <div class="flow-node-meta">
                 <span class="flow-node-type">{{ nodeLabel(node.type) }}</span>
-                <span class="flow-node-state">{{ nodeNeedsContent(node) ? 'Needs content' : nodeStateLabel(nodeStatus(node.id)) }}</span>
+                <span class="flow-node-state">{{ flowNodeNeedsAttention(node) ? '待补充' : nodeStateLabel(nodeStatus(node.id)) }}</span>
               </div>
               <small class="flow-node-operation">{{ flowExecutionOperationLabel(flowExecutionOperationForNode(node.type)) }}</small>
               <strong>{{ node.title }}</strong>
@@ -569,10 +569,10 @@
           </section>
 
           <div class="node-status-card" :class="[selectedNodeState, { incomplete: selectedNodeIncomplete }]">
-            <span>{{ selectedNodeIncomplete ? 'Needs content' : nodeStateLabel(selectedNodeState) }}</span>
-            <strong>{{ selectedNodeIncomplete ? '补充节点内容' : nodeStateTitle(selectedNodeState, selectedNode) }}</strong>
+            <span>{{ selectedNodeIncomplete ? flowNodeReadinessLabel(selectedNode) : nodeStateLabel(selectedNodeState) }}</span>
+            <strong>{{ selectedNodeIncomplete ? '补充节点信息' : nodeStateTitle(selectedNodeState, selectedNode) }}</strong>
             <p>
-              {{ selectedNodeIncomplete ? '填写并保存节点内容后，它才会进入真实 Flow 执行。' : nodeStateDescription(selectedNode, selectedNodeState) }}
+              {{ selectedNodeIncomplete ? flowNodeReadinessDescription(selectedNode) : nodeStateDescription(selectedNode, selectedNodeState) }}
             </p>
           </div>
 
@@ -829,6 +829,11 @@ import {
   flowExecutionOperationLabel,
   flowNodeRuntimeDescription
 } from '@/utils/flowExecutionPlan'
+import {
+  flowNodeNeedsAttention,
+  flowNodeReadinessDescription,
+  flowNodeReadinessLabel
+} from '@/utils/flowNodeReadiness'
 import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
 import { listFlowRuns, listFlowVersions } from '@/api/flows'
 import { createPrompt, listPrompts } from '@/api/prompts'
@@ -1044,7 +1049,7 @@ const flowVariableNodeMap = computed<Record<string, FlowNode[]>>(() => {
 const flowVariables = computed(() => Object.keys(flowVariableNodeMap.value))
 
 const incompleteFlowNodes = computed(() =>
-  (workspace.activeFlow?.nodes || []).filter((node) => nodeNeedsContent(node))
+  (workspace.activeFlow?.nodes || []).filter(flowNodeNeedsAttention)
 )
 const hasIncompleteFlowNodes = computed(() => incompleteFlowNodes.value.length > 0)
 const incompleteFlowNodeLabels = computed(() => incompleteFlowNodes.value.map((node) => `「${node.title}」`).join('、'))
@@ -1130,7 +1135,7 @@ const selectedNodeState = computed<FlowNodeRunState>(() => {
   }
   return nodeStatus(selectedNode.value.id)
 })
-const selectedNodeIncomplete = computed(() => Boolean(selectedNode.value && nodeNeedsContent(selectedNode.value)))
+const selectedNodeIncomplete = computed(() => Boolean(selectedNode.value && flowNodeNeedsAttention(selectedNode.value)))
 const selectedNodeSequence = computed(() => {
   if (!workspace.activeFlow || !selectedNode.value) {
     return 0
@@ -2814,10 +2819,6 @@ function flowVariableNodeTypeLabel(node: FlowNode) {
     return 'Context'
   }
   return nodeLabel(node.type)
-}
-
-function nodeNeedsContent(node: FlowNode) {
-  return !node.content?.trim()
 }
 
 function flowRevisionChangeLabel(kind: 'restore' | 'remove' | 'update' | 'reorder') {

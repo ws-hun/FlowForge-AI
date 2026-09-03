@@ -137,6 +137,7 @@ import { previewFlowExecution } from '@/api/flows'
 import FlowExecutionPlan from '@/components/flow/FlowExecutionPlan.vue'
 import type { FlowExecutionPreviewResponse, FlowExecutionSectionKind } from '@/types'
 import { flowExecutionModeLabel } from '@/utils/flowExecutionPlan'
+import { flowNodeNeedsAttention } from '@/utils/flowNodeReadiness'
 
 const props = withDefaults(
   defineProps<{
@@ -174,7 +175,7 @@ const activeView = ref<'outline' | 'raw'>('outline')
 
 const readinessLabel = computed(() => preview.value?.executable ? '本次执行输入已就绪' : '本次执行仍需补全')
 const incompleteNodeIssues = computed(() =>
-  preview.value?.flowRunSnapshot.nodes.filter((node) => !node.content?.trim()) || []
+  preview.value?.flowRunSnapshot.nodes.filter(flowNodeNeedsAttention) || []
 )
 const readinessIssueCount = computed(() =>
   (preview.value?.missingVariables.length || 0) + incompleteNodeIssues.value.length
