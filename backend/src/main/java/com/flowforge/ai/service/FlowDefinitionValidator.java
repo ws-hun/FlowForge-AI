@@ -2,6 +2,7 @@ package com.flowforge.ai.service;
 
 import com.flowforge.ai.dto.FlowNodeDto;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.util.HashSet;
 import java.util.List;
@@ -30,7 +31,11 @@ public class FlowDefinitionValidator {
         int outputCount = 0;
 
         for (FlowNodeDto node : nodes) {
-            String rawNodeId = node == null || node.id() == null ? "" : node.id();
+            if (node == null) {
+                throw new IllegalArgumentException("Flow 节点不能为空");
+            }
+
+            String rawNodeId = node.id() == null ? "" : node.id();
             String nodeId = rawNodeId.trim();
             if (nodeId.isEmpty()) {
                 throw new IllegalArgumentException("Flow 节点 ID 不能为空");
@@ -40,6 +45,13 @@ public class FlowDefinitionValidator {
             }
             if (!nodeIds.add(nodeId)) {
                 throw new IllegalArgumentException("Flow 节点 ID 重复: " + nodeId);
+            }
+
+            if (!StringUtils.hasText(node.title())) {
+                throw new IllegalArgumentException("Flow 节点标题不能为空: " + nodeId);
+            }
+            if (!StringUtils.hasText(node.description())) {
+                throw new IllegalArgumentException("Flow 节点说明不能为空: " + nodeId);
             }
 
             String type = node.type() == null ? "" : node.type();
