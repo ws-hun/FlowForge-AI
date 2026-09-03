@@ -2,7 +2,7 @@
   <section class="flow-provider-attempts">
     <header>
       <div>
-        <span>Provider Attempts</span>
+        <span>Provider 调用记录</span>
         <strong>真实调用尝试</strong>
       </div>
       <small>{{ attempts.length }} 次已记录</small>

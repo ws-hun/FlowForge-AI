@@ -10,14 +10,14 @@
 
     <div class="flow-run-snapshot-body">
       <div class="flow-run-snapshot-heading">
-        <span>Flow snapshot</span>
+        <span>Flow 快照</span>
         <strong>{{ snapshot.title }}</strong>
         <p>{{ snapshot.description }}</p>
       </div>
 
       <div v-if="snapshot.sourceFlowId" class="flow-run-snapshot-origin">
         <div>
-          <span>Derived from</span>
+          <span>来源于</span>
           <strong>
             {{ snapshot.sourceFlowTitle || '来源 Flow' }}
             <small v-if="snapshot.sourceFlowVersionNumber">v{{ snapshot.sourceFlowVersionNumber }}</small>

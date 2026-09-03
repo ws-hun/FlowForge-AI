@@ -24,7 +24,7 @@
       <FlowExecutionPlan
         v-if="trace.executionPlan"
         :plan="trace.executionPlan"
-        eyebrow="Persisted Plan"
+        eyebrow="已保存执行计划"
         title="本次运行保存的执行路径"
         :node-action-label="nodeActionLabel"
         :navigable-node-ids="navigableNodeIds"

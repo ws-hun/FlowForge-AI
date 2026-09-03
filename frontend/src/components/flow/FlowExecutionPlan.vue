@@ -9,13 +9,13 @@
     </header>
 
     <div v-if="failurePolicySummary" class="flow-execution-plan-policy">
-      <span>Failure Policy</span>
+      <span>失败策略</span>
       <p>{{ failurePolicySummary }}</p>
       <small>{{ plan.failurePolicy?.version }}</small>
     </div>
 
     <div v-if="plan.inputResolutionContract" class="flow-execution-plan-resolution">
-      <span>Input Contract</span>
+      <span>输入解析契约</span>
       <strong>{{ flowArtifactInputResolutionLabel(plan.inputResolutionContract.activeResolution) }}</strong>
       <p v-if="!plan.inputResolutionContract.persistedArtifactEnabled">
         当前仍由单次编译解析；持久化产物输入将在逐节点运行时启用。
@@ -47,7 +47,7 @@
             v-if="step.providerBoundary && step.providerInputArtifacts?.length"
             class="flow-provider-input-summary"
           >
-            <span>Provider Input</span>
+            <span>Provider 输入声明</span>
             <p>{{ flowProviderInputSummary(step.providerInputArtifacts) }}</p>
           </div>
           <small>
@@ -96,7 +96,7 @@ const props = withDefaults(
     navigableNodeIds?: string[]
   }>(),
   {
-    eyebrow: 'Execution Path',
+    eyebrow: '执行路径',
     title: '节点如何形成这次运行',
     stale: false,
     nodeActionLabel: '',
