@@ -334,7 +334,7 @@
         <section v-if="workspace.activeFlow && flowExecutionVisible && activeFlowResult" class="flow-result-loop">
           <div class="flow-result-loop-actions">
             <div>
-                <span class="section-kicker">继续推进</span>
+              <span class="section-kicker">继续推进</span>
               <strong>{{ flowResultHeading }}</strong>
             </div>
             <div class="flow-result-actions">
@@ -425,12 +425,12 @@
       <aside class="surface flow-inspector">
         <div v-if="workspace.activeFlow" class="flow-asset-editor">
           <div class="panel-heading">
-            <span class="section-kicker">Flow Asset</span>
+            <span class="section-kicker">Flow 资产</span>
             <h2>调整 Flow 目标</h2>
           </div>
           <div v-if="workspace.activeFlow.sourceFlowId" class="flow-origin-strip">
             <div>
-              <span class="section-kicker">Derived Flow</span>
+              <span class="section-kicker">派生 Flow</span>
               <strong>{{ workspace.activeFlow.sourceFlowTitle || '来源 Flow' }}</strong>
               <p>
                 {{ workspace.activeFlow.sourceFlowVersionNumber
@@ -471,7 +471,7 @@
         <section v-if="workspace.activeFlow" class="flow-revision-section">
           <div class="section-heading compact">
             <div>
-              <span class="section-kicker">Revisions</span>
+              <span class="section-kicker">修订记录</span>
               <h3>回到任意创作节点</h3>
             </div>
             <span>{{ flowVersions.length ? `${flowVersions.length} 个快照` : '编辑后保存' }}</span>
@@ -553,14 +553,14 @@
 
         <template v-if="workspace.activeFlow && selectedNode">
           <div ref="nodeInspector" class="panel-heading">
-            <span class="section-kicker">Inspector</span>
+            <span class="section-kicker">节点检查</span>
             <h2>{{ selectedNode.title }}</h2>
             <p>{{ selectedNode.description }}</p>
           </div>
 
           <section class="flow-node-runtime-role">
             <header>
-              <span>Execution Role</span>
+              <span>执行职责</span>
               <em>步骤 {{ selectedNodeSequence }} / {{ workspace.activeFlow.nodes.length }}</em>
             </header>
             <strong>{{ selectedNodeOperationLabel }}</strong>
@@ -578,7 +578,7 @@
 
           <section v-if="selectedNode.type === 'prompt' && selectedNode.promptId" class="flow-node-prompt-source">
             <div>
-              <span class="section-kicker">Linked Prompt</span>
+              <span class="section-kicker">关联 Prompt</span>
               <strong>{{ selectedNodeSourcePrompt?.title || selectedNode.promptTitle || '来源 Prompt' }}</strong>
               <p>{{ selectedNodePromptSourceDescription }}</p>
             </div>
@@ -654,11 +654,11 @@
 
           <div class="flow-node-editor">
             <label>
-              <span>Node title</span>
+              <span>节点标题</span>
               <input v-model="nodeTitle" class="quiet-input" placeholder="节点标题" />
             </label>
             <label>
-              <span>Description</span>
+              <span>说明</span>
               <textarea v-model="nodeDescription" class="quiet-textarea" placeholder="节点说明"></textarea>
             </label>
             <label v-if="nodeCanEditContent">
@@ -718,9 +718,9 @@
         </template>
 
         <div v-else class="panel-heading">
-          <span class="section-kicker">Inspector</span>
+          <span class="section-kicker">节点检查</span>
           <h2>选择一个节点</h2>
-          <p>查看节点上下文，或从 Prompt Library 添加可复用工作方式。</p>
+            <p>查看节点上下文，或从 Prompt 库添加可复用工作方式。</p>
         </div>
 
         <div class="prompt-node-picker">
@@ -767,12 +767,12 @@
 
           <div v-if="!prompts.length" class="prompt-node-empty">
             <strong>先沉淀一个 Prompt 资产</strong>
-            <p>把稳定的工作方式保存到 Prompt Library，再作为 Flow 节点复用。</p>
-            <button type="button" class="secondary-button" @click="goToPromptLibrary">打开 Prompt Library</button>
+            <p>把稳定的工作方式保存到 Prompt 库，再作为 Flow 节点复用。</p>
+            <button type="button" class="secondary-button" @click="goToPromptLibrary">打开 Prompt 库</button>
           </div>
           <div v-else-if="!filteredPromptOptions.length" class="prompt-node-empty">
             <strong>没有匹配的 Prompt</strong>
-            <p>换一个关键词，或去 Library 创建一个更贴近当前 Flow 的 Prompt。</p>
+            <p>换一个关键词，或去 Prompt 库创建一个更贴近当前 Flow 的 Prompt。</p>
             <button type="button" class="secondary-button" @click="goToPromptLibrary">创建 Prompt</button>
           </div>
         </div>
@@ -1089,9 +1089,9 @@ const flowBriefItems = computed(() => {
   const outputNode = nodes.find((node) => node.type === 'output')
 
   return [
-    { label: 'Flow steps', value: `${nodes.length} 个节点` },
-    { label: 'Prompt assets', value: promptCount ? `${promptCount} 个 Prompt` : '等待加入' },
-    { label: 'Output', value: outputNode?.title || 'Structured Result' }
+    { label: 'Flow 节点', value: `${nodes.length} 个节点` },
+    { label: 'Prompt 资产', value: promptCount ? `${promptCount} 个 Prompt` : '等待加入' },
+    { label: '输出', value: outputNode?.title || '结构化结果' }
   ]
 })
 
