@@ -8,7 +8,7 @@
 
     <div class="create-composer surface">
       <div class="composer-heading">
-        <span>New Flow</span>
+        <span>创建 Flow</span>
         <strong>描述你想创建的 AI 工作</strong>
       </div>
       <textarea
@@ -23,7 +23,7 @@
           {{ workspace.taskDraftRecovered
             ? '已恢复上次未执行的 AI Command 草稿'
             : workspace.taskInput.trim()
-              ? '已准备进入 AI Command Workspace'
+              ? '已准备进入 AI 命令工作区'
               : '先写下一个想法，或从模板开始' }}
         </span>
         <button class="primary-button" :disabled="!canStartBuilding" @click="startBuilding">开始构建</button>
@@ -58,7 +58,7 @@
           @click="continueResult"
         >
           <div class="row-between">
-            <span class="badge">Result</span>
+            <span class="badge">结果</span>
             <time>{{ formatDate(latestSuccessfulTask.createdAt) }}</time>
           </div>
           <strong>{{ latestSuccessfulTask.summary }}</strong>
@@ -76,7 +76,7 @@
       <div class="workspace-asset-columns">
         <div v-if="recentFlows.length" class="workspace-asset-group">
           <div class="workspace-asset-group-heading">
-            <strong>Recent Flows</strong>
+            <strong>最近的 Flow</strong>
             <button type="button" class="ghost-button" @click="router.push('/workflows')">全部</button>
           </div>
           <button
@@ -96,7 +96,7 @@
 
         <div v-if="recentPrompts.length" class="workspace-asset-group">
           <div class="workspace-asset-group-heading">
-            <strong>Prompt Library</strong>
+            <strong>Prompt 库</strong>
             <button type="button" class="ghost-button" @click="router.push('/prompts')">全部</button>
           </div>
           <button
