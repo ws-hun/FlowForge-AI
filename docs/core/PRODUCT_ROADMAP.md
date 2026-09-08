@@ -106,6 +106,7 @@ Current Stage 3 capabilities:
 - Workspace owner settings can update the authenticated identity and rotate the password without exposing a user-management surface; password changes revoke every prior session and keep only a newly issued current-browser session.
 - Future modules remain outside the primary navigation and use honest workspace boundaries that route users back to currently executable creation paths instead of presenting fake Agent, Knowledge, or Analytics state.
 - Flow creation, execution, inspection, and future-capability boundaries now use one consistent Chinese product language while retaining Flow, Prompt, Provider, and protocol identifiers as stable technical terms.
+- Workspace entry, AI Command, Prompt assets, History, and global search now share the same Chinese product vocabulary, reducing language switching across creation and reuse paths.
 - Route-level code splitting and scoped Element Plus registration keep the calm workspace shell lightweight while loading complex creation surfaces only when opened.
 - Docker readiness follows the real dependency chain from PostgreSQL to the backend database probe and then to the Nginx frontend proxy.
 - The global shell surfaces one calm readiness signal that combines backend/database health with active Provider availability and remains actionable without dashboard noise.

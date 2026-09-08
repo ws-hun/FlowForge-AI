@@ -14,7 +14,7 @@
         ref="searchInput"
         v-model="query"
         type="search"
-        placeholder="搜索 Flow、Prompt、Result..."
+        placeholder="搜索 Flow、Prompt、结果..."
         @keydown.down.prevent="moveSelection(1)"
         @keydown.up.prevent="moveSelection(-1)"
         @keydown.enter.prevent="openSelectedResult"
@@ -55,7 +55,7 @@
     <div v-else class="global-search-empty">
       <strong>没有匹配内容</strong>
       <p>换一个关键词，或直接进入工作空间开始新的 AI 任务。</p>
-      <button type="button" class="secondary-button" @click="openResult(quickActions[0]!)">打开 AI Command</button>
+      <button type="button" class="secondary-button" @click="openResult(quickActions[0]!)">打开 AI 命令</button>
     </div>
   </el-dialog>
 </template>
@@ -99,10 +99,10 @@ const prompts = ref<PromptAsset[]>([])
 const promptsLoaded = ref(false)
 
 const quickActions: SearchResult[] = [
-  createResult('action-task', 'action', 'Create', 'AI Command', '执行一个新的结构化 AI 任务', '/tasks', Plus),
-  createResult('action-flow', 'action', 'Create', 'Flow Space', '创建或继续编排可执行 Flow', '/workflows', Connection),
-  createResult('action-prompt', 'action', 'Reuse', 'Prompt Library', '查找并复用已沉淀的工作方式', '/prompts', Document),
-  createResult('action-history', 'action', 'Explore', 'History', '回到一次可追溯的 AI 执行', '/history', Clock)
+  createResult('action-task', 'action', '创建', 'AI 命令', '执行一个新的结构化 AI 任务', '/tasks', Plus),
+  createResult('action-flow', 'action', '创建', 'Flow 工作区', '创建或继续编排可执行 Flow', '/workflows', Connection),
+  createResult('action-prompt', 'action', '复用', 'Prompt 库', '查找并复用已沉淀的工作方式', '/prompts', Document),
+  createResult('action-history', 'action', '探索', '历史', '回到一次可追溯的 AI 执行', '/history', Clock)
 ]
 
 const flowResults = computed<SearchResult[]>(() =>
