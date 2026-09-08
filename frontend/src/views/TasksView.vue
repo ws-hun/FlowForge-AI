@@ -1,7 +1,7 @@
 <template>
   <section>
     <header class="quiet-header">
-      <p class="page-kicker">AI Command Workspace</p>
+      <p class="page-kicker">AI 命令工作区</p>
       <h1>写下任务，然后执行。</h1>
       <p>这不是聊天窗口，而是一个面向 AI 工作流的命令空间。</p>
     </header>
@@ -9,7 +9,7 @@
     <div class="two-column command-layout">
       <section class="command-input">
         <div v-if="workspace.taskSourceFlowId" class="flow-run-brief-heading">
-          <span class="section-kicker">Run Brief</span>
+          <span class="section-kicker">运行简报</span>
           <p>为这次 Flow 运行补充目标、约束或输出偏好。</p>
         </div>
         <div
@@ -134,7 +134,7 @@
           />
           <div v-if="workspace.canPromoteLatestTask" class="task-result-actions">
             <div>
-              <span class="section-kicker">Reuse</span>
+              <span class="section-kicker">继续创作</span>
               <strong>让这次有效执行成为下一次创作的起点。</strong>
             </div>
             <div class="task-result-action-buttons">
@@ -172,7 +172,7 @@
           <div>
             <span class="section-kicker">已保存失败运行</span>
             <strong>{{ workspace.failedRun.errorMessage || workspace.failedRun.result }}</strong>
-            <p>执行输入和来源上下文已保留，可以在 History 中检查并使用当前 Provider 重跑。</p>
+            <p>执行输入和来源上下文已保留，可以在历史中检查并使用当前 Provider 重跑。</p>
           </div>
           <button type="button" class="secondary-button" @click="openFailedRunHistory">打开失败运行</button>
         </div>
