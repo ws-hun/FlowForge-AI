@@ -23,7 +23,7 @@
       <section class="settings-detail surface">
         <template v-if="activeSection === 'workspace'">
           <div class="settings-section-heading">
-            <span class="section-kicker">Workspace Identity</span>
+            <span class="section-kicker">工作区身份</span>
             <h2>当前工作空间</h2>
             <p>这些名称保存在当前浏览器，用于保持本地创作空间的一致身份。</p>
           </div>
@@ -47,7 +47,7 @@
 
         <template v-else-if="activeSection === 'account'">
           <div class="settings-section-heading">
-            <span class="section-kicker">Workspace Owner</span>
+            <span class="section-kicker">工作区所有者</span>
             <h2>账户与安全</h2>
             <p>更新当前工作区所有者资料。修改密码后，其他浏览器会话会立即失效。</p>
           </div>
@@ -123,7 +123,7 @@
 
         <template v-else>
           <div class="settings-section-heading">
-            <span class="section-kicker">Appearance</span>
+            <span class="section-kicker">界面外观</span>
             <h2>界面偏好</h2>
             <p>当前版本以浅色、低噪音工作空间为唯一正式主题。</p>
           </div>
@@ -134,7 +134,7 @@
               <i></i>
             </span>
             <span>
-              <strong>Calm Light</strong>
+              <strong>静谧浅色</strong>
               <small>暖白背景、柔和边框和克制的蓝色主操作。</small>
             </span>
             <em>当前</em>

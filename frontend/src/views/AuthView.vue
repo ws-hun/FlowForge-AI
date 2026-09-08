@@ -6,7 +6,7 @@
 
     <section class="auth-surface" aria-live="polite">
       <div class="auth-heading">
-        <span class="section-kicker">Private AI Workspace</span>
+        <span class="section-kicker">私有 AI 工作区</span>
         <h1>{{ auth.setupRequired ? '创建工作区所有者' : '回到你的工作空间' }}</h1>
         <p v-if="auth.setupRequired">第一次启动只需创建一个所有者账号，现有 Flow、Prompt 与运行历史会保留在这个工作区中。</p>
         <p v-else>登录后继续创建、执行和复用你的 AI 工作流。</p>

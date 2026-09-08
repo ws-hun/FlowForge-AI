@@ -1,7 +1,7 @@
 <template>
   <section>
     <header class="quiet-header">
-      <p class="page-kicker">Prompt Library</p>
+      <p class="page-kicker">Prompt 库</p>
       <h1>沉淀可复用的 AI 工作方式。</h1>
       <p>把有效的 Prompt 保存成资产，从这里搜索、收藏，并快速带入命令工作区执行。</p>
     </header>
@@ -27,7 +27,7 @@
     <section v-if="!loading" class="starter-section">
       <div class="section-heading">
         <div>
-          <p class="section-kicker">Starter Prompt Pack</p>
+          <p class="section-kicker">起始 Prompt 集</p>
           <h2>从已验证的工作方式开始。</h2>
         </div>
         <button type="button" class="secondary-button" :disabled="saving || allStarterPromptsAdded" @click="createStarterPrompts">
@@ -54,7 +54,7 @@
             :disabled="starterPromptExists(starter)"
             @click.stop="importStarterPrompt(starter)"
           >
-            {{ starterPromptExists(starter) ? '已加入' : '加入 Library' }}
+            {{ starterPromptExists(starter) ? '已加入' : '加入 Prompt 库' }}
           </button>
         </article>
       </div>
@@ -93,7 +93,7 @@
     <div v-else class="empty-state prompt-empty">
       <div>
         <strong>还没有可复用 Prompt</strong>
-        <span>先创建一个常用工作方式，或从上方 Starter Prompt Pack 选择一个开始。</span>
+        <span>先创建一个常用工作方式，或从上方起始 Prompt 集选择一个开始。</span>
       </div>
       <div class="empty-actions">
         <button type="button" class="primary-button" @click="openCreate">新建 Prompt</button>
@@ -190,7 +190,7 @@
         <section v-if="promptOriginTitle" class="prompt-origin">
           <div class="prompt-origin-heading">
             <div>
-              <span class="section-kicker">Origin</span>
+              <span class="section-kicker">来源</span>
               <strong>{{ promptOriginTitle }}</strong>
             </div>
             <div class="prompt-origin-actions">
@@ -208,7 +208,7 @@
                 class="ghost-button"
                 @click="openPromptSourceRun"
               >
-                查看来源 Result
+                查看来源结果
               </button>
               <button
                 v-if="selectedPrompt.sourceFlowId"
@@ -270,7 +270,7 @@
         <section class="detail-section">
           <div class="section-heading compact">
             <h3>执行预览</h3>
-            <span>将发送到 AI Command Workspace</span>
+            <span>将发送到 AI 命令工作区</span>
           </div>
           <pre class="detail-code preview">{{ preparedPromptPreview }}</pre>
         </section>
@@ -297,7 +297,7 @@
             </article>
           </div>
           <div v-else class="quiet-empty">
-            从这个 Prompt 进入 AI Command Workspace 后，结果会沉淀在这里。
+            从这个 Prompt 进入 AI 命令工作区后，结果会沉淀在这里。
           </div>
         </section>
 
@@ -382,7 +382,7 @@
               :disabled="selectedPrompt ? starterPromptExists(selectedPrompt) : false"
               @click="selectedPrompt && importStarterPrompt(selectedPrompt)"
             >
-              {{ selectedPrompt && starterPromptExists(selectedPrompt) ? '已加入 Library' : '加入 Library' }}
+              {{ selectedPrompt && starterPromptExists(selectedPrompt) ? '已加入 Prompt 库' : '加入 Prompt 库' }}
             </button>
             <button type="button" class="secondary-button" :disabled="saving" @click="createFlowFromSelectedPrompt">
               加入并创建 Flow
@@ -796,7 +796,7 @@ async function loadPromptAssets() {
     prompts.value = data
     return true
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || 'Prompt Library 加载失败')
+    ElMessage.error(error.response?.data?.message || 'Prompt 库加载失败')
     return false
   } finally {
     loading.value = false
@@ -1118,7 +1118,7 @@ async function createStarterPrompts() {
     }
 
     await Promise.all(promptsToCreate.map((prompt) => createPrompt(toSavePayload(prompt))))
-    ElMessage.success('Starter Prompt Pack 已加入 Library')
+    ElMessage.success('起始 Prompt 集已加入 Prompt 库')
     await loadPromptAssets()
   } catch (error: any) {
     ElMessage.error(error.response?.data?.message || 'Starter Prompt 创建失败')
@@ -1139,7 +1139,7 @@ async function importStarterPrompt(prompt: SavePromptPayload, notifyExisting = t
   saving.value = true
   try {
     const { data } = await createPrompt(toSavePayload(prompt))
-    ElMessage.success('Prompt 已加入 Library')
+    ElMessage.success('Prompt 已加入 Prompt 库')
     await loadPromptAssets()
     return data
   } catch (error: any) {
@@ -1268,7 +1268,7 @@ async function continueFromPromptSource() {
   }
 
   workspace.prepareTaskContinuation(sourceTask)
-  ElMessage.success('来源结果已带入 AI Command Workspace')
+  ElMessage.success('来源结果已带入 AI 命令工作区')
   await router.push('/tasks')
 }
 
@@ -1326,7 +1326,7 @@ async function openPromptSourcePrompt() {
 
 function sendToTask(content: string, prompt?: PromptAsset | null) {
   workspace.prepareTask(content, prompt ? { id: prompt.id, title: prompt.title } : null)
-  ElMessage.success('Prompt 已带入 AI Command Workspace')
+  ElMessage.success('Prompt 已带入 AI 命令工作区')
   router.push('/tasks')
 }
 

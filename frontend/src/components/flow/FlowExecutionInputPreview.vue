@@ -184,7 +184,7 @@ const readinessIssueCount = computed(() =>
 const sectionKindLabels: Record<FlowExecutionSectionKind, string> = {
   objective: 'Flow 目标',
   'input-context': '输入上下文',
-  'runtime-context': 'Run Brief',
+  'runtime-context': '运行简报',
   prompt: 'Prompt',
   'execution-guidance': '执行指令',
   'delivery-focus': '交付重点',

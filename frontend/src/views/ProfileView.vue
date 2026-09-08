@@ -9,7 +9,7 @@
     <section class="surface profile-card">
       <div class="profile-avatar">{{ auth.userInitial }}</div>
       <div class="profile-identity">
-        <span class="section-kicker">Workspace Owner</span>
+        <span class="section-kicker">工作区所有者</span>
         <h2>{{ auth.user?.displayName }}</h2>
         <p>{{ auth.user?.email }}</p>
         <small>{{ workspace.workspaceName }} · 当前浏览器偏好</small>
