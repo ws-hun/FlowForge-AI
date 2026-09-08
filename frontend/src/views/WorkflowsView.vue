@@ -218,7 +218,7 @@
         <section v-if="workspace.activeFlow" class="flow-run-brief">
           <div class="section-heading compact">
             <div>
-              <h3>Run Brief</h3>
+              <h3>运行简报</h3>
               <span>执行前确认 AI 将接收的工作上下文</span>
             </div>
             <span>{{ activeProviderLabel }}</span>
@@ -334,7 +334,7 @@
         <section v-if="workspace.activeFlow && flowExecutionVisible && activeFlowResult" class="flow-result-loop">
           <div class="flow-result-loop-actions">
             <div>
-              <span class="section-kicker">Iteration</span>
+                <span class="section-kicker">继续推进</span>
               <strong>{{ flowResultHeading }}</strong>
             </div>
             <div class="flow-result-actions">
@@ -394,7 +394,7 @@
             @open-source-flow="openFlowSnapshotSource"
           />
           <div v-if="activeFlowResultFailed" class="failed-run-detail flow-run-failure-detail">
-            <span class="section-kicker">Execution Error</span>
+            <span class="section-kicker">执行错误</span>
             <strong>{{ selectedFlowRun?.errorMessage || activeFlowResult.result }}</strong>
             <p>节点准备状态与固定执行输入已保留。使用当前 Provider 重跑会创建一条新的可比较运行，不会覆盖这次失败记录。</p>
           </div>
@@ -416,7 +416,7 @@
         </section>
 
         <div v-if="!workspace.activeFlow" class="flow-empty-state">
-          <span class="badge">Canvas</span>
+          <span class="badge">画布</span>
           <strong>先创建一个 Flow 草稿</strong>
           <p>FlowForge 会生成一个安静的工作流骨架，你可以继续加入 Prompt 节点。</p>
         </div>
