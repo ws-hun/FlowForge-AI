@@ -9,7 +9,7 @@
     </summary>
     <div class="execution-input-archive-body">
       <div class="execution-input-archive-toolbar">
-        <span>Server input</span>
+        <span>服务端输入</span>
         <div class="execution-input-archive-actions">
           <button v-if="canCreateVariant" type="button" class="text-button" @click="emit('createVariant')">
             <EditPen class="execution-input-archive-action-icon" />

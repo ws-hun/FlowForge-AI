@@ -2,7 +2,7 @@
   <div class="result-doc surface" :class="{ compact }">
     <div class="result-doc-header">
       <div class="result-doc-meta">
-        <span class="badge">AI Result</span>
+        <span class="badge">AI 结果</span>
         <div class="result-doc-meta-end">
           <span v-if="providerLabel || model || tokenUsageLabel || durationLabel" class="execution-source">
             <strong v-if="providerLabel">{{ providerLabel }}</strong>

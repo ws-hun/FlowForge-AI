@@ -83,9 +83,9 @@
         :class="{ unchanged: !runSettingsDiff.hasChanges }"
       >
         <div class="flow-run-snapshot-comparison-heading">
-          <span>与当前 Run Brief 对比</span>
+          <span>与当前运行简报对比</span>
           <strong>
-            {{ runSettingsDiff.hasChanges ? `当前输入已有 ${runSettingsDiff.changeCount} 处变化` : '与当前 Run Brief 一致' }}
+            {{ runSettingsDiff.hasChanges ? `当前输入已有 ${runSettingsDiff.changeCount} 处变化` : '与当前运行简报一致' }}
           </strong>
         </div>
         <ul v-if="runSettingsDiff.hasChanges">

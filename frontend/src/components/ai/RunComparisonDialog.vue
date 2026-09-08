@@ -8,7 +8,7 @@
   >
     <template #header>
       <div class="run-comparison-heading">
-        <span class="section-kicker">Run Comparison</span>
+        <span class="section-kicker">运行对比</span>
         <strong>运行结果对比</strong>
       </div>
     </template>
@@ -49,7 +49,7 @@
           <ExecutionInputArchive :input="sourceRun.input" title="来源执行输入" compact />
           <FlowRunTrace v-if="sourceRun.flowRunTrace" :trace="sourceRun.flowRunTrace" />
           <div v-if="sourceRun.status === 'failed'" class="failed-run-detail run-comparison-failure">
-            <span class="section-kicker">Execution Error</span>
+            <span class="section-kicker">执行错误</span>
             <strong>{{ sourceRun.errorMessage || sourceRun.result }}</strong>
             <p>这次失败记录及其节点状态保持不变，可与后续恢复结果直接核对。</p>
           </div>
@@ -87,7 +87,7 @@
           <ExecutionInputArchive :input="targetRun.input" title="本次执行输入" compact />
           <FlowRunTrace v-if="targetRun.flowRunTrace" :trace="targetRun.flowRunTrace" />
           <div v-if="targetRun.status === 'failed'" class="failed-run-detail run-comparison-failure">
-            <span class="section-kicker">Execution Error</span>
+            <span class="section-kicker">执行错误</span>
             <strong>{{ targetRun.errorMessage || targetRun.result }}</strong>
             <p>{{ targetFailureDescription }}</p>
           </div>

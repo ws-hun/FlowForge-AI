@@ -122,7 +122,7 @@
           <el-collapse v-model="expandedRunIds" @change="onRunExpansionChange(task.id, $event)">
             <el-collapse-item :title="isFailed(task) ? '查看失败详情' : '查看结果'" :name="task.id">
               <div v-if="isFailed(task)" class="failed-run-detail">
-                <span class="section-kicker">Execution Error</span>
+                <span class="section-kicker">执行错误</span>
                 <strong>{{ task.errorMessage || task.result }}</strong>
                 <p>执行输入、来源和 Flow 快照已保留。恢复会创建新的运行，不会改写这条失败记录。</p>
               </div>
@@ -154,7 +154,7 @@
               />
               <section v-if="!isFailed(task)" class="history-result-reuse">
                 <div>
-                  <span class="section-kicker">Reuse Result</span>
+                  <span class="section-kicker">复用结果</span>
                   <strong>把这次有效结果沉淀为下一次创作的起点。</strong>
                 </div>
                 <div class="history-result-reuse-actions">
@@ -610,8 +610,8 @@ async function reuseFlowRunSettings(snapshot: FlowRunSnapshotType) {
   if (currentSettings && shouldConfirmFlowRunSettingsReplacement(currentSettings, snapshot)) {
     try {
       await ElMessageBox.confirm(
-        '原 Flow 已有自动保存的 Run Brief。复用这次历史配置会替换当前运行说明和变量值。',
-        '替换原 Flow 的 Run Brief？',
+        '原 Flow 已有自动保存的运行简报。复用这次历史配置会替换当前运行说明和变量值。',
+        '替换原 Flow 的运行简报？',
         {
           confirmButtonText: '替换并打开',
           cancelButtonText: '保留当前内容',
