@@ -1,7 +1,7 @@
 <template>
   <section class="flow-workspace">
     <header class="quiet-header">
-      <p class="page-kicker">Flow Space</p>
+      <p class="page-kicker">Flow 工作区</p>
       <h1>把 Prompt 连接成可执行 Flow。</h1>
       <p>从一个目标开始，组织输入、Prompt、AI 执行和结构化输出，逐步形成可复用的工作流资产。</p>
     </header>
@@ -9,7 +9,7 @@
     <div class="flow-builder-layout">
       <aside class="surface flow-draft-panel">
         <div class="panel-heading">
-          <span class="section-kicker">New Flow</span>
+          <span class="section-kicker">创建 Flow</span>
           <h2>描述你想搭建的工作流</h2>
         </div>
 
@@ -36,7 +36,7 @@
 
         <section class="flow-template-pack">
           <div class="section-heading compact">
-            <h3>Flow Templates</h3>
+            <h3>Flow 模板</h3>
             <span>选择一个创作起点</span>
           </div>
 
@@ -51,20 +51,20 @@
             <span>{{ template.category }}</span>
             <strong>{{ template.title }}</strong>
             <small>{{ template.description }}</small>
-            <em>{{ template.nodes.length }} Prompt nodes</em>
+            <em>{{ template.nodes.length }} 个 Prompt 节点</em>
           </button>
 
           <div v-if="selectedFlowTemplateDetail" class="flow-template-preview">
             <div class="flow-template-preview-heading">
-              <span>Template Flow</span>
+              <span>模板 Flow</span>
               <button type="button" class="text-button" @click="detachFlowTemplate">移除模板</button>
             </div>
             <strong>将生成 {{ selectedFlowTemplateDetail.nodes.length + 3 }} 个节点</strong>
             <ol>
-              <li>Intent</li>
+              <li>目标</li>
               <li v-for="node in selectedFlowTemplateDetail.nodes" :key="node.title">{{ node.title }}</li>
-              <li>AI Execution</li>
-              <li>Structured Result</li>
+              <li>AI 执行</li>
+              <li>结构化结果</li>
             </ol>
           </div>
         </section>
@@ -124,7 +124,7 @@
 
         <div v-if="workspace.activeFlow" class="flow-canvas-header">
           <div>
-            <span class="badge">Draft Flow</span>
+            <span class="badge">Flow 草稿</span>
             <h2>{{ workspace.activeFlow.title }}</h2>
             <p>{{ workspace.activeFlow.description }}</p>
           </div>
