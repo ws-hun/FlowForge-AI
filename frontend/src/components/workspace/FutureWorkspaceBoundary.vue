@@ -7,7 +7,7 @@
     </header>
 
     <div class="future-workspace-next-step">
-      <span class="future-workspace-status"><i></i> Future workspace</span>
+      <span class="future-workspace-status"><i></i> 未来工作区</span>
       <h2>{{ nextStepTitle }}</h2>
       <p>{{ nextStepDescription }}</p>
       <div class="future-workspace-actions">
