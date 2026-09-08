@@ -311,7 +311,7 @@
                 固化到 Flow
               </button>
               <button type="button" class="text-button" @click="clearCurrentFlowRunDraft">
-                清除 Run Brief
+                清除运行简报
               </button>
             </div>
           </div>
@@ -344,7 +344,7 @@
                 class="ghost-button"
                 @click="openSelectedRunHistory"
               >
-                在 History 打开
+                在历史中打开
               </button>
               <button
                 v-if="activeFlowResultFailed"
@@ -598,7 +598,7 @@
                 :disabled="workspace.flowLoading"
                 @click="syncSelectedNodePrompt"
               >
-                用 Library 版本替换
+                用 Prompt 库版本替换
               </button>
             </div>
           </section>
@@ -720,7 +720,7 @@
         <div v-else class="panel-heading">
           <span class="section-kicker">节点检查</span>
           <h2>选择一个节点</h2>
-            <p>查看节点上下文，或从 Prompt 库添加可复用工作方式。</p>
+          <p>查看节点上下文，或从 Prompt 库添加可复用工作方式。</p>
         </div>
 
         <div class="prompt-node-picker">
@@ -1071,9 +1071,9 @@ const hasFlowRunDraftContent = computed(() =>
 )
 const flowRunDraftStateLabel = computed(() => {
   if (flowRunDraftRecovered.value) {
-    return '已恢复上次 Run Brief'
+    return '已恢复上次运行简报'
   }
-  return hasFlowRunDraftContent.value ? 'Run Brief 已自动保存' : '等待补充本次运行上下文'
+  return hasFlowRunDraftContent.value ? '运行简报已自动保存' : '等待补充本次运行上下文'
 })
 const providerReadyToRun = computed(() => Boolean(workspace.activeProvider))
 const flowReadyToRun = computed(() =>
@@ -1178,8 +1178,8 @@ const selectedNodePromptSourceDescription = computed(() => {
     return '来源 Prompt 已不可用，当前节点快照仍可独立编辑和执行。'
   }
   return selectedNodePromptInSync.value
-    ? '当前节点与 Prompt Library 中的内容一致。'
-    : '当前节点与 Library 版本不同。替换前会保留 Flow 修订快照。'
+    ? '当前节点与 Prompt 库中的内容一致。'
+    : '当前节点与 Prompt 库版本不同。替换前会保留 Flow 修订快照。'
 })
 
 const primaryInputNodeId = computed(() => {
@@ -1211,15 +1211,15 @@ const nodeCanReuseContent = computed(() => {
 
 const nodeContentLabel = computed(() => {
   if (selectedNode.value?.type === 'prompt') {
-    return 'Prompt content'
+    return 'Prompt 内容'
   }
   if (selectedNode.value?.type === 'ai-task') {
-    return 'Execution guidance'
+    return '执行指令'
   }
   if (selectedNode.value?.type === 'output') {
-    return 'Delivery focus'
+    return '交付重点'
   }
-  return 'Input content'
+  return '输入内容'
 })
 
 const nodeContentPlaceholder = computed(() => {
@@ -1545,7 +1545,7 @@ async function loadPromptAssets() {
     const { data } = await listPrompts()
     prompts.value = data
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || 'Prompt Library 加载失败')
+    ElMessage.error(error.response?.data?.message || 'Prompt 库加载失败')
   }
 }
 
@@ -2270,7 +2270,7 @@ async function syncSelectedNodePrompt() {
 
   try {
     await ElMessageBox.confirm(
-      '这会用 Prompt Library 当前的名称、说明和内容替换节点。Flow 修订历史会保留替换前状态。',
+      '这会用 Prompt 库当前的名称、说明和内容替换节点。Flow 修订历史会保留替换前状态。',
       '同步 Prompt 节点',
       {
         confirmButtonText: '替换节点',
@@ -2291,7 +2291,7 @@ async function syncSelectedNodePrompt() {
   selectedNodeId.value = node.id
   resetFlowRunState()
   syncSelectedNodeEditor()
-  ElMessage.success('Prompt 节点已同步到 Library 版本')
+  ElMessage.success('Prompt 节点已同步到 Prompt 库版本')
 }
 
 async function renameFlowVariable(variable: string) {
@@ -2494,7 +2494,7 @@ function useLatestResultAsRunContext() {
   flowExecutionVisible.value = false
   selectedFlowRun.value = null
   resetFlowRunState()
-  ElMessage.success('已带入 Run Brief')
+  ElMessage.success('已带入运行简报')
 }
 
 async function reuseFlowRunSettings(snapshot: FlowRunSnapshotType) {
@@ -2508,8 +2508,8 @@ async function reuseFlowRunSettings(snapshot: FlowRunSnapshotType) {
   )) {
     try {
       await ElMessageBox.confirm(
-        '当前 Run Brief 已包含自动保存的运行说明或变量值。复用历史配置会替换这些内容。',
-        '替换当前 Run Brief？',
+        '当前运行简报已包含自动保存的运行说明或变量值。复用历史配置会替换这些内容。',
+        '替换当前运行简报？',
         {
           confirmButtonText: '替换并复用',
           cancelButtonText: '保留当前内容',
@@ -2543,13 +2543,13 @@ function clearCurrentFlowRunDraft() {
   flowRunDraftRecovered.value = false
   workspace.clearFlowRunDraft(flowId)
   resetFlowRunState()
-  ElMessage.success('Run Brief 已清除')
+  ElMessage.success('运行简报已清除')
 }
 
 async function saveLatestResultAsPrompt() {
   const prompt = await ensureLatestResultPrompt()
   if (prompt) {
-    ElMessage.success('已保存到 Prompt Library')
+    ElMessage.success('已保存到 Prompt 库')
   }
 }
 
@@ -2598,7 +2598,7 @@ async function saveSelectedNodeAsPrompt() {
   try {
     const { data } = await createPrompt(payload)
     prompts.value = [data, ...prompts.value.filter((prompt) => prompt.id !== data.id)]
-    ElMessage.success('节点已沉淀到 Prompt Library')
+    ElMessage.success('节点已沉淀到 Prompt 库')
   } catch (error: any) {
     ElMessage.error(error.response?.data?.message || 'Prompt 保存失败')
   } finally {
