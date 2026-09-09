@@ -229,6 +229,7 @@ import { formatExecutionSource } from '@/utils/aiProvider'
 import { shouldConfirmFlowRunSettingsReplacement } from '@/utils/flowRunSnapshots'
 import { extractPromptVariables } from '@/utils/promptVariables'
 import type { FlowRunSnapshot as FlowRunSnapshotType, TaskHistoryItem } from '@/types'
+import { taskHistoryKindLabel } from '@/utils/taskLabels'
 
 const router = useRouter()
 const route = useRoute()
@@ -344,13 +345,7 @@ function isFailed(task: TaskHistoryItem) {
 }
 
 function historyRunKind(task: TaskHistoryItem) {
-  if (task.continuedFromTaskId) return 'Continuation'
-  if (task.rerunOfTaskId) return 'Rerun'
-  if (task.recoveryOfTaskId) return 'Recovery'
-  if (task.inputVariantOfTaskId) return 'Input Variant'
-  if (task.sourceFlowId) return 'Flow Run'
-  if (task.sourcePromptId) return 'Prompt Run'
-  return 'AI Task'
+  return taskHistoryKindLabel(task)
 }
 
 function historyRunTitle(task: TaskHistoryItem) {

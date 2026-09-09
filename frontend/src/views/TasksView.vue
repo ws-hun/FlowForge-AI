@@ -190,6 +190,7 @@ import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import FlowExecutionInputPreview from '@/components/flow/FlowExecutionInputPreview.vue'
 import FlowRunTrace from '@/components/flow/FlowRunTrace.vue'
 import { useWorkspaceStore } from '@/stores/workspace'
+import { taskSourceLabel } from '@/utils/taskLabels'
 
 const router = useRouter()
 const workspace = useWorkspaceStore()
@@ -213,10 +214,12 @@ const latestTraceNavigableNodeIds = computed(() => {
   return flow ? trace?.nodes.filter((node) => flow.nodes.some((item) => item.id === node.nodeId)).map((node) => node.nodeId) || [] : []
 })
 const sourceLabel = computed(() => {
-  if (workspace.taskSourceFlowTitle) return 'Flow context'
-  if (workspace.taskSourceRunId) return 'Historical result'
-  if (workspace.taskInputVariantOfTaskId) return 'Historical input'
-  return 'Prompt context'
+  return taskSourceLabel({
+    sourceFlowTitle: workspace.taskSourceFlowTitle,
+    sourcePromptTitle: workspace.taskSourcePromptTitle,
+    sourceRunId: workspace.taskSourceRunId,
+    inputVariantOfTaskId: workspace.taskInputVariantOfTaskId
+  })
 })
 const sourceTitle = computed(
   () =>

@@ -95,10 +95,10 @@ const systemStatus = computed(() => {
 })
 const systemStatusLabel = computed(() => {
   const labels = {
-    checking: 'Checking',
-    ready: 'Ready',
-    provider: 'Provider',
-    offline: 'Offline'
+    checking: '检查中',
+    ready: '已就绪',
+    provider: '配置 Provider',
+    offline: '离线'
   }
   return labels[systemStatus.value]
 })

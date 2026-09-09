@@ -143,6 +143,7 @@ Current Stage 3 capabilities:
 - Flow Space and the run trace preserve the same single-pass node state matrix: Input / Prompt are prepared contributions, AI Task is the Provider terminal, and Output is completed only after a successful call or skipped after failure.
 - Flow Space explains each selected node's runtime role and predecessor context during creation, so users can design the execution path without mistaking compiled Input, Prompt, or Output nodes for independent model calls.
 - Execution preview failures now turn known backend validation, missing Flow, and Provider transport messages into calm Chinese guidance with an actionable next step instead of exposing inconsistent server wording.
+- Task handoffs, History lineage, global search results, and the shell readiness signal now share Chinese user-facing labels while keeping Flow, Prompt, and Provider as stable product terms.
 - Provider HTTP calls use explicit configurable connect and read timeouts, convert transport failures into stable gateway errors, and preserve failed runs for recovery instead of hanging the workspace indefinitely.
 - Provider HTTP status failures are translated into actionable authentication, rate-limit, timeout, request, or availability messages without exposing raw upstream response bodies to the workspace or History.
 - Provider results that violate the string contract with a JSON object or array are deterministically converted into readable Markdown while preserving the Provider response for raw inspection.

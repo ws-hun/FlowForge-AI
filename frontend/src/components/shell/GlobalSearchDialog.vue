@@ -69,6 +69,7 @@ import { Clock, Close, Connection, Document, Plus, Search } from '@element-plus/
 import { listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { PromptAsset, TaskHistoryItem } from '@/types'
+import { taskHistoryKindLabel } from '@/utils/taskLabels'
 
 type SearchResultKind = 'action' | 'flow' | 'prompt' | 'run'
 type SearchResult = {
@@ -139,7 +140,7 @@ const runResults = computed<SearchResult[]>(() =>
     createResult(
       `run-${task.id}`,
       'run',
-      task.status === 'failed' ? 'Failed Run' : 'Result',
+      task.status === 'failed' ? '失败运行' : taskHistoryKindLabel(task),
       runTitle(task),
       task.status === 'failed' ? task.errorMessage || task.result : task.summary,
       { path: '/history', query: { run: task.id } },
