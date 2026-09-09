@@ -32,4 +32,27 @@ describe('flow execution error presentation', () => {
       detail: '自定义校验原因'
     })
   })
+
+  it('localizes backend node validation messages', () => {
+    expect(presentFlowExecutionError(400, 'Unsupported Flow node type: context')).toMatchObject({
+      kind: 'node',
+      title: '节点信息需要补充',
+      detail: '不支持的 Flow 节点类型：context'
+    })
+  })
+
+  it('localizes missing provider configuration', () => {
+    expect(presentFlowExecutionError(502, 'No active AI API key configured')).toMatchObject({
+      kind: 'provider',
+      detail: '还没有配置已激活的 AI Provider。'
+    })
+  })
+
+  it('localizes missing Flow resources without losing the recovery action', () => {
+    expect(presentFlowExecutionError(404, 'Flow not found')).toMatchObject({
+      kind: 'missing',
+      detail: '找不到这个 Flow，请重新读取工作区。',
+      actionLabel: '重新读取'
+    })
+  })
 })
