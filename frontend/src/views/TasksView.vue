@@ -68,7 +68,7 @@
               class="ghost-button"
               @click="returnToHistory"
             >
-              查看 History
+              查看历史
             </button>
             <button v-else type="button" class="ghost-button" @click="openPromptLibrary">
               查看 Prompt
@@ -99,7 +99,7 @@
         <div class="composer-footer">
           <span>
             {{ workspace.taskDraftRecovered
-              ? '已恢复上次未执行的 AI Command 草稿'
+              ? '已恢复上次未执行的 AI 命令草稿'
               : workspace.activeProvider?.provider || '请先配置 Provider' }}
           </span>
           <button
@@ -144,7 +144,7 @@
                 class="ghost-button"
                 @click="openLatestResultHistory"
               >
-                在 History 打开
+                在历史中打开
               </button>
               <button type="button" class="ghost-button" @click="continueLatestResult">
                 继续此结果
@@ -239,7 +239,7 @@ const taskInputPlaceholder = computed(() => {
 })
 const sourceDescription = computed(() => {
   if (workspace.taskSourceFlowTitle) {
-    return 'Flow 将按已保存的节点和 Prompt 执行。这里的调整会同步回 Flow 的 Run Brief 草稿。'
+    return 'Flow 将按已保存的节点和 Prompt 执行。这里的调整会同步回 Flow 的运行简报草稿。'
   }
   if (workspace.taskSourceRunId) {
     return '后端会读取已保存的完整结果，并将这里的新方向编译为下一次可追溯执行。'
@@ -347,7 +347,7 @@ async function createFlowFromLatestTask() {
     return
   }
 
-  ElMessage.success('已从 AI Command 创建 Flow')
+  ElMessage.success('已从 AI 命令创建 Flow')
   router.push({ path: '/workflows', query: { flow: flow.id } })
 }
 </script>

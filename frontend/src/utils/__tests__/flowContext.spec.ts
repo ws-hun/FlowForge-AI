@@ -11,7 +11,7 @@ describe('Flow context creation', () => {
     expect(createFlowContextNode('context-1')).toEqual({
       id: 'context-1',
       type: 'input',
-      title: 'Context',
+      title: '上下文',
       description: '补充本次 Flow 需要参考的背景、约束或已有材料',
       content: ''
     })
@@ -21,8 +21,8 @@ describe('Flow context creation', () => {
     expect(createFlowContextNode('context-2', '  Keep the launch scope focused.  ')).toEqual({
       id: 'context-2',
       type: 'input',
-      title: 'Run Brief Context',
-      description: '从 Run Brief 固化的可复用背景、约束或已有材料',
+      title: '运行简报上下文',
+      description: '从运行简报固化的可复用背景、约束或已有材料',
       content: 'Keep the launch scope focused.'
     })
   })

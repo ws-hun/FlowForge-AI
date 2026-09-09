@@ -16,9 +16,9 @@ export function createFlowContextNode(id: string, content = ''): FlowNode {
   return {
     id,
     type: 'input',
-    title: cleanContent ? 'Run Brief Context' : 'Context',
+    title: cleanContent ? '运行简报上下文' : '上下文',
     description: cleanContent
-      ? '从 Run Brief 固化的可复用背景、约束或已有材料'
+      ? '从运行简报固化的可复用背景、约束或已有材料'
       : '补充本次 Flow 需要参考的背景、约束或已有材料',
     content: cleanContent
   }
