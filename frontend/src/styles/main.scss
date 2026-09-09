@@ -5456,6 +5456,42 @@ a {
   line-height: 1.5;
 }
 
+.flow-input-preview-error {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-top: 1px solid tokens.$border;
+  background: rgba(254, 242, 242, 0.72);
+
+  strong {
+    display: block;
+    color: tokens.$text-primary;
+    font-size: 13px;
+  }
+
+  p {
+    margin: 4px 0 0;
+    color: tokens.$text-secondary;
+    font-size: 12px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+
+  &.is-conflict {
+    background: rgba(255, 251, 235, 0.72);
+  }
+
+  &.is-provider {
+    background: rgba(239, 246, 255, 0.72);
+  }
+
+  .text-button {
+    flex: 0 0 auto;
+  }
+}
+
 .flow-input-preview-state,
 .flow-input-preview-actions,
 .flow-input-preview-viewbar,
@@ -6025,6 +6061,11 @@ a {
   .flow-input-preview-viewbar {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .flow-input-preview-error {
+    flex-direction: column;
+    gap: 10px;
   }
 
   .flow-input-preview-section {

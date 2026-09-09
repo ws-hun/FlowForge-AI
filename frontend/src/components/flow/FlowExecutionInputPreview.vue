@@ -120,10 +120,19 @@
       </div>
       <pre v-else :class="{ 'is-stale': stale }">{{ preview.executionInput }}</pre>
     </div>
+    <div v-else-if="error" class="flow-input-preview-error" :class="`is-${errorPresentation.kind}`">
+      <div>
+        <strong>{{ errorPresentation.title }}</strong>
+        <p>{{ errorPresentation.detail }}</p>
+      </div>
+      <button type="button" class="text-button" @click="loadPreview">
+        {{ errorPresentation.actionLabel }}
+      </button>
+    </div>
     <div v-else class="flow-input-preview-status">
-      <span>{{ error || (stale ? '执行上下文已更新，请刷新执行输入。' : '展开后将从服务端生成执行输入。') }}</span>
-      <button v-if="error || stale" type="button" class="text-button" @click="loadPreview">
-        {{ error ? '重试' : '刷新输入' }}
+      <span>{{ stale ? '执行上下文已更新，请刷新执行输入。' : '展开后将从服务端生成执行输入。' }}</span>
+      <button v-if="stale" type="button" class="text-button" @click="loadPreview">
+        刷新输入
       </button>
     </div>
   </details>
@@ -137,6 +146,7 @@ import { previewFlowExecution } from '@/api/flows'
 import FlowExecutionPlan from '@/components/flow/FlowExecutionPlan.vue'
 import type { FlowExecutionPreviewResponse, FlowExecutionSectionKind } from '@/types'
 import { flowExecutionModeLabel } from '@/utils/flowExecutionPlan'
+import { presentFlowExecutionError } from '@/utils/flowExecutionError'
 import { flowNodeNeedsAttention } from '@/utils/flowNodeReadiness'
 
 const props = withDefaults(
@@ -170,6 +180,7 @@ const preview = ref<FlowExecutionPreviewResponse | null>(null)
 const loading = ref(false)
 const stale = ref(false)
 const error = ref('')
+const lastErrorStatus = ref<number | null>(null)
 const requestVersion = ref(0)
 const activeView = ref<'outline' | 'raw'>('outline')
 
@@ -179,6 +190,9 @@ const incompleteNodeIssues = computed(() =>
 )
 const readinessIssueCount = computed(() =>
   (preview.value?.missingVariables.length || 0) + incompleteNodeIssues.value.length
+)
+const errorPresentation = computed(() =>
+  presentFlowExecutionError(lastErrorStatus.value, error.value)
 )
 
 const sectionKindLabels: Record<FlowExecutionSectionKind, string> = {
@@ -207,6 +221,7 @@ function invalidatePreview() {
     stale.value = true
   }
   error.value = ''
+  lastErrorStatus.value = null
 }
 
 function resetPreview() {
@@ -215,6 +230,7 @@ function resetPreview() {
   loading.value = false
   stale.value = false
   error.value = ''
+  lastErrorStatus.value = null
   activeView.value = 'outline'
 }
 
@@ -239,6 +255,7 @@ async function loadPreview() {
   const version = requestVersion.value
   loading.value = true
   error.value = ''
+  lastErrorStatus.value = null
   try {
     const { data } = await previewFlowExecution(flowId, {
       runtimeContext: props.runtimeContext,
@@ -247,9 +264,11 @@ async function loadPreview() {
     if (props.flowId === flowId && requestVersion.value === version) {
       preview.value = data
       stale.value = false
+      lastErrorStatus.value = null
     }
   } catch (requestError: any) {
     if (props.flowId === flowId && requestVersion.value === version) {
+      lastErrorStatus.value = requestError.response?.status || null
       error.value = requestError.response?.data?.message || '执行输入生成失败'
     }
   } finally {
