@@ -825,6 +825,7 @@ import FlowExecutionInputPreview from '@/components/flow/FlowExecutionInputPrevi
 import FlowRunTrace from '@/components/flow/FlowRunTrace.vue'
 import { formatExecutionSource } from '@/utils/aiProvider'
 import { apiErrorMessage } from '@/utils/apiError'
+import { createLatestRequestGate } from '@/utils/latestRequest'
 import {
   flowExecutionOperationForNode,
   flowExecutionOperationLabel,
@@ -905,6 +906,8 @@ const flowRunsLoading = ref(false)
 const selectedFlowRun = ref<TaskHistoryItem | null>(null)
 const flowVersions = ref<FlowVersion[]>([])
 const flowVersionsLoading = ref(false)
+const flowRunsRequest = createLatestRequestGate()
+const flowVersionsRequest = createLatestRequestGate()
 const selectedFlowVersion = ref<FlowVersion | null>(null)
 const restoringFlowVersion = ref(false)
 const branchingFlowVersion = ref(false)
@@ -1537,6 +1540,8 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
+  flowRunsRequest.invalidate()
+  flowVersionsRequest.invalidate()
 })
 
 onBeforeRouteLeave(() => resolvePendingEdits())
@@ -1551,10 +1556,11 @@ async function loadPromptAssets() {
 }
 
 async function loadFlowRuns(flowId: string) {
+  const request = flowRunsRequest.begin()
   flowRunsLoading.value = true
   try {
     const { data } = await listFlowRuns(flowId)
-    if (workspace.activeFlow?.id === flowId) {
+    if (flowRunsRequest.isCurrent(request) && workspace.activeFlow?.id === flowId) {
       const selectedRun = selectedFlowRun.value
       const preserveSelectedRun = Boolean(
         selectedRun && selectedRun.sourceFlowId === flowId && !data.some((run) => run.id === selectedRun.id)
@@ -1567,17 +1573,22 @@ async function loadFlowRuns(flowId: string) {
       }
     }
   } catch (error: unknown) {
-    ElMessage.error(apiErrorMessage(error, 'Flow 执行记录加载失败'))
+    if (flowRunsRequest.isCurrent(request) && workspace.activeFlow?.id === flowId) {
+      ElMessage.error(apiErrorMessage(error, 'Flow 执行记录加载失败'))
+    }
   } finally {
-    flowRunsLoading.value = false
+    if (flowRunsRequest.isCurrent(request)) {
+      flowRunsLoading.value = false
+    }
   }
 }
 
 async function loadFlowVersions(flowId: string) {
+  const request = flowVersionsRequest.begin()
   flowVersionsLoading.value = true
   try {
     const { data } = await listFlowVersions(flowId)
-    if (workspace.activeFlow?.id !== flowId) {
+    if (!flowVersionsRequest.isCurrent(request) || workspace.activeFlow?.id !== flowId) {
       return
     }
     flowVersions.value = data
@@ -1585,11 +1596,11 @@ async function loadFlowVersions(flowId: string) {
       selectedFlowVersion.value = null
     }
   } catch (error: unknown) {
-    if (workspace.activeFlow?.id === flowId) {
+    if (flowVersionsRequest.isCurrent(request) && workspace.activeFlow?.id === flowId) {
       ElMessage.error(apiErrorMessage(error, 'Flow 修订记录加载失败'))
     }
   } finally {
-    if (workspace.activeFlow?.id === flowId) {
+    if (flowVersionsRequest.isCurrent(request)) {
       flowVersionsLoading.value = false
     }
   }

@@ -188,6 +188,7 @@ Current Stage 3 capabilities:
 - Flow templates provide reusable node structure without replacing a user's custom creation intent, and remain attached until the user explicitly removes them.
 - Flow editor drafts restore unfinished metadata and node work to its exact creation context, rebase safely on newer revisions, and can become an independent recovery copy when the original Flow or node no longer exists.
 - 前端共享 `apiError` 适配层已统一认证、AI Command、Flow Space、Prompt Library、Provider Vault 与历史数据加载/写入失败反馈；它兼容后端 `message`、代理纯文本、超时和失败运行 `runId`，让错误提示保持中文且不泄露 Axios 内部结构。
+- Prompt Library 与 Flow Space 的运行/修订读取只接受当前创作上下文中的最新请求；快速切换资产时，旧响应不会覆盖新内容、提前结束 loading 或显示过期错误。
 
 Current Stage 3 priorities:
 

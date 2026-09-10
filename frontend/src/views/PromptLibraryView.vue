@@ -446,6 +446,7 @@ import {
 } from '@/utils/promptRunDrafts'
 import { formatExecutionSource } from '@/utils/aiProvider'
 import { apiErrorMessage, apiErrorStatus } from '@/utils/apiError'
+import { createLatestRequestGate } from '@/utils/latestRequest'
 import {
   buildPromptEditorPreview,
   parsePromptDraftTags,
@@ -480,6 +481,8 @@ const promptRuns = ref<TaskHistoryItem[]>([])
 const promptRunsLoading = ref(false)
 const promptVersions = ref<PromptVersion[]>([])
 const promptVersionsLoading = ref(false)
+const promptRunsRequest = createLatestRequestGate()
+const promptVersionsRequest = createLatestRequestGate()
 const selectedVersion = ref<PromptVersion | null>(null)
 const variableValues = ref<Record<string, string>>({})
 const promptRunDrafts = ref(readPromptRunDrafts())
@@ -739,6 +742,8 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
+  promptRunsRequest.invalidate()
+  promptVersionsRequest.invalidate()
 })
 
 onBeforeRouteLeave(() => resolvePendingPromptEdits())
@@ -1336,25 +1341,31 @@ function openPromptRun(runId: string) {
 }
 
 async function loadPromptRuns(promptId: string) {
+  const request = promptRunsRequest.begin()
   promptRunsLoading.value = true
   try {
     const { data } = await listPromptRuns(promptId)
-    if (selectedPrompt.value?.id !== promptId) {
+    if (!promptRunsRequest.isCurrent(request) || selectedPrompt.value?.id !== promptId) {
       return
     }
     promptRuns.value = data
   } catch (error: unknown) {
-    ElMessage.error(apiErrorMessage(error, 'Prompt 执行记录加载失败'))
+    if (promptRunsRequest.isCurrent(request) && selectedPrompt.value?.id === promptId) {
+      ElMessage.error(apiErrorMessage(error, 'Prompt 执行记录加载失败'))
+    }
   } finally {
-    promptRunsLoading.value = false
+    if (promptRunsRequest.isCurrent(request)) {
+      promptRunsLoading.value = false
+    }
   }
 }
 
 async function loadPromptVersions(promptId: string) {
+  const request = promptVersionsRequest.begin()
   promptVersionsLoading.value = true
   try {
     const { data } = await listPromptVersions(promptId)
-    if (selectedPrompt.value?.id !== promptId) {
+    if (!promptVersionsRequest.isCurrent(request) || selectedPrompt.value?.id !== promptId) {
       return
     }
     promptVersions.value = data
@@ -1362,9 +1373,13 @@ async function loadPromptVersions(promptId: string) {
       selectedVersion.value = null
     }
   } catch (error: unknown) {
-    ElMessage.error(apiErrorMessage(error, 'Prompt 版本记录加载失败'))
+    if (promptVersionsRequest.isCurrent(request) && selectedPrompt.value?.id === promptId) {
+      ElMessage.error(apiErrorMessage(error, 'Prompt 版本记录加载失败'))
+    }
   } finally {
-    promptVersionsLoading.value = false
+    if (promptVersionsRequest.isCurrent(request)) {
+      promptVersionsLoading.value = false
+    }
   }
 }
 
