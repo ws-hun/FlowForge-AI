@@ -42,6 +42,14 @@ vi.mock('@/api/prompts', () => ({
 
 import { useWorkspaceStore } from '@/stores/workspace'
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((promiseResolve) => {
+    resolve = promiseResolve
+  })
+  return { promise, resolve }
+}
+
 describe('workspace bootstrap', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -63,5 +71,28 @@ describe('workspace bootstrap', () => {
     expect(api.listApiKeys).toHaveBeenCalledTimes(2)
     expect(api.listFlows).toHaveBeenCalledTimes(2)
     expect(workspace.flowAssetsReady).toBe(true)
+  })
+
+  it('keeps the newest history refresh when an older request finishes first', async () => {
+    const firstResponse = deferred<{ data: Array<{ id: string }> }>()
+    const secondResponse = deferred<{ data: Array<{ id: string }> }>()
+    api.listTasks
+      .mockReturnValueOnce(firstResponse.promise)
+      .mockReturnValueOnce(secondResponse.promise)
+    const workspace = useWorkspaceStore()
+
+    const firstRequest = workspace.loadTasks()
+    const secondRequest = workspace.loadTasks()
+    firstResponse.resolve({ data: [{ id: 'old-run' }] })
+    await firstRequest
+
+    expect(workspace.tasks).toEqual([])
+    expect(workspace.historyLoading).toBe(true)
+
+    secondResponse.resolve({ data: [{ id: 'new-run' }] })
+    await secondRequest
+
+    expect(workspace.tasks).toEqual([{ id: 'new-run' }])
+    expect(workspace.historyLoading).toBe(false)
   })
 })

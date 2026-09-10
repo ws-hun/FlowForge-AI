@@ -15,6 +15,7 @@ import {
 import { createFlow, deleteFlow, listFlows, restoreFlowVersion, updateFlow } from '@/api/flows'
 import { createPrompt } from '@/api/prompts'
 import { apiErrorMessage, apiErrorRunId, apiErrorStatus } from '@/utils/apiError'
+import { createLatestRequestGate } from '@/utils/latestRequest'
 import { persistAiCommandDraft, readAiCommandDraft } from '@/utils/aiCommandDraft'
 import { persistActiveFlowId, readActiveFlowId, resolveActiveFlowId } from '@/utils/flowSelection'
 import { canPersistFlowContext, createFlowContextNode } from '@/utils/flowContext'
@@ -70,6 +71,9 @@ type WorkspacePreferenceUpdateResult = 'saved' | 'memory-only' | 'invalid'
 export const useWorkspaceStore = defineStore('workspace', () => {
   let bootstrapPromise: Promise<void> | null = null
   let bootstrapped = false
+  const tasksRequest = createLatestRequestGate()
+  const apiKeysRequest = createLatestRequestGate()
+  const flowDraftsRequest = createLatestRequestGate()
   const initialTaskDraft = readAiCommandDraft()
   const tasks = ref<TaskHistoryItem[]>([])
   const apiKeys = ref<ApiKeyConfig[]>([])
@@ -142,16 +146,24 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   )
 
   async function loadTasks() {
+    const request = tasksRequest.begin()
     historyLoading.value = true
     try {
       const { data } = await listTasks()
+      if (!tasksRequest.isCurrent(request)) {
+        return false
+      }
       tasks.value = data
       return true
     } catch (error: unknown) {
-      ElMessage.error(apiErrorMessage(error, '历史记录加载失败'))
+      if (tasksRequest.isCurrent(request)) {
+        ElMessage.error(apiErrorMessage(error, '历史记录加载失败'))
+      }
       return false
     } finally {
-      historyLoading.value = false
+      if (tasksRequest.isCurrent(request)) {
+        historyLoading.value = false
+      }
     }
   }
 
@@ -168,16 +180,24 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function loadApiKeys() {
+    const request = apiKeysRequest.begin()
     settingsLoading.value = true
     try {
       const { data } = await listApiKeys()
+      if (!apiKeysRequest.isCurrent(request)) {
+        return false
+      }
       apiKeys.value = data
       return true
     } catch (error: unknown) {
-      ElMessage.error(apiErrorMessage(error, 'API 密钥加载失败'))
+      if (apiKeysRequest.isCurrent(request)) {
+        ElMessage.error(apiErrorMessage(error, 'API 密钥加载失败'))
+      }
       return false
     } finally {
-      settingsLoading.value = false
+      if (apiKeysRequest.isCurrent(request)) {
+        settingsLoading.value = false
+      }
     }
   }
 
@@ -545,9 +565,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function loadFlowDrafts() {
+    const request = flowDraftsRequest.begin()
     flowLoading.value = true
     try {
       const { data } = await listFlows()
+      if (!flowDraftsRequest.isCurrent(request)) {
+        return false
+      }
       flowDrafts.value = data
       flowAssetsReady.value = true
 
@@ -555,11 +579,15 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       persistActiveFlowId(activeFlowId.value)
       return true
     } catch (error: unknown) {
-      flowAssetsReady.value = false
-      ElMessage.error(apiErrorMessage(error, 'Flow 草稿加载失败'))
+      if (flowDraftsRequest.isCurrent(request)) {
+        flowAssetsReady.value = false
+        ElMessage.error(apiErrorMessage(error, 'Flow 草稿加载失败'))
+      }
       return false
     } finally {
-      flowLoading.value = false
+      if (flowDraftsRequest.isCurrent(request)) {
+        flowLoading.value = false
+      }
     }
   }
 

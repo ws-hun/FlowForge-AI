@@ -190,6 +190,7 @@ Current Stage 3 capabilities:
 - 前端共享 `apiError` 适配层已统一认证、AI Command、Flow Space、Prompt Library、Provider Vault 与历史数据加载/写入失败反馈；它兼容后端 `message`、代理纯文本、超时和失败运行 `runId`，让错误提示保持中文且不泄露 Axios 内部结构。
 - Prompt Library 与 Flow Space 的运行/修订读取只接受当前创作上下文中的最新请求；快速切换资产时，旧响应不会覆盖新内容、提前结束 loading 或显示过期错误。
 - 工作区初始化只有在 History、Provider 和 Flow 资产全部读取成功后才缓存完成状态；本地服务短暂离线不会锁死当前浏览器会话，后续进入创作页面会重新尝试恢复资产。
+- 全局 History、Provider 与 Flow 资产刷新使用同一最新请求规则；执行、恢复或配置变更触发的新读取不会被较早返回的初始化快照覆盖。
 
 Current Stage 3 priorities:
 
