@@ -29,19 +29,19 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .orElse("Invalid request");
-        return new ErrorResponse(message, LocalDateTime.now());
+        return new ErrorResponse(ApiErrorMessageResolver.resolve(message), LocalDateTime.now());
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleUnreadableRequest(HttpMessageNotReadableException ex) {
-        return new ErrorResponse("Invalid request body", LocalDateTime.now());
+        return new ErrorResponse(ApiErrorMessageResolver.resolve("Invalid request body"), LocalDateTime.now());
     }
 
     @ExceptionHandler(AiExecutionException.class)
     @ResponseStatus(HttpStatus.BAD_GATEWAY)
     public ErrorResponse handleAiExecution(AiExecutionException ex) {
-        return new ErrorResponse(ex.getMessage(), LocalDateTime.now(), ex.getRunId());
+        return new ErrorResponse(ApiErrorMessageResolver.resolve(ex.getMessage()), LocalDateTime.now(), ex.getRunId());
     }
 
     @ExceptionHandler(AuthenticationRequiredException.class)
@@ -60,31 +60,31 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorResponse handleIllegalState(IllegalStateException ex) {
         log.error("Internal application state failure", ex);
-        return new ErrorResponse("Internal server error", LocalDateTime.now());
+        return new ErrorResponse(ApiErrorMessageResolver.resolve("Internal server error"), LocalDateTime.now());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleIllegalArgument(IllegalArgumentException ex) {
-        return new ErrorResponse(ex.getMessage(), LocalDateTime.now());
+        return new ErrorResponse(ApiErrorMessageResolver.resolve(ex.getMessage()), LocalDateTime.now());
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse handleResourceNotFound(NoResourceFoundException ex) {
-        return new ErrorResponse("Resource not found", LocalDateTime.now());
+        return new ErrorResponse(ApiErrorMessageResolver.resolve("Resource not found"), LocalDateTime.now());
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse handleResourceNotFound(ResourceNotFoundException ex) {
-        return new ErrorResponse(ex.getMessage(), LocalDateTime.now());
+        return new ErrorResponse(ApiErrorMessageResolver.resolve(ex.getMessage()), LocalDateTime.now());
     }
 
     @ExceptionHandler(ResourceConflictException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse handleConflict(ResourceConflictException ex) {
-        return new ErrorResponse(ex.getMessage(), LocalDateTime.now());
+        return new ErrorResponse(ApiErrorMessageResolver.resolve(ex.getMessage()), LocalDateTime.now());
     }
 
     @ExceptionHandler(OptimisticLockingFailureException.class)
@@ -97,6 +97,6 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorResponse handleException(Exception ex) {
         log.error("Unhandled request failure", ex);
-        return new ErrorResponse("Internal server error", LocalDateTime.now());
+        return new ErrorResponse(ApiErrorMessageResolver.resolve("Internal server error"), LocalDateTime.now());
     }
 }

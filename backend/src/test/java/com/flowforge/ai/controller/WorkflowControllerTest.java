@@ -319,7 +319,7 @@ class WorkflowControllerTest {
 
         mockMvc.perform(delete("/api/flows/{id}", flowId))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("revision is required"));
+                .andExpect(jsonPath("$.message").value("需要提供 revision"));
     }
 
     @Test
@@ -332,6 +332,6 @@ class WorkflowControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Invalid request body"));
+                .andExpect(jsonPath("$.message").value("请求体格式无效"));
     }
 }

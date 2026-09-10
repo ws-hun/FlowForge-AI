@@ -210,7 +210,7 @@ class TaskControllerTest {
 
         mockMvc.perform(post("/api/tasks/{id}/recover", taskId))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Only failed task runs can be recovered"));
+                .andExpect(jsonPath("$.message").value("只有失败的运行记录可以恢复"));
     }
 
     @Test
@@ -220,7 +220,7 @@ class TaskControllerTest {
 
         mockMvc.perform(post("/api/tasks/{id}/rerun", taskId))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Task run not found"));
+                .andExpect(jsonPath("$.message").value("找不到这次运行记录"));
     }
 
     @Test
@@ -513,7 +513,7 @@ class TaskControllerTest {
                                 { "input": "Generate another release brief" }
                                 """))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.message").value("Internal server error"))
+                .andExpect(jsonPath("$.message").value("服务暂时不可用，请稍后重试"))
                 .andExpect(jsonPath("$.runId").doesNotExist());
     }
 }

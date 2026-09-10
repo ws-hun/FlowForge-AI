@@ -86,7 +86,7 @@ class PromptControllerTest {
 
         mockMvc.perform(delete("/api/prompts/{id}", promptId))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("revision is required"));
+                .andExpect(jsonPath("$.message").value("需要提供 revision"));
     }
 
     private PromptResponse response(UUID id, long revision, boolean favorite) {
