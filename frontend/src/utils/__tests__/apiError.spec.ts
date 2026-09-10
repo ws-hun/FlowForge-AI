@@ -32,6 +32,13 @@ describe('api error adapter', () => {
       .toBe('服务暂时不可用')
   })
 
+  it('extracts the shared contract when a gateway forwards JSON as text', () => {
+    const error = responseError('{"message":"Provider 认证失败","runId":"run-2"}', 502)
+
+    expect(apiErrorMessage(error, '执行失败')).toBe('Provider 认证失败')
+    expect(apiErrorRunId(error)).toBe('run-2')
+  })
+
   it('gives timeout requests a calm actionable suffix', () => {
     const error = new axios.AxiosError('timeout', 'ECONNABORTED')
     expect(apiErrorMessage(error, '任务执行失败')).toBe('任务执行失败（请求超时）')
