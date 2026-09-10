@@ -146,8 +146,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     try {
       const { data } = await listTasks()
       tasks.value = data
+      return true
     } catch (error: unknown) {
       ElMessage.error(apiErrorMessage(error, '历史记录加载失败'))
+      return false
     } finally {
       historyLoading.value = false
     }
@@ -170,8 +172,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     try {
       const { data } = await listApiKeys()
       apiKeys.value = data
+      return true
     } catch (error: unknown) {
       ElMessage.error(apiErrorMessage(error, 'API 密钥加载失败'))
+      return false
     } finally {
       settingsLoading.value = false
     }
@@ -549,9 +553,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
       activeFlowId.value = resolveActiveFlowId(data.map((flow) => flow.id), readActiveFlowId())
       persistActiveFlowId(activeFlowId.value)
+      return true
     } catch (error: unknown) {
       flowAssetsReady.value = false
       ElMessage.error(apiErrorMessage(error, 'Flow 草稿加载失败'))
+      return false
     } finally {
       flowLoading.value = false
     }
@@ -1251,9 +1257,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
     if (!bootstrapPromise) {
       bootstrapPromise = Promise.all([loadTasks(), loadApiKeys(), loadFlowDrafts()])
-        .then(() => {
-          reconcileAiCommandDraftSource()
-          bootstrapped = true
+        .then((results) => {
+          if (results.every(Boolean)) {
+            reconcileAiCommandDraftSource()
+            bootstrapped = true
+          }
         })
         .finally(() => {
           bootstrapPromise = null
