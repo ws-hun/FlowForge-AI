@@ -445,6 +445,7 @@ import {
   upsertPromptRunDraft
 } from '@/utils/promptRunDrafts'
 import { formatExecutionSource } from '@/utils/aiProvider'
+import { apiErrorMessage, apiErrorStatus } from '@/utils/apiError'
 import {
   buildPromptEditorPreview,
   parsePromptDraftTags,
@@ -795,8 +796,8 @@ async function loadPromptAssets() {
     const { data } = await listPrompts()
     prompts.value = data
     return true
-  } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || 'Prompt 库加载失败')
+  } catch (error: unknown) {
+    ElMessage.error(apiErrorMessage(error, 'Prompt 库加载失败'))
     return false
   } finally {
     loading.value = false
@@ -992,13 +993,13 @@ async function persistPromptAsset(notify: boolean) {
       ElMessage.success(wasEditing ? 'Prompt 已更新' : 'Prompt 已保存')
     }
     return true
-  } catch (error: any) {
-    if (editingPrompt.value && error.response?.status === 409) {
+  } catch (error: unknown) {
+    if (editingPrompt.value && apiErrorStatus(error) === 409) {
       await recoverPromptConflict(editingPrompt.value.id, error)
-    } else if (editingPrompt.value && error.response?.status === 404) {
+    } else if (editingPrompt.value && apiErrorStatus(error) === 404) {
       await recoverDeletedPrompt(editingPrompt.value.id)
     } else {
-      ElMessage.error(error.response?.data?.message || 'Prompt 保存失败')
+      ElMessage.error(apiErrorMessage(error, 'Prompt 保存失败'))
     }
     return false
   } finally {
@@ -1076,11 +1077,11 @@ async function toggleFavorite(prompt: PromptAsset) {
       selectedPrompt.value = data
     }
     promptConflictId.value = ''
-  } catch (error: any) {
-    if (error.response?.status === 409) {
+  } catch (error: unknown) {
+    if (apiErrorStatus(error) === 409) {
       await recoverPromptConflict(prompt.id, error)
     } else {
-      ElMessage.error(error.response?.data?.message || '收藏状态更新失败')
+      ElMessage.error(apiErrorMessage(error, '收藏状态更新失败'))
     }
   }
 }
@@ -1097,12 +1098,12 @@ async function removePrompt(prompt: PromptAsset) {
     clearPromptRunDraft(prompt.id)
     promptConflictId.value = ''
     ElMessage.success('Prompt 已删除')
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
-      if (error.response?.status === 409) {
+      if (apiErrorStatus(error) === 409) {
         await recoverPromptConflict(prompt.id, error)
       } else {
-        ElMessage.error(error.response?.data?.message || 'Prompt 删除失败')
+        ElMessage.error(apiErrorMessage(error, 'Prompt 删除失败'))
       }
     }
   }
@@ -1120,8 +1121,8 @@ async function createStarterPrompts() {
     await Promise.all(promptsToCreate.map((prompt) => createPrompt(toSavePayload(prompt))))
     ElMessage.success('起始 Prompt 集已加入 Prompt 库')
     await loadPromptAssets()
-  } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || 'Starter Prompt 创建失败')
+  } catch (error: unknown) {
+    ElMessage.error(apiErrorMessage(error, 'Starter Prompt 创建失败'))
   } finally {
     saving.value = false
   }
@@ -1142,8 +1143,8 @@ async function importStarterPrompt(prompt: SavePromptPayload, notifyExisting = t
     ElMessage.success('Prompt 已加入 Prompt 库')
     await loadPromptAssets()
     return data
-  } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || 'Prompt 加入失败')
+  } catch (error: unknown) {
+    ElMessage.error(apiErrorMessage(error, 'Prompt 加入失败'))
     return null
   } finally {
     saving.value = false
@@ -1342,8 +1343,8 @@ async function loadPromptRuns(promptId: string) {
       return
     }
     promptRuns.value = data
-  } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || 'Prompt 执行记录加载失败')
+  } catch (error: unknown) {
+    ElMessage.error(apiErrorMessage(error, 'Prompt 执行记录加载失败'))
   } finally {
     promptRunsLoading.value = false
   }
@@ -1360,8 +1361,8 @@ async function loadPromptVersions(promptId: string) {
     if (selectedVersion.value && !data.some((version) => version.id === selectedVersion.value?.id)) {
       selectedVersion.value = null
     }
-  } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || 'Prompt 版本记录加载失败')
+  } catch (error: unknown) {
+    ElMessage.error(apiErrorMessage(error, 'Prompt 版本记录加载失败'))
   } finally {
     promptVersionsLoading.value = false
   }
@@ -1386,11 +1387,11 @@ async function restoreVersionSnapshot(version: PromptVersion) {
     variableValues.value = buildVariableValues(data.content, variableValues.value)
     await loadPromptVersions(data.id)
     ElMessage.success('Prompt 已恢复到选中版本')
-  } catch (error: any) {
-    if (selectedPrompt.value && error.response?.status === 409) {
+  } catch (error: unknown) {
+    if (selectedPrompt.value && apiErrorStatus(error) === 409) {
       await recoverPromptConflict(selectedPrompt.value.id, error)
     } else {
-      ElMessage.error(error.response?.data?.message || 'Prompt 版本恢复失败')
+      ElMessage.error(apiErrorMessage(error, 'Prompt 版本恢复失败'))
     }
   } finally {
     saving.value = false
@@ -1424,8 +1425,8 @@ async function createVariantFromVersion(version: PromptVersion) {
     variableValues.value = buildVariableValues(data.content)
     await syncPromptRoute(data.id, 'replace')
     ElMessage.success('已从历史版本创建 Prompt 变体')
-  } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || 'Prompt 变体创建失败')
+  } catch (error: unknown) {
+    ElMessage.error(apiErrorMessage(error, 'Prompt 变体创建失败'))
   } finally {
     saving.value = false
   }
@@ -1440,7 +1441,7 @@ function replacePromptInLibrary(prompt: PromptAsset) {
   }
 }
 
-async function recoverPromptConflict(promptId: string, error: any) {
+async function recoverPromptConflict(promptId: string, error: unknown) {
   await loadPromptAssets()
   const latestPrompt = prompts.value.find((prompt) => prompt.id === promptId)
   if (!latestPrompt) {
@@ -1459,7 +1460,7 @@ async function recoverPromptConflict(promptId: string, error: any) {
     variableValues.value = buildVariableValues(latestPrompt.content, variableValues.value)
     await loadPromptVersions(promptId)
   }
-  ElMessage.warning(error.response?.data?.message || 'Prompt 已更新，请重新确认当前修改')
+  ElMessage.warning(apiErrorMessage(error, 'Prompt 已更新，请重新确认当前修改'))
   return latestPrompt
 }
 

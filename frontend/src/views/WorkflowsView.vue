@@ -824,6 +824,7 @@ import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import FlowExecutionInputPreview from '@/components/flow/FlowExecutionInputPreview.vue'
 import FlowRunTrace from '@/components/flow/FlowRunTrace.vue'
 import { formatExecutionSource } from '@/utils/aiProvider'
+import { apiErrorMessage } from '@/utils/apiError'
 import {
   flowExecutionOperationForNode,
   flowExecutionOperationLabel,
@@ -1544,8 +1545,8 @@ async function loadPromptAssets() {
   try {
     const { data } = await listPrompts()
     prompts.value = data
-  } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || 'Prompt 库加载失败')
+  } catch (error: unknown) {
+    ElMessage.error(apiErrorMessage(error, 'Prompt 库加载失败'))
   }
 }
 
@@ -1565,8 +1566,8 @@ async function loadFlowRuns(flowId: string) {
         selectedFlowRun.value = null
       }
     }
-  } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || 'Flow 执行记录加载失败')
+  } catch (error: unknown) {
+    ElMessage.error(apiErrorMessage(error, 'Flow 执行记录加载失败'))
   } finally {
     flowRunsLoading.value = false
   }
@@ -1583,9 +1584,9 @@ async function loadFlowVersions(flowId: string) {
     if (selectedFlowVersion.value && !data.some((version) => version.id === selectedFlowVersion.value?.id)) {
       selectedFlowVersion.value = null
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (workspace.activeFlow?.id === flowId) {
-      ElMessage.error(error.response?.data?.message || 'Flow 修订记录加载失败')
+      ElMessage.error(apiErrorMessage(error, 'Flow 修订记录加载失败'))
     }
   } finally {
     if (workspace.activeFlow?.id === flowId) {
@@ -2599,8 +2600,8 @@ async function saveSelectedNodeAsPrompt() {
     const { data } = await createPrompt(payload)
     prompts.value = [data, ...prompts.value.filter((prompt) => prompt.id !== data.id)]
     ElMessage.success('节点已沉淀到 Prompt 库')
-  } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || 'Prompt 保存失败')
+  } catch (error: unknown) {
+    ElMessage.error(apiErrorMessage(error, 'Prompt 保存失败'))
   } finally {
     savingNodePrompt.value = false
   }
@@ -2631,8 +2632,8 @@ async function ensureLatestResultPrompt() {
     prompts.value = [data, ...prompts.value.filter((prompt) => prompt.id !== data.id)]
     savedResultPrompt.value = data
     return data
-  } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || 'Prompt 保存失败')
+  } catch (error: unknown) {
+    ElMessage.error(apiErrorMessage(error, 'Prompt 保存失败'))
     return null
   } finally {
     savingResultPrompt.value = false

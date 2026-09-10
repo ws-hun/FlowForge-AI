@@ -14,6 +14,7 @@ import {
 } from '@/api/tasks'
 import { createFlow, deleteFlow, listFlows, restoreFlowVersion, updateFlow } from '@/api/flows'
 import { createPrompt } from '@/api/prompts'
+import { apiErrorMessage, apiErrorRunId, apiErrorStatus } from '@/utils/apiError'
 import { persistAiCommandDraft, readAiCommandDraft } from '@/utils/aiCommandDraft'
 import { persistActiveFlowId, readActiveFlowId, resolveActiveFlowId } from '@/utils/flowSelection'
 import { canPersistFlowContext, createFlowContextNode } from '@/utils/flowContext'
@@ -145,8 +146,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     try {
       const { data } = await listTasks()
       tasks.value = data
-    } catch (error: any) {
-      ElMessage.error(error.response?.data?.message || '历史记录加载失败')
+    } catch (error: unknown) {
+      ElMessage.error(apiErrorMessage(error, '历史记录加载失败'))
     } finally {
       historyLoading.value = false
     }
@@ -169,8 +170,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     try {
       const { data } = await listApiKeys()
       apiKeys.value = data
-    } catch (error: any) {
-      ElMessage.error(error.response?.data?.message || 'API 密钥加载失败')
+    } catch (error: unknown) {
+      ElMessage.error(apiErrorMessage(error, 'API 密钥加载失败'))
     } finally {
       settingsLoading.value = false
     }
@@ -216,9 +217,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       taskInput.value = ''
       ElMessage.success('任务执行完成')
       await loadTasks()
-    } catch (error: any) {
-      failedRunId.value = error.response?.data?.runId || ''
-      ElMessage.error(error.response?.data?.message || '任务执行失败')
+    } catch (error: unknown) {
+      failedRunId.value = apiErrorRunId(error)
+      ElMessage.error(apiErrorMessage(error, '任务执行失败'))
       await loadTasks()
     } finally {
       running.value = false
@@ -244,9 +245,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       ElMessage.success('已使用当前 Provider 重新执行')
       await loadTasks()
       return data
-    } catch (error: any) {
-      failedRunId.value = error.response?.data?.runId || ''
-      ElMessage.error(error.response?.data?.message || '历史任务重新执行失败')
+    } catch (error: unknown) {
+      failedRunId.value = apiErrorRunId(error)
+      ElMessage.error(apiErrorMessage(error, '历史任务重新执行失败'))
       await loadTasks()
       return null
     } finally {
@@ -273,9 +274,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       ElMessage.success('已创建新的恢复运行')
       await loadTasks()
       return data
-    } catch (error: any) {
-      failedRunId.value = error.response?.data?.runId || ''
-      ElMessage.error(error.response?.data?.message || '失败运行恢复失败')
+    } catch (error: unknown) {
+      failedRunId.value = apiErrorRunId(error)
+      ElMessage.error(apiErrorMessage(error, '失败运行恢复失败'))
       await loadTasks()
       return null
     } finally {
@@ -477,8 +478,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       const { data } = await createPrompt(payload)
       latestTaskPrompt.value = data
       return data
-    } catch (error: any) {
-      ElMessage.error(error.response?.data?.message || 'Prompt 沉淀失败')
+    } catch (error: unknown) {
+      ElMessage.error(apiErrorMessage(error, 'Prompt 沉淀失败'))
       return null
     } finally {
       taskAssetLoading.value = false
@@ -523,8 +524,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         [sourceRun.id]: data
       }
       return data
-    } catch (error: any) {
-      ElMessage.error(error.response?.data?.message || '历史结果沉淀失败')
+    } catch (error: unknown) {
+      ElMessage.error(apiErrorMessage(error, '历史结果沉淀失败'))
       return null
     } finally {
       taskAssetLoading.value = false
@@ -548,9 +549,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
       activeFlowId.value = resolveActiveFlowId(data.map((flow) => flow.id), readActiveFlowId())
       persistActiveFlowId(activeFlowId.value)
-    } catch (error: any) {
+    } catch (error: unknown) {
       flowAssetsReady.value = false
-      ElMessage.error(error.response?.data?.message || 'Flow 草稿加载失败')
+      ElMessage.error(apiErrorMessage(error, 'Flow 草稿加载失败'))
     } finally {
       flowLoading.value = false
     }
@@ -755,8 +756,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       activeFlowId.value = data.id
       persistActiveFlowId(data.id)
       return data
-    } catch (error: any) {
-      ElMessage.error(error.response?.data?.message || errorMessage)
+    } catch (error: unknown) {
+      ElMessage.error(apiErrorMessage(error, errorMessage))
       return null
     } finally {
       flowLoading.value = false
@@ -1048,11 +1049,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         flowConflictId.value = ''
       }
       return true
-    } catch (error: any) {
-      if (error.response?.status === 409) {
+    } catch (error: unknown) {
+      if (apiErrorStatus(error) === 409) {
         await recoverFlowConflict(id, error)
       } else {
-        ElMessage.error(error.response?.data?.message || 'Flow 草稿删除失败')
+        ElMessage.error(apiErrorMessage(error, 'Flow 草稿删除失败'))
       }
       return false
     } finally {
@@ -1071,11 +1072,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       const { data } = await restoreFlowVersion(flow.id, versionId, flow.revision)
       replaceFlowDraft(data)
       return data
-    } catch (error: any) {
-      if (error.response?.status === 409) {
+    } catch (error: unknown) {
+      if (apiErrorStatus(error) === 409) {
         await recoverFlowConflict(flow.id, error)
       } else {
-        ElMessage.error(error.response?.data?.message || 'Flow 修订恢复失败')
+        ElMessage.error(apiErrorMessage(error, 'Flow 修订恢复失败'))
       }
       return null
     } finally {
@@ -1118,9 +1119,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       ElMessage.success('Flow 执行完成')
       await loadTasks()
       return data
-    } catch (error: any) {
-      failedRunId.value = error.response?.data?.runId || ''
-      ElMessage.error(error.response?.data?.message || 'Flow 执行失败')
+    } catch (error: unknown) {
+      failedRunId.value = apiErrorRunId(error)
+      ElMessage.error(apiErrorMessage(error, 'Flow 执行失败'))
       await loadTasks()
       return null
     } finally {
@@ -1146,13 +1147,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       const { data } = await updateFlow(nextFlow.id, toSaveFlowPayload(nextFlow))
       replaceFlowDraft(data)
       return data
-    } catch (error: any) {
-      if (error.response?.status === 409) {
+    } catch (error: unknown) {
+      if (apiErrorStatus(error) === 409) {
         await recoverFlowConflict(flow.id, error)
-      } else if (error.response?.status === 404) {
+      } else if (apiErrorStatus(error) === 404) {
         await recoverMissingFlow(flow.id, error)
       } else {
-        ElMessage.error(error.response?.data?.message || 'Flow 草稿保存失败')
+        ElMessage.error(apiErrorMessage(error, 'Flow 草稿保存失败'))
       }
       return null
     } finally {
@@ -1160,18 +1161,18 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
-  async function recoverFlowConflict(flowId: string, error: any) {
+  async function recoverFlowConflict(flowId: string, error: unknown) {
     flowConflictId.value = flowId
     await loadFlowDrafts()
-    ElMessage.warning(error.response?.data?.message || 'Flow 已更新，请重新确认当前修改')
+    ElMessage.warning(apiErrorMessage(error, 'Flow 已更新，请重新确认当前修改'))
   }
 
-  async function recoverMissingFlow(flowId: string, error: any) {
+  async function recoverMissingFlow(flowId: string, error: unknown) {
     if (flowConflictId.value === flowId) {
       flowConflictId.value = ''
     }
     await loadFlowDrafts()
-    ElMessage.warning(error.response?.data?.message || '原 Flow 已删除，本地编辑仍可创建为恢复副本')
+    ElMessage.warning(apiErrorMessage(error, '原 Flow 已删除，本地编辑仍可创建为恢复副本'))
   }
 
   async function saveProvider(payload: SaveApiKeyPayload) {
@@ -1182,8 +1183,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       ElMessage.success('API 密钥已保存')
       await loadApiKeys()
       return true
-    } catch (error: any) {
-      ElMessage.error(error.response?.data?.message || 'API 密钥保存失败')
+    } catch (error: unknown) {
+      ElMessage.error(apiErrorMessage(error, 'API 密钥保存失败'))
       return false
     } finally {
       settingsLoading.value = false
@@ -1197,8 +1198,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       ElMessage.success('Provider 已激活')
       await loadApiKeys()
       return true
-    } catch (error: any) {
-      ElMessage.error(error.response?.data?.message || 'Provider 激活失败')
+    } catch (error: unknown) {
+      ElMessage.error(apiErrorMessage(error, 'Provider 激活失败'))
       return false
     } finally {
       settingsLoading.value = false
@@ -1215,11 +1216,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       }
       ElMessage.success(`${data.provider} 连接正常`)
       return data
-    } catch (error: any) {
+    } catch (error: unknown) {
       const nextChecks = { ...providerConnectionChecks.value }
       delete nextChecks[id]
       providerConnectionChecks.value = nextChecks
-      ElMessage.error(error.response?.data?.message || 'Provider 连接验证失败')
+      ElMessage.error(apiErrorMessage(error, 'Provider 连接验证失败'))
       return null
     } finally {
       providerTestLoadingId.value = ''
@@ -1236,8 +1237,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       ElMessage.success('API 密钥已删除')
       await loadApiKeys()
       return true
-    } catch (error: any) {
-      ElMessage.error(error.response?.data?.message || 'API 密钥删除失败')
+    } catch (error: unknown) {
+      ElMessage.error(apiErrorMessage(error, 'API 密钥删除失败'))
       return false
     } finally {
       settingsLoading.value = false

@@ -148,6 +148,7 @@ import type { FlowExecutionPreviewResponse, FlowExecutionSectionKind } from '@/t
 import { flowExecutionModeLabel } from '@/utils/flowExecutionPlan'
 import { presentFlowExecutionError } from '@/utils/flowExecutionError'
 import { flowNodeNeedsAttention } from '@/utils/flowNodeReadiness'
+import { apiErrorMessage, apiErrorStatus } from '@/utils/apiError'
 
 const props = withDefaults(
   defineProps<{
@@ -266,10 +267,10 @@ async function loadPreview() {
       stale.value = false
       lastErrorStatus.value = null
     }
-  } catch (requestError: any) {
+  } catch (requestError: unknown) {
     if (props.flowId === flowId && requestVersion.value === version) {
-      lastErrorStatus.value = requestError.response?.status || null
-      error.value = requestError.response?.data?.message || '执行输入生成失败'
+      lastErrorStatus.value = apiErrorStatus(requestError)
+      error.value = apiErrorMessage(requestError, '执行输入生成失败')
     }
   } finally {
     if (props.flowId === flowId && requestVersion.value === version) {

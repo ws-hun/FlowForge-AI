@@ -14,6 +14,7 @@ import type {
   AuthSetupPayload,
   AuthUser
 } from '@/types'
+import { apiErrorMessage, apiErrorStatus } from '@/utils/apiError'
 
 export const useAuthStore = defineStore('auth', () => {
   let bootstrapPromise: Promise<boolean> | null = null
@@ -45,10 +46,10 @@ export const useAuthStore = defineStore('auth', () => {
       const { data } = await getAuthStatus()
       applyStatus(data)
       return data.authenticated
-    } catch (error: any) {
+    } catch (error: unknown) {
       user.value = null
       setupRequired.value = false
-      connectionError.value = error.response?.data?.message || '无法连接 FlowForge 服务'
+      connectionError.value = apiErrorMessage(error, '无法连接 FlowForge 服务')
       return false
     } finally {
       ready.value = true
@@ -63,10 +64,10 @@ export const useAuthStore = defineStore('auth', () => {
       const { data } = await loginRequest(payload)
       applyStatus(data)
       return { ok: true as const, message: '' }
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         ok: false as const,
-        message: error.response?.data?.message || '登录失败，请稍后重试'
+        message: apiErrorMessage(error, '登录失败，请稍后重试')
       }
     } finally {
       ready.value = true
@@ -81,13 +82,13 @@ export const useAuthStore = defineStore('auth', () => {
       const { data } = await setupWorkspaceOwner(payload)
       applyStatus(data)
       return { ok: true as const, message: '' }
-    } catch (error: any) {
-      if (error.response?.status === 409) {
+    } catch (error: unknown) {
+      if (apiErrorStatus(error) === 409) {
         await refreshStatus()
       }
       return {
         ok: false as const,
-        message: error.response?.data?.message || '工作区所有者创建失败'
+        message: apiErrorMessage(error, '工作区所有者创建失败')
       }
     } finally {
       ready.value = true
@@ -114,10 +115,10 @@ export const useAuthStore = defineStore('auth', () => {
       const { data } = await updateProfileRequest({ displayName })
       applyStatus(data)
       return { ok: true as const, message: '' }
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         ok: false as const,
-        message: error.response?.data?.message || '账户资料保存失败，请稍后重试'
+        message: apiErrorMessage(error, '账户资料保存失败，请稍后重试')
       }
     } finally {
       loading.value = false
@@ -131,10 +132,10 @@ export const useAuthStore = defineStore('auth', () => {
       const { data } = await changePasswordRequest(payload)
       applyStatus(data)
       return { ok: true as const, message: '' }
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         ok: false as const,
-        message: error.response?.data?.message || '密码修改失败，请稍后重试'
+        message: apiErrorMessage(error, '密码修改失败，请稍后重试')
       }
     } finally {
       loading.value = false
