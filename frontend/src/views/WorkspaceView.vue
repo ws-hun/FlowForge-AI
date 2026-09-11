@@ -68,7 +68,7 @@
       </div>
     </section>
 
-    <section v-if="recentFlows.length || recentPrompts.length" class="workspace-recent-assets">
+    <section v-if="recentFlows.length || recentPrompts.length || recentPromptsLoading" class="workspace-recent-assets">
       <div class="section-heading">
         <h2>最近资产</h2>
         <span>Flow 与 Prompt</span>
@@ -94,10 +94,13 @@
           </button>
         </div>
 
-        <div v-if="recentPrompts.length" class="workspace-asset-group">
+        <div v-if="recentPrompts.length || recentPromptsLoading" class="workspace-asset-group">
           <div class="workspace-asset-group-heading">
             <strong>Prompt 库</strong>
             <button type="button" class="ghost-button" @click="router.push('/prompts')">全部</button>
+          </div>
+          <div v-if="recentPromptsLoading && !recentPrompts.length" class="workspace-asset-row workspace-asset-loading">
+            正在读取最近 Prompt...
           </div>
           <button
             v-for="prompt in recentPrompts"
@@ -139,17 +142,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowRight } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
+import { apiErrorMessage } from '@/utils/apiError'
+import { createLatestRequestGate } from '@/utils/latestRequest'
 import type { PromptAsset } from '@/types'
 
 const router = useRouter()
 const workspace = useWorkspaceStore()
 const inputRef = ref<HTMLTextAreaElement | null>(null)
 const prompts = ref<PromptAsset[]>([])
+const recentPromptsLoading = ref(false)
+const recentPromptsRequest = createLatestRequestGate()
 
 const continueFlow = computed(() => workspace.activeFlow || workspace.flowDrafts[0] || null)
 const latestSuccessfulTask = computed(() =>
@@ -190,12 +198,27 @@ const templates = [
 
 onMounted(loadRecentPrompts)
 
+onBeforeUnmount(() => {
+  recentPromptsRequest.invalidate()
+})
+
 async function loadRecentPrompts() {
+  const request = recentPromptsRequest.begin()
+  recentPromptsLoading.value = true
   try {
     const { data } = await listPrompts()
+    if (!recentPromptsRequest.isCurrent(request)) {
+      return
+    }
     prompts.value = data
-  } catch {
-    prompts.value = []
+  } catch (error: unknown) {
+    if (recentPromptsRequest.isCurrent(request)) {
+      ElMessage.error(apiErrorMessage(error, '最近 Prompt 加载失败'))
+    }
+  } finally {
+    if (recentPromptsRequest.isCurrent(request)) {
+      recentPromptsLoading.value = false
+    }
   }
 }
 

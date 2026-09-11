@@ -1899,6 +1899,11 @@ a {
   }
 }
 
+.workspace-asset-loading {
+  color: tokens.$text-muted;
+  font-size: 13px;
+}
+
 .template-section {
   max-width: 1040px;
   margin: 0 auto;
