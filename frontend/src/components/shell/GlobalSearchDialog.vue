@@ -202,26 +202,23 @@ watch(
     if (!promptRequest.isCurrent(request)) {
       return
     }
-    if (!promptsLoaded.value) {
-      promptLoading.value = true
-      promptLoadError.value = ''
-      try {
-        const { data } = await listPrompts()
-        if (!promptRequest.isCurrent(request)) {
-          return
-        }
-        prompts.value = data
-        promptsLoaded.value = true
-      } catch (error: unknown) {
-        if (promptRequest.isCurrent(request)) {
-          prompts.value = []
-          promptLoadError.value = apiErrorMessage(error, 'Prompt 资产暂时无法读取，仍可搜索 Flow 和历史。')
-          ElMessage.error(promptLoadError.value)
-        }
-      } finally {
-        if (promptRequest.isCurrent(request)) {
-          promptLoading.value = false
-        }
+    promptLoading.value = true
+    promptLoadError.value = ''
+    try {
+      const { data } = await listPrompts()
+      if (!promptRequest.isCurrent(request)) {
+        return
+      }
+      prompts.value = data
+      promptsLoaded.value = true
+    } catch (error: unknown) {
+      if (promptRequest.isCurrent(request)) {
+        promptLoadError.value = apiErrorMessage(error, 'Prompt 资产暂时无法读取，仍可搜索 Flow 和历史。')
+        ElMessage.error(promptLoadError.value)
+      }
+    } finally {
+      if (promptRequest.isCurrent(request)) {
+        promptLoading.value = false
       }
     }
   }

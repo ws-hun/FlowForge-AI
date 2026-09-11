@@ -195,6 +195,7 @@ Current Stage 3 capabilities:
 - 全局创建搜索在加载 Prompt 资产时显示明确状态，失败时保留 Flow、History 和 AI Command 入口，并通过最新请求门禁避免关闭或重新打开搜索后被旧响应污染。
 - 顶部健康检查同时受定时器和网络事件触发时，只接受最新请求结果；网络恢复后不会再被较早的离线响应覆盖。
 - History 深链在工作区初始化失败时会保留原始 `run` 参数并提供重试入口；只有资产读取成功后才解析运行链接，避免把暂时离线误报为记录不存在。
+- 全局创建搜索每次打开都会刷新 Prompt 索引；刷新失败时保留已有缓存，并继续提供 Flow、History 与 AI Command 的创建入口，确保新沉淀的 Prompt 能及时进入复用路径。
 
 Current Stage 3 priorities:
 
