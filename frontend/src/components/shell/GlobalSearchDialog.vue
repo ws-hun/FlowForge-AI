@@ -29,7 +29,12 @@
       <small>{{ visibleResults.length }} 项</small>
     </div>
 
-    <div v-if="visibleResults.length" class="global-search-results" role="listbox" aria-label="全局搜索结果">
+    <div v-if="promptLoading" class="global-search-empty global-search-loading" aria-live="polite">
+      <strong>正在准备搜索</strong>
+      <p>正在读取可复用的 Prompt 资产。</p>
+    </div>
+
+    <div v-else-if="visibleResults.length" class="global-search-results" role="listbox" aria-label="全局搜索结果">
       <button
         v-for="(result, index) in visibleResults"
         :key="result.id"
@@ -54,21 +59,24 @@
 
     <div v-else class="global-search-empty">
       <strong>没有匹配内容</strong>
-      <p>换一个关键词，或直接进入工作空间开始新的 AI 任务。</p>
+      <p>{{ promptLoadError || '换一个关键词，或直接进入工作空间开始新的 AI 任务。' }}</p>
       <button type="button" class="secondary-button" @click="openResult(quickActions[0]!)">打开 AI 命令</button>
     </div>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import { useRouter } from 'vue-router'
 import { Clock, Close, Connection, Document, Plus, Search } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { PromptAsset, TaskHistoryItem } from '@/types'
+import { apiErrorMessage } from '@/utils/apiError'
+import { createLatestRequestGate } from '@/utils/latestRequest'
 import { taskHistoryKindLabel } from '@/utils/taskLabels'
 
 type SearchResultKind = 'action' | 'flow' | 'prompt' | 'run'
@@ -98,6 +106,9 @@ const activeIndex = ref(0)
 const searchInput = ref<HTMLInputElement | null>(null)
 const prompts = ref<PromptAsset[]>([])
 const promptsLoaded = ref(false)
+const promptLoading = ref(false)
+const promptLoadError = ref('')
+const promptRequest = createLatestRequestGate()
 
 const quickActions: SearchResult[] = [
   createResult('action-task', 'action', '创建', 'AI 命令', '执行一个新的结构化 AI 任务', '/tasks', Plus),
@@ -178,24 +189,47 @@ watch(
   () => props.open,
   async (open) => {
     if (!open) {
+      promptRequest.invalidate()
+      promptLoading.value = false
       return
     }
     query.value = ''
     activeIndex.value = 0
     await nextTick()
     searchInput.value?.focus()
+    const request = promptRequest.begin()
     await workspace.bootstrap()
+    if (!promptRequest.isCurrent(request)) {
+      return
+    }
     if (!promptsLoaded.value) {
+      promptLoading.value = true
+      promptLoadError.value = ''
       try {
         const { data } = await listPrompts()
+        if (!promptRequest.isCurrent(request)) {
+          return
+        }
         prompts.value = data
         promptsLoaded.value = true
-      } catch {
-        prompts.value = []
+      } catch (error: unknown) {
+        if (promptRequest.isCurrent(request)) {
+          prompts.value = []
+          promptLoadError.value = apiErrorMessage(error, 'Prompt 资产暂时无法读取，仍可搜索 Flow 和历史。')
+          ElMessage.error(promptLoadError.value)
+        }
+      } finally {
+        if (promptRequest.isCurrent(request)) {
+          promptLoading.value = false
+        }
       }
     }
   }
 )
+
+onBeforeUnmount(() => {
+  promptRequest.invalidate()
+})
 
 watch(visibleResults, () => {
   activeIndex.value = 0

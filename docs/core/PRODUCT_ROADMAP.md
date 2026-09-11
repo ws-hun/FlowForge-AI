@@ -192,6 +192,7 @@ Current Stage 3 capabilities:
 - 工作区初始化只有在 History、Provider 和 Flow 资产全部读取成功后才缓存完成状态；本地服务短暂离线不会锁死当前浏览器会话，后续进入创作页面会重新尝试恢复资产。
 - 全局 History、Provider 与 Flow 资产刷新使用同一最新请求规则；执行、恢复或配置变更触发的新读取不会被较早返回的初始化快照覆盖。
 - Workspace 首页的最近 Prompt 读取已具备可见 loading、统一错误提示和卸载门禁；首页保持以创建为中心，同时不会把“暂未加载”和“没有资产”混为一谈。
+- 全局创建搜索在加载 Prompt 资产时显示明确状态，失败时保留 Flow、History 和 AI Command 入口，并通过最新请求门禁避免关闭或重新打开搜索后被旧响应污染。
 
 Current Stage 3 priorities:
 
