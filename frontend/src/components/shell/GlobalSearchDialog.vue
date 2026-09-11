@@ -60,6 +60,7 @@
     <div v-else class="global-search-empty">
       <strong>没有匹配内容</strong>
       <p>{{ promptLoadError || '换一个关键词，或直接进入工作空间开始新的 AI 任务。' }}</p>
+      <button v-if="promptLoadError" type="button" class="ghost-button" @click="retryPromptLoad">重试 Prompt 读取</button>
       <button type="button" class="secondary-button" @click="openResult(quickActions[0]!)">打开 AI 命令</button>
     </div>
   </el-dialog>
@@ -198,35 +199,45 @@ watch(
     await nextTick()
     searchInput.value?.focus()
     const request = promptRequest.begin()
+    promptLoading.value = true
+    promptLoadError.value = ''
     await workspace.bootstrap()
     if (!promptRequest.isCurrent(request)) {
       return
     }
-    promptLoading.value = true
-    promptLoadError.value = ''
-    try {
-      const { data } = await listPrompts()
-      if (!promptRequest.isCurrent(request)) {
-        return
-      }
-      prompts.value = data
-      promptsLoaded.value = true
-    } catch (error: unknown) {
-      if (promptRequest.isCurrent(request)) {
-        promptLoadError.value = apiErrorMessage(error, 'Prompt 资产暂时无法读取，仍可搜索 Flow 和历史。')
-        ElMessage.error(promptLoadError.value)
-      }
-    } finally {
-      if (promptRequest.isCurrent(request)) {
-        promptLoading.value = false
-      }
-    }
+    await loadPromptIndex(request)
   }
 )
 
 onBeforeUnmount(() => {
   promptRequest.invalidate()
 })
+
+async function loadPromptIndex(request = promptRequest.begin()) {
+  promptLoading.value = true
+  promptLoadError.value = ''
+  try {
+    const { data } = await listPrompts()
+    if (!promptRequest.isCurrent(request)) {
+      return
+    }
+    prompts.value = data
+    promptsLoaded.value = true
+  } catch (error: unknown) {
+    if (promptRequest.isCurrent(request)) {
+      promptLoadError.value = apiErrorMessage(error, 'Prompt 资产暂时无法读取，仍可搜索 Flow 和历史。')
+      ElMessage.error(promptLoadError.value)
+    }
+  } finally {
+    if (promptRequest.isCurrent(request)) {
+      promptLoading.value = false
+    }
+  }
+}
+
+function retryPromptLoad() {
+  void loadPromptIndex()
+}
 
 watch(visibleResults, () => {
   activeIndex.value = 0
