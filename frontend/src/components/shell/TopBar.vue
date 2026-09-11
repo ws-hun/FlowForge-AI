@@ -80,6 +80,7 @@ import logo from '@/assets/icons/logo.png'
 import { getHealth } from '@/api/system'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useAuthStore } from '@/stores/auth'
+import { createLatestRequestGate } from '@/utils/latestRequest'
 
 const searchOpen = ref(false)
 const userMenuOpen = ref(false)
@@ -88,6 +89,7 @@ const workspace = useWorkspaceStore()
 const auth = useAuthStore()
 const healthState = ref<'checking' | 'ready' | 'offline'>('checking')
 let healthTimer: number | null = null
+const healthRequest = createLatestRequestGate()
 const systemStatus = computed(() => {
   if (healthState.value === 'offline') return 'offline'
   if (healthState.value === 'checking') return 'checking'
@@ -122,19 +124,27 @@ function handleSearchShortcut(event: KeyboardEvent) {
 }
 
 async function refreshHealth() {
+  const request = healthRequest.begin()
   if (!navigator.onLine) {
-    healthState.value = 'offline'
+    if (healthRequest.isCurrent(request)) {
+      healthState.value = 'offline'
+    }
     return
   }
   try {
     const { data } = await getHealth()
-    healthState.value = data.status === 'up' && data.database === 'reachable' ? 'ready' : 'offline'
+    if (healthRequest.isCurrent(request)) {
+      healthState.value = data.status === 'up' && data.database === 'reachable' ? 'ready' : 'offline'
+    }
   } catch {
-    healthState.value = 'offline'
+    if (healthRequest.isCurrent(request)) {
+      healthState.value = 'offline'
+    }
   }
 }
 
 function handleOffline() {
+  healthRequest.invalidate()
   healthState.value = 'offline'
 }
 
@@ -159,6 +169,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  healthRequest.invalidate()
   window.removeEventListener('keydown', handleSearchShortcut)
   window.removeEventListener('online', refreshHealth)
   window.removeEventListener('offline', handleOffline)
