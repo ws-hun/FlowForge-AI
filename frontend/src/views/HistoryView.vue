@@ -6,6 +6,14 @@
       <p>保留每一次 AI 工作流执行的上下文、摘要和结果。</p>
     </header>
 
+    <div v-if="historyUnavailable" class="history-load-notice" role="alert">
+      <div>
+        <strong>历史工作区暂时无法读取</strong>
+        <p>当前运行链接仍然保留。服务恢复后重试，会继续打开原来的运行记录。</p>
+      </div>
+      <button type="button" class="secondary-button" @click="retryHistoryLoad">重试读取</button>
+    </div>
+
     <div class="history-explorer">
       <label class="history-search-field">
         <Search class="history-search-icon" />
@@ -193,7 +201,7 @@
           </el-collapse>
         </div>
       </article>
-      <div v-if="!workspace.tasks.length" class="empty-state">暂无历史记录</div>
+      <div v-if="!historyUnavailable && !workspace.tasks.length" class="empty-state">暂无历史记录</div>
       <div v-else-if="!filteredTasks.length" class="empty-state history-filter-empty">
         <div>
           <strong>没有匹配的运行</strong>
@@ -237,6 +245,7 @@ const workspace = useWorkspaceStore()
 const expandedRunIds = ref<string[]>([])
 const focusedRunId = ref('')
 const historyRouteReady = ref(false)
+const historyUnavailable = ref(false)
 const comparisonOpen = ref(false)
 const comparisonSource = ref<TaskHistoryItem | null>(null)
 const comparisonTarget = ref<TaskHistoryItem | null>(null)
@@ -277,9 +286,12 @@ const filteredTasks = computed(() => {
 })
 
 onMounted(async () => {
-  await workspace.bootstrap()
-  historyRouteReady.value = true
-  await openRunFromRoute()
+  const loaded = await workspace.bootstrap()
+  historyUnavailable.value = !loaded
+  historyRouteReady.value = loaded
+  if (loaded) {
+    await openRunFromRoute()
+  }
 })
 
 watch(
@@ -435,6 +447,16 @@ async function openRunFromRoute() {
 function resetHistoryExplorer() {
   historyQuery.value = ''
   historyScope.value = 'all'
+}
+
+async function retryHistoryLoad() {
+  historyUnavailable.value = false
+  const loaded = await workspace.bootstrap()
+  historyUnavailable.value = !loaded
+  historyRouteReady.value = loaded
+  if (loaded) {
+    await openRunFromRoute()
+  }
 }
 
 function openHistoryRun(runId?: string) {

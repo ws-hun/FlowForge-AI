@@ -69,7 +69,7 @@ type FlowRunSeed = {
 type WorkspacePreferenceUpdateResult = 'saved' | 'memory-only' | 'invalid'
 
 export const useWorkspaceStore = defineStore('workspace', () => {
-  let bootstrapPromise: Promise<void> | null = null
+  let bootstrapPromise: Promise<boolean> | null = null
   let bootstrapped = false
   const tasksRequest = createLatestRequestGate()
   const apiKeysRequest = createLatestRequestGate()
@@ -1279,23 +1279,25 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
-  async function bootstrap() {
+  async function bootstrap(): Promise<boolean> {
     if (bootstrapped) {
-      return
+      return true
     }
     if (!bootstrapPromise) {
       bootstrapPromise = Promise.all([loadTasks(), loadApiKeys(), loadFlowDrafts()])
         .then((results) => {
-          if (results.every(Boolean)) {
+          const ready = results.every(Boolean)
+          if (ready) {
             reconcileAiCommandDraftSource()
             bootstrapped = true
           }
+          return ready
         })
         .finally(() => {
           bootstrapPromise = null
         })
     }
-    await bootstrapPromise
+    return bootstrapPromise
   }
 
   return {

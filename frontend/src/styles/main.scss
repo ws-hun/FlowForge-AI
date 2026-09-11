@@ -1689,6 +1689,34 @@ a {
   background: rgba(255, 255, 255, 0.58);
 }
 
+.history-load-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin: -18px auto 32px;
+  padding: 16px 20px;
+  border: 1px solid rgba(245, 158, 11, 0.24);
+  border-radius: tokens.$radius-md;
+  background: rgba(255, 251, 235, 0.82);
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 14px;
+  }
+
+  p {
+    margin: 4px 0 0;
+    color: tokens.$text-secondary;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .secondary-button {
+    flex: 0 0 auto;
+  }
+}
+
 .home-hero,
 .quiet-header {
   max-width: 820px;
