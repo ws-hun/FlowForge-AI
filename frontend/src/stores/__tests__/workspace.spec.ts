@@ -95,4 +95,16 @@ describe('workspace bootstrap', () => {
     expect(workspace.tasks).toEqual([{ id: 'new-run' }])
     expect(workspace.historyLoading).toBe(false)
   })
+
+  it('distinguishes unavailable Provider data from a successfully loaded empty vault', async () => {
+    api.listApiKeys.mockRejectedValueOnce(new Error('offline'))
+    const workspace = useWorkspaceStore()
+
+    await workspace.loadApiKeys()
+    expect(workspace.apiKeysReady).toBe(false)
+
+    await workspace.loadApiKeys()
+    expect(workspace.apiKeysReady).toBe(true)
+    expect(workspace.apiKeys).toEqual([])
+  })
 })

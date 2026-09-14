@@ -33,7 +33,17 @@
       </section>
 
       <section class="provider-list">
-        <article v-for="item in workspace.apiKeys" :key="item.id" class="soft-card provider-card">
+        <div v-if="workspace.settingsLoading && !workspace.apiKeysReady" class="empty-state provider-load-state">
+          正在读取 Provider 配置...
+        </div>
+        <div v-else-if="!workspace.apiKeysReady" class="empty-state provider-load-state">
+          <div>
+            <strong>Provider 配置暂时无法读取</strong>
+            <p>密钥不会在失败时被清空。服务恢复后可重新读取现有配置。</p>
+            <button type="button" class="secondary-button" @click="retryProviders">重试读取</button>
+          </div>
+        </div>
+        <article v-for="item in workspace.apiKeys" v-else :key="item.id" class="soft-card provider-card">
           <div class="row-between">
             <strong>{{ item.provider }}</strong>
             <span class="badge">{{ item.active ? '已激活' : '备用' }}</span>
@@ -69,7 +79,7 @@
             </button>
           </div>
         </article>
-        <div v-if="!workspace.apiKeys.length" class="empty-state">暂无 Provider</div>
+        <div v-if="workspace.apiKeysReady && !workspace.apiKeys.length" class="empty-state">暂无 Provider</div>
       </section>
     </div>
   </section>
@@ -102,6 +112,10 @@ const providerBusy = computed(() => workspace.settingsLoading || Boolean(workspa
 function applyDefaults() {
   form.baseUrl = defaults[form.provider].baseUrl
   form.model = defaults[form.provider].model
+}
+
+function retryProviders() {
+  void workspace.loadApiKeys()
 }
 
 async function submit() {

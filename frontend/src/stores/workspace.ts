@@ -77,6 +77,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const initialTaskDraft = readAiCommandDraft()
   const tasks = ref<TaskHistoryItem[]>([])
   const apiKeys = ref<ApiKeyConfig[]>([])
+  const apiKeysReady = ref(false)
   const flowDrafts = ref<FlowDraft[]>([])
   const activeFlowId = ref('')
   const latestResult = ref<TaskRunResponse | null>(null)
@@ -188,9 +189,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         return false
       }
       apiKeys.value = data
+      apiKeysReady.value = true
       return true
     } catch (error: unknown) {
       if (apiKeysRequest.isCurrent(request)) {
+        apiKeysReady.value = false
         ElMessage.error(apiErrorMessage(error, 'API 密钥加载失败'))
       }
       return false
@@ -1303,6 +1306,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   return {
     tasks,
     apiKeys,
+    apiKeysReady,
     flowDrafts,
     activeFlowId,
     latestResult,
