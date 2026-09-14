@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import axios, { AxiosHeaders } from 'axios'
 import { createPinia, setActivePinia } from 'pinia'
 
 const api = vi.hoisted(() => ({
   listTasks: vi.fn(),
   listApiKeys: vi.fn(),
-  listFlows: vi.fn()
+  listFlows: vi.fn(),
+  runTask: vi.fn()
 }))
 
 vi.mock('element-plus', () => ({
@@ -23,7 +25,7 @@ vi.mock('@/api/tasks', () => ({
   listTasks: api.listTasks,
   recoverTask: vi.fn(),
   rerunTask: vi.fn(),
-  runTask: vi.fn(),
+  runTask: api.runTask,
   saveApiKey: vi.fn(),
   testApiKey: vi.fn()
 }))
@@ -48,6 +50,22 @@ function deferred<T>() {
     resolve = promiseResolve
   })
   return { promise, resolve }
+}
+
+function responseError(data: unknown, status = 502) {
+  return new axios.AxiosError(
+    'Request failed',
+    'ERR_BAD_RESPONSE',
+    { headers: new AxiosHeaders() },
+    undefined,
+    {
+      data,
+      status,
+      statusText: '',
+      headers: {},
+      config: { headers: new AxiosHeaders() }
+    }
+  )
 }
 
 describe('workspace bootstrap', () => {
@@ -106,5 +124,36 @@ describe('workspace bootstrap', () => {
     await workspace.loadApiKeys()
     expect(workspace.apiKeysReady).toBe(true)
     expect(workspace.apiKeys).toEqual([])
+  })
+
+  it('keeps a saved failed run visible when the follow-up history refresh is offline', async () => {
+    api.listApiKeys.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'provider-1',
+          provider: 'deepseek',
+          maskedKey: 'sk-...1234',
+          baseUrl: 'https://api.deepseek.com',
+          model: 'deepseek-chat',
+          active: true,
+          updatedAt: '2026-09-14T00:00:00Z'
+        }
+      ]
+    })
+    api.runTask.mockRejectedValueOnce(responseError({ message: 'Provider 暂时不可用', runId: 'failed-run-1' }))
+    api.listTasks.mockRejectedValueOnce(new Error('offline'))
+    const workspace = useWorkspaceStore()
+
+    await workspace.loadApiKeys()
+    workspace.taskInput = '生成一份执行方案'
+    await workspace.executeTask()
+
+    expect(workspace.failedRunId).toBe('failed-run-1')
+    expect(workspace.failedRun).toMatchObject({
+      id: 'failed-run-1',
+      input: '生成一份执行方案',
+      status: 'failed',
+      errorMessage: 'Provider 暂时不可用'
+    })
   })
 })

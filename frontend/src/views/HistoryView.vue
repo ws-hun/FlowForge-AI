@@ -427,7 +427,18 @@ async function openRunFromRoute() {
     return
   }
 
-  const targetRun = workspace.tasks.find((task) => task.id === runId)
+  let targetRun = workspace.tasks.find((task) => task.id === runId)
+  if (!targetRun) {
+    // A cached bootstrap can predate a deep link created in another tab or just after a run.
+    const refreshed = await workspace.loadTasks()
+    if (!refreshed) {
+      historyUnavailable.value = true
+      historyRouteReady.value = false
+      return
+    }
+    targetRun = workspace.tasks.find((task) => task.id === runId)
+  }
+
   if (!targetRun) {
     ElMessage.warning('指定的运行记录已不存在或无法访问')
     await syncRunRoute(null, 'replace')
@@ -451,7 +462,8 @@ function resetHistoryExplorer() {
 
 async function retryHistoryLoad() {
   historyUnavailable.value = false
-  const loaded = await workspace.bootstrap()
+  const bootstrapped = await workspace.bootstrap()
+  const loaded = bootstrapped && await workspace.loadTasks()
   historyUnavailable.value = !loaded
   historyRouteReady.value = loaded
   if (loaded) {

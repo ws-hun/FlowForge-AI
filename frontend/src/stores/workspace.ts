@@ -82,6 +82,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const activeFlowId = ref('')
   const latestResult = ref<TaskRunResponse | null>(null)
   const failedRunId = ref('')
+  // Keep enough failure context to render a persisted run while History is offline.
+  const failedRunFallback = ref<TaskHistoryItem | null>(null)
   const latestTaskInput = ref('')
   const latestTaskPrompt = ref<PromptAsset | null>(null)
   const taskPromptsByRunId = ref<Record<string, PromptAsset>>({})
@@ -127,7 +129,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const canExecuteTask = computed(() =>
     taskSourceFlowId.value ? missingTaskSourceFlowVariables.value.length === 0 : Boolean(taskInput.value.trim())
   )
-  const failedRun = computed(() => tasks.value.find((task) => task.id === failedRunId.value) || null)
+  const failedRun = computed(
+    () => tasks.value.find((task) => task.id === failedRunId.value) || failedRunFallback.value
+  )
 
   watch(
     [
@@ -204,6 +208,32 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   }
 
+  function rememberFailedRun(
+    runId: string,
+    input: string,
+    errorMessage: string,
+    context: Partial<
+      Pick<TaskHistoryItem, 'sourcePromptId' | 'sourcePromptTitle' | 'sourceFlowId' | 'sourceFlowTitle'>
+    > = {}
+  ) {
+    failedRunId.value = runId
+    if (!runId) {
+      failedRunFallback.value = null
+      return
+    }
+
+    failedRunFallback.value = {
+      id: runId,
+      input,
+      summary: '执行失败，运行上下文已保存',
+      result: errorMessage,
+      status: 'failed',
+      errorMessage,
+      createdAt: new Date().toISOString(),
+      ...context
+    }
+  }
+
   async function executeTask() {
     const isFlowRun = Boolean(taskSourceFlowId.value)
     const input = taskInput.value.trim()
@@ -227,6 +257,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     running.value = true
     latestResult.value = null
     failedRunId.value = ''
+    failedRunFallback.value = null
     try {
       const { data } = await runTask({
         input,
@@ -245,8 +276,14 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       ElMessage.success('任务执行完成')
       await loadTasks()
     } catch (error: unknown) {
-      failedRunId.value = apiErrorRunId(error)
-      ElMessage.error(apiErrorMessage(error, '任务执行失败'))
+      const errorMessage = apiErrorMessage(error, '任务执行失败')
+      rememberFailedRun(apiErrorRunId(error), input, errorMessage, {
+        sourcePromptId: taskSourcePromptId.value,
+        sourcePromptTitle: taskSourcePromptTitle.value || null,
+        sourceFlowId: taskSourceFlowId.value,
+        sourceFlowTitle: taskSourceFlowTitle.value || null
+      })
+      ElMessage.error(errorMessage)
       await loadTasks()
     } finally {
       running.value = false
@@ -262,6 +299,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     running.value = true
     latestResult.value = null
     failedRunId.value = ''
+    failedRunFallback.value = null
     try {
       const { data } = await rerunTaskRequest(taskId)
       latestResult.value = data
@@ -273,8 +311,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       await loadTasks()
       return data
     } catch (error: unknown) {
-      failedRunId.value = apiErrorRunId(error)
-      ElMessage.error(apiErrorMessage(error, '历史任务重新执行失败'))
+      const errorMessage = apiErrorMessage(error, '历史任务重新执行失败')
+      rememberFailedRun(apiErrorRunId(error), tasks.value.find((task) => task.id === taskId)?.input || '', errorMessage)
+      ElMessage.error(errorMessage)
       await loadTasks()
       return null
     } finally {
@@ -291,6 +330,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     running.value = true
     latestResult.value = null
     failedRunId.value = ''
+    failedRunFallback.value = null
     try {
       const { data } = await recoverTaskRequest(taskId)
       latestResult.value = data
@@ -302,8 +342,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       await loadTasks()
       return data
     } catch (error: unknown) {
-      failedRunId.value = apiErrorRunId(error)
-      ElMessage.error(apiErrorMessage(error, '失败运行恢复失败'))
+      const errorMessage = apiErrorMessage(error, '失败运行恢复失败')
+      rememberFailedRun(apiErrorRunId(error), tasks.value.find((task) => task.id === taskId)?.input || '', errorMessage)
+      ElMessage.error(errorMessage)
       await loadTasks()
       return null
     } finally {
@@ -1145,6 +1186,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     running.value = true
     latestResult.value = null
     failedRunId.value = ''
+    failedRunFallback.value = null
     try {
       const { data } = await runTask({
         input: runtimeContext.trim(),
@@ -1157,8 +1199,12 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       await loadTasks()
       return data
     } catch (error: unknown) {
-      failedRunId.value = apiErrorRunId(error)
-      ElMessage.error(apiErrorMessage(error, 'Flow 执行失败'))
+      const errorMessage = apiErrorMessage(error, 'Flow 执行失败')
+      rememberFailedRun(apiErrorRunId(error), runtimeContext.trim(), errorMessage, {
+        sourceFlowId: activeFlow.value.id,
+        sourceFlowTitle: activeFlow.value.title
+      })
+      ElMessage.error(errorMessage)
       await loadTasks()
       return null
     } finally {
