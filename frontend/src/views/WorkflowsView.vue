@@ -780,35 +780,47 @@
         <div v-if="workspace.activeFlow" class="flow-run-section">
           <div class="section-heading compact">
             <h3>最近执行</h3>
-            <span>{{ flowRuns.length ? `${flowRuns.length} 条记录` : '暂无记录' }}</span>
+            <span v-if="flowRunsLoading">读取中...</span>
+            <span v-else-if="flowRunsLoadError">读取失败</span>
+            <span v-else>{{ flowRuns.length ? `${flowRuns.length} 条记录` : '暂无记录' }}</span>
           </div>
           <div v-if="flowRunsLoading" class="run-timeline">
             <article v-for="item in 2" :key="item" class="run-item skeleton-run"></article>
           </div>
-          <div v-else-if="flowRuns.length" class="run-timeline">
-            <button
-              v-for="run in flowRuns"
-              :key="run.id"
-              type="button"
-              class="run-item"
-              :class="{ active: selectedFlowRun?.id === run.id, failed: run.status === 'failed' }"
-              @click="selectFlowRun(run)"
-            >
-              <time>{{ formatDate(run.createdAt) }}</time>
-              <div class="run-item-heading">
-                <strong>{{ run.summary }}</strong>
-                <span v-if="run.status === 'failed'" class="error">执行失败 · 可检查</span>
-                <span v-else-if="run.flowRunSnapshot">已固定快照</span>
+          <div v-else>
+            <div v-if="flowRunsLoadError" class="flow-readiness-note flow-runs-load-error" role="alert">
+              <span class="flow-run-dot warning"></span>
+              <div>
+                <strong>最近执行暂时无法读取</strong>
+                <p>已有运行记录仍然保留。服务恢复后可以重新读取这个 Flow 的执行上下文。</p>
               </div>
-              <span v-if="formatExecutionSource(run.provider, run.model, run.totalTokens, run.durationMs)" class="run-provenance">
-                {{ formatExecutionSource(run.provider, run.model, run.totalTokens, run.durationMs) }}
-              </span>
-              <p>{{ run.status === 'failed' ? run.errorMessage || run.result : run.result }}</p>
-            </button>
+              <button type="button" class="secondary-button" @click="retryFlowRuns">重试读取</button>
+            </div>
+            <div v-if="flowRuns.length" class="run-timeline">
+              <button
+                v-for="run in flowRuns"
+                :key="run.id"
+                type="button"
+                class="run-item"
+                :class="{ active: selectedFlowRun?.id === run.id, failed: run.status === 'failed' }"
+                @click="selectFlowRun(run)"
+              >
+                <time>{{ formatDate(run.createdAt) }}</time>
+                <div class="run-item-heading">
+                  <strong>{{ run.summary }}</strong>
+                  <span v-if="run.status === 'failed'" class="error">执行失败 · 可检查</span>
+                  <span v-else-if="run.flowRunSnapshot">已固定快照</span>
+                </div>
+                <span v-if="formatExecutionSource(run.provider, run.model, run.totalTokens, run.durationMs)" class="run-provenance">
+                  {{ formatExecutionSource(run.provider, run.model, run.totalTokens, run.durationMs) }}
+                </span>
+                <p>{{ run.status === 'failed' ? run.errorMessage || run.result : run.result }}</p>
+              </button>
+            </div>
+            <p v-else-if="!flowRunsLoadError" class="quiet-note">
+              从这个 Flow 发送到 Task 并执行后，记录会回到这里。
+            </p>
           </div>
-          <p v-else class="quiet-note">
-            从这个 Flow 发送到 Task 并执行后，记录会回到这里。
-          </p>
         </div>
       </aside>
     </div>
@@ -903,6 +915,7 @@ const promptSearch = ref('')
 const activePromptFilter = ref('all')
 const flowRuns = ref<TaskHistoryItem[]>([])
 const flowRunsLoading = ref(false)
+const flowRunsLoadError = ref(false)
 const selectedFlowRun = ref<TaskHistoryItem | null>(null)
 const flowVersions = ref<FlowVersion[]>([])
 const flowVersionsLoading = ref(false)
@@ -1422,6 +1435,7 @@ watch(
     flowRunContext.value = nextRunContext
     flowVariableValues.value = nextVariableValues
     flowRuns.value = []
+    flowRunsLoadError.value = false
     flowVersions.value = []
     flowExecutionVisible.value = false
     selectedFlowRun.value = null
@@ -1568,18 +1582,27 @@ async function loadFlowRuns(flowId: string) {
       flowRuns.value = preserveSelectedRun && selectedRun
         ? [selectedRun, ...data]
         : data
+      flowRunsLoadError.value = false
       if (selectedRun && selectedRun.sourceFlowId !== flowId) {
         selectedFlowRun.value = null
       }
     }
   } catch (error: unknown) {
     if (flowRunsRequest.isCurrent(request) && workspace.activeFlow?.id === flowId) {
+      flowRunsLoadError.value = true
       ElMessage.error(apiErrorMessage(error, 'Flow 执行记录加载失败'))
     }
   } finally {
     if (flowRunsRequest.isCurrent(request)) {
       flowRunsLoading.value = false
     }
+  }
+}
+
+function retryFlowRuns() {
+  const flowId = workspace.activeFlow?.id
+  if (flowId) {
+    void loadFlowRuns(flowId)
   }
 }
 
