@@ -24,6 +24,14 @@
       <button type="button" class="primary-button" @click="openCreate">新建 Prompt</button>
     </div>
 
+    <div v-if="promptLoadError" class="history-load-notice prompt-load-notice" role="alert">
+      <div>
+        <strong>Prompt 资产暂时无法读取</strong>
+        <p>已有资产仍然保留。服务恢复后重试，可以继续搜索和复用当前 Prompt。</p>
+      </div>
+      <button type="button" class="secondary-button" @click="retryPromptAssets">重试读取</button>
+    </div>
+
     <section v-if="!loading" class="starter-section">
       <div class="section-heading">
         <div>
@@ -90,7 +98,7 @@
       </article>
     </div>
 
-    <div v-else class="empty-state prompt-empty">
+    <div v-else-if="!promptLoadError" class="empty-state prompt-empty">
       <div>
         <strong>还没有可复用 Prompt</strong>
         <span>先创建一个常用工作方式，或从上方起始 Prompt 集选择一个开始。</span>
@@ -470,6 +478,7 @@ const search = ref('')
 const activeCategory = ref('all')
 const favoriteOnly = ref(false)
 const loading = ref(false)
+const promptLoadError = ref(false)
 const saving = ref(false)
 const dialogOpen = ref(false)
 const editingPrompt = ref<PromptAsset | null>(null)
@@ -797,15 +806,24 @@ watch(variableValues, (values) => {
 
 async function loadPromptAssets() {
   loading.value = true
+  promptLoadError.value = false
   try {
     const { data } = await listPrompts()
     prompts.value = data
     return true
   } catch (error: unknown) {
+    promptLoadError.value = true
     ElMessage.error(apiErrorMessage(error, 'Prompt 库加载失败'))
     return false
   } finally {
     loading.value = false
+  }
+}
+
+async function retryPromptAssets() {
+  const loaded = await loadPromptAssets()
+  if (loaded) {
+    await openPromptFromRoute()
   }
 }
 

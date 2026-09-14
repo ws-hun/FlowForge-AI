@@ -200,6 +200,8 @@ Current Stage 3 capabilities:
 - Provider Vault 区分“正在读取”“读取失败”和“已读取但为空”，失败时保留密钥输入并提供就地重试，不再把服务故障误报为尚未配置 Provider。
 - AI Command 在 Provider 失败且后端已保存运行时保留失败运行快照；即使后续 History 刷新离线，用户仍能从当前工作区打开这条可恢复记录。
 - History 深链遇到缓存未命中的运行时会主动刷新一次；只有服务确认读取成功且记录确实不存在时，才清除链接并提示记录不可用。
+- Flow Space 的最近执行区分“读取中”“读取失败”和“没有记录”，网络故障时保留当前已载入的运行，并提供就地重试入口。
+- Prompt Library 在资产刷新失败时保留已有 Prompt；首次读取失败不会伪装成空库，并提供就地重试以恢复 Prompt 复用路径。
 
 Current Stage 3 priorities:
 
