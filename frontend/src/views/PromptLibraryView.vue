@@ -286,53 +286,69 @@
         <section v-if="!isStarterDetail" class="detail-section">
           <div class="section-heading compact">
             <h3>最近执行</h3>
-            <span>{{ promptRuns.length ? `${promptRuns.length} 条记录` : '还没有执行记录' }}</span>
+            <span v-if="promptRunsLoading">读取中...</span>
+            <span v-else-if="promptRunsLoadError">读取失败</span>
+            <span v-else>{{ promptRuns.length ? `${promptRuns.length} 条记录` : '还没有执行记录' }}</span>
           </div>
           <div v-if="promptRunsLoading" class="run-timeline">
             <article v-for="item in 2" :key="item" class="run-item skeleton-run"></article>
           </div>
-          <div v-else-if="promptRuns.length" class="run-timeline">
-            <article v-for="run in promptRuns" :key="run.id" class="run-item" :class="{ failed: run.status === 'failed' }">
-              <time>{{ formatDate(run.createdAt) }}</time>
-              <strong>{{ run.summary }}</strong>
-              <span v-if="formatExecutionSource(run.provider, run.model, run.totalTokens, run.durationMs)" class="run-provenance">
-                {{ formatExecutionSource(run.provider, run.model, run.totalTokens, run.durationMs) }}
-              </span>
-              <p>{{ run.status === 'failed' ? run.errorMessage || run.result : run.result }}</p>
-              <button type="button" class="text-button run-open-link" @click="openPromptRun(run.id)">
-                打开完整结果
-              </button>
-            </article>
-          </div>
-          <div v-else class="quiet-empty">
-            从这个 Prompt 进入 AI 命令工作区后，结果会沉淀在这里。
+          <div v-else>
+            <div v-if="promptRunsLoadError" class="prompt-detail-load-notice" role="alert">
+              <p>执行记录暂时无法读取，已有记录仍然保留。</p>
+              <button type="button" class="text-button" @click="retryPromptRuns">重试</button>
+            </div>
+            <div v-if="promptRuns.length" class="run-timeline">
+              <article v-for="run in promptRuns" :key="run.id" class="run-item" :class="{ failed: run.status === 'failed' }">
+                <time>{{ formatDate(run.createdAt) }}</time>
+                <strong>{{ run.summary }}</strong>
+                <span v-if="formatExecutionSource(run.provider, run.model, run.totalTokens, run.durationMs)" class="run-provenance">
+                  {{ formatExecutionSource(run.provider, run.model, run.totalTokens, run.durationMs) }}
+                </span>
+                <p>{{ run.status === 'failed' ? run.errorMessage || run.result : run.result }}</p>
+                <button type="button" class="text-button run-open-link" @click="openPromptRun(run.id)">
+                  打开完整结果
+                </button>
+              </article>
+            </div>
+            <div v-else-if="!promptRunsLoadError" class="quiet-empty">
+              从这个 Prompt 进入 AI 命令工作区后，结果会沉淀在这里。
+            </div>
           </div>
         </section>
 
         <section v-if="!isStarterDetail" class="detail-section">
           <div class="section-heading compact">
             <h3>版本记录</h3>
-            <span>{{ promptVersions.length ? `${promptVersions.length} 个快照` : '编辑后自动生成' }}</span>
+            <span v-if="promptVersionsLoading">读取中...</span>
+            <span v-else-if="promptVersionsLoadError">读取失败</span>
+            <span v-else>{{ promptVersions.length ? `${promptVersions.length} 个快照` : '编辑后自动生成' }}</span>
           </div>
           <div v-if="promptVersionsLoading" class="version-list">
             <article v-for="item in 2" :key="item" class="version-item skeleton-run"></article>
           </div>
-          <div v-else-if="promptVersions.length" class="version-list">
-            <button
-              v-for="version in promptVersions"
-              :key="version.id"
-              type="button"
-              class="version-item"
-              :class="{ active: selectedVersion?.id === version.id }"
-              @click="selectedVersion = version"
-            >
-              <span>v{{ version.versionNumber }}</span>
-              <strong>{{ version.title }}</strong>
-              <time>{{ formatDate(version.createdAt) }}</time>
-            </button>
-          </div>
-          <div v-else class="quiet-empty">
-            第一次编辑 Prompt 后，旧内容会作为版本快照保存在这里。
+          <div v-else>
+            <div v-if="promptVersionsLoadError" class="prompt-detail-load-notice" role="alert">
+              <p>版本记录暂时无法读取，当前 Prompt 内容不受影响。</p>
+              <button type="button" class="text-button" @click="retryPromptVersions">重试</button>
+            </div>
+            <div v-if="promptVersions.length" class="version-list">
+              <button
+                v-for="version in promptVersions"
+                :key="version.id"
+                type="button"
+                class="version-item"
+                :class="{ active: selectedVersion?.id === version.id }"
+                @click="selectedVersion = version"
+              >
+                <span>v{{ version.versionNumber }}</span>
+                <strong>{{ version.title }}</strong>
+                <time>{{ formatDate(version.createdAt) }}</time>
+              </button>
+            </div>
+            <div v-else-if="!promptVersionsLoadError" class="quiet-empty">
+              第一次编辑 Prompt 后，旧内容会作为版本快照保存在这里。
+            </div>
           </div>
 
           <div v-if="selectedVersion" class="version-preview">
@@ -488,8 +504,10 @@ const detailSource = ref<'library' | 'starter'>('library')
 const selectedPrompt = ref<PromptAsset | null>(null)
 const promptRuns = ref<TaskHistoryItem[]>([])
 const promptRunsLoading = ref(false)
+const promptRunsLoadError = ref(false)
 const promptVersions = ref<PromptVersion[]>([])
 const promptVersionsLoading = ref(false)
+const promptVersionsLoadError = ref(false)
 const promptRunsRequest = createLatestRequestGate()
 const promptVersionsRequest = createLatestRequestGate()
 const selectedVersion = ref<PromptVersion | null>(null)
@@ -1183,7 +1201,9 @@ function showPromptDetail(prompt: PromptAsset) {
   detailSource.value = 'library'
   selectedPrompt.value = prompt
   promptRuns.value = []
+  promptRunsLoadError.value = false
   promptVersions.value = []
+  promptVersionsLoadError.value = false
   selectedVersion.value = null
   hydratePromptRunDraft(prompt)
   detailOpen.value = true
@@ -1194,7 +1214,9 @@ function showPromptDetail(prompt: PromptAsset) {
 function openStarterDetail(prompt: StarterPrompt) {
   detailSource.value = 'starter'
   promptRuns.value = []
+  promptRunsLoadError.value = false
   promptVersions.value = []
+  promptVersionsLoadError.value = false
   selectedVersion.value = null
   selectedPrompt.value = {
     ...toSavePayload(prompt),
@@ -1367,14 +1389,23 @@ async function loadPromptRuns(promptId: string) {
       return
     }
     promptRuns.value = data
+    promptRunsLoadError.value = false
   } catch (error: unknown) {
     if (promptRunsRequest.isCurrent(request) && selectedPrompt.value?.id === promptId) {
+      promptRunsLoadError.value = true
       ElMessage.error(apiErrorMessage(error, 'Prompt 执行记录加载失败'))
     }
   } finally {
     if (promptRunsRequest.isCurrent(request)) {
       promptRunsLoading.value = false
     }
+  }
+}
+
+function retryPromptRuns() {
+  const promptId = selectedPrompt.value?.id
+  if (promptId && !isStarterDetail.value) {
+    void loadPromptRuns(promptId)
   }
 }
 
@@ -1387,17 +1418,26 @@ async function loadPromptVersions(promptId: string) {
       return
     }
     promptVersions.value = data
+    promptVersionsLoadError.value = false
     if (selectedVersion.value && !data.some((version) => version.id === selectedVersion.value?.id)) {
       selectedVersion.value = null
     }
   } catch (error: unknown) {
     if (promptVersionsRequest.isCurrent(request) && selectedPrompt.value?.id === promptId) {
+      promptVersionsLoadError.value = true
       ElMessage.error(apiErrorMessage(error, 'Prompt 版本记录加载失败'))
     }
   } finally {
     if (promptVersionsRequest.isCurrent(request)) {
       promptVersionsLoading.value = false
     }
+  }
+}
+
+function retryPromptVersions() {
+  const promptId = selectedPrompt.value?.id
+  if (promptId && !isStarterDetail.value) {
+    void loadPromptVersions(promptId)
   }
 }
 

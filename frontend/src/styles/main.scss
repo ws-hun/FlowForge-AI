@@ -1717,6 +1717,29 @@ a {
   }
 }
 
+.prompt-detail-load-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: tokens.$radius-md;
+  background: rgba(255, 251, 235, 0.72);
+
+  p {
+    margin: 0;
+    color: tokens.$text-secondary;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .text-button {
+    flex: 0 0 auto;
+  }
+}
+
 .home-hero,
 .quiet-header {
   max-width: 820px;
