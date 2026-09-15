@@ -68,7 +68,10 @@
       </div>
     </section>
 
-    <section v-if="recentFlows.length || recentPrompts.length || recentPromptsLoading" class="workspace-recent-assets">
+    <section
+      v-if="recentFlows.length || recentPrompts.length || recentPromptsLoading || recentPromptsLoadError"
+      class="workspace-recent-assets"
+    >
       <div class="section-heading">
         <h2>最近资产</h2>
         <span>Flow 与 Prompt</span>
@@ -94,13 +97,22 @@
           </button>
         </div>
 
-        <div v-if="recentPrompts.length || recentPromptsLoading" class="workspace-asset-group">
+        <div v-if="recentPrompts.length || recentPromptsLoading || recentPromptsLoadError" class="workspace-asset-group">
           <div class="workspace-asset-group-heading">
             <strong>Prompt 库</strong>
             <button type="button" class="ghost-button" @click="router.push('/prompts')">全部</button>
           </div>
-          <div v-if="recentPromptsLoading && !recentPrompts.length" class="workspace-asset-row workspace-asset-loading">
+          <div
+            v-if="recentPromptsLoading && !recentPrompts.length && !recentPromptsLoadError"
+            class="workspace-asset-row workspace-asset-loading"
+          >
             正在读取最近 Prompt...
+          </div>
+          <div v-if="recentPromptsLoadError" class="prompt-detail-load-notice" role="alert">
+            <p>最近 Prompt 暂时无法读取，已载入资产仍然保留。</p>
+            <button type="button" class="text-button" :disabled="recentPromptsLoading" @click="loadRecentPrompts">
+              {{ recentPromptsLoading ? '读取中...' : '重试' }}
+            </button>
           </div>
           <button
             v-for="prompt in recentPrompts"
@@ -157,6 +169,7 @@ const workspace = useWorkspaceStore()
 const inputRef = ref<HTMLTextAreaElement | null>(null)
 const prompts = ref<PromptAsset[]>([])
 const recentPromptsLoading = ref(false)
+const recentPromptsLoadError = ref(false)
 const recentPromptsRequest = createLatestRequestGate()
 
 const continueFlow = computed(() => workspace.activeFlow || workspace.flowDrafts[0] || null)
@@ -211,8 +224,10 @@ async function loadRecentPrompts() {
       return
     }
     prompts.value = data
+    recentPromptsLoadError.value = false
   } catch (error: unknown) {
     if (recentPromptsRequest.isCurrent(request)) {
+      recentPromptsLoadError.value = true
       ElMessage.error(apiErrorMessage(error, '最近 Prompt 加载失败'))
     }
   } finally {
