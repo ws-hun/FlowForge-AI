@@ -29,7 +29,9 @@
         <strong>Prompt 资产暂时无法读取</strong>
         <p>已有资产仍然保留。服务恢复后重试，可以继续搜索和复用当前 Prompt。</p>
       </div>
-      <button type="button" class="secondary-button" @click="retryPromptAssets">重试读取</button>
+      <button type="button" class="secondary-button" :disabled="loading" @click="retryPromptAssets">
+        {{ loading ? '读取中...' : '重试读取' }}
+      </button>
     </div>
 
     <section v-if="!loading" class="starter-section">
@@ -510,6 +512,7 @@ const promptVersionsLoading = ref(false)
 const promptVersionsLoadError = ref(false)
 const promptRunsRequest = createLatestRequestGate()
 const promptVersionsRequest = createLatestRequestGate()
+const promptAssetsRequest = createLatestRequestGate()
 const selectedVersion = ref<PromptVersion | null>(null)
 const variableValues = ref<Record<string, string>>({})
 const promptRunDrafts = ref(readPromptRunDrafts())
@@ -769,6 +772,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
+  promptAssetsRequest.invalidate()
   promptRunsRequest.invalidate()
   promptVersionsRequest.invalidate()
 })
@@ -823,18 +827,26 @@ watch(variableValues, (values) => {
 }, { deep: true })
 
 async function loadPromptAssets() {
+  const request = promptAssetsRequest.begin()
   loading.value = true
-  promptLoadError.value = false
   try {
     const { data } = await listPrompts()
+    if (!promptAssetsRequest.isCurrent(request)) {
+      return false
+    }
     prompts.value = data
+    promptLoadError.value = false
     return true
   } catch (error: unknown) {
-    promptLoadError.value = true
-    ElMessage.error(apiErrorMessage(error, 'Prompt 库加载失败'))
+    if (promptAssetsRequest.isCurrent(request)) {
+      promptLoadError.value = true
+      ElMessage.error(apiErrorMessage(error, 'Prompt 库加载失败'))
+    }
     return false
   } finally {
-    loading.value = false
+    if (promptAssetsRequest.isCurrent(request)) {
+      loading.value = false
+    }
   }
 }
 
@@ -858,7 +870,15 @@ async function openPromptFromRoute() {
     return
   }
 
-  const prompt = prompts.value.find((item) => item.id === promptId)
+  let prompt = prompts.value.find((item) => item.id === promptId)
+  if (!prompt) {
+    const loaded = await loadPromptAssets()
+    if (!loaded) {
+      return
+    }
+    prompt = prompts.value.find((item) => item.id === promptId)
+  }
+
   if (!prompt) {
     ElMessage.warning('指定的 Prompt 已不存在或无法访问')
     await syncPromptRoute(null, 'replace')

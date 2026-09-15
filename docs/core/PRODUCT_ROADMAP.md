@@ -206,6 +206,7 @@ Current Stage 3 capabilities:
 - Flow Space 的修订记录也区分读取失败与尚未产生快照；服务暂时不可用时保留当前版本上下文，并支持在当前 Flow 内重试。
 - Flow Space 首次无法读取资产时保留 Flow 深链与本地编辑草稿，不再展示虚假的空画布；缓存未命中的目标 Flow 只有在服务端刷新成功后才会被判定为不存在。
 - Flow 运行深链会等待当前 Flow 的运行记录完成确认，不再被旧的全局 History 缓存提前判定为不存在；读取失败时保留 `run` 参数，重试后继续打开原运行。
+- Prompt 深链在缓存未命中时刷新资产后再判断是否存在，读取失败会保留 `prompt` 参数；并发刷新只接受最新响应，避免旧 Prompt 列表覆盖新资产。
 
 Current Stage 3 priorities:
 
