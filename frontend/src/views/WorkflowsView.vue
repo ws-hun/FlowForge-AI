@@ -6,7 +6,17 @@
       <p>从一个目标开始，组织输入、Prompt、AI 执行和结构化输出，逐步形成可复用的工作流资产。</p>
     </header>
 
-    <div class="flow-builder-layout">
+    <div v-if="flowAssetsUnavailable" class="history-load-notice flow-assets-load-notice" role="alert">
+      <div>
+        <strong>Flow 工作区暂时无法读取</strong>
+        <p>当前 Flow 链接和本地编辑草稿仍然保留。服务恢复后重试，会继续打开原来的创作位置。</p>
+      </div>
+      <button type="button" class="secondary-button" :disabled="workspace.flowLoading" @click="retryFlowAssets">
+        {{ workspace.flowLoading ? '读取中...' : '重试读取' }}
+      </button>
+    </div>
+
+    <div v-if="!flowAssetsUnavailable" class="flow-builder-layout">
       <aside class="surface flow-draft-panel">
         <div class="panel-heading">
           <span class="section-kicker">创建 Flow</span>
@@ -948,6 +958,7 @@ const nodeRunStates = ref<Record<string, FlowNodeRunState>>({})
 const selectedNodeId = ref('')
 const nodeInspector = ref<HTMLElement | null>(null)
 const flowRouteReady = ref(false)
+const flowAssetsUnavailable = ref(false)
 const routeSelectionApplying = ref(false)
 const flowEditorDraftReady = ref(false)
 const flowEditorDraftRecovered = ref(false)
@@ -1556,6 +1567,7 @@ watch(
 onMounted(async () => {
   window.addEventListener('beforeunload', handleBeforeUnload)
   await Promise.all([workspace.bootstrap(), loadPromptAssets()])
+  flowAssetsUnavailable.value = !workspace.flowAssetsReady
   const draftRestored = workspace.flowAssetsReady ? await restoreFlowEditorDraft() : false
   flowEditorDraftReady.value = true
   flowRouteReady.value = true
@@ -2068,7 +2080,16 @@ async function openFlowFromRoute(value: unknown = route.query.flow) {
     return true
   }
 
-  const flow = workspace.flowDrafts.find((item) => item.id === flowId)
+  let flow = workspace.flowDrafts.find((item) => item.id === flowId)
+  if (!flow) {
+    const loaded = await workspace.loadFlowDrafts()
+    flowAssetsUnavailable.value = !loaded
+    if (!loaded) {
+      return false
+    }
+    flow = workspace.flowDrafts.find((item) => item.id === flowId)
+  }
+
   if (!flow) {
     ElMessage.warning('指定的 Flow 已不存在或无法访问')
     void syncActiveRouteState()
@@ -2082,6 +2103,21 @@ async function openFlowFromRoute(value: unknown = route.query.flow) {
 
   workspace.selectFlowDraft(flow.id)
   return true
+}
+
+async function retryFlowAssets() {
+  const loaded = await workspace.loadFlowDrafts()
+  flowAssetsUnavailable.value = !loaded
+  if (!loaded) {
+    return
+  }
+
+  const draftRestored = await restoreFlowEditorDraft()
+  if (draftRestored) {
+    await syncActiveRouteState()
+    return
+  }
+  await applyFlowRouteSelection()
 }
 
 async function openNodeFromRoute(value: unknown = route.query.node) {
