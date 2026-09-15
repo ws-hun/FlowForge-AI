@@ -1600,24 +1600,27 @@ async function loadFlowRuns(flowId: string) {
   flowRunsLoading.value = true
   try {
     const { data } = await listFlowRuns(flowId)
-    if (flowRunsRequest.isCurrent(request) && workspace.activeFlow?.id === flowId) {
-      const selectedRun = selectedFlowRun.value
-      const preserveSelectedRun = Boolean(
-        selectedRun && selectedRun.sourceFlowId === flowId && !data.some((run) => run.id === selectedRun.id)
-      )
-      flowRuns.value = preserveSelectedRun && selectedRun
-        ? [selectedRun, ...data]
-        : data
-      flowRunsLoadError.value = false
-      if (selectedRun && selectedRun.sourceFlowId !== flowId) {
-        selectedFlowRun.value = null
-      }
+    if (!flowRunsRequest.isCurrent(request) || workspace.activeFlow?.id !== flowId) {
+      return false
     }
+    const selectedRun = selectedFlowRun.value
+    const preserveSelectedRun = Boolean(
+      selectedRun && selectedRun.sourceFlowId === flowId && !data.some((run) => run.id === selectedRun.id)
+    )
+    flowRuns.value = preserveSelectedRun && selectedRun
+      ? [selectedRun, ...data]
+      : data
+    flowRunsLoadError.value = false
+    if (selectedRun && selectedRun.sourceFlowId !== flowId) {
+      selectedFlowRun.value = null
+    }
+    return true
   } catch (error: unknown) {
     if (flowRunsRequest.isCurrent(request) && workspace.activeFlow?.id === flowId) {
       flowRunsLoadError.value = true
       ElMessage.error(apiErrorMessage(error, 'Flow 执行记录加载失败'))
     }
+    return false
   } finally {
     if (flowRunsRequest.isCurrent(request)) {
       flowRunsLoading.value = false
@@ -1625,10 +1628,15 @@ async function loadFlowRuns(flowId: string) {
   }
 }
 
-function retryFlowRuns() {
+async function retryFlowRuns() {
   const flowId = workspace.activeFlow?.id
-  if (flowId) {
-    void loadFlowRuns(flowId)
+  if (!flowId) {
+    return
+  }
+
+  const loaded = await loadFlowRuns(flowId)
+  if (loaded && route.query.run) {
+    await openFlowRunFromRoute(route.query.run)
   }
 }
 
@@ -2061,16 +2069,22 @@ async function applyFlowRouteSelection(
   runValue: unknown = route.query.run
 ) {
   routeSelectionApplying.value = true
+  let preserveRoute = false
   try {
     const flowAvailable = await openFlowFromRoute(flowValue)
     if (flowAvailable) {
       await nextTick()
       await openNodeFromRoute(nodeValue)
-      openFlowRunFromRoute(runValue)
+      const runAvailable = await openFlowRunFromRoute(runValue)
+      preserveRoute = !runAvailable && flowRunsLoadError.value
+    } else {
+      preserveRoute = flowAssetsUnavailable.value
     }
   } finally {
     routeSelectionApplying.value = false
-    await syncActiveRouteState()
+    if (!preserveRoute) {
+      await syncActiveRouteState()
+    }
   }
 }
 
@@ -2141,27 +2155,36 @@ async function openNodeFromRoute(value: unknown = route.query.node) {
   selectedNodeId.value = node.id
 }
 
-function openFlowRunFromRoute(value: unknown = route.query.run) {
+async function openFlowRunFromRoute(value: unknown = route.query.run) {
   const runId = typeof value === 'string' ? value : ''
   if (!runId) {
     selectedFlowRun.value = null
-    return
+    return true
   }
   if (runId === selectedFlowRun.value?.id) {
-    return
+    return true
   }
 
-  const run = workspace.tasks.find((item) => item.id === runId)
+  let run = flowRuns.value.find((item) => item.id === runId) || workspace.tasks.find((item) => item.id === runId)
+  if (!run && workspace.activeFlowId) {
+    const loaded = await loadFlowRuns(workspace.activeFlowId)
+    if (!loaded) {
+      return false
+    }
+    run = flowRuns.value.find((item) => item.id === runId)
+  }
+
   if (!run || run.sourceFlowId !== workspace.activeFlowId) {
     selectedFlowRun.value = null
     ElMessage.warning('指定的 Flow 运行已不存在或不属于当前 Flow')
-    return
+    return false
   }
 
   if (!flowRuns.value.some((item) => item.id === run.id)) {
     flowRuns.value = [run, ...flowRuns.value]
   }
   selectFlowRun(run)
+  return true
 }
 
 function syncActiveRouteState() {
