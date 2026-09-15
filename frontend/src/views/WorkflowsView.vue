@@ -748,7 +748,9 @@
         <div class="prompt-node-picker">
           <div class="section-heading compact">
             <h3>加入 Prompt</h3>
-            <span>{{ filteredPromptOptions.length ? `${filteredPromptOptions.length} 个匹配` : '暂无匹配' }}</span>
+            <span v-if="promptAssetsLoading">读取中...</span>
+            <span v-else-if="promptAssetsLoadError">读取失败</span>
+            <span v-else>{{ filteredPromptOptions.length ? `${filteredPromptOptions.length} 个匹配` : '暂无匹配' }}</span>
           </div>
 
           <input
@@ -770,6 +772,18 @@
             </button>
           </div>
 
+          <div v-if="promptAssetsLoadError" class="prompt-detail-load-notice" role="alert">
+            <p>Prompt 资产暂时无法读取，已载入的选项仍然保留。</p>
+            <button type="button" class="text-button" :disabled="promptAssetsLoading" @click="retryPromptAssets">
+              {{ promptAssetsLoading ? '读取中...' : '重试' }}
+            </button>
+          </div>
+
+          <div v-if="promptAssetsLoading && !prompts.length" class="prompt-node-empty">
+            <strong>正在读取 Prompt 资产</strong>
+            <p>可复用工作方式加载后会出现在这里。</p>
+          </div>
+
           <button
             v-for="prompt in visiblePromptOptions"
             :key="prompt.id"
@@ -787,12 +801,12 @@
             <small>{{ prompt.description }}</small>
           </button>
 
-          <div v-if="!prompts.length" class="prompt-node-empty">
+          <div v-if="!promptAssetsLoading && !promptAssetsLoadError && !prompts.length" class="prompt-node-empty">
             <strong>先沉淀一个 Prompt 资产</strong>
             <p>把稳定的工作方式保存到 Prompt 库，再作为 Flow 节点复用。</p>
             <button type="button" class="secondary-button" @click="goToPromptLibrary">打开 Prompt 库</button>
           </div>
-          <div v-else-if="!filteredPromptOptions.length" class="prompt-node-empty">
+          <div v-else-if="!promptAssetsLoading && !promptAssetsLoadError && !filteredPromptOptions.length" class="prompt-node-empty">
             <strong>没有匹配的 Prompt</strong>
             <p>换一个关键词，或去 Prompt 库创建一个更贴近当前 Flow 的 Prompt。</p>
             <button type="button" class="secondary-button" @click="goToPromptLibrary">创建 Prompt</button>
@@ -933,6 +947,8 @@ const nodeTitle = ref('')
 const nodeDescription = ref('')
 const nodeContent = ref('')
 const prompts = ref<PromptAsset[]>([])
+const promptAssetsLoading = ref(false)
+const promptAssetsLoadError = ref(false)
 const promptSearch = ref('')
 const activePromptFilter = ref('all')
 const flowRuns = ref<TaskHistoryItem[]>([])
@@ -944,6 +960,7 @@ const flowVersionsLoading = ref(false)
 const flowVersionsLoadError = ref(false)
 const flowRunsRequest = createLatestRequestGate()
 const flowVersionsRequest = createLatestRequestGate()
+const promptAssetsRequest = createLatestRequestGate()
 const selectedFlowVersion = ref<FlowVersion | null>(null)
 const restoringFlowVersion = ref(false)
 const branchingFlowVersion = ref(false)
@@ -1580,6 +1597,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
+  promptAssetsRequest.invalidate()
   flowRunsRequest.invalidate()
   flowVersionsRequest.invalidate()
 })
@@ -1587,12 +1605,31 @@ onBeforeUnmount(() => {
 onBeforeRouteLeave(() => resolvePendingEdits())
 
 async function loadPromptAssets() {
+  const request = promptAssetsRequest.begin()
+  promptAssetsLoading.value = true
   try {
     const { data } = await listPrompts()
+    if (!promptAssetsRequest.isCurrent(request)) {
+      return false
+    }
     prompts.value = data
+    promptAssetsLoadError.value = false
+    return true
   } catch (error: unknown) {
-    ElMessage.error(apiErrorMessage(error, 'Prompt 库加载失败'))
+    if (promptAssetsRequest.isCurrent(request)) {
+      promptAssetsLoadError.value = true
+      ElMessage.error(apiErrorMessage(error, 'Prompt 库加载失败'))
+    }
+    return false
+  } finally {
+    if (promptAssetsRequest.isCurrent(request)) {
+      promptAssetsLoading.value = false
+    }
   }
+}
+
+function retryPromptAssets() {
+  void loadPromptAssets()
 }
 
 async function loadFlowRuns(flowId: string) {
