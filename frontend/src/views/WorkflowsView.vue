@@ -474,28 +474,40 @@
               <span class="section-kicker">修订记录</span>
               <h3>回到任意创作节点</h3>
             </div>
-            <span>{{ flowVersions.length ? `${flowVersions.length} 个快照` : '编辑后保存' }}</span>
+            <span v-if="flowVersionsLoading">读取中...</span>
+            <span v-else-if="flowVersionsLoadError">读取失败</span>
+            <span v-else>{{ flowVersions.length ? `${flowVersions.length} 个快照` : '编辑后保存' }}</span>
           </div>
 
           <div v-if="flowVersionsLoading" class="version-list">
             <article v-for="item in 2" :key="item" class="version-item skeleton-run"></article>
           </div>
-          <div v-else-if="flowVersions.length" class="version-list">
-            <button
-              v-for="version in flowVersions"
-              :key="version.id"
-              type="button"
-              class="version-item"
-              :class="{ active: selectedFlowVersion?.id === version.id }"
-              @click="selectedFlowVersion = version"
-            >
-              <span>v{{ version.versionNumber }}</span>
-              <strong>{{ version.title }}</strong>
-              <time>{{ formatDate(version.createdAt) }}</time>
-            </button>
-          </div>
-          <div v-else class="quiet-empty">
-            第一次调整节点或 Flow 目标后，当前状态会作为可恢复的修订保存在这里。
+          <div v-else>
+            <div v-if="flowVersionsLoadError" class="flow-readiness-note flow-versions-load-error" role="alert">
+              <span class="flow-run-dot warning"></span>
+              <div>
+                <strong>修订记录暂时无法读取</strong>
+                <p>当前 Flow 草稿不受影响。服务恢复后可以重新读取历史修订。</p>
+              </div>
+              <button type="button" class="secondary-button" @click="retryFlowVersions">重试读取</button>
+            </div>
+            <div v-if="flowVersions.length" class="version-list">
+              <button
+                v-for="version in flowVersions"
+                :key="version.id"
+                type="button"
+                class="version-item"
+                :class="{ active: selectedFlowVersion?.id === version.id }"
+                @click="selectedFlowVersion = version"
+              >
+                <span>v{{ version.versionNumber }}</span>
+                <strong>{{ version.title }}</strong>
+                <time>{{ formatDate(version.createdAt) }}</time>
+              </button>
+            </div>
+            <div v-else-if="!flowVersionsLoadError" class="quiet-empty">
+              第一次调整节点或 Flow 目标后，当前状态会作为可恢复的修订保存在这里。
+            </div>
           </div>
 
           <div v-if="selectedFlowVersion" class="version-preview flow-version-preview">
@@ -919,6 +931,7 @@ const flowRunsLoadError = ref(false)
 const selectedFlowRun = ref<TaskHistoryItem | null>(null)
 const flowVersions = ref<FlowVersion[]>([])
 const flowVersionsLoading = ref(false)
+const flowVersionsLoadError = ref(false)
 const flowRunsRequest = createLatestRequestGate()
 const flowVersionsRequest = createLatestRequestGate()
 const selectedFlowVersion = ref<FlowVersion | null>(null)
@@ -1437,6 +1450,7 @@ watch(
     flowRuns.value = []
     flowRunsLoadError.value = false
     flowVersions.value = []
+    flowVersionsLoadError.value = false
     flowExecutionVisible.value = false
     selectedFlowRun.value = null
     selectedFlowVersion.value = null
@@ -1615,17 +1629,26 @@ async function loadFlowVersions(flowId: string) {
       return
     }
     flowVersions.value = data
+    flowVersionsLoadError.value = false
     if (selectedFlowVersion.value && !data.some((version) => version.id === selectedFlowVersion.value?.id)) {
       selectedFlowVersion.value = null
     }
   } catch (error: unknown) {
     if (flowVersionsRequest.isCurrent(request) && workspace.activeFlow?.id === flowId) {
+      flowVersionsLoadError.value = true
       ElMessage.error(apiErrorMessage(error, 'Flow 修订记录加载失败'))
     }
   } finally {
     if (flowVersionsRequest.isCurrent(request)) {
       flowVersionsLoading.value = false
     }
+  }
+}
+
+function retryFlowVersions() {
+  const flowId = workspace.activeFlow?.id
+  if (flowId) {
+    void loadFlowVersions(flowId)
   }
 }
 

@@ -203,6 +203,7 @@ Current Stage 3 capabilities:
 - Flow Space 的最近执行区分“读取中”“读取失败”和“没有记录”，网络故障时保留当前已载入的运行，并提供就地重试入口。
 - Prompt Library 在资产刷新失败时保留已有 Prompt；首次读取失败不会伪装成空库，并提供就地重试以恢复 Prompt 复用路径。
 - Prompt 详情中的执行记录与版本记录分别报告读取状态；局部服务故障不会伪装成“暂无历史”，并可在当前详情抽屉内独立重试。
+- Flow Space 的修订记录也区分读取失败与尚未产生快照；服务暂时不可用时保留当前版本上下文，并支持在当前 Flow 内重试。
 
 Current Stage 3 priorities:
 
