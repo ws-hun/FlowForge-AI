@@ -118,8 +118,10 @@ describe('workspace bootstrap', () => {
     api.listApiKeys.mockRejectedValueOnce(new Error('offline'))
     const workspace = useWorkspaceStore()
 
+    expect(workspace.apiKeysLoadAttempted).toBe(false)
     await workspace.loadApiKeys()
     expect(workspace.apiKeysReady).toBe(false)
+    expect(workspace.apiKeysLoadAttempted).toBe(true)
 
     await workspace.loadApiKeys()
     expect(workspace.apiKeysReady).toBe(true)

@@ -78,6 +78,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const tasks = ref<TaskHistoryItem[]>([])
   const apiKeys = ref<ApiKeyConfig[]>([])
   const apiKeysReady = ref(false)
+  const apiKeysLoadAttempted = ref(false)
   const flowDrafts = ref<FlowDraft[]>([])
   const activeFlowId = ref('')
   const latestResult = ref<TaskRunResponse | null>(null)
@@ -203,6 +204,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       return false
     } finally {
       if (apiKeysRequest.isCurrent(request)) {
+        apiKeysLoadAttempted.value = true
         settingsLoading.value = false
       }
     }
@@ -1353,6 +1355,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     tasks,
     apiKeys,
     apiKeysReady,
+    apiKeysLoadAttempted,
     flowDrafts,
     activeFlowId,
     latestResult,

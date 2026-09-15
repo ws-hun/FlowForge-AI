@@ -176,13 +176,18 @@
           <button type="button" class="ghost-button" @click="adoptLatestFlowAfterConflict">采用最新版本</button>
         </div>
 
-        <div v-if="workspace.activeFlow && !providerReadyToRun" class="flow-readiness-note">
+        <div v-if="workspace.activeFlow && providerState !== 'ready'" class="flow-readiness-note">
           <span class="flow-run-dot warning"></span>
           <div>
-            <strong>需要配置 AI Provider</strong>
-            <p>Flow 执行依赖一个已激活的 Provider。配置后即可运行当前工作流。</p>
+            <strong>{{ providerReadinessTitle }}</strong>
+            <p>{{ providerReadinessDescription }}</p>
           </div>
-          <button type="button" class="secondary-button" @click="goToApiKeys">配置 Provider</button>
+          <button v-if="providerState === 'missing'" type="button" class="secondary-button" @click="goToApiKeys">
+            配置 Provider
+          </button>
+          <button v-else-if="providerState === 'unavailable'" type="button" class="secondary-button" @click="retryProviderLoad">
+            重试读取
+          </button>
         </div>
 
         <div v-if="workspace.activeFlow && flowRunPhase !== 'idle'" class="flow-run-signal" :class="flowRunPhase">
@@ -1133,14 +1138,34 @@ const flowRunDraftStateLabel = computed(() => {
   }
   return hasFlowRunDraftContent.value ? '运行简报已自动保存' : '等待补充本次运行上下文'
 })
-const providerReadyToRun = computed(() => Boolean(workspace.activeProvider))
+const providerState = computed<'loading' | 'unavailable' | 'missing' | 'ready'>(() => {
+  if (!workspace.apiKeysReady) {
+    return workspace.settingsLoading || !workspace.apiKeysLoadAttempted ? 'loading' : 'unavailable'
+  }
+  return workspace.activeProvider ? 'ready' : 'missing'
+})
+const providerReadyToRun = computed(() => providerState.value === 'ready')
+const providerReadinessTitle = computed(() => {
+  if (providerState.value === 'loading') return '正在确认 AI Provider'
+  if (providerState.value === 'unavailable') return 'Provider 配置暂时无法读取'
+  return '需要配置 AI Provider'
+})
+const providerReadinessDescription = computed(() => {
+  if (providerState.value === 'loading') return '正在读取当前工作区的 Provider 配置。'
+  if (providerState.value === 'unavailable') return 'Flow 草稿和运行简报仍然保留。服务恢复后重试即可执行。'
+  return 'Flow 执行依赖一个已激活的 Provider。配置后即可运行当前工作流。'
+})
 const flowReadyToRun = computed(() =>
   providerReadyToRun.value && !hasIncompleteFlowNodes.value && !hasMissingFlowVariables.value
 )
 const flowConflictVisible = computed(() =>
   workspace.flowConflictId === workspace.activeFlow?.id || flowDraftRevisionConflict.value
 )
-const activeProviderLabel = computed(() => workspace.activeProvider?.model || 'Provider 未配置')
+const activeProviderLabel = computed(() => {
+  if (providerState.value === 'loading') return 'Provider 读取中'
+  if (providerState.value === 'unavailable') return 'Provider 状态不可用'
+  return workspace.activeProvider?.model || 'Provider 未配置'
+})
 const flowBriefItems = computed(() => {
   const nodes = workspace.activeFlow?.nodes || []
   const promptCount = nodes.filter((node) => node.type === 'prompt').length
@@ -2899,6 +2924,10 @@ async function sendSelectedNodeToTaskWorkspace() {
 
 function goToApiKeys() {
   router.push('/api-keys')
+}
+
+function retryProviderLoad() {
+  void workspace.loadApiKeys()
 }
 
 function goToPromptLibrary() {

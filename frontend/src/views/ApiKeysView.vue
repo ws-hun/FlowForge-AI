@@ -33,7 +33,10 @@
       </section>
 
       <section class="provider-list">
-        <div v-if="workspace.settingsLoading && !workspace.apiKeysReady" class="empty-state provider-load-state">
+        <div
+          v-if="!workspace.apiKeysReady && (workspace.settingsLoading || !workspace.apiKeysLoadAttempted)"
+          class="empty-state provider-load-state"
+        >
           正在读取 Provider 配置...
         </div>
         <div v-else-if="!workspace.apiKeysReady" class="empty-state provider-load-state">

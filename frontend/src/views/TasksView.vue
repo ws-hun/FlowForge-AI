@@ -88,23 +88,28 @@
           @open-node="returnToFlow"
           @focus-variable="focusTaskFlowVariable"
         />
-        <div v-if="!providerReadyToRun" class="command-readiness-note">
+        <div v-if="providerState !== 'ready'" class="command-readiness-note">
           <span class="flow-run-dot warning"></span>
           <div>
-            <strong>需要配置 AI Provider</strong>
-            <p>任务执行依赖一个已激活的 Provider。配置后即可运行当前命令。</p>
+            <strong>{{ providerReadinessTitle }}</strong>
+            <p>{{ providerReadinessDescription }}</p>
           </div>
-          <button type="button" class="secondary-button" @click="goToApiKeys">配置 Provider</button>
+          <button v-if="providerState === 'missing'" type="button" class="secondary-button" @click="goToApiKeys">
+            配置 Provider
+          </button>
+          <button v-else-if="providerState === 'unavailable'" type="button" class="secondary-button" @click="retryProviderLoad">
+            重试读取
+          </button>
         </div>
         <div class="composer-footer">
           <span>
             {{ workspace.taskDraftRecovered
               ? '已恢复上次未执行的 AI 命令草稿'
-              : workspace.activeProvider?.provider || '请先配置 Provider' }}
+              : providerFooterLabel }}
           </span>
           <button
             class="primary-button"
-            :disabled="workspace.running || !workspace.canExecuteTask || !providerReadyToRun"
+            :disabled="workspace.running || !workspace.canExecuteTask || providerState !== 'ready'"
             @click="workspace.executeTask"
           >
             {{ workspace.running ? '执行中...' : '执行任务' }}
@@ -194,7 +199,27 @@ import { taskSourceLabel } from '@/utils/taskLabels'
 
 const router = useRouter()
 const workspace = useWorkspaceStore()
-const providerReadyToRun = computed(() => Boolean(workspace.activeProvider))
+const providerState = computed<'loading' | 'unavailable' | 'missing' | 'ready'>(() => {
+  if (!workspace.apiKeysReady) {
+    return workspace.settingsLoading || !workspace.apiKeysLoadAttempted ? 'loading' : 'unavailable'
+  }
+  return workspace.activeProvider ? 'ready' : 'missing'
+})
+const providerReadinessTitle = computed(() => {
+  if (providerState.value === 'loading') return '正在确认 AI Provider'
+  if (providerState.value === 'unavailable') return 'Provider 配置暂时无法读取'
+  return '需要配置 AI Provider'
+})
+const providerReadinessDescription = computed(() => {
+  if (providerState.value === 'loading') return '正在读取当前工作区的 Provider 配置。'
+  if (providerState.value === 'unavailable') return '当前命令草稿仍然保留。服务恢复后重试即可继续执行。'
+  return '任务执行依赖一个已激活的 Provider。配置后即可运行当前命令。'
+})
+const providerFooterLabel = computed(() => {
+  if (providerState.value === 'loading') return '正在读取 Provider'
+  if (providerState.value === 'unavailable') return 'Provider 状态不可用'
+  return workspace.activeProvider?.provider || '请先配置 Provider'
+})
 const hasTaskSource = computed(() =>
   Boolean(
     workspace.taskSourceFlowTitle ||
@@ -264,6 +289,10 @@ watch(
 
 function goToApiKeys() {
   router.push('/api-keys')
+}
+
+function retryProviderLoad() {
+  void workspace.loadApiKeys()
 }
 
 async function focusTaskFlowVariable(variable: string) {

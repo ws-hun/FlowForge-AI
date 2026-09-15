@@ -93,6 +93,8 @@ const healthRequest = createLatestRequestGate()
 const systemStatus = computed(() => {
   if (healthState.value === 'offline') return 'offline'
   if (healthState.value === 'checking') return 'checking'
+  if (!workspace.apiKeysReady && (!workspace.apiKeysLoadAttempted || workspace.settingsLoading)) return 'checking'
+  if (!workspace.apiKeysReady) return 'provider-unavailable'
   return workspace.activeProvider ? 'ready' : 'provider'
 })
 const systemStatusLabel = computed(() => {
@@ -100,6 +102,7 @@ const systemStatusLabel = computed(() => {
     checking: '检查中',
     ready: '已就绪',
     provider: '配置 Provider',
+    'provider-unavailable': 'Provider 未知',
     offline: '离线'
   }
   return labels[systemStatus.value]
@@ -107,6 +110,7 @@ const systemStatusLabel = computed(() => {
 const systemStatusTitle = computed(() => {
   if (systemStatus.value === 'ready') return '应用、数据库和 AI Provider 已就绪'
   if (systemStatus.value === 'provider') return '应用已就绪，请配置或激活 AI Provider'
+  if (systemStatus.value === 'provider-unavailable') return '应用已就绪，但 Provider 配置暂时无法读取'
   if (systemStatus.value === 'offline') return '后端或数据库当前不可用'
   return '正在检查应用状态'
 })

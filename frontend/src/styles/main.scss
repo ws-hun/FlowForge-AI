@@ -157,7 +157,8 @@ a {
     }
   }
 
-  &.provider {
+  &.provider,
+  &.provider-unavailable {
     color: tokens.$warning;
 
     i {
