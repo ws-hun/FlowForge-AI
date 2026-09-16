@@ -285,6 +285,24 @@ public class OpenAiService {
             if (content.isTextual() && StringUtils.hasText(content.asText())) {
                 return content.asText();
             }
+            if (content.isArray()) {
+                for (JsonNode item : content) {
+                    String type = item.path("type").asText("");
+                    if (StringUtils.hasText(type) && !"text".equalsIgnoreCase(type)
+                            && !"output_text".equalsIgnoreCase(type)) {
+                        continue;
+                    }
+                    JsonNode text = item.path("text");
+                    if (text.isTextual() && StringUtils.hasText(text.asText())) {
+                        return text.asText();
+                    }
+                }
+            }
+
+            JsonNode completionText = root.path("choices").path(0).path("text");
+            if (completionText.isTextual() && StringUtils.hasText(completionText.asText())) {
+                return completionText.asText();
+            }
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to parse AI raw response", e);
         }
@@ -310,20 +328,7 @@ public class OpenAiService {
     }
 
     private JsonNode tryParseJson(String jsonText) {
-        String normalized = stripMarkdownFence(jsonText.trim());
-        try {
-            return objectMapper.readTree(normalized);
-        } catch (JsonProcessingException e) {
-            String candidate = extractJsonObject(normalized);
-            if (!candidate.equals(normalized)) {
-                try {
-                    return objectMapper.readTree(candidate);
-                } catch (JsonProcessingException ignored) {
-                    return null;
-                }
-            }
-            return null;
-        }
+        return ProviderJsonParser.parse(objectMapper, jsonText);
     }
 
     private String readSummary(JsonNode parsed, String fallbackText) {
@@ -361,22 +366,6 @@ public class OpenAiService {
                 .findFirst()
                 .orElse("AI 已返回结果，但格式不是严格 JSON");
         return firstLine.length() > 160 ? firstLine.substring(0, 160) : firstLine;
-    }
-
-    private String stripMarkdownFence(String text) {
-        if (text.startsWith("```")) {
-            return text.replaceFirst("^```(?:json)?\\s*", "").replaceFirst("\\s*```$", "").trim();
-        }
-        return text;
-    }
-
-    private String extractJsonObject(String text) {
-        int start = text.indexOf('{');
-        int end = text.lastIndexOf('}');
-        if (start >= 0 && end > start) {
-            return text.substring(start, end + 1);
-        }
-        return text;
     }
 
     private AiTokenUsage extractTokenUsage(String raw) {

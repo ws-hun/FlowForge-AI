@@ -136,6 +136,38 @@ class OpenAiServiceTest {
     }
 
     @Test
+    void readsArrayBasedChatContentAndWrappedJson() throws Exception {
+        AiApiKeyService apiKeyService = mock(AiApiKeyService.class);
+        when(apiKeyService.getActiveKey()).thenReturn(providerConfig());
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        String wrappedContent = """
+                Here is the result:
+                ```json
+                {"summary":"任务已完成","result":"可以继续执行。"}
+                ```
+                """;
+        String providerResponse = new ObjectMapper().writeValueAsString(Map.of(
+                "choices", List.of(Map.of("message", Map.of(
+                        "content", List.of(
+                                Map.of("type", "reasoning", "text", "ignored internal note"),
+                                Map.of("type", "text", "text", wrappedContent)
+                        )
+                )))
+        ));
+        server.expect(requestTo("https://api.deepseek.com/chat/completions"))
+                .andRespond(withSuccess(providerResponse, org.springframework.http.MediaType.APPLICATION_JSON));
+        OpenAiService service = new OpenAiService(builder.build(), apiKeyService, new ObjectMapper());
+
+        OpenAiTaskResult result = service.processTask("Continue the task");
+
+        assertThat(result.summary()).isEqualTo("任务已完成");
+        assertThat(result.result()).isEqualTo("可以继续执行。");
+        assertThat(result.raw()).isEqualTo(providerResponse);
+        server.verify();
+    }
+
+    @Test
     void preservesProviderAndModelWhenExecutionFails() {
         AiApiKeyService apiKeyService = mock(AiApiKeyService.class);
         AiApiKey config = AiApiKey.builder()

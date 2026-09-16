@@ -58,6 +58,14 @@ New `flow-plan-v5` previews and traces also carry `flow-input-resolution-v1`. Th
 
 The plan order must match the immutable node snapshot and the persisted node trace order. The number of Provider boundary steps must match `providerCallCount`.
 
+## 3.1 Provider response boundary
+
+The Provider transport preserves the complete upstream response as immutable `raw` execution evidence. The response adapter extracts text from both Chat Completions and Responses API shapes, including array-based message content used by some OpenAI-compatible providers.
+
+The structured result parser first accepts a direct JSON value, then recovers a balanced JSON object or array from fenced output or short explanatory prose. It is string-aware, so braces inside quoted result text do not terminate extraction early. A recovered object uses `summary` and `result`; object or array values in `result` are rendered as readable Markdown while the original Provider response remains available for raw inspection.
+
+If no valid JSON value can be recovered, the runtime does not fail a successful Provider call solely for formatting non-compliance. It stores the readable model text as the Result, derives a bounded first-line Summary, and retains the complete raw response. This keeps historical execution usable while making the formatting issue visible through the saved raw payload.
+
 Before a modern plan can be used for trace or artifact persistence, the runtime validates its complete shape. `flow-plan-v5` must use linear scheduling, contiguous sequence numbers, the Input -> Prompt -> AI Task -> Output type order, at least one Input, exactly one AI Task, and exactly one Output, and the operation/provider-boundary flags must match each node type. Every step must point to the previous artifact, except the AI Task fan-in dependencies, and every output contract must match its stable node Artifact key. Non-Provider steps cannot carry Provider input declarations. Legacy plans bypass this modern shape validator and retain their genuinely available fields.
 
 New plans embed `flow-failure-policy-v1`. Preview and execution therefore expose the same failure behavior before a run begins and after it becomes immutable. Trace generation and artifact persistence both reject mismatched terminal states: a failed run has one failed AI Task boundary and every later node is `skipped`; a completed run cannot contain failed or skipped nodes. This policy describes the current single Provider attempt and is not a user-configurable retry engine.
