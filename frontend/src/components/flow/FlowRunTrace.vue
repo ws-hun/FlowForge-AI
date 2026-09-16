@@ -293,7 +293,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Back, CopyDocument, Loading, Right, View } from '@element-plus/icons-vue'
 import type {
@@ -350,6 +350,19 @@ const lineageDetails = ref<Record<string, FlowNodeArtifactLineage>>({})
 const openArtifactKeys = ref<Record<string, boolean>>({})
 const loadingArtifactKey = ref('')
 const lineageLoadingKey = ref('')
+const inspectionGeneration = ref(0)
+
+watch(
+  () => [props.trace.runId, props.trace.flowId],
+  () => {
+    inspectionGeneration.value += 1
+    artifactDetails.value = {}
+    lineageDetails.value = {}
+    openArtifactKeys.value = {}
+    loadingArtifactKey.value = ''
+    lineageLoadingKey.value = ''
+  }
+)
 
 function canInspectArtifact(node: FlowNodeRunTrace) {
   return Boolean(
@@ -395,16 +408,25 @@ async function loadArtifact(taskId: string, artifactKey: string) {
   if (artifactDetails.value[artifactKey]) {
     return artifactDetails.value[artifactKey]
   }
+  const requestGeneration = inspectionGeneration.value
   loadingArtifactKey.value = artifactKey
   try {
     const { data } = await getTaskArtifact(taskId, artifactKey)
+    if (requestGeneration !== inspectionGeneration.value || taskId !== props.trace.runId) {
+      return null
+    }
     artifactDetails.value[artifactKey] = data
     return data
   } catch {
+    if (requestGeneration !== inspectionGeneration.value || taskId !== props.trace.runId) {
+      return null
+    }
     ElMessage.error('节点产物加载失败')
     return null
   } finally {
-    loadingArtifactKey.value = ''
+    if (requestGeneration === inspectionGeneration.value) {
+      loadingArtifactKey.value = ''
+    }
   }
 }
 
@@ -458,15 +480,24 @@ async function toggleLineage(artifactKey: string, event: Event) {
   if (!taskId) {
     return
   }
+  const requestGeneration = inspectionGeneration.value
   lineageLoadingKey.value = artifactKey
   try {
     const { data } = await getTaskArtifactLineage(taskId, artifactKey)
+    if (requestGeneration !== inspectionGeneration.value || taskId !== props.trace.runId) {
+      return
+    }
     lineageDetails.value[artifactKey] = data
   } catch {
+    if (requestGeneration !== inspectionGeneration.value || taskId !== props.trace.runId) {
+      return
+    }
     ElMessage.error('来源链加载失败')
     details.open = false
   } finally {
-    lineageLoadingKey.value = ''
+    if (requestGeneration === inspectionGeneration.value) {
+      lineageLoadingKey.value = ''
+    }
   }
 }
 
