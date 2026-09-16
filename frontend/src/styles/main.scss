@@ -7103,6 +7103,33 @@ a {
   gap: 12px;
 }
 
+.provider-cache-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(79, 124, 255, 0.18);
+  border-radius: tokens.$radius-lg;
+  background: rgba(239, 246, 255, 0.78);
+
+  strong {
+    color: tokens.$text-primary;
+    font-size: 13px;
+  }
+
+  p {
+    margin: 4px 0 0;
+    color: tokens.$text-secondary;
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
+  .text-button {
+    flex: 0 0 auto;
+  }
+}
+
 .provider-card {
   display: grid;
   gap: 10px;

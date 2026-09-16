@@ -34,19 +34,28 @@
 
       <section class="provider-list">
         <div
-          v-if="!workspace.apiKeysReady && (workspace.settingsLoading || !workspace.apiKeysLoadAttempted)"
+          v-if="!workspace.apiKeysReady && !workspace.apiKeys.length && (workspace.settingsLoading || !workspace.apiKeysLoadAttempted)"
           class="empty-state provider-load-state"
         >
           正在读取 Provider 配置...
         </div>
-        <div v-else-if="!workspace.apiKeysReady" class="empty-state provider-load-state">
+        <div v-else-if="!workspace.apiKeysReady && !workspace.apiKeys.length" class="empty-state provider-load-state">
           <div>
             <strong>Provider 配置暂时无法读取</strong>
             <p>密钥不会在失败时被清空。服务恢复后可重新读取现有配置。</p>
             <button type="button" class="secondary-button" @click="retryProviders">重试读取</button>
           </div>
         </div>
-        <article v-for="item in workspace.apiKeys" v-else :key="item.id" class="soft-card provider-card">
+        <div v-if="!workspace.apiKeysReady && workspace.apiKeys.length" class="provider-cache-notice" role="status">
+          <div>
+            <strong>{{ workspace.settingsLoading ? '正在确认 Provider 配置' : '使用已载入的 Provider 配置' }}</strong>
+            <p>{{ workspace.settingsLoading ? '当前配置仍可用于执行，最新状态即将更新。' : '最新配置暂时无法确认，当前列表和已激活 Provider 仍然保留。' }}</p>
+          </div>
+          <button type="button" class="text-button" :disabled="workspace.settingsLoading" @click="retryProviders">
+            {{ workspace.settingsLoading ? '读取中...' : '重试' }}
+          </button>
+        </div>
+        <article v-for="item in workspace.apiKeys" :key="item.id" class="soft-card provider-card">
           <div class="row-between">
             <strong>{{ item.provider }}</strong>
             <span class="badge">{{ item.active ? '已激活' : '备用' }}</span>

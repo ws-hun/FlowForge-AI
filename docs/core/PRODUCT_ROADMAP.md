@@ -213,6 +213,7 @@ Current Stage 3 capabilities:
 - Prompt 资产重试在新请求开始时清除旧错误状态，首页、Prompt Library 和 Flow Inspector 不再同时展示“读取失败”和“读取中”。
 - 全局创建搜索在 Prompt 索引加载或失败时仍立即提供 Flow、History 和创建入口；Prompt 状态作为局部提示呈现，不再遮挡其他可用创作路径。
 - Provider 列表刷新失败但当前会话仍持有已激活配置时，AI Command 与 Flow 继续允许执行，并明确标记为“已载入配置”；短暂读取故障不再中断创作。
+- Provider Vault 在刷新失败时继续展示当前已载入配置，并提供列表级重试；密钥管理不会因一次读取故障退化为空状态。
 
 Current Stage 3 priorities:
 
