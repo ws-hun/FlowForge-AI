@@ -26,15 +26,17 @@
 
     <div class="global-search-meta">
       <span>{{ query.trim() ? '搜索结果' : '继续创作' }}</span>
-      <small>{{ visibleResults.length }} 项</small>
+      <small>{{ promptLoading ? `${visibleResults.length} 项 · Prompt 读取中` : `${visibleResults.length} 项` }}</small>
     </div>
 
-    <div v-if="promptLoading" class="global-search-empty global-search-loading" aria-live="polite">
-      <strong>正在准备搜索</strong>
-      <p>正在读取可复用的 Prompt 资产。</p>
+    <div v-if="promptLoading || promptLoadError" class="global-search-index-state" aria-live="polite">
+      <span>{{ promptLoading ? '正在补充 Prompt 结果' : promptLoadError }}</span>
+      <button v-if="promptLoadError" type="button" class="text-button" @click="retryPromptLoad">
+        重试 Prompt 读取
+      </button>
     </div>
 
-    <div v-else-if="visibleResults.length" class="global-search-results" role="listbox" aria-label="全局搜索结果">
+    <div v-if="visibleResults.length" class="global-search-results" role="listbox" aria-label="全局搜索结果">
       <button
         v-for="(result, index) in visibleResults"
         :key="result.id"
@@ -58,9 +60,12 @@
     </div>
 
     <div v-else class="global-search-empty">
-      <strong>没有匹配内容</strong>
-      <p>{{ promptLoadError || '换一个关键词，或直接进入工作空间开始新的 AI 任务。' }}</p>
-      <button v-if="promptLoadError" type="button" class="ghost-button" @click="retryPromptLoad">重试 Prompt 读取</button>
+      <strong>{{ promptLoading ? '正在继续查找 Prompt' : '没有匹配内容' }}</strong>
+      <p>
+        {{ promptLoading
+          ? 'Flow、历史和创建入口中暂时没有匹配内容，Prompt 结果仍在读取。'
+          : promptLoadError || '换一个关键词，或直接进入工作空间开始新的 AI 任务。' }}
+      </p>
       <button type="button" class="secondary-button" @click="openResult(quickActions[0]!)">打开 AI 命令</button>
     </div>
   </el-dialog>
@@ -106,7 +111,6 @@ const query = ref('')
 const activeIndex = ref(0)
 const searchInput = ref<HTMLInputElement | null>(null)
 const prompts = ref<PromptAsset[]>([])
-const promptsLoaded = ref(false)
 const promptLoading = ref(false)
 const promptLoadError = ref('')
 const promptRequest = createLatestRequestGate()
@@ -222,7 +226,6 @@ async function loadPromptIndex(request = promptRequest.begin()) {
       return
     }
     prompts.value = data
-    promptsLoaded.value = true
   } catch (error: unknown) {
     if (promptRequest.isCurrent(request)) {
       promptLoadError.value = apiErrorMessage(error, 'Prompt 资产暂时无法读取，仍可搜索 Flow 和历史。')

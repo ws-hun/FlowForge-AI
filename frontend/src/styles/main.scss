@@ -633,6 +633,25 @@ a {
   padding: 0 8px 8px;
 }
 
+.global-search-index-state {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 8px 6px;
+  padding: 7px 10px;
+  border-radius: tokens.$radius-sm;
+  background: tokens.$surface-secondary;
+  color: tokens.$text-secondary;
+  font-size: 11px;
+  line-height: 1.5;
+
+  .text-button {
+    flex: 0 0 auto;
+  }
+}
+
 .global-search-result {
   display: grid;
   width: 100%;

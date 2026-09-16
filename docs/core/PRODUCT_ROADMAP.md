@@ -211,6 +211,7 @@ Current Stage 3 capabilities:
 - Provider 状态在全局导航、AI Command、Flow Space 与 Provider Vault 中统一区分首次读取、读取失败、尚未配置和已就绪；配置接口故障不再误导用户重新添加密钥。
 - Workspace 首页在最近 Prompt 读取失败时保留资产入口与已有缓存，并提供就地重试，不再让复用模块在一次网络错误后静默消失。
 - Prompt 资产重试在新请求开始时清除旧错误状态，首页、Prompt Library 和 Flow Inspector 不再同时展示“读取失败”和“读取中”。
+- 全局创建搜索在 Prompt 索引加载或失败时仍立即提供 Flow、History 和创建入口；Prompt 状态作为局部提示呈现，不再遮挡其他可用创作路径。
 
 Current Stage 3 priorities:
 
