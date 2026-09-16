@@ -5576,6 +5576,11 @@ a {
   }
 }
 
+.flow-input-preview-refresh-error {
+  border-top: 0;
+  border-bottom: 1px solid tokens.$border;
+}
+
 .flow-input-preview-state,
 .flow-input-preview-actions,
 .flow-input-preview-viewbar,

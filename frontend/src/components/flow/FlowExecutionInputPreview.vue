@@ -22,6 +22,16 @@
         </div>
       </div>
 
+      <div v-if="stale && error" class="flow-input-preview-error flow-input-preview-refresh-error" :class="`is-${errorPresentation.kind}`">
+        <div>
+          <strong>{{ errorPresentation.title }}</strong>
+          <p>{{ errorPresentation.detail }}</p>
+        </div>
+        <button type="button" class="text-button" @click="loadPreview">
+          {{ errorPresentation.actionLabel }}
+        </button>
+      </div>
+
       <div v-if="!preview.executable && !stale" class="flow-input-preview-readiness">
         <div class="flow-input-preview-readiness-heading">
           <strong>执行前还有内容需要补全</strong>
