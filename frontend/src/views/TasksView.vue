@@ -109,7 +109,7 @@
           </span>
           <button
             class="primary-button"
-            :disabled="workspace.running || !workspace.canExecuteTask || providerState !== 'ready'"
+            :disabled="workspace.running || !workspace.canExecuteTask || !providerCanRun"
             @click="workspace.executeTask"
           >
             {{ workspace.running ? '执行中...' : '执行任务' }}
@@ -196,28 +196,33 @@ import FlowExecutionInputPreview from '@/components/flow/FlowExecutionInputPrevi
 import FlowRunTrace from '@/components/flow/FlowRunTrace.vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { taskSourceLabel } from '@/utils/taskLabels'
+import { providerCanExecute, resolveProviderReadiness } from '@/utils/providerReadiness'
 
 const router = useRouter()
 const workspace = useWorkspaceStore()
-const providerState = computed<'loading' | 'unavailable' | 'missing' | 'ready'>(() => {
-  if (!workspace.apiKeysReady) {
-    return workspace.settingsLoading || !workspace.apiKeysLoadAttempted ? 'loading' : 'unavailable'
-  }
-  return workspace.activeProvider ? 'ready' : 'missing'
-})
+const providerState = computed(() => resolveProviderReadiness({
+  ready: workspace.apiKeysReady,
+  loadAttempted: workspace.apiKeysLoadAttempted,
+  loading: workspace.settingsLoading,
+  hasActiveProvider: Boolean(workspace.activeProvider)
+}))
+const providerCanRun = computed(() => providerCanExecute(providerState.value))
 const providerReadinessTitle = computed(() => {
   if (providerState.value === 'loading') return '正在确认 AI Provider'
   if (providerState.value === 'unavailable') return 'Provider 配置暂时无法读取'
+  if (providerState.value === 'cached') return '使用已载入的 Provider'
   return '需要配置 AI Provider'
 })
 const providerReadinessDescription = computed(() => {
   if (providerState.value === 'loading') return '正在读取当前工作区的 Provider 配置。'
   if (providerState.value === 'unavailable') return '当前命令草稿仍然保留。服务恢复后重试即可继续执行。'
+  if (providerState.value === 'cached') return '最新配置暂时无法确认，仍可使用当前会话已载入的激活配置执行。'
   return '任务执行依赖一个已激活的 Provider。配置后即可运行当前命令。'
 })
 const providerFooterLabel = computed(() => {
   if (providerState.value === 'loading') return '正在读取 Provider'
   if (providerState.value === 'unavailable') return 'Provider 状态不可用'
+  if (providerState.value === 'cached') return `${workspace.activeProvider?.provider || 'Provider'} · 已载入配置`
   return workspace.activeProvider?.provider || '请先配置 Provider'
 })
 const hasTaskSource = computed(() =>

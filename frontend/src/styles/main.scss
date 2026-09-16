@@ -157,6 +157,14 @@ a {
     }
   }
 
+  &.provider-cached {
+    color: tokens.$primary;
+
+    i {
+      background: tokens.$primary;
+    }
+  }
+
   &.provider,
   &.provider-unavailable {
     color: tokens.$warning;

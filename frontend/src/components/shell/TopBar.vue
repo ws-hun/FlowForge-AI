@@ -81,6 +81,7 @@ import { getHealth } from '@/api/system'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useAuthStore } from '@/stores/auth'
 import { createLatestRequestGate } from '@/utils/latestRequest'
+import { resolveProviderReadiness } from '@/utils/providerReadiness'
 
 const searchOpen = ref(false)
 const userMenuOpen = ref(false)
@@ -90,12 +91,19 @@ const auth = useAuthStore()
 const healthState = ref<'checking' | 'ready' | 'offline'>('checking')
 let healthTimer: number | null = null
 const healthRequest = createLatestRequestGate()
+const providerReadiness = computed(() => resolveProviderReadiness({
+  ready: workspace.apiKeysReady,
+  loadAttempted: workspace.apiKeysLoadAttempted,
+  loading: workspace.settingsLoading,
+  hasActiveProvider: Boolean(workspace.activeProvider)
+}))
 const systemStatus = computed(() => {
   if (healthState.value === 'offline') return 'offline'
   if (healthState.value === 'checking') return 'checking'
-  if (!workspace.apiKeysReady && (!workspace.apiKeysLoadAttempted || workspace.settingsLoading)) return 'checking'
-  if (!workspace.apiKeysReady) return 'provider-unavailable'
-  return workspace.activeProvider ? 'ready' : 'provider'
+  if (providerReadiness.value === 'loading') return 'checking'
+  if (providerReadiness.value === 'unavailable') return 'provider-unavailable'
+  if (providerReadiness.value === 'cached') return 'provider-cached'
+  return providerReadiness.value === 'ready' ? 'ready' : 'provider'
 })
 const systemStatusLabel = computed(() => {
   const labels = {
@@ -103,6 +111,7 @@ const systemStatusLabel = computed(() => {
     ready: '已就绪',
     provider: '配置 Provider',
     'provider-unavailable': 'Provider 未知',
+    'provider-cached': 'Provider 已载入',
     offline: '离线'
   }
   return labels[systemStatus.value]
@@ -111,6 +120,7 @@ const systemStatusTitle = computed(() => {
   if (systemStatus.value === 'ready') return '应用、数据库和 AI Provider 已就绪'
   if (systemStatus.value === 'provider') return '应用已就绪，请配置或激活 AI Provider'
   if (systemStatus.value === 'provider-unavailable') return '应用已就绪，但 Provider 配置暂时无法读取'
+  if (systemStatus.value === 'provider-cached') return '使用当前会话已载入的 Provider；最新配置尚未确认'
   if (systemStatus.value === 'offline') return '后端或数据库当前不可用'
   return '正在检查应用状态'
 })
