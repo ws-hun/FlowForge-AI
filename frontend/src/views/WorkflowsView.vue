@@ -1632,6 +1632,7 @@ onBeforeRouteLeave(() => resolvePendingEdits())
 async function loadPromptAssets() {
   const request = promptAssetsRequest.begin()
   promptAssetsLoading.value = true
+  promptAssetsLoadError.value = false
   try {
     const { data } = await listPrompts()
     if (!promptAssetsRequest.isCurrent(request)) {

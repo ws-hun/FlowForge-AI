@@ -210,6 +210,7 @@ Current Stage 3 capabilities:
 - Flow Inspector 的 Prompt 选择器区分读取中、读取失败与资产为空；失败时保留已载入选项并可就地重试，并发刷新不会覆盖较新的 Prompt 资产。
 - Provider 状态在全局导航、AI Command、Flow Space 与 Provider Vault 中统一区分首次读取、读取失败、尚未配置和已就绪；配置接口故障不再误导用户重新添加密钥。
 - Workspace 首页在最近 Prompt 读取失败时保留资产入口与已有缓存，并提供就地重试，不再让复用模块在一次网络错误后静默消失。
+- Prompt 资产重试在新请求开始时清除旧错误状态，首页、Prompt Library 和 Flow Inspector 不再同时展示“读取失败”和“读取中”。
 
 Current Stage 3 priorities:
 

@@ -829,6 +829,7 @@ watch(variableValues, (values) => {
 async function loadPromptAssets() {
   const request = promptAssetsRequest.begin()
   loading.value = true
+  promptLoadError.value = false
   try {
     const { data } = await listPrompts()
     if (!promptAssetsRequest.isCurrent(request)) {

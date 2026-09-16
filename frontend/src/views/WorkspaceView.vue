@@ -218,6 +218,7 @@ onBeforeUnmount(() => {
 async function loadRecentPrompts() {
   const request = recentPromptsRequest.begin()
   recentPromptsLoading.value = true
+  recentPromptsLoadError.value = false
   try {
     const { data } = await listPrompts()
     if (!recentPromptsRequest.isCurrent(request)) {
