@@ -1,8 +1,8 @@
 <template>
   <details class="flow-input-preview" @toggle="onToggle">
     <summary>查看服务端执行输入</summary>
-    <div v-if="loading" class="flow-input-preview-status">
-      正在按保存的 Flow 编译本次输入...
+    <div v-if="requestBusy" class="flow-input-preview-status">
+      {{ preparing ? '正在保存 Flow 并准备执行输入...' : '正在按保存的 Flow 编译本次输入...' }}
     </div>
     <div v-else-if="preview" class="flow-input-preview-content">
       <div class="flow-input-preview-meta">
@@ -159,6 +159,7 @@ import { flowExecutionModeLabel } from '@/utils/flowExecutionPlan'
 import { presentFlowExecutionError } from '@/utils/flowExecutionError'
 import { flowNodeNeedsAttention } from '@/utils/flowNodeReadiness'
 import { apiErrorMessage, apiErrorStatus } from '@/utils/apiError'
+import { createLatestRequestGate } from '@/utils/latestRequest'
 
 const props = withDefaults(
   defineProps<{
@@ -188,13 +189,16 @@ const emit = defineEmits<{
 }>()
 
 const preview = ref<FlowExecutionPreviewResponse | null>(null)
+const preparing = ref(false)
 const loading = ref(false)
 const stale = ref(false)
 const error = ref('')
 const lastErrorStatus = ref<number | null>(null)
 const requestVersion = ref(0)
 const activeView = ref<'outline' | 'raw'>('outline')
+const preparationGate = createLatestRequestGate()
 
+const requestBusy = computed(() => preparing.value || loading.value)
 const readinessLabel = computed(() => preview.value?.executable ? '本次执行输入已就绪' : '本次执行仍需补全')
 const incompleteNodeIssues = computed(() =>
   preview.value?.flowRunSnapshot.nodes.filter(flowNodeNeedsAttention) || []
@@ -236,6 +240,8 @@ function invalidatePreview() {
 }
 
 function resetPreview() {
+  preparationGate.invalidate()
+  preparing.value = false
   requestVersion.value += 1
   preview.value = null
   loading.value = false
@@ -253,16 +259,32 @@ function onToggle(event: Event) {
 }
 
 async function loadPreview() {
-  if (!props.flowId || loading.value) {
+  if (!props.flowId || requestBusy.value) {
     return
   }
-
-  if (props.beforeLoad && !(await props.beforeLoad())) {
-    return
-  }
-  await nextTick()
 
   const flowId = props.flowId
+  const preparation = preparationGate.begin()
+  preparing.value = true
+
+  try {
+    if (props.beforeLoad && !(await props.beforeLoad())) {
+      return
+    }
+    await nextTick()
+    if (!preparationGate.isCurrent(preparation) || props.flowId !== flowId) {
+      return
+    }
+  } finally {
+    if (preparationGate.isCurrent(preparation)) {
+      preparing.value = false
+    }
+  }
+
+  if (!preparationGate.isCurrent(preparation) || props.flowId !== flowId) {
+    return
+  }
+
   const version = requestVersion.value
   loading.value = true
   error.value = ''

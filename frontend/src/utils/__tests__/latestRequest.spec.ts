@@ -19,4 +19,15 @@ describe('latest request gate', () => {
 
     expect(gate.isCurrent(request)).toBe(false)
   })
+
+  it('keeps a replacement context current when an invalidated request settles later', () => {
+    const gate = createLatestRequestGate()
+    const previousContext = gate.begin()
+
+    gate.invalidate()
+    const replacementContext = gate.begin()
+
+    expect(gate.isCurrent(previousContext)).toBe(false)
+    expect(gate.isCurrent(replacementContext)).toBe(true)
+  })
 })
