@@ -82,7 +82,7 @@ import { useWorkspaceStore } from '@/stores/workspace'
 import { useAuthStore } from '@/stores/auth'
 import { createLatestRequestGate } from '@/utils/latestRequest'
 import { resolveProviderReadiness } from '@/utils/providerReadiness'
-import { workspaceExecutionLabel } from '@/utils/workspaceExecution'
+import { workspaceExecutionLabel, workspaceExecutionTarget } from '@/utils/workspaceExecution'
 
 const searchOpen = ref(false)
 const userMenuOpen = ref(false)
@@ -99,8 +99,8 @@ const providerReadiness = computed(() => resolveProviderReadiness({
   hasActiveProvider: Boolean(workspace.activeProvider)
 }))
 const systemStatus = computed(() => {
-  if (workspace.running) return 'running'
   if (healthState.value === 'offline') return 'offline'
+  if (workspace.running) return 'running'
   if (healthState.value === 'checking') return 'checking'
   if (providerReadiness.value === 'loading') return 'checking'
   if (providerReadiness.value === 'unavailable') return 'provider-unavailable'
@@ -128,17 +128,7 @@ const systemStatusTitle = computed(() => {
   if (systemStatus.value === 'offline') return '后端或数据库当前不可用'
   return '正在检查应用状态'
 })
-const systemStatusTarget = computed(() => {
-  const execution = workspace.activeExecution
-  if (!execution) return '/api-keys'
-  if (execution.kind === 'flow') {
-    return execution.sourceId ? { path: '/workflows', query: { flow: execution.sourceId } } : '/workflows'
-  }
-  if (execution.kind === 'rerun' || execution.kind === 'recovery') {
-    return execution.sourceId ? { path: '/history', query: { run: execution.sourceId } } : '/history'
-  }
-  return '/tasks'
-})
+const systemStatusTarget = computed(() => workspaceExecutionTarget(workspace.activeExecution))
 
 function handleSearchShortcut(event: KeyboardEvent) {
   const target = event.target

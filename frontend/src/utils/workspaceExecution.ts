@@ -15,3 +15,14 @@ export function workspaceExecutionLabel(execution: WorkspaceExecution | null | u
   }
   return labels[execution.kind]
 }
+
+export function workspaceExecutionTarget(execution: WorkspaceExecution | null | undefined) {
+  if (!execution) return '/api-keys'
+  if (execution.kind === 'flow') {
+    return execution.sourceId ? `/workflows?flow=${encodeURIComponent(execution.sourceId)}` : '/workflows'
+  }
+  if (execution.kind === 'rerun' || execution.kind === 'recovery') {
+    return execution.sourceId ? `/history?run=${encodeURIComponent(execution.sourceId)}` : '/history'
+  }
+  return '/tasks'
+}
