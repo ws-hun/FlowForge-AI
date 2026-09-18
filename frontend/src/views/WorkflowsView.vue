@@ -160,7 +160,7 @@
             <button
               type="button"
               class="primary-button"
-              :disabled="flowExecutionBusy || !flowReadyToRun"
+              :disabled="flowExecutionActionBlocked || !flowReadyToRun"
               @click="executeFlowNow"
             >
               {{ flowExecutionButtonLabel }}
@@ -366,10 +366,10 @@
                 v-if="activeFlowResultFailed"
                 type="button"
                 class="secondary-button"
-                :disabled="flowExecutionBusy"
+                :disabled="flowExecutionActionBlocked"
                 @click="recoverSelectedFlowRun"
               >
-                {{ flowExecutionBusy ? '恢复中...' : '创建恢复运行' }}
+                {{ flowRecoveryButtonLabel }}
               </button>
               <template v-else>
                 <button type="button" class="secondary-button" @click="useLatestResultAsRunContext">
@@ -977,6 +977,7 @@ const savingNodePrompt = ref(false)
 const savedResultPrompt = ref<PromptAsset | null>(null)
 const flowExecutionPreparing = ref(false)
 const flowExecutionOwned = ref(false)
+const flowExecutionOperation = ref<'execute' | 'rerun' | 'recovery' | null>(null)
 const flowRunPhase = ref<FlowRunPhase>('idle')
 const flowRunStartedAt = ref('')
 const flowRunCompletedAt = ref('')
@@ -1164,12 +1165,24 @@ const providerReadinessDescription = computed(() => {
 const flowReadyToRun = computed(() =>
   providerReadyToRun.value && !hasIncompleteFlowNodes.value && !hasMissingFlowVariables.value
 )
-const flowExecutionBusy = computed(() => flowExecutionOwned.value || workspace.running)
+const flowExecutionBusy = computed(() => flowExecutionOwned.value)
+const flowExecutionActionBlocked = computed(() => flowExecutionBusy.value || workspace.running)
 const flowExecutionButtonLabel = computed(() => {
   if (flowExecutionPreparing.value) return '准备中...'
-  if (workspace.running) return '执行中...'
+  if (flowExecutionOwned.value && workspace.running) {
+    if (flowExecutionOperation.value === 'recovery') return '恢复中...'
+    if (flowExecutionOperation.value === 'rerun') return '重跑中...'
+    return '执行中...'
+  }
   if (flowExecutionOwned.value) return '整理中...'
+  if (workspace.running) return 'Provider 忙碌中...'
   return '执行 Flow'
+})
+const flowRecoveryButtonLabel = computed(() => {
+  if (flowExecutionOperation.value === 'recovery') {
+    return workspace.running ? '恢复中...' : '整理中...'
+  }
+  return workspace.running ? 'Provider 忙碌中...' : '创建恢复运行'
 })
 const flowConflictVisible = computed(() =>
   workspace.flowConflictId === workspace.activeFlow?.id || flowDraftRevisionConflict.value
@@ -2631,7 +2644,7 @@ function selectFlowRun(run: TaskHistoryItem) {
 async function rerunSelectedFlowRun() {
   const sourceRun = selectedFlowRun.value
   const flowId = workspace.activeFlow?.id
-  if (!sourceRun || !flowId) {
+  if (!sourceRun || !flowId || flowExecutionActionBlocked.value) {
     return
   }
   if (!workspace.activeProvider) {
@@ -2640,32 +2653,48 @@ async function rerunSelectedFlowRun() {
     return
   }
 
-  const result = await workspace.rerunHistoricalTask(sourceRun.id)
-  await loadFlowRuns(flowId)
-  const rerun = result?.taskId
-    ? flowRuns.value.find((run) => run.id === result.taskId)
-    : flowRuns.value.find((run) => run.rerunOfTaskId === sourceRun.id)
-  if (rerun) {
-    selectFlowRun(rerun)
+  flowExecutionOwned.value = true
+  flowExecutionOperation.value = 'rerun'
+  try {
+    const result = await workspace.rerunHistoricalTask(sourceRun.id)
+    await loadFlowRuns(flowId)
+    if (workspace.activeFlow?.id !== flowId) return
+    const rerun = result?.taskId
+      ? flowRuns.value.find((run) => run.id === result.taskId)
+      : flowRuns.value.find((run) => run.rerunOfTaskId === sourceRun.id)
+    if (rerun) {
+      selectFlowRun(rerun)
+    }
+  } finally {
+    flowExecutionOwned.value = false
+    flowExecutionOperation.value = null
   }
 }
 
 async function recoverSelectedFlowRun() {
   const sourceRun = selectedFlowRun.value
   const flowId = workspace.activeFlow?.id
-  if (!sourceRun || !flowId) return
+  if (!sourceRun || !flowId || flowExecutionActionBlocked.value) return
   if (!workspace.activeProvider) {
     ElMessage.warning('请先配置并激活 AI Provider')
     goToApiKeys()
     return
   }
 
-  const result = await workspace.recoverHistoricalTask(sourceRun.id)
-  await loadFlowRuns(flowId)
-  const recovery = result?.taskId
-    ? flowRuns.value.find((run) => run.id === result.taskId)
-    : flowRuns.value.find((run) => run.recoveryOfTaskId === sourceRun.id)
-  if (recovery) selectFlowRun(recovery)
+  flowExecutionOwned.value = true
+  flowExecutionOperation.value = 'recovery'
+  try {
+    const result = await workspace.recoverHistoricalTask(sourceRun.id)
+    await loadFlowRuns(flowId)
+    if (workspace.activeFlow?.id !== flowId) return
+    const recovery = result?.taskId
+      ? flowRuns.value.find((run) => run.id === result.taskId)
+      : flowRuns.value.find((run) => run.recoveryOfTaskId === sourceRun.id)
+    if (recovery) selectFlowRun(recovery)
+  } finally {
+    flowExecutionOwned.value = false
+    flowExecutionOperation.value = null
+  }
 }
 
 function openSelectedRunHistory() {
@@ -2961,11 +2990,12 @@ function goToPromptLibrary() {
 
 async function executeFlowNow() {
   const requestedFlowId = workspace.activeFlow?.id
-  if (!requestedFlowId || flowExecutionBusy.value) {
+  if (!requestedFlowId || flowExecutionActionBlocked.value) {
     return
   }
 
   flowExecutionOwned.value = true
+  flowExecutionOperation.value = 'execute'
   flowExecutionPreparing.value = true
   try {
     if (!(await resolvePendingEdits())) {
@@ -2982,6 +3012,7 @@ async function executeFlowNow() {
       ElMessage.warning('请先配置并激活 AI Provider')
       flowExecutionPreparing.value = false
       flowExecutionOwned.value = false
+      flowExecutionOperation.value = null
       goToApiKeys()
       return
     }
@@ -3025,6 +3056,7 @@ async function executeFlowNow() {
   } finally {
     flowExecutionPreparing.value = false
     flowExecutionOwned.value = false
+    flowExecutionOperation.value = null
   }
 }
 
