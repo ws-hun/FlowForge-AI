@@ -163,7 +163,7 @@
               :disabled="flowExecutionBusy || !flowReadyToRun"
               @click="executeFlowNow"
             >
-              {{ flowExecutionPreparing ? '准备中...' : workspace.running ? '执行中...' : '执行 Flow' }}
+              {{ flowExecutionButtonLabel }}
             </button>
           </div>
         </div>
@@ -976,6 +976,7 @@ const savingResultPrompt = ref(false)
 const savingNodePrompt = ref(false)
 const savedResultPrompt = ref<PromptAsset | null>(null)
 const flowExecutionPreparing = ref(false)
+const flowExecutionOwned = ref(false)
 const flowRunPhase = ref<FlowRunPhase>('idle')
 const flowRunStartedAt = ref('')
 const flowRunCompletedAt = ref('')
@@ -1163,7 +1164,13 @@ const providerReadinessDescription = computed(() => {
 const flowReadyToRun = computed(() =>
   providerReadyToRun.value && !hasIncompleteFlowNodes.value && !hasMissingFlowVariables.value
 )
-const flowExecutionBusy = computed(() => flowExecutionPreparing.value || workspace.running)
+const flowExecutionBusy = computed(() => flowExecutionOwned.value || workspace.running)
+const flowExecutionButtonLabel = computed(() => {
+  if (flowExecutionPreparing.value) return '准备中...'
+  if (workspace.running) return '执行中...'
+  if (flowExecutionOwned.value) return '整理中...'
+  return '执行 Flow'
+})
 const flowConflictVisible = computed(() =>
   workspace.flowConflictId === workspace.activeFlow?.id || flowDraftRevisionConflict.value
 )
@@ -1634,7 +1641,13 @@ onBeforeUnmount(() => {
   flowVersionsRequest.invalidate()
 })
 
-onBeforeRouteLeave(() => resolvePendingEdits())
+onBeforeRouteLeave(() => {
+  if (flowExecutionBusy.value) {
+    ElMessage.info('Flow 正在准备、执行或整理结果，请完成后再离开')
+    return false
+  }
+  return resolvePendingEdits()
+})
 
 async function loadPromptAssets() {
   const request = promptAssetsRequest.begin()
@@ -1969,7 +1982,7 @@ async function resolvePendingEdits() {
 }
 
 function handleBeforeUnload(event: BeforeUnloadEvent) {
-  if (!flowMetaChanged.value && !nodeEditorChanged.value) {
+  if (!flowExecutionBusy.value && !flowMetaChanged.value && !nodeEditorChanged.value) {
     return
   }
   event.preventDefault()
@@ -2952,6 +2965,7 @@ async function executeFlowNow() {
     return
   }
 
+  flowExecutionOwned.value = true
   flowExecutionPreparing.value = true
   try {
     if (!(await resolvePendingEdits())) {
@@ -2966,6 +2980,8 @@ async function executeFlowNow() {
 
     if (!providerReadyToRun.value) {
       ElMessage.warning('请先配置并激活 AI Provider')
+      flowExecutionPreparing.value = false
+      flowExecutionOwned.value = false
       goToApiKeys()
       return
     }
@@ -3008,6 +3024,7 @@ async function executeFlowNow() {
     }
   } finally {
     flowExecutionPreparing.value = false
+    flowExecutionOwned.value = false
   }
 }
 
