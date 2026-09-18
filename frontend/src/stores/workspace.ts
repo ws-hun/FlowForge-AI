@@ -237,6 +237,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function executeTask() {
+    if (running.value) {
+      return
+    }
     const isFlowRun = Boolean(taskSourceFlowId.value)
     const input = taskInput.value.trim()
 
@@ -293,6 +296,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function rerunHistoricalTask(taskId: string) {
+    if (running.value) {
+      return null
+    }
     if (!activeProvider.value) {
       ElMessage.warning('请先配置并激活 AI Provider')
       return null
@@ -324,6 +330,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function recoverHistoricalTask(taskId: string) {
+    if (running.value) {
+      return null
+    }
     if (!activeProvider.value) {
       ElMessage.warning('请先配置并激活 AI Provider')
       return null
@@ -1181,7 +1190,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function executeActiveFlow(runtimeContext = '', variableValues: Record<string, string> = {}) {
-    if (!activeFlow.value) {
+    const flow = activeFlow.value
+    if (!flow || running.value) {
       return null
     }
 
@@ -1192,7 +1202,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     try {
       const { data } = await runTask({
         input: runtimeContext.trim(),
-        flowId: activeFlow.value.id,
+        flowId: flow.id,
         flowRunContext: runtimeContext.trim(),
         flowVariableValues: variableValues
       })
@@ -1203,8 +1213,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     } catch (error: unknown) {
       const errorMessage = apiErrorMessage(error, 'Flow 执行失败')
       rememberFailedRun(apiErrorRunId(error), runtimeContext.trim(), errorMessage, {
-        sourceFlowId: activeFlow.value.id,
-        sourceFlowTitle: activeFlow.value.title
+        sourceFlowId: flow.id,
+        sourceFlowTitle: flow.title
       })
       ElMessage.error(errorMessage)
       await loadTasks()

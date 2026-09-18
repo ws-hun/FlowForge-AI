@@ -91,6 +91,7 @@
             type="button"
             class="draft-item"
             :class="{ active: flow.id === workspace.activeFlowId }"
+            :disabled="flowExecutionBusy"
             @click="selectFlow(flow.id)"
           >
             <strong>{{ flow.title }}</strong>
@@ -142,7 +143,7 @@
             <button
               type="button"
               class="ghost-button flow-add-context-button"
-              :disabled="workspace.flowLoading || workspace.running"
+              :disabled="workspace.flowLoading || flowExecutionBusy"
               @click="addContextNode"
             >
               <el-icon><Plus /></el-icon>
@@ -151,7 +152,7 @@
             <button
               type="button"
               class="ghost-button"
-              :disabled="workspace.running || hasIncompleteFlowNodes"
+              :disabled="flowExecutionBusy || hasIncompleteFlowNodes"
               @click="sendFlowToTaskWorkspace"
             >
               带入 Task
@@ -159,10 +160,10 @@
             <button
               type="button"
               class="primary-button"
-              :disabled="workspace.running || !flowReadyToRun"
+              :disabled="flowExecutionBusy || !flowReadyToRun"
               @click="executeFlowNow"
             >
-              {{ workspace.running ? '执行中...' : '执行 Flow' }}
+              {{ flowExecutionPreparing ? '准备中...' : workspace.running ? '执行中...' : '执行 Flow' }}
             </button>
           </div>
         </div>
@@ -278,7 +279,7 @@
                     class="flow-variable-rename-button"
                     title="重命名变量"
                     :aria-label="`重命名变量 ${variable}`"
-                    :disabled="workspace.flowLoading || workspace.running"
+                    :disabled="workspace.flowLoading || flowExecutionBusy"
                     @click="renameFlowVariable(variable)"
                   >
                     <el-icon><EditPen /></el-icon>
@@ -319,7 +320,7 @@
                 v-if="flowRunContext.trim()"
                 type="button"
                 class="text-button"
-                :disabled="workspace.flowLoading || workspace.running"
+                :disabled="workspace.flowLoading || flowExecutionBusy"
                 @click="persistRunBriefAsContext"
               >
                 <el-icon><Plus /></el-icon>
@@ -365,10 +366,10 @@
                 v-if="activeFlowResultFailed"
                 type="button"
                 class="secondary-button"
-                :disabled="workspace.running"
+                :disabled="flowExecutionBusy"
                 @click="recoverSelectedFlowRun"
               >
-                {{ workspace.running ? '恢复中...' : '创建恢复运行' }}
+                {{ flowExecutionBusy ? '恢复中...' : '创建恢复运行' }}
               </button>
               <template v-else>
                 <button type="button" class="secondary-button" @click="useLatestResultAsRunContext">
@@ -726,7 +727,7 @@
                 v-if="nodeCanSendToTask"
                 type="button"
                 class="ghost-button"
-                :disabled="workspace.running"
+                :disabled="flowExecutionBusy"
                 @click="sendSelectedNodeToTaskWorkspace"
               >
                 带入 Task
@@ -974,6 +975,7 @@ const flowExecutionVisible = ref(false)
 const savingResultPrompt = ref(false)
 const savingNodePrompt = ref(false)
 const savedResultPrompt = ref<PromptAsset | null>(null)
+const flowExecutionPreparing = ref(false)
 const flowRunPhase = ref<FlowRunPhase>('idle')
 const flowRunStartedAt = ref('')
 const flowRunCompletedAt = ref('')
@@ -1161,6 +1163,7 @@ const providerReadinessDescription = computed(() => {
 const flowReadyToRun = computed(() =>
   providerReadyToRun.value && !hasIncompleteFlowNodes.value && !hasMissingFlowVariables.value
 )
+const flowExecutionBusy = computed(() => flowExecutionPreparing.value || workspace.running)
 const flowConflictVisible = computed(() =>
   workspace.flowConflictId === workspace.activeFlow?.id || flowDraftRevisionConflict.value
 )
@@ -2081,6 +2084,10 @@ async function selectFlow(id: string) {
     void syncActiveRouteState()
     return
   }
+  if (flowExecutionBusy.value) {
+    ElMessage.info('当前 Flow 正在准备或执行，请完成后再切换')
+    return
+  }
   if (!(await resolvePendingEdits())) {
     return
   }
@@ -2940,49 +2947,67 @@ function goToPromptLibrary() {
 }
 
 async function executeFlowNow() {
-  if (!workspace.activeFlow || !(await resolvePendingEdits())) {
+  const requestedFlowId = workspace.activeFlow?.id
+  if (!requestedFlowId || flowExecutionBusy.value) {
     return
   }
 
-  const flow = workspace.activeFlow
-  const flowId = flow.id
-  if (!flowId) {
-    return
-  }
+  flowExecutionPreparing.value = true
+  try {
+    if (!(await resolvePendingEdits())) {
+      return
+    }
 
-  if (!providerReadyToRun.value) {
-    ElMessage.warning('请先配置并激活 AI Provider')
-    goToApiKeys()
-    return
-  }
+    const flow = workspace.activeFlow
+    if (!flow || flow.id !== requestedFlowId) {
+      return
+    }
+    const flowId = flow.id
 
-  if (hasIncompleteFlowNodes.value) {
-    ElMessage.warning(`请先完善 Flow 节点：${incompleteFlowNodes.value.map((node) => node.title).join('、')}`)
-    await selectFirstIncompleteNode()
-    return
-  }
+    if (!providerReadyToRun.value) {
+      ElMessage.warning('请先配置并激活 AI Provider')
+      goToApiKeys()
+      return
+    }
 
-  if (hasMissingFlowVariables.value) {
-    ElMessage.warning(`请先填写 Flow 变量：${missingFlowVariables.value.join('、')}`)
-    return
-  }
+    if (hasIncompleteFlowNodes.value) {
+      ElMessage.warning(`请先完善 Flow 节点：${incompleteFlowNodes.value.map((node) => node.title).join('、')}`)
+      await selectFirstIncompleteNode()
+      return
+    }
 
-  savedResultPrompt.value = null
-  selectedFlowRun.value = null
-  startFlowRun(flow.nodes)
-  const result = await workspace.executeActiveFlow(flowRunContext.value, flowVariableValues.value)
-  if (result && flowId) {
-    completeFlowRun()
-    flowExecutionVisible.value = true
+    if (hasMissingFlowVariables.value) {
+      ElMessage.warning(`请先填写 Flow 变量：${missingFlowVariables.value.join('、')}`)
+      return
+    }
+
+    const executionNodes = flow.nodes.map((node) => ({ ...node }))
+    const runtimeContext = flowRunContext.value
+    const variableValues = { ...flowVariableValues.value }
+    savedResultPrompt.value = null
+    selectedFlowRun.value = null
+    startFlowRun(executionNodes)
+    const execution = workspace.executeActiveFlow(runtimeContext, variableValues)
+    flowExecutionPreparing.value = false
+    const result = await execution
+    if (workspace.activeFlow?.id !== flowId) {
+      return
+    }
+    if (result) {
+      completeFlowRun(executionNodes)
+      flowExecutionVisible.value = true
+      await loadFlowRuns(flowId)
+      return
+    }
+
+    failFlowRun(executionNodes)
     await loadFlowRuns(flowId)
-    return
-  }
-
-  failFlowRun()
-  await loadFlowRuns(flowId)
-  const failedRun = flowRuns.value.find((run) => run.id === workspace.failedRunId)
-  if (failedRun) {
-    selectFlowRun(failedRun)
+    const failedRun = flowRuns.value.find((run) => run.id === workspace.failedRunId)
+    if (failedRun) {
+      selectFlowRun(failedRun)
+    }
+  } finally {
+    flowExecutionPreparing.value = false
   }
 }
 
@@ -3040,21 +3065,15 @@ function startFlowRun(nodes: FlowNode[]) {
   nodeRunStates.value = buildNodeRunStates(nodes, 'running')
 }
 
-function completeFlowRun() {
-  if (!workspace.activeFlow) {
-    return
-  }
+function completeFlowRun(nodes: FlowNode[]) {
   flowRunPhase.value = 'completed'
   flowRunCompletedAt.value = new Date().toISOString()
-  nodeRunStates.value = buildNodeRunStates(workspace.activeFlow.nodes, 'completed')
+  nodeRunStates.value = buildNodeRunStates(nodes, 'completed')
 }
 
-function failFlowRun() {
-  if (!workspace.activeFlow) {
-    return
-  }
+function failFlowRun(nodes: FlowNode[]) {
   flowRunPhase.value = 'error'
-  nodeRunStates.value = buildNodeRunStates(workspace.activeFlow.nodes, 'error')
+  nodeRunStates.value = buildNodeRunStates(nodes, 'error')
 }
 
 function resetFlowRunState() {

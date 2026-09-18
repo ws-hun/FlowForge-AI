@@ -3351,6 +3351,13 @@ a {
     background: rgba(79, 124, 255, 0.06);
     box-shadow: tokens.$shadow-soft;
   }
+
+  &:disabled {
+    transform: none;
+    opacity: 0.56;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
 }
 
 .quiet-note {

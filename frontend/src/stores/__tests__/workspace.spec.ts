@@ -158,4 +158,46 @@ describe('workspace bootstrap', () => {
       errorMessage: 'Provider 暂时不可用'
     })
   })
+
+  it('allows only one active Flow Provider execution at a time', async () => {
+    api.listFlows.mockResolvedValueOnce({
+      data: [{
+        id: 'flow-1',
+        title: 'Release Flow',
+        description: 'Prepare a release brief',
+        nodes: [],
+        revision: 1,
+        createdAt: '2026-09-17T00:00:00Z',
+        updatedAt: '2026-09-17T00:00:00Z'
+      }]
+    })
+    const providerResponse = deferred<{ data: Record<string, unknown> }>()
+    api.runTask.mockReturnValueOnce(providerResponse.promise)
+    const workspace = useWorkspaceStore()
+    await workspace.loadFlowDrafts()
+
+    const firstExecution = workspace.executeActiveFlow('Release context', {})
+    const duplicateExecution = await workspace.executeActiveFlow('Duplicate context', {})
+
+    expect(duplicateExecution).toBeNull()
+    expect(api.runTask).toHaveBeenCalledTimes(1)
+    expect(api.runTask).toHaveBeenCalledWith(expect.objectContaining({
+      flowId: 'flow-1',
+      flowRunContext: 'Release context'
+    }))
+
+    providerResponse.resolve({
+      data: {
+        summary: 'Release ready',
+        result: 'Proceed',
+        raw: '{}',
+        executionInput: 'Release context',
+        taskId: 'run-1'
+      }
+    })
+    await firstExecution
+
+    expect(workspace.running).toBe(false)
+    expect(workspace.latestResult?.taskId).toBe('run-1')
+  })
 })
