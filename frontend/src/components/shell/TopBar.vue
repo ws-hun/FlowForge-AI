@@ -11,7 +11,7 @@
       <RouterLink to="/history">历史</RouterLink>
       <RouterLink to="/settings">设置</RouterLink>
       <RouterLink
-        to="/api-keys"
+        :to="systemStatusTarget"
         class="workspace-status top-mobile-status"
         :class="systemStatus"
         :title="systemStatusTitle"
@@ -31,7 +31,7 @@
     </nav>
 
     <div class="top-actions">
-      <RouterLink to="/api-keys" class="workspace-status" :class="systemStatus" :title="systemStatusTitle">
+      <RouterLink :to="systemStatusTarget" class="workspace-status" :class="systemStatus" :title="systemStatusTitle">
         <i></i>
         <span>{{ systemStatusLabel }}</span>
       </RouterLink>
@@ -82,6 +82,7 @@ import { useWorkspaceStore } from '@/stores/workspace'
 import { useAuthStore } from '@/stores/auth'
 import { createLatestRequestGate } from '@/utils/latestRequest'
 import { resolveProviderReadiness } from '@/utils/providerReadiness'
+import { workspaceExecutionLabel } from '@/utils/workspaceExecution'
 
 const searchOpen = ref(false)
 const userMenuOpen = ref(false)
@@ -98,6 +99,7 @@ const providerReadiness = computed(() => resolveProviderReadiness({
   hasActiveProvider: Boolean(workspace.activeProvider)
 }))
 const systemStatus = computed(() => {
+  if (workspace.running) return 'running'
   if (healthState.value === 'offline') return 'offline'
   if (healthState.value === 'checking') return 'checking'
   if (providerReadiness.value === 'loading') return 'checking'
@@ -107,6 +109,7 @@ const systemStatus = computed(() => {
 })
 const systemStatusLabel = computed(() => {
   const labels = {
+    running: workspaceExecutionLabel(workspace.activeExecution),
     checking: '检查中',
     ready: '已就绪',
     provider: '配置 Provider',
@@ -117,12 +120,24 @@ const systemStatusLabel = computed(() => {
   return labels[systemStatus.value]
 })
 const systemStatusTitle = computed(() => {
+  if (systemStatus.value === 'running') return `${workspaceExecutionLabel(workspace.activeExecution)}，点击返回运行来源`
   if (systemStatus.value === 'ready') return '应用、数据库和 AI Provider 已就绪'
   if (systemStatus.value === 'provider') return '应用已就绪，请配置或激活 AI Provider'
   if (systemStatus.value === 'provider-unavailable') return '应用已就绪，但 Provider 配置暂时无法读取'
   if (systemStatus.value === 'provider-cached') return '使用当前会话已载入的 Provider；最新配置尚未确认'
   if (systemStatus.value === 'offline') return '后端或数据库当前不可用'
   return '正在检查应用状态'
+})
+const systemStatusTarget = computed(() => {
+  const execution = workspace.activeExecution
+  if (!execution) return '/api-keys'
+  if (execution.kind === 'flow') {
+    return execution.sourceId ? { path: '/workflows', query: { flow: execution.sourceId } } : '/workflows'
+  }
+  if (execution.kind === 'rerun' || execution.kind === 'recovery') {
+    return execution.sourceId ? { path: '/history', query: { run: execution.sourceId } } : '/history'
+  }
+  return '/tasks'
 })
 
 function handleSearchShortcut(event: KeyboardEvent) {

@@ -157,6 +157,17 @@ a {
     }
   }
 
+  &.running {
+    border-color: rgba(79, 124, 255, 0.2);
+    background: rgba(79, 124, 255, 0.06);
+    color: tokens.$primary;
+
+    i {
+      background: tokens.$primary;
+      box-shadow: 0 0 0 4px rgba(79, 124, 255, 0.1);
+    }
+  }
+
   &.provider-cached {
     color: tokens.$primary;
 

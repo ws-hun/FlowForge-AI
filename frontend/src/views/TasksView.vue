@@ -112,7 +112,7 @@
             :disabled="workspace.running || !workspace.canExecuteTask || !providerCanRun"
             @click="workspace.executeTask"
           >
-            {{ workspace.running ? '执行中...' : '执行任务' }}
+            {{ taskExecutionButtonLabel }}
           </button>
         </div>
       </section>
@@ -197,6 +197,7 @@ import FlowRunTrace from '@/components/flow/FlowRunTrace.vue'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { taskSourceLabel } from '@/utils/taskLabels'
 import { providerCanExecute, resolveProviderReadiness } from '@/utils/providerReadiness'
+import { workspaceExecutionLabel } from '@/utils/workspaceExecution'
 
 const router = useRouter()
 const workspace = useWorkspaceStore()
@@ -207,6 +208,12 @@ const providerState = computed(() => resolveProviderReadiness({
   hasActiveProvider: Boolean(workspace.activeProvider)
 }))
 const providerCanRun = computed(() => providerCanExecute(providerState.value))
+const taskExecutionButtonLabel = computed(() => {
+  if (!workspace.running) return '执行任务'
+  return workspace.activeExecution?.kind === 'task'
+    ? '执行中...'
+    : `${workspaceExecutionLabel(workspace.activeExecution)}...`
+})
 const providerReadinessTitle = computed(() => {
   if (providerState.value === 'loading') return '正在确认 AI Provider'
   if (providerState.value === 'unavailable') return 'Provider 配置暂时无法读取'

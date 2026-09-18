@@ -34,6 +34,7 @@ import {
 import type { AiCommandDraft } from '@/utils/aiCommandDraft'
 import type { FlowRunDraft } from '@/utils/flowRunDrafts'
 import type { WorkspacePreferences } from '@/utils/workspacePreferences'
+import type { WorkspaceExecution, WorkspaceExecutionKind } from '@/utils/workspaceExecution'
 import type {
   ApiKeyConfig,
   FlowDraft,
@@ -67,11 +68,6 @@ type FlowRunSeed = {
 }
 
 type WorkspacePreferenceUpdateResult = 'saved' | 'memory-only' | 'invalid'
-type WorkspaceExecutionKind = 'task' | 'flow' | 'rerun' | 'recovery'
-type WorkspaceExecution = {
-  kind: WorkspaceExecutionKind
-  sourceId: string | null
-}
 
 export const useWorkspaceStore = defineStore('workspace', () => {
   let bootstrapPromise: Promise<boolean> | null = null
