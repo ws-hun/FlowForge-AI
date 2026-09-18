@@ -67,6 +67,11 @@ type FlowRunSeed = {
 }
 
 type WorkspacePreferenceUpdateResult = 'saved' | 'memory-only' | 'invalid'
+type WorkspaceExecutionKind = 'task' | 'flow' | 'rerun' | 'recovery'
+type WorkspaceExecution = {
+  kind: WorkspaceExecutionKind
+  sourceId: string | null
+}
 
 export const useWorkspaceStore = defineStore('workspace', () => {
   let bootstrapPromise: Promise<boolean> | null = null
@@ -106,6 +111,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const workspacePreferences = ref<WorkspacePreferences>(readWorkspacePreferences())
   const workspacePreferencesPersisted = ref(true)
   const running = ref(false)
+  const activeExecution = ref<WorkspaceExecution | null>(null)
   const historyLoading = ref(false)
   const settingsLoading = ref(false)
   const providerTestLoadingId = ref('')
@@ -133,6 +139,20 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const failedRun = computed(
     () => tasks.value.find((task) => task.id === failedRunId.value) || failedRunFallback.value
   )
+
+  function beginExecution(kind: WorkspaceExecutionKind, sourceId: string | null = null) {
+    if (running.value) {
+      return false
+    }
+    running.value = true
+    activeExecution.value = { kind, sourceId }
+    return true
+  }
+
+  function finishExecution() {
+    running.value = false
+    activeExecution.value = null
+  }
 
   watch(
     [
@@ -259,7 +279,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
     saveTaskSourceFlowRunDraft()
 
-    running.value = true
+    if (!beginExecution('task')) {
+      return
+    }
     latestResult.value = null
     failedRunId.value = ''
     failedRunFallback.value = null
@@ -291,7 +313,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       ElMessage.error(errorMessage)
       await loadTasks()
     } finally {
-      running.value = false
+      finishExecution()
     }
   }
 
@@ -304,7 +326,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       return null
     }
 
-    running.value = true
+    if (!beginExecution('rerun', taskId)) {
+      return null
+    }
     latestResult.value = null
     failedRunId.value = ''
     failedRunFallback.value = null
@@ -325,7 +349,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       await loadTasks()
       return null
     } finally {
-      running.value = false
+      finishExecution()
     }
   }
 
@@ -338,7 +362,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       return null
     }
 
-    running.value = true
+    if (!beginExecution('recovery', taskId)) {
+      return null
+    }
     latestResult.value = null
     failedRunId.value = ''
     failedRunFallback.value = null
@@ -359,7 +385,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       await loadTasks()
       return null
     } finally {
-      running.value = false
+      finishExecution()
     }
   }
 
@@ -1195,7 +1221,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       return null
     }
 
-    running.value = true
+    if (!beginExecution('flow', flow.id)) {
+      return null
+    }
     latestResult.value = null
     failedRunId.value = ''
     failedRunFallback.value = null
@@ -1220,7 +1248,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       await loadTasks()
       return null
     } finally {
-      running.value = false
+      finishExecution()
     }
   }
 
@@ -1386,6 +1414,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     taskInputVariantSourceTitle,
     taskDraftRecovered,
     running,
+    activeExecution,
     historyLoading,
     settingsLoading,
     providerTestLoadingId,

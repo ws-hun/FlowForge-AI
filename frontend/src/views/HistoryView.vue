@@ -123,7 +123,7 @@
                 :disabled="workspace.running"
                 @click="replayHistoryTask(task)"
               >
-                {{ workspace.running ? '执行中...' : isFailed(task) ? '创建恢复运行' : '使用当前 Provider 重跑' }}
+                {{ historyReplayLabel(task) }}
               </button>
             </div>
           </div>
@@ -354,6 +354,14 @@ function lineageLabel(task: TaskHistoryItem) {
 
 function isFailed(task: TaskHistoryItem) {
   return task.status === 'failed'
+}
+
+function historyReplayLabel(task: TaskHistoryItem) {
+  const idleLabel = isFailed(task) ? '创建恢复运行' : '使用当前 Provider 重跑'
+  if (workspace.activeExecution?.sourceId !== task.id) {
+    return idleLabel
+  }
+  return workspace.activeExecution.kind === 'recovery' ? '恢复中...' : '重跑中...'
 }
 
 function historyRunKind(task: TaskHistoryItem) {

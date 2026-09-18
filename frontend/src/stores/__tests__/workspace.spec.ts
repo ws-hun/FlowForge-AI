@@ -6,6 +6,7 @@ const api = vi.hoisted(() => ({
   listTasks: vi.fn(),
   listApiKeys: vi.fn(),
   listFlows: vi.fn(),
+  rerunTask: vi.fn(),
   runTask: vi.fn()
 }))
 
@@ -24,7 +25,7 @@ vi.mock('@/api/tasks', () => ({
   listApiKeys: api.listApiKeys,
   listTasks: api.listTasks,
   recoverTask: vi.fn(),
-  rerunTask: vi.fn(),
+  rerunTask: api.rerunTask,
   runTask: api.runTask,
   saveApiKey: vi.fn(),
   testApiKey: vi.fn()
@@ -199,5 +200,45 @@ describe('workspace bootstrap', () => {
 
     expect(workspace.running).toBe(false)
     expect(workspace.latestResult?.taskId).toBe('run-1')
+  })
+
+  it('tracks the source run that owns a historical replay', async () => {
+    api.listApiKeys.mockResolvedValueOnce({
+      data: [{
+        id: 'provider-1',
+        provider: 'deepseek',
+        maskedKey: 'sk-...1234',
+        baseUrl: 'https://api.deepseek.com',
+        model: 'deepseek-chat',
+        active: true,
+        updatedAt: '2026-09-18T00:00:00Z'
+      }]
+    })
+    const providerResponse = deferred<{ data: Record<string, unknown> }>()
+    api.rerunTask.mockReturnValueOnce(providerResponse.promise)
+    const workspace = useWorkspaceStore()
+    await workspace.loadApiKeys()
+
+    const replay = workspace.rerunHistoricalTask('source-run-1')
+
+    expect(workspace.running).toBe(true)
+    expect(workspace.activeExecution).toEqual({
+      kind: 'rerun',
+      sourceId: 'source-run-1'
+    })
+
+    providerResponse.resolve({
+      data: {
+        summary: 'Updated result',
+        result: 'Proceed',
+        raw: '{}',
+        executionInput: 'Stored input',
+        taskId: 'rerun-1'
+      }
+    })
+    await replay
+
+    expect(workspace.running).toBe(false)
+    expect(workspace.activeExecution).toBeNull()
   })
 })
