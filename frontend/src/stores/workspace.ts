@@ -80,6 +80,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const tasksRequest = createLatestRequestGate()
   const apiKeysRequest = createLatestRequestGate()
   const flowDraftsRequest = createLatestRequestGate()
+  const taskPromptRequests = new Map<string, Promise<PromptAsset | null>>()
   const initialTaskDraft = readAiCommandDraft()
   const tasks = ref<TaskHistoryItem[]>([])
   const apiKeys = ref<ApiKeyConfig[]>([])
@@ -592,17 +593,14 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       sourceTaskId: latestResult.value.taskId || null
     }
 
-    taskAssetLoading.value = true
-    try {
-      const { data } = await createPrompt(payload)
-      latestTaskPrompt.value = data
-      return data
-    } catch (error: unknown) {
-      ElMessage.error(apiErrorMessage(error, 'Prompt 沉淀失败'))
-      return null
-    } finally {
-      taskAssetLoading.value = false
-    }
+    return createTaskPromptOnce(
+      latestResult.value.taskId || `latest:${latestTaskInput.value}`,
+      payload,
+      (data) => {
+        latestTaskPrompt.value = data
+      },
+      'Prompt 沉淀失败'
+    )
   }
 
   async function createFlowFromLatestTask() {
@@ -635,20 +633,46 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       sourceTaskId: sourceRun.id
     }
 
-    taskAssetLoading.value = true
-    try {
-      const { data } = await createPrompt(payload)
-      taskPromptsByRunId.value = {
-        ...taskPromptsByRunId.value,
-        [sourceRun.id]: data
-      }
-      return data
-    } catch (error: unknown) {
-      ElMessage.error(apiErrorMessage(error, '历史结果沉淀失败'))
-      return null
-    } finally {
-      taskAssetLoading.value = false
+    return createTaskPromptOnce(
+      sourceRun.id,
+      payload,
+      (data) => {
+        taskPromptsByRunId.value = {
+          ...taskPromptsByRunId.value,
+          [sourceRun.id]: data
+        }
+      },
+      '历史结果沉淀失败'
+    )
+  }
+
+  function createTaskPromptOnce(
+    runId: string,
+    payload: SavePromptPayload,
+    onCreated: (prompt: PromptAsset) => void,
+    errorMessage: string
+  ) {
+    const activeRequest = taskPromptRequests.get(runId)
+    if (activeRequest) {
+      return activeRequest
     }
+
+    const request = (async () => {
+      taskAssetLoading.value = true
+      try {
+        const { data } = await createPrompt(payload)
+        onCreated(data)
+        return data
+      } catch (error: unknown) {
+        ElMessage.error(apiErrorMessage(error, errorMessage))
+        return null
+      } finally {
+        taskPromptRequests.delete(runId)
+        taskAssetLoading.value = taskPromptRequests.size > 0
+      }
+    })()
+    taskPromptRequests.set(runId, request)
+    return request
   }
 
   async function createFlowFromHistoricalResult(sourceRun: TaskHistoryItem) {

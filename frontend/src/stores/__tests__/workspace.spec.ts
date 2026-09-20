@@ -3,6 +3,7 @@ import axios, { AxiosHeaders } from 'axios'
 import { createPinia, setActivePinia } from 'pinia'
 
 const api = vi.hoisted(() => ({
+  createPrompt: vi.fn(),
   listTasks: vi.fn(),
   listApiKeys: vi.fn(),
   listFlows: vi.fn(),
@@ -40,7 +41,7 @@ vi.mock('@/api/flows', () => ({
 }))
 
 vi.mock('@/api/prompts', () => ({
-  createPrompt: vi.fn()
+  createPrompt: api.createPrompt
 }))
 
 import { useWorkspaceStore } from '@/stores/workspace'
@@ -322,5 +323,43 @@ describe('workspace bootstrap', () => {
     expect(workspace.failedRunId).toBe('')
     expect(workspace.failedRun).toBeNull()
     expect(workspace.taskInput).toBe('Keep this command')
+  })
+
+  it('shares one Prompt creation request for the same historical Result', async () => {
+    const promptResponse = deferred<{ data: Record<string, unknown> }>()
+    api.createPrompt.mockReturnValueOnce(promptResponse.promise)
+    const workspace = useWorkspaceStore()
+    const sourceRun = {
+      id: 'run-1',
+      input: 'Create a launch plan',
+      summary: 'Launch plan ready',
+      result: 'Detailed plan',
+      status: 'completed' as const,
+      createdAt: '2026-09-20T00:00:00Z'
+    }
+
+    const firstSave = workspace.saveHistoricalResultAsPrompt(sourceRun)
+    const duplicateSave = workspace.saveHistoricalResultAsPrompt(sourceRun)
+
+    expect(api.createPrompt).toHaveBeenCalledTimes(1)
+
+    promptResponse.resolve({
+      data: {
+        id: 'prompt-1',
+        title: 'Launch plan',
+        category: 'AI Result',
+        description: 'Reusable result',
+        content: 'Detailed plan',
+        tags: ['Result'],
+        favorite: false,
+        createdAt: '2026-09-20T00:00:00Z',
+        updatedAt: '2026-09-20T00:00:00Z'
+      }
+    })
+
+    await expect(firstSave).resolves.toMatchObject({ id: 'prompt-1' })
+    await expect(duplicateSave).resolves.toMatchObject({ id: 'prompt-1' })
+    expect(workspace.taskPromptsByRunId['run-1']?.id).toBe('prompt-1')
+    expect(workspace.taskAssetLoading).toBe(false)
   })
 })
