@@ -77,6 +77,7 @@ type HistoricalExecutionOutcome = {
 export const useWorkspaceStore = defineStore('workspace', () => {
   let bootstrapPromise: Promise<boolean> | null = null
   let bootstrapped = false
+  let flowLoadingCount = 0
   const tasksRequest = createLatestRequestGate()
   const apiKeysRequest = createLatestRequestGate()
   const flowDraftsRequest = createLatestRequestGate()
@@ -126,6 +127,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const flowConflictId = ref('')
   const taskAssetLoading = ref(false)
   const taskPromptSavingRunIds = ref<string[]>([])
+  const resultFlowCreatingRunIds = ref<string[]>([])
 
   const activeProvider = computed(() => apiKeys.value.find((item) => item.active))
   const activeFlow = computed(() => flowDrafts.value.find((flow) => flow.id === activeFlowId.value) || null)
@@ -149,6 +151,19 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     activeExecution.value?.kind === 'task' &&
     !sameAiCommandDraftContent(captureAiCommandDraft(), activeTaskExecutionDraft.value)
   )
+  const latestTaskResultFlowCreating = computed(() =>
+    resultFlowCreatingRunIds.value.includes(latestTaskResultKey())
+  )
+
+  function beginFlowLoading() {
+    flowLoadingCount += 1
+    flowLoading.value = true
+  }
+
+  function finishFlowLoading() {
+    flowLoadingCount = Math.max(0, flowLoadingCount - 1)
+    flowLoading.value = flowLoadingCount > 0
+  }
 
   function beginExecution(kind: WorkspaceExecutionKind, sourceId: string | null = null) {
     if (running.value) {
@@ -700,14 +715,22 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (activeRequest) {
       return activeRequest
     }
-    const request = create().finally(() => resultFlowRequests.delete(runId))
+    resultFlowCreatingRunIds.value = [...resultFlowCreatingRunIds.value, runId]
+    const request = create().finally(() => {
+      resultFlowRequests.delete(runId)
+      resultFlowCreatingRunIds.value = resultFlowCreatingRunIds.value.filter((id) => id !== runId)
+    })
     resultFlowRequests.set(runId, request)
     return request
   }
 
+  function isResultFlowCreating(runId: string | null | undefined) {
+    return Boolean(runId && resultFlowCreatingRunIds.value.includes(runId))
+  }
+
   async function loadFlowDrafts() {
     const request = flowDraftsRequest.begin()
-    flowLoading.value = true
+    beginFlowLoading()
     try {
       const { data } = await listFlows()
       if (!flowDraftsRequest.isCurrent(request)) {
@@ -726,9 +749,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       }
       return false
     } finally {
-      if (flowDraftsRequest.isCurrent(request)) {
-        flowLoading.value = false
-      }
+      finishFlowLoading()
     }
   }
 
@@ -923,7 +944,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     errorMessage: string,
     beforeActivate?: (flow: FlowDraft) => void
   ) {
-    flowLoading.value = true
+    beginFlowLoading()
     try {
       const { data } = await createFlow(payload)
       beforeActivate?.(data)
@@ -935,7 +956,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       ElMessage.error(apiErrorMessage(error, errorMessage))
       return null
     } finally {
-      flowLoading.value = false
+      finishFlowLoading()
     }
   }
 
@@ -1211,7 +1232,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       return false
     }
 
-    flowLoading.value = true
+    beginFlowLoading()
     try {
       await deleteFlow(id, flow.revision)
       clearFlowRunDraft(id)
@@ -1232,7 +1253,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       }
       return false
     } finally {
-      flowLoading.value = false
+      finishFlowLoading()
     }
   }
 
@@ -1242,7 +1263,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       return null
     }
 
-    flowLoading.value = true
+    beginFlowLoading()
     try {
       const { data } = await restoreFlowVersion(flow.id, versionId, flow.revision)
       replaceFlowDraft(data)
@@ -1255,7 +1276,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       }
       return null
     } finally {
-      flowLoading.value = false
+      finishFlowLoading()
     }
   }
 
@@ -1327,7 +1348,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
     mutator(nextFlow)
 
-    flowLoading.value = true
+    beginFlowLoading()
     try {
       const { data } = await updateFlow(nextFlow.id, toSaveFlowPayload(nextFlow))
       replaceFlowDraft(data)
@@ -1342,7 +1363,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       }
       return null
     } finally {
-      flowLoading.value = false
+      finishFlowLoading()
     }
   }
 
@@ -1487,6 +1508,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     flowConflictId,
     taskAssetLoading,
     taskPromptSavingRunIds,
+    resultFlowCreatingRunIds,
     activeProvider,
     activeFlow,
     workspaceName,
@@ -1497,6 +1519,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     taskSourceFlowVariables,
     missingTaskSourceFlowVariables,
     canExecuteTask,
+    latestTaskResultFlowCreating,
     bootstrap,
     loadTasks,
     loadApiKeys,
@@ -1539,6 +1562,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     createFlowFromLatestTask,
     saveHistoricalResultAsPrompt,
     isTaskPromptSaving,
+    isResultFlowCreating,
     createFlowFromHistoricalResult,
     prepareTask,
     prepareTaskContinuation,

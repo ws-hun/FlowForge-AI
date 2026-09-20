@@ -406,9 +406,66 @@ describe('workspace bootstrap', () => {
     const firstFlow = workspace.createFlowFromHistoricalResult(sourceRun)
     const duplicateFlow = workspace.createFlowFromHistoricalResult(sourceRun)
 
+    expect(workspace.isResultFlowCreating('run-1')).toBe(true)
+    expect(workspace.isResultFlowCreating('run-2')).toBe(false)
     await expect(firstFlow).resolves.toMatchObject({ id: 'flow-1' })
     await expect(duplicateFlow).resolves.toMatchObject({ id: 'flow-1' })
     expect(api.createPrompt).toHaveBeenCalledTimes(1)
     expect(api.createFlow).toHaveBeenCalledTimes(1)
+    expect(workspace.resultFlowCreatingRunIds).toEqual([])
+    expect(workspace.flowLoading).toBe(false)
+  })
+
+  it('keeps Flow loading active until overlapping Result conversions finish', async () => {
+    const prompt = {
+      id: 'prompt-1',
+      title: 'Reusable result',
+      category: 'AI Result',
+      description: 'Reusable result',
+      content: 'Detailed result',
+      tags: ['Result'],
+      favorite: false,
+      revision: 1,
+      createdAt: '2026-09-20T00:00:00Z',
+      updatedAt: '2026-09-20T00:00:00Z'
+    }
+    api.createPrompt.mockResolvedValue({ data: prompt })
+    const firstFlowResponse = deferred<{ data: Record<string, unknown> }>()
+    const secondFlowResponse = deferred<{ data: Record<string, unknown> }>()
+    api.createFlow
+      .mockReturnValueOnce(firstFlowResponse.promise)
+      .mockReturnValueOnce(secondFlowResponse.promise)
+    const workspace = useWorkspaceStore()
+    const run = (id: string) => ({
+      id,
+      input: `Input ${id}`,
+      summary: `Summary ${id}`,
+      result: `Result ${id}`,
+      status: 'completed' as const,
+      createdAt: '2026-09-20T00:00:00Z'
+    })
+
+    const firstCreation = workspace.createFlowFromHistoricalResult(run('run-1'))
+    const secondCreation = workspace.createFlowFromHistoricalResult(run('run-2'))
+    await vi.waitFor(() => expect(api.createFlow).toHaveBeenCalledTimes(2))
+
+    expect(workspace.flowLoading).toBe(true)
+    firstFlowResponse.resolve({
+      data: {
+        id: 'flow-1', title: 'Flow 1', description: 'First', nodes: [], revision: 1,
+        createdAt: '2026-09-20T00:00:00Z', updatedAt: '2026-09-20T00:00:00Z'
+      }
+    })
+    await firstCreation
+    expect(workspace.flowLoading).toBe(true)
+
+    secondFlowResponse.resolve({
+      data: {
+        id: 'flow-2', title: 'Flow 2', description: 'Second', nodes: [], revision: 1,
+        createdAt: '2026-09-20T00:00:00Z', updatedAt: '2026-09-20T00:00:00Z'
+      }
+    })
+    await secondCreation
+    expect(workspace.flowLoading).toBe(false)
   })
 })

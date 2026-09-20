@@ -163,10 +163,10 @@
               <button
                 type="button"
                 class="secondary-button"
-                :disabled="latestResultPromptSaving || workspace.flowLoading"
+                :disabled="latestResultPromptSaving || workspace.latestTaskResultFlowCreating || unscopedFlowLoading"
                 @click="createFlowFromLatestTask"
               >
-                {{ workspace.flowLoading ? '创建中...' : '创建 Flow' }}
+                {{ workspace.latestTaskResultFlowCreating ? '创建中...' : '创建 Flow' }}
               </button>
             </div>
           </div>
@@ -214,6 +214,9 @@ const taskExecutionButtonLabel = computed(() => {
 })
 const latestResultPromptSaving = computed(() =>
   workspace.isTaskPromptSaving(workspace.latestResult?.taskId)
+)
+const unscopedFlowLoading = computed(() =>
+  workspace.flowLoading && workspace.resultFlowCreatingRunIds.length === 0
 )
 const commandFooterLabel = computed(() => {
   if (workspace.activeExecution?.kind === 'task') {

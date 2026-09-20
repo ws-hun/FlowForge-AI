@@ -177,10 +177,10 @@
                   <button
                     type="button"
                     class="secondary-button"
-                    :disabled="workspace.isTaskPromptSaving(task.id) || workspace.flowLoading"
+                    :disabled="workspace.isTaskPromptSaving(task.id) || workspace.isResultFlowCreating(task.id) || unscopedFlowLoading"
                     @click="createFlowFromRun(task)"
                   >
-                    {{ workspace.flowLoading ? '创建中...' : '从 Result 创建 Flow' }}
+                    {{ workspace.isResultFlowCreating(task.id) ? '创建中...' : '从 Result 创建 Flow' }}
                   </button>
                 </div>
               </section>
@@ -284,6 +284,9 @@ const filteredTasks = computed(() => {
       .includes(query)
   })
 })
+const unscopedFlowLoading = computed(() =>
+  workspace.flowLoading && workspace.resultFlowCreatingRunIds.length === 0
+)
 
 onMounted(async () => {
   const loaded = await workspace.bootstrap()
