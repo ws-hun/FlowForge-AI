@@ -278,12 +278,45 @@ describe('workspace bootstrap', () => {
         taskId: 'rerun-1'
       }
     })
-    await replay
+    const outcome = await replay
 
     expect(workspace.running).toBe(false)
     expect(workspace.activeExecution).toBeNull()
+    expect(outcome).toMatchObject({ runId: 'rerun-1', failed: false })
     expect(workspace.taskInput).toBe('Unfinished command')
     expect(workspace.taskSourcePromptId).toBe('prompt-1')
     expect(workspace.latestResult).toBeNull()
+  })
+
+  it('returns a persisted failed replay without taking over AI Command failure state', async () => {
+    api.listApiKeys.mockResolvedValueOnce({
+      data: [{
+        id: 'provider-1',
+        provider: 'deepseek',
+        maskedKey: 'sk-...1234',
+        baseUrl: 'https://api.deepseek.com',
+        model: 'deepseek-chat',
+        active: true,
+        updatedAt: '2026-09-18T00:00:00Z'
+      }]
+    })
+    api.rerunTask.mockRejectedValueOnce(responseError({
+      message: 'Provider 暂时不可用',
+      runId: 'failed-replay-1'
+    }))
+    const workspace = useWorkspaceStore()
+    await workspace.loadApiKeys()
+    workspace.taskInput = 'Keep this command'
+
+    const outcome = await workspace.rerunHistoricalTask('source-run-1')
+
+    expect(outcome).toEqual({
+      runId: 'failed-replay-1',
+      response: null,
+      failed: true
+    })
+    expect(workspace.failedRunId).toBe('')
+    expect(workspace.failedRun).toBeNull()
+    expect(workspace.taskInput).toBe('Keep this command')
   })
 })

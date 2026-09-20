@@ -310,21 +310,19 @@ async function rerunHistoryTask(taskId: string) {
     return
   }
 
-  const result = await workspace.rerunHistoricalTask(taskId)
+  const outcome = await workspace.rerunHistoricalTask(taskId)
   const sourceRun = workspace.tasks.find((task) => task.id === taskId) || null
-  const targetRun = result?.taskId ? workspace.tasks.find((task) => task.id === result.taskId) || null : null
+  const targetRun = outcome?.runId ? workspace.tasks.find((task) => task.id === outcome.runId) || null : null
   if (sourceRun && targetRun) {
     openComparison(sourceRun, targetRun, 'rerun')
-  } else if (result) {
-    router.push('/tasks')
   }
 }
 
 async function replayHistoryTask(task: TaskHistoryItem) {
   if (isFailed(task)) {
-    const result = await workspace.recoverHistoricalTask(task.id)
-    const targetRun = result?.taskId
-      ? workspace.tasks.find((item) => item.id === result.taskId) || null
+    const outcome = await workspace.recoverHistoricalTask(task.id)
+    const targetRun = outcome?.runId
+      ? workspace.tasks.find((item) => item.id === outcome.runId) || null
       : null
     if (targetRun) {
       openComparison(task, targetRun, 'recovery')

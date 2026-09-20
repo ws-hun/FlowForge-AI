@@ -68,6 +68,11 @@ type FlowRunSeed = {
 }
 
 type WorkspacePreferenceUpdateResult = 'saved' | 'memory-only' | 'invalid'
+type HistoricalExecutionOutcome = {
+  runId: string
+  response: TaskRunResponse | null
+  failed: boolean
+}
 
 export const useWorkspaceStore = defineStore('workspace', () => {
   let bootstrapPromise: Promise<boolean> | null = null
@@ -334,13 +339,19 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       const { data } = await rerunTaskRequest(taskId)
       ElMessage.success('已使用当前 Provider 重新执行')
       await loadTasks()
-      return data
+      return {
+        runId: data.taskId || '',
+        response: data,
+        failed: false
+      } satisfies HistoricalExecutionOutcome
     } catch (error: unknown) {
       const errorMessage = apiErrorMessage(error, '历史任务重新执行失败')
-      rememberFailedRun(apiErrorRunId(error), tasks.value.find((task) => task.id === taskId)?.input || '', errorMessage)
+      const runId = apiErrorRunId(error)
       ElMessage.error(errorMessage)
       await loadTasks()
-      return null
+      return runId
+        ? { runId, response: null, failed: true } satisfies HistoricalExecutionOutcome
+        : null
     } finally {
       finishExecution()
     }
@@ -362,13 +373,19 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       const { data } = await recoverTaskRequest(taskId)
       ElMessage.success('已创建新的恢复运行')
       await loadTasks()
-      return data
+      return {
+        runId: data.taskId || '',
+        response: data,
+        failed: false
+      } satisfies HistoricalExecutionOutcome
     } catch (error: unknown) {
       const errorMessage = apiErrorMessage(error, '失败运行恢复失败')
-      rememberFailedRun(apiErrorRunId(error), tasks.value.find((task) => task.id === taskId)?.input || '', errorMessage)
+      const runId = apiErrorRunId(error)
       ElMessage.error(errorMessage)
       await loadTasks()
-      return null
+      return runId
+        ? { runId, response: null, failed: true } satisfies HistoricalExecutionOutcome
+        : null
     } finally {
       finishExecution()
     }

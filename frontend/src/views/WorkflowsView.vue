@@ -2656,11 +2656,11 @@ async function rerunSelectedFlowRun() {
   flowExecutionOwned.value = true
   flowExecutionOperation.value = 'rerun'
   try {
-    const result = await workspace.rerunHistoricalTask(sourceRun.id)
+    const outcome = await workspace.rerunHistoricalTask(sourceRun.id)
     await loadFlowRuns(flowId)
     if (workspace.activeFlow?.id !== flowId) return
-    const rerun = result?.taskId
-      ? flowRuns.value.find((run) => run.id === result.taskId)
+    const rerun = outcome?.runId
+      ? flowRuns.value.find((run) => run.id === outcome.runId)
       : flowRuns.value.find((run) => run.rerunOfTaskId === sourceRun.id)
     if (rerun) {
       selectFlowRun(rerun)
@@ -2684,11 +2684,11 @@ async function recoverSelectedFlowRun() {
   flowExecutionOwned.value = true
   flowExecutionOperation.value = 'recovery'
   try {
-    const result = await workspace.recoverHistoricalTask(sourceRun.id)
+    const outcome = await workspace.recoverHistoricalTask(sourceRun.id)
     await loadFlowRuns(flowId)
     if (workspace.activeFlow?.id !== flowId) return
-    const recovery = result?.taskId
-      ? flowRuns.value.find((run) => run.id === result.taskId)
+    const recovery = outcome?.runId
+      ? flowRuns.value.find((run) => run.id === outcome.runId)
       : flowRuns.value.find((run) => run.recoveryOfTaskId === sourceRun.id)
     if (recovery) selectFlowRun(recovery)
   } finally {
