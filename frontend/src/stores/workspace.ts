@@ -325,16 +325,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (!beginExecution('rerun', taskId)) {
       return null
     }
-    latestResult.value = null
-    failedRunId.value = ''
-    failedRunFallback.value = null
     try {
       const { data } = await rerunTaskRequest(taskId)
-      latestResult.value = data
-      latestTaskInput.value = data.executionInput
-      latestTaskPrompt.value = null
-      clearTaskSource()
-      taskInput.value = ''
       ElMessage.success('已使用当前 Provider 重新执行')
       await loadTasks()
       return data
@@ -361,16 +353,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (!beginExecution('recovery', taskId)) {
       return null
     }
-    latestResult.value = null
-    failedRunId.value = ''
-    failedRunFallback.value = null
     try {
       const { data } = await recoverTaskRequest(taskId)
-      latestResult.value = data
-      latestTaskInput.value = data.executionInput
-      latestTaskPrompt.value = null
-      clearTaskSource()
-      taskInput.value = ''
       ElMessage.success('已创建新的恢复运行')
       await loadTasks()
       return data

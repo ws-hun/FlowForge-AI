@@ -218,6 +218,7 @@ describe('workspace bootstrap', () => {
     api.rerunTask.mockReturnValueOnce(providerResponse.promise)
     const workspace = useWorkspaceStore()
     await workspace.loadApiKeys()
+    workspace.prepareTask('Unfinished command', { id: 'prompt-1', title: 'Draft source' })
 
     const replay = workspace.rerunHistoricalTask('source-run-1')
 
@@ -240,5 +241,8 @@ describe('workspace bootstrap', () => {
 
     expect(workspace.running).toBe(false)
     expect(workspace.activeExecution).toBeNull()
+    expect(workspace.taskInput).toBe('Unfinished command')
+    expect(workspace.taskSourcePromptId).toBe('prompt-1')
+    expect(workspace.latestResult).toBeNull()
   })
 })
