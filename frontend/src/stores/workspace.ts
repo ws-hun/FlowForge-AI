@@ -93,6 +93,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const failedRunFallback = ref<TaskHistoryItem | null>(null)
   const latestTaskInput = ref('')
   const latestTaskPrompt = ref<PromptAsset | null>(null)
+  const latestTaskPromotable = ref(false)
   const taskPromptsByRunId = ref<Record<string, PromptAsset>>({})
   const taskInput = ref(initialTaskDraft?.input || '')
   const taskSourcePromptId = ref<string | null>(initialTaskDraft?.sourcePromptId || null)
@@ -128,7 +129,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const profileName = computed(() => workspacePreferences.value.profileName)
   const profileInitial = computed(() => Array.from(profileName.value.trim())[0]?.toUpperCase() || 'A')
   const canPromoteLatestTask = computed(() =>
-    Boolean(latestResult.value && latestTaskInput.value.trim() && !taskSourceRunId.value)
+    Boolean(latestTaskPromotable.value && latestResult.value && latestTaskInput.value.trim())
   )
   const taskSourceFlowVariables = computed(() => Object.keys(taskSourceFlowVariableValues.value))
   const missingTaskSourceFlowVariables = computed(() =>
@@ -285,6 +286,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       return
     }
     latestResult.value = null
+    latestTaskPromotable.value = false
     failedRunId.value = ''
     failedRunFallback.value = null
     try {
@@ -300,6 +302,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       latestResult.value = data
       latestTaskInput.value = data.executionInput
       latestTaskPrompt.value = null
+      latestTaskPromotable.value = true
       if (sameAiCommandDraftContent(captureAiCommandDraft(), executionDraft)) {
         clearTaskSource()
         taskInput.value = ''
@@ -443,6 +446,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
     latestTaskInput.value = sourceRun.input
     latestTaskPrompt.value = null
+    latestTaskPromotable.value = false
   }
 
   function prepareTaskInputVariant(sourceRun: TaskHistoryItem) {
@@ -462,6 +466,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     latestResult.value = null
     latestTaskInput.value = ''
     latestTaskPrompt.value = null
+    latestTaskPromotable.value = false
   }
 
   function prepareLatestResultContinuation() {
@@ -1227,6 +1232,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       return null
     }
     latestResult.value = null
+    latestTaskPromotable.value = false
     failedRunId.value = ''
     failedRunFallback.value = null
     try {
@@ -1237,6 +1243,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         flowVariableValues: variableValues
       })
       latestResult.value = data
+      latestTaskPromotable.value = false
       ElMessage.success('Flow 执行完成')
       await loadTasks()
       return data

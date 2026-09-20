@@ -241,6 +241,7 @@ describe('workspace bootstrap', () => {
     expect(workspace.taskInput).toBe('Next command')
     expect(workspace.taskSourcePromptId).toBe('prompt-2')
     expect(workspace.latestResult?.taskId).toBe('task-1')
+    expect(workspace.canPromoteLatestTask).toBe(true)
   })
 
   it('tracks the source run that owns a historical replay', async () => {
