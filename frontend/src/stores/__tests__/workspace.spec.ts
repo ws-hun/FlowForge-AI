@@ -342,6 +342,8 @@ describe('workspace bootstrap', () => {
     const duplicateSave = workspace.saveHistoricalResultAsPrompt(sourceRun)
 
     expect(api.createPrompt).toHaveBeenCalledTimes(1)
+    expect(workspace.isTaskPromptSaving('run-1')).toBe(true)
+    expect(workspace.isTaskPromptSaving('run-2')).toBe(false)
 
     promptResponse.resolve({
       data: {
@@ -361,5 +363,6 @@ describe('workspace bootstrap', () => {
     await expect(duplicateSave).resolves.toMatchObject({ id: 'prompt-1' })
     expect(workspace.taskPromptsByRunId['run-1']?.id).toBe('prompt-1')
     expect(workspace.taskAssetLoading).toBe(false)
+    expect(workspace.taskPromptSavingRunIds).toEqual([])
   })
 })

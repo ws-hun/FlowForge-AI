@@ -169,15 +169,15 @@
                   <button
                     type="button"
                     class="ghost-button"
-                    :disabled="workspace.taskAssetLoading"
+                    :disabled="workspace.isTaskPromptSaving(task.id)"
                     @click="saveRunAsPrompt(task)"
                   >
-                    {{ workspace.taskPromptsByRunId[task.id] ? '打开 Prompt' : workspace.taskAssetLoading ? '保存中...' : '保存为 Prompt' }}
+                    {{ workspace.taskPromptsByRunId[task.id] ? '打开 Prompt' : workspace.isTaskPromptSaving(task.id) ? '保存中...' : '保存为 Prompt' }}
                   </button>
                   <button
                     type="button"
                     class="secondary-button"
-                    :disabled="workspace.taskAssetLoading || workspace.flowLoading"
+                    :disabled="workspace.isTaskPromptSaving(task.id) || workspace.flowLoading"
                     @click="createFlowFromRun(task)"
                   >
                     {{ workspace.flowLoading ? '创建中...' : '从 Result 创建 Flow' }}

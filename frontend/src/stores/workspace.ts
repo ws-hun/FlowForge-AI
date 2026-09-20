@@ -124,6 +124,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const flowAssetsReady = ref(false)
   const flowConflictId = ref('')
   const taskAssetLoading = ref(false)
+  const taskPromptSavingRunIds = ref<string[]>([])
 
   const activeProvider = computed(() => apiKeys.value.find((item) => item.active))
   const activeFlow = computed(() => flowDrafts.value.find((flow) => flow.id === activeFlowId.value) || null)
@@ -659,6 +660,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
     const request = (async () => {
       taskAssetLoading.value = true
+      taskPromptSavingRunIds.value = [...taskPromptSavingRunIds.value, runId]
       try {
         const { data } = await createPrompt(payload)
         onCreated(data)
@@ -668,11 +670,16 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         return null
       } finally {
         taskPromptRequests.delete(runId)
+        taskPromptSavingRunIds.value = taskPromptSavingRunIds.value.filter((id) => id !== runId)
         taskAssetLoading.value = taskPromptRequests.size > 0
       }
     })()
     taskPromptRequests.set(runId, request)
     return request
+  }
+
+  function isTaskPromptSaving(runId: string | null | undefined) {
+    return Boolean(runId && taskPromptSavingRunIds.value.includes(runId))
   }
 
   async function createFlowFromHistoricalResult(sourceRun: TaskHistoryItem) {
@@ -1464,6 +1471,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     flowAssetsReady,
     flowConflictId,
     taskAssetLoading,
+    taskPromptSavingRunIds,
     activeProvider,
     activeFlow,
     workspaceName,
@@ -1515,6 +1523,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     saveLatestTaskAsPrompt,
     createFlowFromLatestTask,
     saveHistoricalResultAsPrompt,
+    isTaskPromptSaving,
     createFlowFromHistoricalResult,
     prepareTask,
     prepareTaskContinuation,

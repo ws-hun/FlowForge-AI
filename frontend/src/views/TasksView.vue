@@ -155,15 +155,15 @@
               <button
                 type="button"
                 class="ghost-button"
-                :disabled="workspace.taskAssetLoading || Boolean(workspace.latestTaskPrompt)"
+                :disabled="latestResultPromptSaving || Boolean(workspace.latestTaskPrompt)"
                 @click="saveLatestTaskAsPrompt"
               >
-                {{ workspace.latestTaskPrompt ? '已沉淀为 Prompt' : workspace.taskAssetLoading ? '沉淀中...' : '沉淀为 Prompt' }}
+                {{ workspace.latestTaskPrompt ? '已沉淀为 Prompt' : latestResultPromptSaving ? '沉淀中...' : '沉淀为 Prompt' }}
               </button>
               <button
                 type="button"
                 class="secondary-button"
-                :disabled="workspace.taskAssetLoading || workspace.flowLoading"
+                :disabled="latestResultPromptSaving || workspace.flowLoading"
                 @click="createFlowFromLatestTask"
               >
                 {{ workspace.flowLoading ? '创建中...' : '创建 Flow' }}
@@ -212,6 +212,9 @@ const taskExecutionButtonLabel = computed(() => {
     ? '执行中...'
     : `${workspaceExecutionLabel(workspace.activeExecution)}...`
 })
+const latestResultPromptSaving = computed(() =>
+  workspace.isTaskPromptSaving(workspace.latestResult?.taskId)
+)
 const commandFooterLabel = computed(() => {
   if (workspace.activeExecution?.kind === 'task') {
     return workspace.commandDraftChangedDuringExecution
