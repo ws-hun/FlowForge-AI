@@ -223,6 +223,8 @@ describe('workspace bootstrap', () => {
     const execution = workspace.executeTask()
     workspace.prepareTask('Next command', { id: 'prompt-2', title: 'Next Prompt' })
 
+    expect(workspace.commandDraftChangedDuringExecution).toBe(true)
+
     providerResponse.resolve({
       data: {
         summary: 'Original complete',
@@ -242,6 +244,7 @@ describe('workspace bootstrap', () => {
     expect(workspace.taskSourcePromptId).toBe('prompt-2')
     expect(workspace.latestResult?.taskId).toBe('task-1')
     expect(workspace.canPromoteLatestTask).toBe(true)
+    expect(workspace.commandDraftChangedDuringExecution).toBe(false)
   })
 
   it('tracks the source run that owns a historical replay', async () => {

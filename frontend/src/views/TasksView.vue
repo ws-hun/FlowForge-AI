@@ -103,9 +103,7 @@
         </div>
         <div class="composer-footer">
           <span>
-            {{ workspace.taskDraftRecovered
-              ? '已恢复上次未执行的 AI 命令草稿'
-              : providerFooterLabel }}
+            {{ commandFooterLabel }}
           </span>
           <button
             class="primary-button"
@@ -213,6 +211,15 @@ const taskExecutionButtonLabel = computed(() => {
   return workspace.activeExecution?.kind === 'task'
     ? '执行中...'
     : `${workspaceExecutionLabel(workspace.activeExecution)}...`
+})
+const commandFooterLabel = computed(() => {
+  if (workspace.activeExecution?.kind === 'task') {
+    return workspace.commandDraftChangedDuringExecution
+      ? '下一份草稿已保留'
+      : '已提交执行快照'
+  }
+  if (workspace.taskDraftRecovered) return '已恢复上次未执行的 AI 命令草稿'
+  return providerFooterLabel.value
 })
 const providerReadinessTitle = computed(() => {
   if (providerState.value === 'loading') return '正在确认 AI Provider'

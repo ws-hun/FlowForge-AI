@@ -114,6 +114,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const workspacePreferencesPersisted = ref(true)
   const running = ref(false)
   const activeExecution = ref<WorkspaceExecution | null>(null)
+  const activeTaskExecutionDraft = ref<AiCommandDraft | null>(null)
   const historyLoading = ref(false)
   const settingsLoading = ref(false)
   const providerTestLoadingId = ref('')
@@ -141,6 +142,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const failedRun = computed(
     () => tasks.value.find((task) => task.id === failedRunId.value) || failedRunFallback.value
   )
+  const commandDraftChangedDuringExecution = computed(() =>
+    activeExecution.value?.kind === 'task' &&
+    !sameAiCommandDraftContent(captureAiCommandDraft(), activeTaskExecutionDraft.value)
+  )
 
   function beginExecution(kind: WorkspaceExecutionKind, sourceId: string | null = null) {
     if (running.value) {
@@ -154,6 +159,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   function finishExecution() {
     running.value = false
     activeExecution.value = null
+    activeTaskExecutionDraft.value = null
   }
 
   watch(
@@ -285,6 +291,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (!beginExecution('task')) {
       return
     }
+    activeTaskExecutionDraft.value = executionDraft
     latestResult.value = null
     latestTaskPromotable.value = false
     failedRunId.value = ''
@@ -1424,6 +1431,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     taskDraftRecovered,
     running,
     activeExecution,
+    commandDraftChangedDuringExecution,
     historyLoading,
     settingsLoading,
     providerTestLoadingId,
