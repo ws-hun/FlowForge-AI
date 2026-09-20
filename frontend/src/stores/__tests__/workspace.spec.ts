@@ -3,6 +3,7 @@ import axios, { AxiosHeaders } from 'axios'
 import { createPinia, setActivePinia } from 'pinia'
 
 const api = vi.hoisted(() => ({
+  createFlow: vi.fn(),
   createPrompt: vi.fn(),
   listTasks: vi.fn(),
   listApiKeys: vi.fn(),
@@ -33,7 +34,7 @@ vi.mock('@/api/tasks', () => ({
 }))
 
 vi.mock('@/api/flows', () => ({
-  createFlow: vi.fn(),
+  createFlow: api.createFlow,
   deleteFlow: vi.fn(),
   listFlows: api.listFlows,
   restoreFlowVersion: vi.fn(),
@@ -364,5 +365,50 @@ describe('workspace bootstrap', () => {
     expect(workspace.taskPromptsByRunId['run-1']?.id).toBe('prompt-1')
     expect(workspace.taskAssetLoading).toBe(false)
     expect(workspace.taskPromptSavingRunIds).toEqual([])
+  })
+
+  it('shares the complete Result-to-Flow creation chain for one run', async () => {
+    api.createPrompt.mockResolvedValueOnce({
+      data: {
+        id: 'prompt-1',
+        title: 'Launch plan',
+        category: 'AI Result',
+        description: 'Reusable result',
+        content: 'Detailed plan',
+        tags: ['Result'],
+        favorite: false,
+        revision: 1,
+        createdAt: '2026-09-20T00:00:00Z',
+        updatedAt: '2026-09-20T00:00:00Z'
+      }
+    })
+    api.createFlow.mockResolvedValueOnce({
+      data: {
+        id: 'flow-1',
+        title: 'Launch plan Flow',
+        description: 'Reusable result',
+        nodes: [],
+        revision: 1,
+        createdAt: '2026-09-20T00:00:00Z',
+        updatedAt: '2026-09-20T00:00:00Z'
+      }
+    })
+    const workspace = useWorkspaceStore()
+    const sourceRun = {
+      id: 'run-1',
+      input: 'Create a launch plan',
+      summary: 'Launch plan ready',
+      result: 'Detailed plan',
+      status: 'completed' as const,
+      createdAt: '2026-09-20T00:00:00Z'
+    }
+
+    const firstFlow = workspace.createFlowFromHistoricalResult(sourceRun)
+    const duplicateFlow = workspace.createFlowFromHistoricalResult(sourceRun)
+
+    await expect(firstFlow).resolves.toMatchObject({ id: 'flow-1' })
+    await expect(duplicateFlow).resolves.toMatchObject({ id: 'flow-1' })
+    expect(api.createPrompt).toHaveBeenCalledTimes(1)
+    expect(api.createFlow).toHaveBeenCalledTimes(1)
   })
 })

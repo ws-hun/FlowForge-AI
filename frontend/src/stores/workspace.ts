@@ -81,6 +81,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const apiKeysRequest = createLatestRequestGate()
   const flowDraftsRequest = createLatestRequestGate()
   const taskPromptRequests = new Map<string, Promise<PromptAsset | null>>()
+  const resultFlowRequests = new Map<string, Promise<FlowDraft | null>>()
   const initialTaskDraft = readAiCommandDraft()
   const tasks = ref<TaskHistoryItem[]>([])
   const apiKeys = ref<ApiKeyConfig[]>([])
@@ -595,7 +596,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
 
     return createTaskPromptOnce(
-      latestResult.value.taskId || `latest:${latestTaskInput.value}`,
+      latestTaskResultKey(),
       payload,
       (data) => {
         latestTaskPrompt.value = data
@@ -605,12 +606,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function createFlowFromLatestTask() {
-    const prompt = await saveLatestTaskAsPrompt()
-    if (!prompt) {
+    if (!latestResult.value || !latestTaskInput.value.trim()) {
       return null
     }
-
-    return createFlowFromPrompt(prompt)
+    return createResultFlowOnce(latestTaskResultKey(), async () => {
+      const prompt = await saveLatestTaskAsPrompt()
+      return prompt ? createFlowFromPrompt(prompt) : null
+    })
   }
 
   async function saveHistoricalResultAsPrompt(sourceRun: TaskHistoryItem) {
@@ -683,11 +685,24 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function createFlowFromHistoricalResult(sourceRun: TaskHistoryItem) {
-    const prompt = await saveHistoricalResultAsPrompt(sourceRun)
-    if (!prompt) {
-      return null
+    return createResultFlowOnce(sourceRun.id, async () => {
+      const prompt = await saveHistoricalResultAsPrompt(sourceRun)
+      return prompt ? createFlowFromPrompt(prompt) : null
+    })
+  }
+
+  function latestTaskResultKey() {
+    return latestResult.value?.taskId || `latest:${latestTaskInput.value}`
+  }
+
+  function createResultFlowOnce(runId: string, create: () => Promise<FlowDraft | null>) {
+    const activeRequest = resultFlowRequests.get(runId)
+    if (activeRequest) {
+      return activeRequest
     }
-    return createFlowFromPrompt(prompt)
+    const request = create().finally(() => resultFlowRequests.delete(runId))
+    resultFlowRequests.set(runId, request)
+    return request
   }
 
   async function loadFlowDrafts() {
