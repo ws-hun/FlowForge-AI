@@ -12,6 +12,8 @@ import java.util.UUID;
 
 public interface PromptRepository extends JpaRepository<Prompt, UUID> {
 
+    Optional<Prompt> findFirstBySourceTaskIdOrderByCreatedAtAsc(UUID sourceTaskId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select prompt from Prompt prompt where prompt.id = :id")
     Optional<Prompt> findByIdForUpdate(@Param("id") UUID id);

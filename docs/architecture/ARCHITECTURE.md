@@ -48,6 +48,7 @@ src/
 
 ### Prompt Library
 - Prompt storage and reuse
+- Idempotent Task Result promotion using a pessimistic source-Task lock and indexed source lookup
 
 ### Workflow Module
 - Workflow definition (future canvas)
@@ -69,6 +70,8 @@ config/
 Authentication is implemented as a small boundary around the single local workspace: `AuthController` exposes first-run setup, login, status, and logout; `AuthService` hashes passwords with BCrypt and stores only SHA-256 session token digests; `AuthWebConfig` protects every non-public `/api/**` route and validates non-GET request origins. Existing creative assets intentionally remain workspace-scoped until a future multi-user tenancy design can add ownership and permission contracts consistently.
 
 Public authentication routes use an exact allowlist rather than the `/api/auth/**` prefix. Owner profile and password endpoints require the same workspace session as creative APIs. A password change verifies the current BCrypt credential, deletes every existing session for the owner, and issues one fresh cookie so stale browsers cannot retain access.
+
+Result-to-Prompt promotion is idempotent at the service boundary. `PromptService` locks the immutable source Task, rejects failed Tasks, then returns the earliest existing Prompt for that `source_task_id` or creates one inside the same transaction. Migration V12 adds the source lookup index without imposing a uniqueness migration that could discard or reject legitimate legacy data.
 
 Flow execution compilation is isolated in `FlowExecutionCompiler`. It converts one immutable Flow snapshot into the exact Provider input, execution mode, call count, compiler version, SHA-256 input fingerprint, structured preview sections, and a versioned deterministic node execution plan used by both preview and execution paths.
 

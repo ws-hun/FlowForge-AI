@@ -61,9 +61,24 @@ public class PromptService {
 
     @Transactional
     public PromptResponse createPrompt(PromptRequest request) {
+        validateSourceMode(request);
+        if (request.sourceTaskId() != null) {
+            Task sourceTask = findTaskForPromptPromotion(request.sourceTaskId());
+            return promptRepository.findFirstBySourceTaskIdOrderByCreatedAtAsc(sourceTask.getId())
+                    .map(this::toResponse)
+                    .orElseGet(() -> createPromptFromTask(request, sourceTask));
+        }
+
         Prompt prompt = Prompt.builder().build();
         applyRequest(prompt, request);
         applySource(prompt, request);
+        return toResponse(promptRepository.save(prompt));
+    }
+
+    private PromptResponse createPromptFromTask(PromptRequest request, Task sourceTask) {
+        Prompt prompt = Prompt.builder().build();
+        applyRequest(prompt, request);
+        applyTaskSource(prompt, sourceTask);
         return toResponse(promptRepository.save(prompt));
     }
 
@@ -162,6 +177,16 @@ public class PromptService {
     }
 
     private void applySource(Prompt prompt, PromptRequest request) {
+        if (request.sourcePromptId() != null) {
+            applyPromptSource(prompt, request.sourcePromptId());
+            return;
+        }
+        if (request.sourceFlowId() != null) {
+            applyFlowSource(prompt, request.sourceFlowId(), normalizeSourceNodeId(request.sourceNodeId()));
+        }
+    }
+
+    private void validateSourceMode(PromptRequest request) {
         boolean hasTaskSource = request.sourceTaskId() != null;
         boolean hasPromptSource = request.sourcePromptId() != null;
         boolean hasFlowSource = request.sourceFlowId() != null;
@@ -179,27 +204,18 @@ public class PromptService {
         if (hasFlowSource && !hasNodeSource) {
             throw new IllegalArgumentException("sourceNodeId is required when sourceFlowId is provided");
         }
-
-        if (hasTaskSource) {
-            applyTaskSource(prompt, request.sourceTaskId());
-            return;
-        }
-        if (hasPromptSource) {
-            applyPromptSource(prompt, request.sourcePromptId());
-            return;
-        }
-        if (hasFlowSource) {
-            applyFlowSource(prompt, request.sourceFlowId(), normalizeSourceNodeId(request.sourceNodeId()));
-        }
     }
 
-    private void applyTaskSource(Prompt prompt, UUID taskId) {
-        Task sourceTask = taskRepository.findById(taskId)
+    private Task findTaskForPromptPromotion(UUID taskId) {
+        Task sourceTask = taskRepository.findByIdForPromptPromotion(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Source Task not found"));
         if (Task.STATUS_FAILED.equals(sourceTask.getStatus())) {
             throw new IllegalArgumentException("Failed Task cannot be used as a Prompt source");
         }
+        return sourceTask;
+    }
 
+    private void applyTaskSource(Prompt prompt, Task sourceTask) {
         prompt.setSourceTaskId(sourceTask.getId());
         prompt.setSourceTaskSummary(sourceTask.getSummary());
         prompt.setSourcePromptId(sourceTask.getSourcePromptId());

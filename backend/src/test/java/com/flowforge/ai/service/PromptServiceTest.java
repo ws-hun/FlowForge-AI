@@ -80,7 +80,8 @@ class PromptServiceTest {
                 .sourceFlowTitle("Idea to MVP")
                 .createdAt(LocalDateTime.now())
                 .build();
-        when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.findByIdForPromptPromotion(taskId)).thenReturn(Optional.of(task));
+        when(promptRepository.findFirstBySourceTaskIdOrderByCreatedAtAsc(taskId)).thenReturn(Optional.empty());
         stubPromptSave();
 
         PromptResponse response = promptService.createPrompt(request(taskId, null, null, null));
@@ -92,6 +93,37 @@ class PromptServiceTest {
         assertThat(response.sourceFlowId()).isEqualTo(sourceFlowId);
         assertThat(response.sourceFlowTitle()).isEqualTo("Idea to MVP");
         verify(workflowRepository, never()).findById(any());
+    }
+
+    @Test
+    void returnsTheExistingPromptForAnAlreadyPromotedTask() {
+        UUID taskId = UUID.randomUUID();
+        Task task = Task.builder()
+                .id(taskId)
+                .status(Task.STATUS_COMPLETED)
+                .build();
+        Prompt existing = Prompt.builder()
+                .id(UUID.randomUUID())
+                .title("Existing result Prompt")
+                .category("AI Result")
+                .description("Existing promotion")
+                .content("Existing content")
+                .tags("Result")
+                .sourceTaskId(taskId)
+                .sourceTaskSummary("Original result")
+                .revision(0L)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        when(taskRepository.findByIdForPromptPromotion(taskId)).thenReturn(Optional.of(task));
+        when(promptRepository.findFirstBySourceTaskIdOrderByCreatedAtAsc(taskId))
+                .thenReturn(Optional.of(existing));
+
+        PromptResponse response = promptService.createPrompt(request(taskId, null, null, null));
+
+        assertThat(response.id()).isEqualTo(existing.getId());
+        assertThat(response.sourceTaskId()).isEqualTo(taskId);
+        verify(promptRepository, never()).save(any(Prompt.class));
     }
 
     @Test
