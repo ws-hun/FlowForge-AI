@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   persistAiCommandDraft,
   readAiCommandDraft,
+  sameAiCommandDraftContent,
   type AiCommandDraft
 } from '../aiCommandDraft'
 import { MemoryStorage } from './memoryStorage'
@@ -107,5 +108,20 @@ describe('AI Command drafts', () => {
 
     window.localStorage.setItem('flowforge.aiCommandDraft', JSON.stringify({ input: '   ' }))
     expect(readAiCommandDraft()).toBeNull()
+  })
+
+  it('compares executable content without treating persistence timestamps as edits', () => {
+    expect(sameAiCommandDraftContent(
+      standaloneDraft,
+      { ...standaloneDraft, updatedAt: '2026-09-20T00:00:00.000Z' }
+    )).toBe(true)
+    expect(sameAiCommandDraftContent(
+      standaloneDraft,
+      { ...standaloneDraft, input: 'A new command' }
+    )).toBe(false)
+    expect(sameAiCommandDraftContent(
+      { ...standaloneDraft, sourceFlowVariableValues: { audience: 'Developers' } },
+      { ...standaloneDraft, sourceFlowVariableValues: { audience: 'Designers' } }
+    )).toBe(false)
   })
 })

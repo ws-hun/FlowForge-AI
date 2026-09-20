@@ -202,6 +202,47 @@ describe('workspace bootstrap', () => {
     expect(workspace.latestResult?.taskId).toBe('run-1')
   })
 
+  it('keeps a new AI Command draft entered while the previous run is active', async () => {
+    api.listApiKeys.mockResolvedValueOnce({
+      data: [{
+        id: 'provider-1',
+        provider: 'deepseek',
+        maskedKey: 'sk-...1234',
+        baseUrl: 'https://api.deepseek.com',
+        model: 'deepseek-chat',
+        active: true,
+        updatedAt: '2026-09-18T00:00:00Z'
+      }]
+    })
+    const providerResponse = deferred<{ data: Record<string, unknown> }>()
+    api.runTask.mockReturnValueOnce(providerResponse.promise)
+    const workspace = useWorkspaceStore()
+    await workspace.loadApiKeys()
+    workspace.prepareTask('Original command', { id: 'prompt-1', title: 'Original Prompt' })
+
+    const execution = workspace.executeTask()
+    workspace.prepareTask('Next command', { id: 'prompt-2', title: 'Next Prompt' })
+
+    providerResponse.resolve({
+      data: {
+        summary: 'Original complete',
+        result: 'Done',
+        raw: '{}',
+        executionInput: 'Original command',
+        taskId: 'task-1'
+      }
+    })
+    await execution
+
+    expect(api.runTask).toHaveBeenCalledWith(expect.objectContaining({
+      input: 'Original command',
+      promptId: 'prompt-1'
+    }))
+    expect(workspace.taskInput).toBe('Next command')
+    expect(workspace.taskSourcePromptId).toBe('prompt-2')
+    expect(workspace.latestResult?.taskId).toBe('task-1')
+  })
+
   it('tracks the source run that owns a historical replay', async () => {
     api.listApiKeys.mockResolvedValueOnce({
       data: [{

@@ -72,6 +72,25 @@ export function persistAiCommandDraft(draft: AiCommandDraft | null) {
   }
 }
 
+export function sameAiCommandDraftContent(
+  first: AiCommandDraft | null,
+  second: AiCommandDraft | null
+) {
+  if (!first || !second) {
+    return first === second
+  }
+  return first.input === second.input &&
+    first.sourcePromptId === second.sourcePromptId &&
+    first.sourcePromptTitle === second.sourcePromptTitle &&
+    first.sourceFlowId === second.sourceFlowId &&
+    first.sourceFlowTitle === second.sourceFlowTitle &&
+    first.sourceRunId === second.sourceRunId &&
+    first.sourceRunSummary === second.sourceRunSummary &&
+    first.inputVariantOfTaskId === second.inputVariantOfTaskId &&
+    first.inputVariantSourceTitle === second.inputVariantSourceTitle &&
+    sameVariableValues(first.sourceFlowVariableValues, second.sourceFlowVariableValues)
+}
+
 function standaloneDraft(input: string): AiCommandDraft {
   return {
     input,
@@ -106,4 +125,11 @@ function readVariableValues(value: unknown) {
       .slice(0, 50)
       .map(([name, variableValue]) => [name.trim().slice(0, 120), (variableValue as string).slice(0, 8000)])
   )
+}
+
+function sameVariableValues(first: Record<string, string>, second: Record<string, string>) {
+  const firstEntries = Object.entries(first)
+  const secondEntries = Object.entries(second)
+  return firstEntries.length === secondEntries.length &&
+    firstEntries.every(([name, value]) => second[name] === value)
 }

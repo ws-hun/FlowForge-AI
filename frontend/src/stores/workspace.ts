@@ -16,7 +16,7 @@ import { createFlow, deleteFlow, listFlows, restoreFlowVersion, updateFlow } fro
 import { createPrompt } from '@/api/prompts'
 import { apiErrorMessage, apiErrorRunId, apiErrorStatus } from '@/utils/apiError'
 import { createLatestRequestGate } from '@/utils/latestRequest'
-import { persistAiCommandDraft, readAiCommandDraft } from '@/utils/aiCommandDraft'
+import { persistAiCommandDraft, readAiCommandDraft, sameAiCommandDraftContent } from '@/utils/aiCommandDraft'
 import { persistActiveFlowId, readActiveFlowId, resolveActiveFlowId } from '@/utils/flowSelection'
 import { canPersistFlowContext, createFlowContextNode } from '@/utils/flowContext'
 import {
@@ -256,8 +256,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (running.value) {
       return
     }
-    const isFlowRun = Boolean(taskSourceFlowId.value)
-    const input = taskInput.value.trim()
+    const executionDraft = captureAiCommandDraft()
+    const isFlowRun = Boolean(executionDraft?.sourceFlowId)
+    const input = executionDraft?.input.trim() || ''
 
     if (!isFlowRun && !input) {
       return
@@ -284,27 +285,31 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     try {
       const { data } = await runTask({
         input,
-        promptId: taskSourcePromptId.value,
-        flowId: taskSourceFlowId.value,
+        promptId: executionDraft?.sourcePromptId,
+        flowId: executionDraft?.sourceFlowId,
         flowRunContext: isFlowRun ? input : undefined,
-        flowVariableValues: taskSourceFlowVariableValues.value,
-        continuedFromTaskId: taskSourceRunId.value,
-        inputVariantOfTaskId: taskInputVariantOfTaskId.value
+        flowVariableValues: { ...(executionDraft?.sourceFlowVariableValues || {}) },
+        continuedFromTaskId: executionDraft?.sourceRunId,
+        inputVariantOfTaskId: executionDraft?.inputVariantOfTaskId
       })
       latestResult.value = data
       latestTaskInput.value = data.executionInput
       latestTaskPrompt.value = null
-      clearTaskSource()
-      taskInput.value = ''
-      ElMessage.success('任务执行完成')
+      if (sameAiCommandDraftContent(captureAiCommandDraft(), executionDraft)) {
+        clearTaskSource()
+        taskInput.value = ''
+        ElMessage.success('任务执行完成')
+      } else {
+        ElMessage.success('任务执行完成，新草稿已保留')
+      }
       await loadTasks()
     } catch (error: unknown) {
       const errorMessage = apiErrorMessage(error, '任务执行失败')
       rememberFailedRun(apiErrorRunId(error), input, errorMessage, {
-        sourcePromptId: taskSourcePromptId.value,
-        sourcePromptTitle: taskSourcePromptTitle.value || null,
-        sourceFlowId: taskSourceFlowId.value,
-        sourceFlowTitle: taskSourceFlowTitle.value || null
+        sourcePromptId: executionDraft?.sourcePromptId,
+        sourcePromptTitle: executionDraft?.sourcePromptTitle || null,
+        sourceFlowId: executionDraft?.sourceFlowId,
+        sourceFlowTitle: executionDraft?.sourceFlowTitle || null
       })
       ElMessage.error(errorMessage)
       await loadTasks()
