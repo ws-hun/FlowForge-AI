@@ -30,6 +30,14 @@
         </div>
       </section>
 
+      <section class="run-input-comparison flow-origin-comparison" :class="flowOriginComparison.relation">
+        <span></span>
+        <div>
+          <strong>{{ flowOriginComparisonTitle }}</strong>
+          <p>{{ flowOriginComparisonDescription }}</p>
+        </div>
+      </section>
+
       <RunExecutionEvidenceComparison :source-run="sourceRun" :target-run="targetRun" />
 
       <div class="run-comparison-grid">
@@ -120,7 +128,12 @@ import ExecutionInputArchive from '@/components/ai/ExecutionInputArchive.vue'
 import RunExecutionEvidenceComparison from '@/components/ai/RunExecutionEvidenceComparison.vue'
 import FlowRunTrace from '@/components/flow/FlowRunTrace.vue'
 import { formatExecutionSource } from '@/utils/aiProvider'
-import { compareRunExecutionInputs, compareRunProviderInputDeclarations } from '@/utils/runComparison'
+import {
+  compareRunExecutionInputs,
+  compareRunFlowOrigins,
+  compareRunProviderInputDeclarations,
+  type RunFlowOriginKind
+} from '@/utils/runComparison'
 import type { TaskHistoryItem } from '@/types'
 
 const props = withDefaults(defineProps<{
@@ -194,6 +207,59 @@ const providerInputComparisonDescription = computed(() => {
     ? `已保存的有序 Artifact 声明一致（${counts}）。`
     : `已保存的有序 Artifact key、类型或来源发生变化（${counts}）。`
 })
+
+const flowOriginComparison = computed(() =>
+  props.sourceRun && props.targetRun
+    ? compareRunFlowOrigins(props.sourceRun, props.targetRun)
+    : {
+        relation: 'unavailable' as const,
+        flowRelation: 'unavailable' as const,
+        originRelation: 'unavailable' as const,
+        verification: 'saved-flow-snapshot' as const,
+        source: null,
+        target: null,
+        differences: []
+      }
+)
+const flowOriginComparisonTitle = computed(() => {
+  const comparison = flowOriginComparison.value
+  if (comparison.flowRelation === 'unavailable') return 'Flow 创作来源无法核验'
+  if (comparison.flowRelation === 'different') {
+    if (comparison.originRelation === 'same') return 'Flow 资产不同，但创作来源一致'
+    if (comparison.originRelation === 'different') return 'Flow 资产与创作来源都已变化'
+    return 'Flow 资产不同，部分来源未记录'
+  }
+  if (comparison.originRelation === 'same') return '来自同一 Flow 与创作来源'
+  if (comparison.originRelation === 'different') return '同一 Flow 的来源证据存在差异'
+  return 'Flow 身份一致，创作来源未记录'
+})
+const flowOriginComparisonDescription = computed(() => {
+  const comparison = flowOriginComparison.value
+  if (!comparison.source || !comparison.target) {
+    return '至少一次运行没有保存 Flow 快照，本次对比不会根据当前资产反向补写来源。'
+  }
+  const flowChange = `Flow「${comparison.source.flowTitle}」→「${comparison.target.flowTitle}」`
+  if (comparison.originRelation === 'unavailable') {
+    return comparison.flowRelation === 'same'
+      ? `两侧快照都指向「${comparison.source.flowTitle}」，但至少一侧没有记录派生来源。`
+      : `${flowChange}；至少一侧没有记录派生来源，未知部分保持未核验。`
+  }
+  const sourceOrigin = formatFlowOrigin(comparison.source.originKind, comparison.source.originTitle)
+  const targetOrigin = formatFlowOrigin(comparison.target.originKind, comparison.target.originTitle)
+  if (comparison.flowRelation === 'same' && comparison.originRelation === 'same') {
+    return `两侧快照都指向「${comparison.source.flowTitle}」，并保留同一${sourceOrigin}。`
+  }
+  if (comparison.originRelation === 'same') {
+    return `${flowChange}；两个资产都由同一${sourceOrigin}创建。`
+  }
+  return `${flowChange}；创作来源由${sourceOrigin}变为${targetOrigin}。`
+})
+
+function formatFlowOrigin(kind: RunFlowOriginKind | null, title: string | null) {
+  if (!kind) return '未记录来源'
+  const kindLabel = kind === 'result' ? 'Result' : kind === 'prompt' ? 'Prompt' : 'Flow'
+  return title ? `${kindLabel}「${title}」` : kindLabel
+}
 
 function handleOpenChange(value: boolean) {
   if (!value) {
