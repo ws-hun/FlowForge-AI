@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   compareRunExecutionInputs,
+  compareRunFlowOrigins,
   compareRunProviderExecution,
   compareRunProviderInputDeclarations
 } from '../runComparison'
-import type { FlowArtifactContract, FlowRunTrace, TaskHistoryItem } from '@/types'
+import type { FlowArtifactContract, FlowRunSnapshot, FlowRunTrace, TaskHistoryItem } from '@/types'
 
 function run(
   input: string,
@@ -50,6 +51,19 @@ function run(
     status: 'completed',
     flowRunTrace,
     createdAt: '2026-08-13T00:00:00.000Z',
+    ...overrides
+  }
+}
+
+function snapshot(overrides: Partial<FlowRunSnapshot> = {}): FlowRunSnapshot {
+  return {
+    flowId: 'flow-1',
+    title: 'Launch Flow',
+    description: 'Prepare the launch',
+    nodes: [],
+    flowUpdatedAt: '2026-09-21T00:00:00.000Z',
+    runtimeContext: '',
+    variableValues: {},
     ...overrides
   }
 }
@@ -121,6 +135,133 @@ describe('run Provider input declaration comparison', () => {
       verification: 'saved-execution-plan',
       sourceInputCount: null,
       targetInputCount: 2
+    })
+  })
+})
+
+describe('run Flow origin comparison', () => {
+  it('confirms the same executed Flow and immutable Result origin', () => {
+    const sourceSnapshot = snapshot({
+      sourceTaskId: 'task-origin',
+      sourceTaskSummary: 'Launch recommendation',
+      sourcePromptId: 'prompt-origin',
+      sourcePromptTitle: 'Launch pattern'
+    })
+
+    expect(compareRunFlowOrigins(
+      run('source', undefined, undefined, { flowRunSnapshot: sourceSnapshot }),
+      run('target', undefined, undefined, { flowRunSnapshot: { ...sourceSnapshot } })
+    )).toEqual({
+      relation: 'same',
+      flowRelation: 'same',
+      originRelation: 'same',
+      verification: 'saved-flow-snapshot',
+      source: {
+        flowId: 'flow-1',
+        flowTitle: 'Launch Flow',
+        originKind: 'result',
+        originId: 'task-origin',
+        originTitle: 'Launch recommendation',
+        intermediatePromptId: 'prompt-origin',
+        sourceFlowVersionId: null,
+        sourceFlowVersionNumber: null
+      },
+      target: {
+        flowId: 'flow-1',
+        flowTitle: 'Launch Flow',
+        originKind: 'result',
+        originId: 'task-origin',
+        originTitle: 'Launch recommendation',
+        intermediatePromptId: 'prompt-origin',
+        sourceFlowVersionId: null,
+        sourceFlowVersionNumber: null
+      },
+      differences: []
+    })
+  })
+
+  it('distinguishes Flow identity while recognizing a shared Prompt origin', () => {
+    const source = run('source', undefined, undefined, {
+      flowRunSnapshot: snapshot({
+        flowId: 'flow-a',
+        sourcePromptId: 'prompt-origin',
+        sourcePromptTitle: 'Launch pattern'
+      })
+    })
+    const target = run('target', undefined, undefined, {
+      flowRunSnapshot: snapshot({
+        flowId: 'flow-b',
+        title: 'Launch Flow variant',
+        sourcePromptId: 'prompt-origin',
+        sourcePromptTitle: 'Launch pattern'
+      })
+    })
+
+    expect(compareRunFlowOrigins(source, target)).toMatchObject({
+      relation: 'different',
+      flowRelation: 'different',
+      originRelation: 'same',
+      differences: ['flow-asset']
+    })
+  })
+
+  it('reports different saved origins without comparing mutable titles', () => {
+    const source = run('source', undefined, undefined, {
+      flowRunSnapshot: snapshot({
+        sourceFlowId: 'parent-flow',
+        sourceFlowTitle: 'Original title',
+        sourceFlowVersionId: 'version-1',
+        sourceFlowVersionNumber: 1
+      })
+    })
+    const target = run('target', undefined, undefined, {
+      flowRunSnapshot: snapshot({
+        sourceFlowId: 'parent-flow',
+        sourceFlowTitle: 'Renamed title',
+        sourceFlowVersionId: 'version-2',
+        sourceFlowVersionNumber: 2
+      })
+    })
+
+    expect(compareRunFlowOrigins(source, target)).toMatchObject({
+      relation: 'different',
+      flowRelation: 'same',
+      originRelation: 'different',
+      differences: ['origin-version']
+    })
+  })
+
+  it('keeps missing snapshots and unrecorded legacy origins unavailable', () => {
+    expect(compareRunFlowOrigins(
+      run('source', undefined, undefined, { flowRunSnapshot: null }),
+      run('target', undefined, undefined, { flowRunSnapshot: snapshot() })
+    )).toMatchObject({
+      relation: 'unavailable',
+      flowRelation: 'unavailable',
+      originRelation: 'unavailable'
+    })
+
+    expect(compareRunFlowOrigins(
+      run('source', undefined, undefined, { flowRunSnapshot: snapshot() }),
+      run('target', undefined, undefined, { flowRunSnapshot: snapshot() })
+    )).toMatchObject({
+      relation: 'unavailable',
+      flowRelation: 'same',
+      originRelation: 'unavailable',
+      differences: []
+    })
+
+    expect(compareRunFlowOrigins(
+      run('source', undefined, undefined, {
+        flowRunSnapshot: snapshot({ sourceTaskId: 'task-origin' })
+      }),
+      run('target', undefined, undefined, {
+        flowRunSnapshot: snapshot({ sourceTaskId: 'task-origin' })
+      })
+    )).toMatchObject({
+      relation: 'unavailable',
+      flowRelation: 'same',
+      originRelation: 'unavailable'
     })
   })
 })

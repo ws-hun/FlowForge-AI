@@ -12,6 +12,36 @@ export type RunProviderInputComparison = {
   targetInputCount: number | null
 }
 
+export type RunFlowOriginKind = 'result' | 'prompt' | 'flow'
+
+export type RunFlowOriginEvidence = {
+  flowId: string
+  flowTitle: string
+  originKind: RunFlowOriginKind | null
+  originId: string | null
+  originTitle: string | null
+  intermediatePromptId: string | null
+  sourceFlowVersionId: string | null
+  sourceFlowVersionNumber: number | null
+}
+
+export type RunFlowOriginDifference =
+  | 'flow-asset'
+  | 'origin-kind'
+  | 'origin-identity'
+  | 'origin-prompt'
+  | 'origin-version'
+
+export type RunFlowOriginComparison = {
+  relation: 'same' | 'different' | 'unavailable'
+  flowRelation: 'same' | 'different' | 'unavailable'
+  originRelation: 'same' | 'different' | 'unavailable'
+  verification: 'saved-flow-snapshot'
+  source: RunFlowOriginEvidence | null
+  target: RunFlowOriginEvidence | null
+  differences: RunFlowOriginDifference[]
+}
+
 export type RunProviderExecutionComparison = {
   relation: 'same' | 'different' | 'unavailable'
   verification: 'flow-runtime-contract' | 'task-metadata' | 'unavailable'
@@ -80,6 +110,64 @@ export function compareRunProviderInputDeclarations(
   }
 }
 
+export function compareRunFlowOrigins(
+  sourceRun: TaskHistoryItem,
+  targetRun: TaskHistoryItem
+): RunFlowOriginComparison {
+  const source = flowOriginEvidence(sourceRun)
+  const target = flowOriginEvidence(targetRun)
+  if (!source || !target) {
+    return {
+      relation: 'unavailable',
+      flowRelation: 'unavailable',
+      originRelation: 'unavailable',
+      verification: 'saved-flow-snapshot',
+      source,
+      target,
+      differences: []
+    }
+  }
+
+  const differences: RunFlowOriginDifference[] = []
+  const flowRelation = source.flowId === target.flowId ? 'same' : 'different'
+  if (flowRelation === 'different') differences.push('flow-asset')
+
+  let originRelation: RunFlowOriginComparison['originRelation'] = 'same'
+  if (!completeFlowOrigin(source) || !completeFlowOrigin(target)) {
+    originRelation = 'unavailable'
+  } else {
+    compareFlowOriginField(source.originKind, target.originKind, 'origin-kind', differences)
+    compareFlowOriginField(source.originId, target.originId, 'origin-identity', differences)
+    compareFlowOriginField(
+      source.intermediatePromptId,
+      target.intermediatePromptId,
+      'origin-prompt',
+      differences
+    )
+    if (
+      source.sourceFlowVersionId !== target.sourceFlowVersionId
+      || source.sourceFlowVersionNumber !== target.sourceFlowVersionNumber
+    ) {
+      differences.push('origin-version')
+    }
+    originRelation = differences.some((difference) => difference !== 'flow-asset')
+      ? 'different'
+      : 'same'
+  }
+
+  return {
+    relation: differences.length
+      ? 'different'
+      : originRelation === 'unavailable' ? 'unavailable' : 'same',
+    flowRelation,
+    originRelation,
+    verification: 'saved-flow-snapshot',
+    source,
+    target,
+    differences
+  }
+}
+
 export function compareRunProviderExecution(
   sourceRun: TaskHistoryItem,
   targetRun: TaskHistoryItem
@@ -139,6 +227,61 @@ function compareEvidenceField<T>(
     return
   }
   if (source !== target) differences.push(difference)
+}
+
+function compareFlowOriginField<T>(
+  source: T | null,
+  target: T | null,
+  difference: RunFlowOriginDifference,
+  differences: RunFlowOriginDifference[]
+) {
+  if (source !== target) differences.push(difference)
+}
+
+function completeFlowOrigin(evidence: RunFlowOriginEvidence) {
+  if (!evidence.originKind || !evidence.originId) {
+    return false
+  }
+  return evidence.originKind !== 'result' || Boolean(evidence.intermediatePromptId)
+}
+
+function flowOriginEvidence(run: TaskHistoryItem): RunFlowOriginEvidence | null {
+  const snapshot = run.flowRunSnapshot
+  if (!snapshot) {
+    return null
+  }
+  const originKind: RunFlowOriginKind | null = snapshot.sourceTaskId
+    ? 'result'
+    : snapshot.sourcePromptId
+      ? 'prompt'
+      : snapshot.sourceFlowId
+        ? 'flow'
+        : null
+  const originId = originKind === 'result'
+    ? snapshot.sourceTaskId ?? null
+    : originKind === 'prompt'
+      ? snapshot.sourcePromptId ?? null
+      : originKind === 'flow'
+        ? snapshot.sourceFlowId ?? null
+        : null
+  const originTitle = originKind === 'result'
+    ? snapshot.sourceTaskSummary ?? snapshot.sourcePromptTitle ?? null
+    : originKind === 'prompt'
+      ? snapshot.sourcePromptTitle ?? null
+      : originKind === 'flow'
+        ? snapshot.sourceFlowTitle ?? null
+        : null
+
+  return {
+    flowId: snapshot.flowId,
+    flowTitle: snapshot.title,
+    originKind,
+    originId,
+    originTitle,
+    intermediatePromptId: originKind === 'result' ? snapshot.sourcePromptId ?? null : null,
+    sourceFlowVersionId: originKind === 'flow' ? snapshot.sourceFlowVersionId ?? null : null,
+    sourceFlowVersionNumber: originKind === 'flow' ? snapshot.sourceFlowVersionNumber ?? null : null
+  }
 }
 
 function savedProviderInputs(run: TaskHistoryItem): FlowArtifactContract[] | null {
