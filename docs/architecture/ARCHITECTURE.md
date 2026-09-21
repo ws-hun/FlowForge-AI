@@ -51,7 +51,8 @@ src/
 - Idempotent Task Result promotion using a pessimistic source-Task lock and indexed source lookup
 
 ### Workflow Module
-- Workflow definition (future canvas)
+- Persisted Flow canvas with Prompt, Result, Flow, and revision lineage
+- Idempotent Result-to-Flow promotion without restricting normal Prompt reuse
 
 ### History Module
 - Execution history tracking
@@ -72,6 +73,8 @@ Authentication is implemented as a small boundary around the single local worksp
 Public authentication routes use an exact allowlist rather than the `/api/auth/**` prefix. Owner profile and password endpoints require the same workspace session as creative APIs. A password change verifies the current BCrypt credential, deletes every existing session for the owner, and issues one fresh cookie so stale browsers cannot retain access.
 
 Result-to-Prompt promotion is idempotent at the service boundary. `PromptService` locks the immutable source Task, rejects failed Tasks, then returns the earliest existing Prompt for that `source_task_id` or creates one inside the same transaction. Migration V12 adds the source lookup index without imposing a uniqueness migration that could discard or reject legitimate legacy data.
+
+Result-to-Flow promotion extends the same Task lock across the second asset boundary. `WorkflowService` verifies the source Prompt is a node in the requested Flow and belongs to the immutable source Task, then returns the earliest Flow for that `source_task_id` or creates one with Task and Prompt lineage. Migration V13 stores and indexes both source identities. A normal Prompt-to-Flow request omits `sourceTaskId`, remains repeatable, and therefore preserves Prompt Library's role as a reusable creation surface.
 
 Flow execution compilation is isolated in `FlowExecutionCompiler`. It converts one immutable Flow snapshot into the exact Provider input, execution mode, call count, compiler version, SHA-256 input fingerprint, structured preview sections, and a versioned deterministic node execution plan used by both preview and execution paths.
 
