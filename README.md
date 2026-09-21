@@ -76,6 +76,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Prompt-to-Flow Creation | Done | 从已保存 Prompt 或 Starter Prompt 创建保留来源信息的可执行 Flow |
 | Stage 3 | Task-to-Flow Creation | Done | 将一次有效 AI Command 执行沉淀为 Prompt，并转化为可继续编辑的 Flow |
 | Stage 3 | Idempotent Result-to-Flow Promotion | Done | 跨刷新、标签页与客户端按不可变 Task 串行创建 Result Flow；重复请求返回原资产，普通 Prompt 复用仍可创建多个独立 Flow |
+| Stage 3 | Immutable Flow Origin Snapshots | Done | Flow 执行时固化 Result、Prompt 或来源 Flow 的创作谱系，History 与 Flow Space 可从不可变快照返回真实来源 |
 | Stage 3 | Flow Result Reuse | Done | Flow 结果可带入下一轮、保存为 Prompt、加入当前 Flow |
 | Stage 3 | Node Reuse | Done | Flow 节点可沉淀为 Prompt，也可单独带入 Task 试跑 |
 | Stage 3 | Prompt Asset Provenance | Done | 从 AI 结果或 Flow 节点沉淀的 Prompt 固化来源运行、Flow、节点与原 Prompt，并可回到来源继续创作 |
@@ -827,6 +828,8 @@ DELETE /api/prompts/{id}?revision={revision}
 创建 Prompt 时可选传入 `sourceTaskId`、`sourcePromptId`，或传入 `sourceFlowId` + `sourceNodeId`。服务端会读取真实 Task / Prompt / Flow 并固化来源标题与关系；后续编辑和版本恢复只改变 Prompt 内容，不会改写最初来源。
 
 从 Result 直接创建 Flow 时，前端会同时提交中间 Prompt 与不可变 `sourceTaskId`。服务端在同一事务中锁定来源 Task，确认 Prompt 确实由该 Result 沉淀且作为节点进入 Flow，然后按 `source_task_id` 返回已有资产或创建首个 Flow。V13 为 Flow 保存 Task / Prompt 来源并建立查询索引。直接从 Prompt Library 创建 Flow 时不提交 `sourceTaskId`，因此同一 Prompt 仍可用于多个独立工作流。
+
+每次 Flow 预览与执行都会把该 Flow 当时的创作来源写入 `flowRunSnapshot`。Result 派生 Flow 固化来源 Task 摘要与中间 Prompt，Prompt 派生 Flow 固化来源 Prompt，修订分支固化来源 Flow 与版本；History 和 Flow Space 只展示快照中真实存在的证据，不会用当前资产状态补写旧运行来源。
 
 每个 Prompt 响应包含单调递增的 `revision`。编辑请求在 `PUT` 请求体中回传当前修订号，收藏与恢复使用 `{ "revision": n }`，删除使用同名查询参数。过期请求返回 `409 Conflict`；编辑器会读取最新资产基线但保留当前输入，由用户继续保存本地版本或显式采用最新版本。
 
