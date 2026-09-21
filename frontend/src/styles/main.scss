@@ -5087,6 +5087,14 @@ a {
   white-space: nowrap;
 }
 
+.flow-run-snapshot-origin > .snapshot-origin-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .flow-map {
   display: grid;
   min-height: 500px;
@@ -7639,6 +7647,10 @@ a {
     .snapshot-source-action {
       width: fit-content;
     }
+  }
+
+  .flow-run-snapshot-origin > .snapshot-origin-actions {
+    justify-content: flex-start;
   }
 
   .flow-run-snapshot-variables {

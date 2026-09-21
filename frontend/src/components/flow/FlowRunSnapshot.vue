@@ -15,7 +15,50 @@
         <p>{{ snapshot.description }}</p>
       </div>
 
-      <div v-if="snapshot.sourceFlowId" class="flow-run-snapshot-origin">
+      <div v-if="snapshot.sourceTaskId" class="flow-run-snapshot-origin">
+        <div>
+          <span>Result 创作来源</span>
+          <strong>{{ snapshot.sourcePromptTitle || snapshot.sourceTaskSummary || '来源运行' }}</strong>
+          <p>{{ snapshot.sourceTaskSummary || '本次执行的 Flow 由一条已完成 Result 沉淀而来。' }}</p>
+        </div>
+        <div class="snapshot-origin-actions">
+          <button
+            type="button"
+            class="snapshot-source-action"
+            @click.stop="emit('open-source-run', snapshot)"
+          >
+            <el-icon><Back /></el-icon>
+            打开来源运行
+          </button>
+          <button
+            v-if="snapshot.sourcePromptId"
+            type="button"
+            class="snapshot-source-action"
+            @click.stop="emit('open-source-prompt', snapshot)"
+          >
+            <el-icon><Back /></el-icon>
+            打开来源 Prompt
+          </button>
+        </div>
+      </div>
+
+      <div v-else-if="snapshot.sourcePromptId" class="flow-run-snapshot-origin">
+        <div>
+          <span>Prompt 创作来源</span>
+          <strong>{{ snapshot.sourcePromptTitle || '来源 Prompt' }}</strong>
+          <p>本次执行的 Flow 从该 Prompt 创建，并在后续编排中保持独立。</p>
+        </div>
+        <button
+          type="button"
+          class="snapshot-source-action"
+          @click.stop="emit('open-source-prompt', snapshot)"
+        >
+          <el-icon><Back /></el-icon>
+          打开来源 Prompt
+        </button>
+      </div>
+
+      <div v-else-if="snapshot.sourceFlowId" class="flow-run-snapshot-origin">
         <div>
           <span>来源于</span>
           <strong>
@@ -158,6 +201,8 @@ const props = withDefaults(
 const emit = defineEmits<{
   'create-flow': [snapshot: FlowRunSnapshot]
   'reuse-run-settings': [snapshot: FlowRunSnapshot]
+  'open-source-run': [snapshot: FlowRunSnapshot]
+  'open-source-prompt': [snapshot: FlowRunSnapshot]
   'open-source-flow': [snapshot: FlowRunSnapshot]
 }>()
 

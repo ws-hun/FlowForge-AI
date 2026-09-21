@@ -180,6 +180,10 @@ export interface FlowRunSnapshot {
   title: string
   description: string
   nodes: FlowNode[]
+  sourceTaskId?: string | null
+  sourceTaskSummary?: string | null
+  sourcePromptId?: string | null
+  sourcePromptTitle?: string | null
   sourceFlowId?: string | null
   sourceFlowTitle?: string | null
   sourceFlowVersionId?: string | null

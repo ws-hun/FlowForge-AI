@@ -407,6 +407,8 @@
             :creating="workspace.flowLoading"
             @create-flow="createFlowFromSnapshot"
             @reuse-run-settings="reuseFlowRunSettings"
+            @open-source-run="openFlowSnapshotSourceRun"
+            @open-source-prompt="openFlowSnapshotSourcePrompt"
             @open-source-flow="openFlowSnapshotSource"
           />
           <div v-if="activeFlowResultFailed" class="failed-run-detail flow-run-failure-detail">
@@ -2177,6 +2179,20 @@ function flowSourceStillAvailable(snapshot: FlowRunSnapshotType) {
   return Boolean(
     snapshot.sourceFlowId && workspace.flowDrafts.some((flow) => flow.id === snapshot.sourceFlowId)
   )
+}
+
+function openFlowSnapshotSourceRun(snapshot: FlowRunSnapshotType) {
+  if (!snapshot.sourceTaskId) {
+    return
+  }
+  router.push({ path: '/history', query: { run: snapshot.sourceTaskId } })
+}
+
+function openFlowSnapshotSourcePrompt(snapshot: FlowRunSnapshotType) {
+  if (!snapshot.sourcePromptId) {
+    return
+  }
+  router.push({ path: '/prompts', query: { prompt: snapshot.sourcePromptId } })
 }
 
 async function openFlowSnapshotSource(snapshot: FlowRunSnapshotType) {
