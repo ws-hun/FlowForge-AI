@@ -80,7 +80,7 @@ class PromptServiceTest {
                 .sourceFlowTitle("Idea to MVP")
                 .createdAt(LocalDateTime.now())
                 .build();
-        when(taskRepository.findByIdForPromptPromotion(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.findByIdForAssetPromotion(taskId)).thenReturn(Optional.of(task));
         when(promptRepository.findFirstBySourceTaskIdOrderByCreatedAtAsc(taskId)).thenReturn(Optional.empty());
         stubPromptSave();
 
@@ -115,7 +115,7 @@ class PromptServiceTest {
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
-        when(taskRepository.findByIdForPromptPromotion(taskId)).thenReturn(Optional.of(task));
+        when(taskRepository.findByIdForAssetPromotion(taskId)).thenReturn(Optional.of(task));
         when(promptRepository.findFirstBySourceTaskIdOrderByCreatedAtAsc(taskId))
                 .thenReturn(Optional.of(existing));
 

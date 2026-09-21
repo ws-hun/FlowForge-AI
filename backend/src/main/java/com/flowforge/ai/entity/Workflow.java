@@ -38,6 +38,18 @@ public class Workflow {
     @Column(name = "nodes_json", nullable = false, columnDefinition = "TEXT")
     private String nodesJson;
 
+    @Column(name = "source_task_id")
+    private UUID sourceTaskId;
+
+    @Column(name = "source_task_summary", columnDefinition = "TEXT")
+    private String sourceTaskSummary;
+
+    @Column(name = "source_prompt_id")
+    private UUID sourcePromptId;
+
+    @Column(name = "source_prompt_title", length = 120)
+    private String sourcePromptTitle;
+
     @Column(name = "source_flow_id")
     private UUID sourceFlowId;
 

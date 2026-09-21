@@ -207,7 +207,7 @@ public class PromptService {
     }
 
     private Task findTaskForPromptPromotion(UUID taskId) {
-        Task sourceTask = taskRepository.findByIdForPromptPromotion(taskId)
+        Task sourceTask = taskRepository.findByIdForAssetPromotion(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Source Task not found"));
         if (Task.STATUS_FAILED.equals(sourceTask.getStatus())) {
             throw new IllegalArgumentException("Failed Task cannot be used as a Prompt source");

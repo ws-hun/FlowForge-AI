@@ -7,10 +7,14 @@ import com.flowforge.ai.dto.FlowNodeDto;
 import com.flowforge.ai.dto.FlowRequest;
 import com.flowforge.ai.dto.FlowResponse;
 import com.flowforge.ai.dto.FlowVersionResponse;
+import com.flowforge.ai.entity.Prompt;
+import com.flowforge.ai.entity.Task;
 import com.flowforge.ai.entity.Workflow;
 import com.flowforge.ai.entity.WorkflowVersion;
 import com.flowforge.ai.exception.ResourceConflictException;
 import com.flowforge.ai.exception.ResourceNotFoundException;
+import com.flowforge.ai.repository.PromptRepository;
+import com.flowforge.ai.repository.TaskRepository;
 import com.flowforge.ai.repository.WorkflowRepository;
 import com.flowforge.ai.repository.WorkflowVersionRepository;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +38,8 @@ public class WorkflowService {
 
     private final WorkflowRepository workflowRepository;
     private final WorkflowVersionRepository workflowVersionRepository;
+    private final PromptRepository promptRepository;
+    private final TaskRepository taskRepository;
     private final ObjectMapper objectMapper;
     private final FlowDefinitionValidator flowDefinitionValidator;
 
@@ -47,10 +53,36 @@ public class WorkflowService {
 
     @Transactional
     public FlowResponse createFlow(FlowRequest request) {
-        Workflow workflow = Workflow.builder().build();
+        validateSourceMode(request);
         flowDefinitionValidator.validate(request.nodes());
+        if (request.sourcePromptId() != null) {
+            Prompt sourcePrompt = findSourcePrompt(request.sourcePromptId());
+            validatePromptSourceNode(request.nodes(), sourcePrompt.getId());
+            if (request.sourceTaskId() != null) {
+                Task sourceTask = findTaskForFlowPromotion(request.sourceTaskId());
+                validateResultPromptSource(sourcePrompt, sourceTask);
+                return workflowRepository.findFirstBySourceTaskIdOrderByCreatedAtAsc(sourceTask.getId())
+                        .map(this::toResponse)
+                        .orElseGet(() -> createFlowFromPrompt(request, sourcePrompt, sourceTask));
+            }
+            return createFlowFromPrompt(request, sourcePrompt, null);
+        }
+
+        Workflow workflow = Workflow.builder().build();
         applyRequest(workflow, request);
-        applySource(workflow, request);
+        applyFlowSource(workflow, request);
+        return toResponse(workflowRepository.save(workflow));
+    }
+
+    private FlowResponse createFlowFromPrompt(FlowRequest request, Prompt sourcePrompt, Task sourceTask) {
+        Workflow workflow = Workflow.builder().build();
+        applyRequest(workflow, request);
+        if (sourceTask != null) {
+            workflow.setSourceTaskId(sourceTask.getId());
+            workflow.setSourceTaskSummary(sourceTask.getSummary());
+        }
+        workflow.setSourcePromptId(sourcePrompt.getId());
+        workflow.setSourcePromptTitle(sourcePrompt.getTitle());
         return toResponse(workflowRepository.save(workflow));
     }
 
@@ -140,10 +172,50 @@ public class WorkflowService {
         workflow.setNodesJson(serializeNodes(request.nodes()));
     }
 
-    private void applySource(Workflow workflow, FlowRequest request) {
+    private void validateSourceMode(FlowRequest request) {
+        boolean hasResultSource = request.sourceTaskId() != null;
+        boolean hasPromptSource = request.sourcePromptId() != null;
+        boolean hasFlowSource = request.sourceFlowId() != null;
+        if ((hasPromptSource || hasResultSource) && hasFlowSource) {
+            throw new IllegalArgumentException("Flow source must be either Prompt or Flow");
+        }
+        if (hasResultSource && !hasPromptSource) {
+            throw new IllegalArgumentException("sourcePromptId is required when sourceTaskId is provided");
+        }
         if (request.sourceFlowVersionId() != null && request.sourceFlowId() == null) {
             throw new IllegalArgumentException("sourceFlowId is required when sourceFlowVersionId is provided");
         }
+    }
+
+    private Prompt findSourcePrompt(UUID promptId) {
+        return promptRepository.findById(promptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Source Prompt not found"));
+    }
+
+    private Task findTaskForFlowPromotion(UUID taskId) {
+        Task sourceTask = taskRepository.findByIdForAssetPromotion(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Source Task not found"));
+        if (Task.STATUS_FAILED.equals(sourceTask.getStatus())) {
+            throw new IllegalArgumentException("Failed Task cannot be used as a Flow source");
+        }
+        return sourceTask;
+    }
+
+    private void validateResultPromptSource(Prompt sourcePrompt, Task sourceTask) {
+        if (!sourceTask.getId().equals(sourcePrompt.getSourceTaskId())) {
+            throw new IllegalArgumentException("Source Prompt does not belong to the source Task");
+        }
+    }
+
+    private void validatePromptSourceNode(List<FlowNodeDto> nodes, UUID sourcePromptId) {
+        boolean sourcePromptIncluded = nodes.stream()
+                .anyMatch(node -> "prompt".equals(node.type()) && sourcePromptId.equals(node.promptId()));
+        if (!sourcePromptIncluded) {
+            throw new IllegalArgumentException("Source Prompt must be included as a Prompt node");
+        }
+    }
+
+    private void applyFlowSource(Workflow workflow, FlowRequest request) {
         if (request.sourceFlowId() == null) {
             return;
         }
@@ -192,6 +264,10 @@ public class WorkflowService {
                 workflow.getTitle(),
                 workflow.getDescription(),
                 deserializeNodes(workflow.getNodesJson()),
+                workflow.getSourceTaskId(),
+                workflow.getSourceTaskSummary(),
+                workflow.getSourcePromptId(),
+                workflow.getSourcePromptTitle(),
                 workflow.getSourceFlowId(),
                 workflow.getSourceFlowTitle(),
                 workflow.getSourceFlowVersionId(),

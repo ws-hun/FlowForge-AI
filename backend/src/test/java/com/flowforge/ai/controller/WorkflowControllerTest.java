@@ -63,6 +63,10 @@ class WorkflowControllerTest {
                 null,
                 null,
                 null,
+                null,
+                null,
+                null,
+                null,
                 3L,
                 LocalDateTime.now(),
                 LocalDateTime.now()

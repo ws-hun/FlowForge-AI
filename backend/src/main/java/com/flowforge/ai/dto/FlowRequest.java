@@ -22,6 +22,10 @@ public record FlowRequest(
         @Size(max = 50, message = "flow can contain at most 50 nodes")
         List<@Valid FlowNodeDto> nodes,
 
+        UUID sourceTaskId,
+
+        UUID sourcePromptId,
+
         UUID sourceFlowId,
 
         UUID sourceFlowVersionId,

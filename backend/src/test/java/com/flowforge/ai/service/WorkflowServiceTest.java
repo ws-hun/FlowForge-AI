@@ -4,10 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowforge.ai.dto.FlowNodeDto;
 import com.flowforge.ai.dto.FlowRequest;
 import com.flowforge.ai.dto.FlowResponse;
+import com.flowforge.ai.entity.Prompt;
+import com.flowforge.ai.entity.Task;
 import com.flowforge.ai.entity.Workflow;
 import com.flowforge.ai.entity.WorkflowVersion;
 import com.flowforge.ai.exception.ResourceConflictException;
 import com.flowforge.ai.exception.ResourceNotFoundException;
+import com.flowforge.ai.repository.PromptRepository;
+import com.flowforge.ai.repository.TaskRepository;
 import com.flowforge.ai.repository.WorkflowRepository;
 import com.flowforge.ai.repository.WorkflowVersionRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +32,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -41,6 +46,12 @@ class WorkflowServiceTest {
     @Mock
     private WorkflowVersionRepository workflowVersionRepository;
 
+    @Mock
+    private PromptRepository promptRepository;
+
+    @Mock
+    private TaskRepository taskRepository;
+
     @Captor
     private ArgumentCaptor<WorkflowVersion> versionCaptor;
 
@@ -51,6 +62,8 @@ class WorkflowServiceTest {
         workflowService = new WorkflowService(
                 workflowRepository,
                 workflowVersionRepository,
+                promptRepository,
+                taskRepository,
                 new ObjectMapper(),
                 new FlowDefinitionValidator()
         );
@@ -164,6 +177,8 @@ class WorkflowServiceTest {
                 "Earlier flow Variant",
                 sourceVersion.getDescription(),
                 nodes("Earlier input"),
+                null,
+                null,
                 sourceFlow.getId(),
                 sourceVersion.getId(),
                 null
@@ -202,6 +217,8 @@ class WorkflowServiceTest {
                 "Invalid Variant",
                 "Invalid lineage",
                 nodes("Input"),
+                null,
+                null,
                 sourceFlow.getId(),
                 otherVersion.getId(),
                 null
@@ -255,6 +272,8 @@ class WorkflowServiceTest {
                 ),
                 null,
                 null,
+                null,
+                null,
                 0L
         );
         when(workflowRepository.findByIdForUpdate(flow.getId())).thenReturn(Optional.of(flow));
@@ -274,6 +293,8 @@ class WorkflowServiceTest {
                 "Stale flow",
                 "Stale goal",
                 nodes("Stale input"),
+                null,
+                null,
                 null,
                 null,
                 3L
@@ -315,6 +336,160 @@ class WorkflowServiceTest {
         verify(workflowRepository, never()).delete(any(Workflow.class));
     }
 
+    @Test
+    void createsOneFlowFromAResultPromptWithImmutableLineage() {
+        Prompt sourcePrompt = prompt("Reusable product brief");
+        UUID taskId = UUID.randomUUID();
+        sourcePrompt.setSourceTaskId(taskId);
+        Task sourceTask = task(taskId, sourcePrompt.getId());
+        FlowRequest request = promptRequest(sourcePrompt, taskId);
+        when(promptRepository.findById(sourcePrompt.getId())).thenReturn(Optional.of(sourcePrompt));
+        when(taskRepository.findByIdForAssetPromotion(taskId)).thenReturn(Optional.of(sourceTask));
+        when(workflowRepository.findFirstBySourceTaskIdOrderByCreatedAtAsc(taskId))
+                .thenReturn(Optional.empty());
+        stubFlowSave();
+
+        FlowResponse response = workflowService.createFlow(request);
+
+        assertThat(response.sourcePromptId()).isEqualTo(sourcePrompt.getId());
+        assertThat(response.sourcePromptTitle()).isEqualTo(sourcePrompt.getTitle());
+        assertThat(response.sourceTaskId()).isEqualTo(taskId);
+        assertThat(response.sourceFlowId()).isNull();
+    }
+
+    @Test
+    void returnsTheExistingFlowForAnAlreadyPromotedResult() {
+        Prompt sourcePrompt = prompt("Reusable product brief");
+        UUID taskId = UUID.randomUUID();
+        sourcePrompt.setSourceTaskId(taskId);
+        Task sourceTask = task(taskId, sourcePrompt.getId());
+        Workflow existing = flow("Existing Prompt Flow", "Reusable goal", "Input");
+        existing.setSourceTaskId(taskId);
+        existing.setSourceTaskSummary(sourceTask.getSummary());
+        existing.setSourcePromptId(sourcePrompt.getId());
+        existing.setSourcePromptTitle(sourcePrompt.getTitle());
+        when(promptRepository.findById(sourcePrompt.getId())).thenReturn(Optional.of(sourcePrompt));
+        when(taskRepository.findByIdForAssetPromotion(taskId)).thenReturn(Optional.of(sourceTask));
+        when(workflowRepository.findFirstBySourceTaskIdOrderByCreatedAtAsc(taskId))
+                .thenReturn(Optional.of(existing));
+
+        FlowResponse response = workflowService.createFlow(promptRequest(sourcePrompt, taskId));
+
+        assertThat(response.id()).isEqualTo(existing.getId());
+        assertThat(response.sourcePromptId()).isEqualTo(sourcePrompt.getId());
+        assertThat(response.sourceTaskId()).isEqualTo(taskId);
+        verify(workflowRepository, never()).save(any(Workflow.class));
+    }
+
+    @Test
+    void allowsTheSamePromptToSeedMultipleIndependentFlows() {
+        Prompt sourcePrompt = prompt("Reusable product brief");
+        when(promptRepository.findById(sourcePrompt.getId())).thenReturn(Optional.of(sourcePrompt));
+        stubFlowSave();
+
+        FlowResponse first = workflowService.createFlow(promptRequest(sourcePrompt));
+        FlowResponse second = workflowService.createFlow(promptRequest(sourcePrompt));
+
+        assertThat(first.id()).isNotEqualTo(second.id());
+        assertThat(first.sourcePromptId()).isEqualTo(sourcePrompt.getId());
+        assertThat(second.sourcePromptId()).isEqualTo(sourcePrompt.getId());
+        assertThat(first.sourceTaskId()).isNull();
+        assertThat(second.sourceTaskId()).isNull();
+        verify(workflowRepository, times(2)).save(any(Workflow.class));
+        verifyNoInteractions(taskRepository);
+    }
+
+    @Test
+    void rejectsPromptLineageWhenTheSourceIsNotIncludedAsANode() {
+        Prompt sourcePrompt = prompt("Reusable product brief");
+        FlowRequest request = new FlowRequest(
+                "Invalid Prompt Flow",
+                "Missing source node",
+                nodes("Input"),
+                null,
+                sourcePrompt.getId(),
+                null,
+                null,
+                null
+        );
+        when(promptRepository.findById(sourcePrompt.getId())).thenReturn(Optional.of(sourcePrompt));
+
+        assertThatThrownBy(() -> workflowService.createFlow(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Source Prompt must be included as a Prompt node");
+
+        verify(workflowRepository, never()).save(any(Workflow.class));
+    }
+
+    @Test
+    void rejectsAmbiguousFlowSources() {
+        FlowRequest request = new FlowRequest(
+                "Ambiguous Flow",
+                "Two source modes",
+                nodes("Input"),
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> workflowService.createFlow(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Flow source must be either Prompt or Flow");
+        verifyNoInteractions(promptRepository);
+    }
+
+    @Test
+    void requiresAPromptWhenPromotingAResultToFlow() {
+        FlowRequest request = new FlowRequest(
+                "Result Flow",
+                "Missing Prompt source",
+                nodes("Input"),
+                UUID.randomUUID(),
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> workflowService.createFlow(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("sourcePromptId is required when sourceTaskId is provided");
+        verifyNoInteractions(promptRepository, taskRepository);
+    }
+
+    @Test
+    void rejectsFailedRunsAsFlowSources() {
+        Prompt sourcePrompt = prompt("Reusable product brief");
+        UUID taskId = UUID.randomUUID();
+        sourcePrompt.setSourceTaskId(taskId);
+        Task sourceTask = task(taskId, sourcePrompt.getId());
+        sourceTask.setStatus(Task.STATUS_FAILED);
+        when(promptRepository.findById(sourcePrompt.getId())).thenReturn(Optional.of(sourcePrompt));
+        when(taskRepository.findByIdForAssetPromotion(taskId)).thenReturn(Optional.of(sourceTask));
+
+        assertThatThrownBy(() -> workflowService.createFlow(promptRequest(sourcePrompt, taskId)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Failed Task cannot be used as a Flow source");
+        verify(workflowRepository, never()).save(any(Workflow.class));
+    }
+
+    @Test
+    void rejectsAPromptFromAnotherResult() {
+        Prompt sourcePrompt = prompt("Reusable product brief");
+        UUID taskId = UUID.randomUUID();
+        sourcePrompt.setSourceTaskId(UUID.randomUUID());
+        Task sourceTask = task(taskId, sourcePrompt.getId());
+        when(promptRepository.findById(sourcePrompt.getId())).thenReturn(Optional.of(sourcePrompt));
+        when(taskRepository.findByIdForAssetPromotion(taskId)).thenReturn(Optional.of(sourceTask));
+
+        assertThatThrownBy(() -> workflowService.createFlow(promptRequest(sourcePrompt, taskId)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Source Prompt does not belong to the source Task");
+        verify(workflowRepository, never()).save(any(Workflow.class));
+    }
+
     private Workflow flow(String title, String description, String input) {
         LocalDateTime now = LocalDateTime.now();
         return Workflow.builder()
@@ -329,7 +504,73 @@ class WorkflowServiceTest {
     }
 
     private FlowRequest request(String title, String description, String input) {
-        return new FlowRequest(title, description, nodes(input), null, null, 0L);
+        return new FlowRequest(title, description, nodes(input), null, null, null, null, 0L);
+    }
+
+    private FlowRequest promptRequest(Prompt prompt) {
+        return promptRequest(prompt, null);
+    }
+
+    private FlowRequest promptRequest(Prompt prompt, UUID sourceTaskId) {
+        return new FlowRequest(
+                "Prompt Flow",
+                prompt.getDescription(),
+                List.of(
+                        node("input", "input", "Input"),
+                        new FlowNodeDto(
+                                "prompt",
+                                "prompt",
+                                prompt.getTitle(),
+                                prompt.getDescription(),
+                                prompt.getContent(),
+                                prompt.getId(),
+                                prompt.getTitle()
+                        ),
+                        node("ai-task", "ai-task", "Execute the Flow objective"),
+                        node("output", "output", "Return a structured result")
+                ),
+                sourceTaskId,
+                prompt.getId(),
+                null,
+                null,
+                null
+        );
+    }
+
+    private Prompt prompt(String title) {
+        LocalDateTime now = LocalDateTime.now();
+        return Prompt.builder()
+                .id(UUID.randomUUID())
+                .title(title)
+                .category("Product")
+                .description("Build a reusable product brief")
+                .content("Create a product brief for {input}")
+                .tags("Product")
+                .revision(0L)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+    }
+
+    private Task task(UUID id, UUID promptId) {
+        return Task.builder()
+                .id(id)
+                .status(Task.STATUS_COMPLETED)
+                .summary("A reusable result")
+                .sourcePromptId(promptId)
+                .build();
+    }
+
+    private void stubFlowSave() {
+        when(workflowRepository.save(any(Workflow.class))).thenAnswer(invocation -> {
+            Workflow workflow = invocation.getArgument(0);
+            LocalDateTime now = LocalDateTime.now();
+            workflow.setId(UUID.randomUUID());
+            workflow.setRevision(0L);
+            workflow.setCreatedAt(now);
+            workflow.setUpdatedAt(now);
+            return workflow;
+        });
     }
 
     private String nodesJson(String input) {

@@ -9,6 +9,17 @@ class ApiErrorMessageResolverTest {
     @Test
     void localizesCommonResourceAndValidationMessages() {
         assertThat(ApiErrorMessageResolver.resolve("Flow not found")).isEqualTo("找不到这个 Flow");
+        assertThat(ApiErrorMessageResolver.resolve("Source Prompt not found")).isEqualTo("找不到来源 Prompt");
+        assertThat(ApiErrorMessageResolver.resolve("Flow source must be either Prompt or Flow"))
+                .isEqualTo("Flow 只能保留一种来源");
+        assertThat(ApiErrorMessageResolver.resolve("Source Prompt must be included as a Prompt node"))
+                .isEqualTo("来源 Prompt 必须作为 Prompt 节点加入 Flow");
+        assertThat(ApiErrorMessageResolver.resolve("sourcePromptId is required when sourceTaskId is provided"))
+                .isEqualTo("从运行创建 Flow 时必须提供来源 Prompt");
+        assertThat(ApiErrorMessageResolver.resolve("Failed Task cannot be used as a Flow source"))
+                .isEqualTo("失败运行不能用于创建 Flow");
+        assertThat(ApiErrorMessageResolver.resolve("Source Prompt does not belong to the source Task"))
+                .isEqualTo("来源 Prompt 与运行记录不匹配");
         assertThat(ApiErrorMessageResolver.resolve("revision is required")).isEqualTo("需要提供 revision");
         assertThat(ApiErrorMessageResolver.resolve("input is required")).isEqualTo("请输入任务内容");
     }

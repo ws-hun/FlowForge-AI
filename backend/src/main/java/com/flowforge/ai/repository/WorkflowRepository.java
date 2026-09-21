@@ -12,6 +12,8 @@ import java.util.UUID;
 
 public interface WorkflowRepository extends JpaRepository<Workflow, UUID> {
 
+    Optional<Workflow> findFirstBySourceTaskIdOrderByCreatedAtAsc(UUID sourceTaskId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select workflow from Workflow workflow where workflow.id = :id")
     Optional<Workflow> findByIdForUpdate(@Param("id") UUID id);

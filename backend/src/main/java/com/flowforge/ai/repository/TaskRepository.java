@@ -15,7 +15,7 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select task from Task task where task.id = :id")
-    Optional<Task> findByIdForPromptPromotion(@Param("id") UUID id);
+    Optional<Task> findByIdForAssetPromotion(@Param("id") UUID id);
 
     List<Task> findTop6BySourcePromptIdOrderByCreatedAtDesc(UUID sourcePromptId);
 
