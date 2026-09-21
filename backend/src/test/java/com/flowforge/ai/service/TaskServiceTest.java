@@ -494,6 +494,10 @@ class TaskServiceTest {
         ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
         ObjectNode legacySnapshot = objectMapper.valueToTree(snapshot);
         legacySnapshot.remove(List.of(
+                "sourceTaskId",
+                "sourceTaskSummary",
+                "sourcePromptId",
+                "sourcePromptTitle",
                 "sourceFlowId",
                 "sourceFlowTitle",
                 "sourceFlowVersionId",
@@ -1209,6 +1213,47 @@ class TaskServiceTest {
         assertThat(response.sections().get(3).content())
                 .isEqualTo("Write for product teams and include a release checklist.");
         verifyNoInteractions(openAiService, taskRepository);
+    }
+
+    @Test
+    void preservesResultAndPromptLineageInTheImmutableFlowRunSnapshot() throws Exception {
+        UUID flowId = UUID.randomUUID();
+        UUID sourceTaskId = UUID.randomUUID();
+        UUID sourcePromptId = UUID.randomUUID();
+        LocalDateTime updatedAt = LocalDateTime.of(2026, 9, 21, 10, 30);
+        ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+        Workflow flow = Workflow.builder()
+                .id(flowId)
+                .title("Result review Flow")
+                .description("Turn a proven Result into a reusable review")
+                .sourceTaskId(sourceTaskId)
+                .sourceTaskSummary("A focused launch recommendation")
+                .sourcePromptId(sourcePromptId)
+                .sourcePromptTitle("Launch recommendation pattern")
+                .nodesJson(objectMapper.writeValueAsString(List.of(
+                        new FlowNodeDto("input-1", "input", "Context", "The decision to review", "Review the launch decision.", null, null),
+                        new FlowNodeDto("prompt-1", "prompt", "Review pattern", "The proven review instructions", "Identify risks and next actions.", sourcePromptId, null),
+                        new FlowNodeDto("ai-task-1", "ai-task", "AI review", "How the review should run", "Keep the review concise.", null, null),
+                        new FlowNodeDto("output-1", "output", "Review document", "The reusable decision record", "Return decisions and owners.", null, null)
+                )))
+                .createdAt(updatedAt.minusDays(1))
+                .updatedAt(updatedAt)
+                .build();
+        when(workflowRepository.findById(flowId)).thenReturn(Optional.of(flow));
+
+        FlowExecutionPreviewResponse preview = taskService.previewFlowExecution(
+                flowId,
+                new FlowExecutionPreviewRequest("", Map.of())
+        );
+
+        assertThat(preview.flowRunSnapshot()).satisfies(snapshot -> {
+            assertThat(snapshot.sourceTaskId()).isEqualTo(sourceTaskId);
+            assertThat(snapshot.sourceTaskSummary()).isEqualTo("A focused launch recommendation");
+            assertThat(snapshot.sourcePromptId()).isEqualTo(sourcePromptId);
+            assertThat(snapshot.sourcePromptTitle()).isEqualTo("Launch recommendation pattern");
+            assertThat(snapshot.sourceFlowId()).isNull();
+        });
+        verifyNoInteractions(openAiService, taskRepository, promptRepository, taskFailureRecorder, flowNodeArtifactService);
     }
 
     @Test
