@@ -6499,6 +6499,13 @@ a {
   }
 }
 
+.flow-origin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .flow-revision-section {
   display: grid;
   gap: 12px;
@@ -7683,6 +7690,10 @@ a {
     .ghost-button {
       width: fit-content;
     }
+  }
+
+  .flow-origin-actions {
+    justify-content: flex-start;
   }
 
   .flow-version-actions {

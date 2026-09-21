@@ -412,6 +412,10 @@ describe('workspace bootstrap', () => {
     await expect(duplicateFlow).resolves.toMatchObject({ id: 'flow-1' })
     expect(api.createPrompt).toHaveBeenCalledTimes(1)
     expect(api.createFlow).toHaveBeenCalledTimes(1)
+    expect(api.createFlow).toHaveBeenCalledWith(expect.objectContaining({
+      sourceTaskId: 'run-1',
+      sourcePromptId: 'prompt-1'
+    }))
     expect(workspace.resultFlowCreatingRunIds).toEqual([])
     expect(workspace.flowLoading).toBe(false)
   })
@@ -467,5 +471,37 @@ describe('workspace bootstrap', () => {
     })
     await secondCreation
     expect(workspace.flowLoading).toBe(false)
+    expect(api.createFlow).toHaveBeenNthCalledWith(1, expect.objectContaining({ sourceTaskId: 'run-1' }))
+    expect(api.createFlow).toHaveBeenNthCalledWith(2, expect.objectContaining({ sourceTaskId: 'run-2' }))
+  })
+
+  it('keeps direct Prompt reuse independent from Result promotion', async () => {
+    const prompt = {
+      id: 'prompt-1',
+      title: 'Reusable brief',
+      category: 'Product',
+      description: 'Prepare a product brief',
+      content: 'Build a brief for {input}',
+      tags: ['Product'],
+      favorite: false,
+      revision: 1,
+      createdAt: '2026-09-20T00:00:00Z',
+      updatedAt: '2026-09-20T00:00:00Z'
+    }
+    api.createFlow.mockResolvedValueOnce({
+      data: {
+        id: 'flow-1', title: 'Reusable brief Flow', description: prompt.description, nodes: [], revision: 1,
+        sourcePromptId: prompt.id,
+        createdAt: '2026-09-20T00:00:00Z', updatedAt: '2026-09-20T00:00:00Z'
+      }
+    })
+    const workspace = useWorkspaceStore()
+
+    await workspace.createFlowFromPrompt(prompt)
+
+    expect(api.createFlow).toHaveBeenCalledWith(expect.objectContaining({
+      sourceTaskId: null,
+      sourcePromptId: 'prompt-1'
+    }))
   })
 })

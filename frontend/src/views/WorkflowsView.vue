@@ -444,7 +444,33 @@
             <span class="section-kicker">Flow 资产</span>
             <h2>调整 Flow 目标</h2>
           </div>
-          <div v-if="workspace.activeFlow.sourceFlowId" class="flow-origin-strip">
+          <div v-if="workspace.activeFlow.sourceTaskId" class="flow-origin-strip">
+            <div>
+              <span class="section-kicker">结果派生 Flow</span>
+              <strong>{{ workspace.activeFlow.sourcePromptTitle || '已保存的 Result' }}</strong>
+              <p>{{ workspace.activeFlow.sourceTaskSummary || '由一条已完成运行的结果创建，可返回来源继续复盘。' }}</p>
+            </div>
+            <div class="flow-origin-actions">
+              <button type="button" class="ghost-button" @click="openActiveFlowSourceRun">打开运行</button>
+              <button
+                v-if="workspace.activeFlow.sourcePromptId"
+                type="button"
+                class="ghost-button"
+                @click="openActiveFlowSourcePrompt"
+              >
+                打开 Prompt
+              </button>
+            </div>
+          </div>
+          <div v-else-if="workspace.activeFlow.sourcePromptId" class="flow-origin-strip">
+            <div>
+              <span class="section-kicker">Prompt 派生 Flow</span>
+              <strong>{{ workspace.activeFlow.sourcePromptTitle || '来源 Prompt' }}</strong>
+              <p>以可复用 Prompt 为起点创建的独立 Flow，可继续调整节点与执行目标。</p>
+            </div>
+            <button type="button" class="ghost-button" @click="openActiveFlowSourcePrompt">打开 Prompt</button>
+          </div>
+          <div v-else-if="workspace.activeFlow.sourceFlowId" class="flow-origin-strip">
             <div>
               <span class="section-kicker">派生 Flow</span>
               <strong>{{ workspace.activeFlow.sourceFlowTitle || '来源 Flow' }}</strong>
@@ -2129,6 +2155,22 @@ async function openActiveFlowSource() {
   }
 
   await openSourceFlowById(sourceFlowId)
+}
+
+function openActiveFlowSourceRun() {
+  const sourceTaskId = workspace.activeFlow?.sourceTaskId
+  if (!sourceTaskId) {
+    return
+  }
+  router.push({ path: '/history', query: { run: sourceTaskId } })
+}
+
+function openActiveFlowSourcePrompt() {
+  const sourcePromptId = workspace.activeFlow?.sourcePromptId
+  if (!sourcePromptId) {
+    return
+  }
+  router.push({ path: '/prompts', query: { prompt: sourcePromptId } })
 }
 
 function flowSourceStillAvailable(snapshot: FlowRunSnapshotType) {

@@ -624,9 +624,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (!latestResult.value || !latestTaskInput.value.trim()) {
       return null
     }
-    return createResultFlowOnce(latestTaskResultKey(), async () => {
+    const sourceTaskId = latestResult.value.taskId || null
+    const resultKey = latestTaskResultKey()
+    return createResultFlowOnce(resultKey, async () => {
       const prompt = await saveLatestTaskAsPrompt()
-      return prompt ? createFlowFromPrompt(prompt) : null
+      return prompt ? createFlowFromPrompt(prompt, sourceTaskId) : null
     })
   }
 
@@ -702,7 +704,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   async function createFlowFromHistoricalResult(sourceRun: TaskHistoryItem) {
     return createResultFlowOnce(sourceRun.id, async () => {
       const prompt = await saveHistoricalResultAsPrompt(sourceRun)
-      return prompt ? createFlowFromPrompt(prompt) : null
+      return prompt ? createFlowFromPrompt(prompt, sourceRun.id) : null
     })
   }
 
@@ -791,7 +793,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     return persistNewFlowDraft(payload, 'Flow 模板创建失败')
   }
 
-  async function createFlowFromPrompt(prompt: PromptAsset) {
+  async function createFlowFromPrompt(prompt: PromptAsset, sourceTaskId: string | null = null) {
     const cleanTitle = prompt.title.trim()
     const cleanDescription = prompt.description.trim()
     const cleanContent = prompt.content.trim()
@@ -804,7 +806,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const payload: SaveFlowPayload = {
       title: buildPromptFlowTitle(cleanTitle),
       description: cleanDescription,
-      nodes: createPromptBasedFlowNodes(prompt)
+      nodes: createPromptBasedFlowNodes(prompt),
+      sourceTaskId,
+      sourcePromptId: prompt.id
     }
 
     return persistNewFlowDraft(payload, '从 Prompt 创建 Flow 失败')
@@ -948,7 +952,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     try {
       const { data } = await createFlow(payload)
       beforeActivate?.(data)
-      flowDrafts.value = [data, ...flowDrafts.value]
+      flowDrafts.value = [data, ...flowDrafts.value.filter((flow) => flow.id !== data.id)]
       activeFlowId.value = data.id
       persistActiveFlowId(data.id)
       return data
