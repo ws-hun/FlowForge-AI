@@ -1721,6 +1721,14 @@ a {
   }
 }
 
+.run-comparison-result-reuse {
+  display: grid;
+  align-items: start;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 14px;
+}
+
 .row-between {
   display: flex;
   align-items: center;
