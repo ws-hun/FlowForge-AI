@@ -142,6 +142,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Recoverable Provider Failures | Done | Provider 失败响应关联已保存运行，AI Command 与 Flow Space 可精确打开失败上下文，不再依赖时间窗口猜测 |
 | Stage 3 | Verified Run Input Comparison | Done | 运行对比优先使用 Provider 输入指纹判断输入是否一致，旧记录则诚实回退到固定执行文本 |
 | Stage 3 | Verified Provider Fan-in Comparison | Done | 运行对比使用不可变 v5 执行计划核对有序 Provider 输入声明；旧运行缺少声明时不根据当前 Flow 推断 |
+| Stage 3 | Comparison Result Reuse | Done | 运行对比中的成功 Result 可直接保存为 Prompt 或创建 Flow，复用入口沿用不可变运行 ID 与按来源隔离的 loading 状态 |
 | Stage 3 | Flow Runtime Contract Verification | Done | 自动化测试锁定预览、真实 Provider 输入、历史保存输入、编译器版本与运行轨迹指纹的一致性 |
 | Stage 3 | Versioned Node Execution Plan | Done | Preview 与不可变运行轨迹共享 `flow-plan-v5`，固定节点顺序、输入输出产物契约、输入解析方式与唯一 Provider 边界 |
 | Stage 3 | Execution Plan Shape Integrity | Done | 服务端在运行轨迹与节点产物落库前校验 linear 顺序、节点职责、唯一 Provider 边界、产物链和依赖声明，防止现代计划漂移 |
@@ -234,6 +235,7 @@ History 以时间线保留每一次可追溯运行，不使用表格作为核心
 | 任意带 Flow 来源的历史运行直接回到 Flow Space 检查 | Done |
 | 精确重跑与来源运行对比 | Done |
 | 失败来源与恢复重跑的节点轨迹对比 | Done |
+| 对比结果直接保存 Prompt / 创建 Flow | Done |
 | 失败运行上下文保留与恢复 | Done |
 | 历史 Result 继续创作 / 保存 Prompt / 创建 Flow | Done |
 
