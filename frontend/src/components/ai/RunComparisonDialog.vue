@@ -74,8 +74,26 @@
             compact
             :show-raw="false"
           />
-          <div v-if="sourceRun.status !== 'failed'" class="run-comparison-pane-actions">
-            <button type="button" class="secondary-button" @click="emit('continue', sourceRun)">用此结果继续</button>
+          <div class="run-comparison-pane-actions">
+            <button
+              v-if="flowIdFor(sourceRun)"
+              type="button"
+              class="ghost-button"
+              @click="emit('open-flow', sourceRun)"
+            >
+              打开执行 Flow
+            </button>
+            <button
+              v-if="originFor(sourceRun)"
+              type="button"
+              class="ghost-button"
+              @click="emit('open-origin', sourceRun)"
+            >
+              {{ originLabel(sourceRun) }}
+            </button>
+            <button v-if="sourceRun.status !== 'failed'" type="button" class="secondary-button" @click="emit('continue', sourceRun)">
+              用此结果继续
+            </button>
           </div>
         </section>
 
@@ -112,8 +130,26 @@
             compact
             :show-raw="false"
           />
-          <div v-if="targetRun.status !== 'failed'" class="run-comparison-pane-actions">
-            <button type="button" class="secondary-button" @click="emit('continue', targetRun)">用此结果继续</button>
+          <div class="run-comparison-pane-actions">
+            <button
+              v-if="flowIdFor(targetRun)"
+              type="button"
+              class="ghost-button"
+              @click="emit('open-flow', targetRun)"
+            >
+              打开执行 Flow
+            </button>
+            <button
+              v-if="originFor(targetRun)"
+              type="button"
+              class="ghost-button"
+              @click="emit('open-origin', targetRun)"
+            >
+              {{ originLabel(targetRun) }}
+            </button>
+            <button v-if="targetRun.status !== 'failed'" type="button" class="secondary-button" @click="emit('continue', targetRun)">
+              用此结果继续
+            </button>
           </div>
         </section>
       </div>
@@ -148,6 +184,8 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   close: []
   continue: [run: TaskHistoryItem]
+  'open-flow': [run: TaskHistoryItem]
+  'open-origin': [run: TaskHistoryItem]
 }>()
 
 const targetLabel = computed(() => {
@@ -259,6 +297,40 @@ function formatFlowOrigin(kind: RunFlowOriginKind | null, title: string | null) 
   if (!kind) return '未记录来源'
   const kindLabel = kind === 'result' ? 'Result' : kind === 'prompt' ? 'Prompt' : 'Flow'
   return title ? `${kindLabel}「${title}」` : kindLabel
+}
+
+function flowIdFor(run: TaskHistoryItem) {
+  return run.flowRunSnapshot?.flowId || run.sourceFlowId || null
+}
+
+function originFor(run: TaskHistoryItem) {
+  const snapshot = run.flowRunSnapshot
+  if (snapshot?.sourceTaskId) {
+    return { kind: 'result' as const, id: snapshot.sourceTaskId }
+  }
+  if (snapshot?.sourcePromptId) {
+    return { kind: 'prompt' as const, id: snapshot.sourcePromptId }
+  }
+  if (snapshot?.sourceFlowId) {
+    return { kind: 'flow' as const, id: snapshot.sourceFlowId }
+  }
+  if (run.sourcePromptId) {
+    return { kind: 'prompt' as const, id: run.sourcePromptId }
+  }
+  if (run.sourceFlowId) {
+    return { kind: 'flow' as const, id: run.sourceFlowId }
+  }
+  return null
+}
+
+function originLabel(run: TaskHistoryItem) {
+  const origin = originFor(run)
+  if (!origin) return '打开创作来源'
+  return origin.kind === 'result'
+    ? '打开来源 Result'
+    : origin.kind === 'prompt'
+      ? '打开来源 Prompt'
+      : '打开来源 Flow'
 }
 
 function handleOpenChange(value: boolean) {

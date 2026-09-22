@@ -220,6 +220,8 @@
       :mode="comparisonMode"
       @close="closeComparison"
       @continue="continueFromRun"
+      @open-flow="openComparisonFlow"
+      @open-origin="openComparisonOrigin"
     />
   </section>
 </template>
@@ -427,6 +429,34 @@ function compareWithSource(targetRun: TaskHistoryItem) {
   const sourceRun = lineageSource(targetRun)
   if (sourceRun) {
     openComparison(sourceRun, targetRun, lineageMode(targetRun))
+  }
+}
+
+function openComparisonFlow(run: TaskHistoryItem) {
+  const flowId = run.flowRunSnapshot?.flowId || run.sourceFlowId
+  if (!flowId) {
+    return
+  }
+  closeComparison()
+  router.push({ path: '/workflows', query: { flow: flowId, run: run.id } })
+}
+
+function openComparisonOrigin(run: TaskHistoryItem) {
+  const snapshot = run.flowRunSnapshot
+  if (snapshot?.sourceTaskId) {
+    closeComparison()
+    router.push({ path: '/history', query: { run: snapshot.sourceTaskId } })
+    return
+  }
+  if (snapshot?.sourcePromptId || run.sourcePromptId) {
+    closeComparison()
+    router.push({ path: '/prompts', query: { prompt: snapshot?.sourcePromptId || run.sourcePromptId || undefined } })
+    return
+  }
+  const sourceFlowId = snapshot?.sourceFlowId || run.sourceFlowId
+  if (sourceFlowId) {
+    closeComparison()
+    router.push({ path: '/workflows', query: { flow: sourceFlowId } })
   }
 }
 
