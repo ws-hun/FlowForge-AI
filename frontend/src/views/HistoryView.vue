@@ -218,10 +218,15 @@
       :source-run="comparisonSource"
       :target-run="comparisonTarget"
       :mode="comparisonMode"
+      :has-prompt-for-run="hasTaskPrompt"
+      :is-prompt-saving="workspace.isTaskPromptSaving"
+      :is-flow-creating="workspace.isResultFlowCreating"
       @close="closeComparison"
       @continue="continueFromRun"
       @open-flow="openComparisonFlow"
       @open-origin="openComparisonOrigin"
+      @save-as-prompt="saveComparisonAsPrompt"
+      @create-flow="createComparisonFlow"
     />
   </section>
 </template>
@@ -573,25 +578,56 @@ function inspectTaskInFlow(task: TaskHistoryItem) {
   })
 }
 
-async function saveRunAsPrompt(task: TaskHistoryItem) {
+async function saveRunAsPrompt(task: TaskHistoryItem, openExisting = true) {
   const existingPrompt = workspace.taskPromptsByRunId[task.id]
   if (existingPrompt) {
-    router.push({ path: '/prompts', query: { prompt: existingPrompt.id } })
-    return
+    if (openExisting) {
+      router.push({ path: '/prompts', query: { prompt: existingPrompt.id } })
+    }
+    return existingPrompt
   }
 
   const prompt = await workspace.saveHistoricalResultAsPrompt(task)
   if (prompt) {
     ElMessage.success('历史结果已沉淀为 Prompt')
   }
+  return prompt
 }
 
 async function createFlowFromRun(task: TaskHistoryItem) {
-  const flow = await workspace.createFlowFromHistoricalResult(task)
+  const flow = await createResultFlow(task)
+  if (!flow) {
+    return null
+  }
+  ElMessage.success('已从历史 Result 创建 Flow')
+  router.push({ path: '/workflows', query: { flow: flow.id } })
+  return flow
+}
+
+function hasTaskPrompt(runId: string) {
+  return Boolean(workspace.taskPromptsByRunId[runId])
+}
+
+async function saveComparisonAsPrompt(task: TaskHistoryItem) {
+  const prompt = await saveRunAsPrompt(task, false)
+  if (!prompt) {
+    return
+  }
+  closeComparison()
+  router.push({ path: '/prompts', query: { prompt: prompt.id } })
+}
+
+async function createResultFlow(task: TaskHistoryItem) {
+  return workspace.createFlowFromHistoricalResult(task)
+}
+
+async function createComparisonFlow(task: TaskHistoryItem) {
+  const flow = await createResultFlow(task)
   if (!flow) {
     return
   }
   ElMessage.success('已从历史 Result 创建 Flow')
+  closeComparison()
   router.push({ path: '/workflows', query: { flow: flow.id } })
 }
 

@@ -95,6 +95,30 @@
               用此结果继续
             </button>
           </div>
+          <section v-if="sourceRun.status !== 'failed'" class="history-result-reuse run-comparison-result-reuse">
+            <div>
+              <span class="section-kicker">复用 Result</span>
+              <strong>把来源结果带回下一次创作。</strong>
+            </div>
+            <div class="history-result-reuse-actions">
+              <button
+                type="button"
+                class="ghost-button"
+                :disabled="props.isPromptSaving(sourceRun.id)"
+                @click="emit('save-as-prompt', sourceRun)"
+              >
+                {{ promptActionLabel(sourceRun) }}
+              </button>
+              <button
+                type="button"
+                class="secondary-button"
+                :disabled="props.isPromptSaving(sourceRun.id) || props.isFlowCreating(sourceRun.id)"
+                @click="emit('create-flow', sourceRun)"
+              >
+                {{ props.isFlowCreating(sourceRun.id) ? '创建中...' : '从 Result 创建 Flow' }}
+              </button>
+            </div>
+          </section>
         </section>
 
         <section class="run-comparison-pane current">
@@ -151,6 +175,30 @@
               用此结果继续
             </button>
           </div>
+          <section v-if="targetRun.status !== 'failed'" class="history-result-reuse run-comparison-result-reuse">
+            <div>
+              <span class="section-kicker">复用 Result</span>
+              <strong>把本次结果带回下一次创作。</strong>
+            </div>
+            <div class="history-result-reuse-actions">
+              <button
+                type="button"
+                class="ghost-button"
+                :disabled="props.isPromptSaving(targetRun.id)"
+                @click="emit('save-as-prompt', targetRun)"
+              >
+                {{ promptActionLabel(targetRun) }}
+              </button>
+              <button
+                type="button"
+                class="secondary-button"
+                :disabled="props.isPromptSaving(targetRun.id) || props.isFlowCreating(targetRun.id)"
+                @click="emit('create-flow', targetRun)"
+              >
+                {{ props.isFlowCreating(targetRun.id) ? '创建中...' : '从 Result 创建 Flow' }}
+              </button>
+            </div>
+          </section>
         </section>
       </div>
     </div>
@@ -177,8 +225,14 @@ const props = withDefaults(defineProps<{
   sourceRun: TaskHistoryItem | null
   targetRun: TaskHistoryItem | null
   mode?: 'rerun' | 'recovery' | 'continuation' | 'input-variant'
+  hasPromptForRun?: (runId: string) => boolean
+  isPromptSaving?: (runId: string) => boolean
+  isFlowCreating?: (runId: string) => boolean
 }>(), {
-  mode: 'rerun'
+  mode: 'rerun',
+  hasPromptForRun: () => false,
+  isPromptSaving: () => false,
+  isFlowCreating: () => false
 })
 
 const emit = defineEmits<{
@@ -186,7 +240,15 @@ const emit = defineEmits<{
   continue: [run: TaskHistoryItem]
   'open-flow': [run: TaskHistoryItem]
   'open-origin': [run: TaskHistoryItem]
+  'save-as-prompt': [run: TaskHistoryItem]
+  'create-flow': [run: TaskHistoryItem]
 }>()
+
+function promptActionLabel(run: TaskHistoryItem) {
+  if (props.hasPromptForRun(run.id)) return '打开 Prompt'
+  if (props.isPromptSaving(run.id)) return '保存中...'
+  return '保存为 Prompt'
+}
 
 const targetLabel = computed(() => {
   if (props.mode === 'recovery') return '恢复运行'
