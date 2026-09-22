@@ -132,6 +132,8 @@ The History comparison surface also separates three kinds of execution evidence:
 
 It additionally compares Flow asset identity and creation origin from the immutable `flowRunSnapshot`. Flow ID, source Task/Prompt/Flow ID, intermediate Prompt identity for Result promotion, and source Flow revision identity are compared as saved identifiers; titles are display-only. This allows different Flow assets to retain a shared creation origin without being reported as the same Flow. Missing snapshots or undeclared legacy origins remain unavailable and are never reconstructed from current assets.
 
+The comparison UI uses the same snapshot IDs for navigation. It can reopen the executed Flow while preserving the run ID, or open the saved Result, Prompt, or source Flow origin directly; it never waits for a mutable asset list to establish the identity of the target.
+
 The third comparison uses the saved v5 runtime contract to identify one Provider call and one initial Attempt for current Flow runs. Task-level Provider and model metadata can still be compared for older records, but missing call or Attempt fields remain `unknown`; they are never treated as differences and are never reconstructed from the current Provider Vault. A comparison can therefore report a concrete difference while also marking another field as unverifiable.
 
 Exact historical reruns use the stored Task input. They do not recompile the old Flow. When the source trace has a plan, the new replay preserves that immutable plan and records `stored-input-replay` plus the source Task ID.

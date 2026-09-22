@@ -78,6 +78,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Idempotent Result-to-Flow Promotion | Done | 跨刷新、标签页与客户端按不可变 Task 串行创建 Result Flow；重复请求返回原资产，普通 Prompt 复用仍可创建多个独立 Flow |
 | Stage 3 | Immutable Flow Origin Snapshots | Done | Flow 执行时固化 Result、Prompt 或来源 Flow 的创作谱系，History 与 Flow Space 可从不可变快照返回真实来源 |
 | Stage 3 | Flow Origin Comparison | Done | 运行对比分离核验 Flow 资产身份与 Result / Prompt / Flow 创作来源，旧快照缺失证据时保持未核验 |
+| Stage 3 | Comparison Source Navigation | Done | 从运行对比直接回到执行 Flow、来源 Result、Prompt 或来源 Flow，继续当前创作上下文 |
 | Stage 3 | Flow Result Reuse | Done | Flow 结果可带入下一轮、保存为 Prompt、加入当前 Flow |
 | Stage 3 | Node Reuse | Done | Flow 节点可沉淀为 Prompt，也可单独带入 Task 试跑 |
 | Stage 3 | Prompt Asset Provenance | Done | 从 AI 结果或 Flow 节点沉淀的 Prompt 固化来源运行、Flow、节点与原 Prompt，并可回到来源继续创作 |
@@ -833,6 +834,8 @@ DELETE /api/prompts/{id}?revision={revision}
 每次 Flow 预览与执行都会把该 Flow 当时的创作来源写入 `flowRunSnapshot`。Result 派生 Flow 固化来源 Task 摘要与中间 Prompt，Prompt 派生 Flow 固化来源 Prompt，修订分支固化来源 Flow 与版本；History 和 Flow Space 只展示快照中真实存在的证据，不会用当前资产状态补写旧运行来源。
 
 运行对比会分别核验两侧保存的 Flow 资产 ID 与创作来源 ID，因此能够区分“同一 Flow 与同一来源”“不同 Flow 但复用同一 Prompt/Result 来源”以及“来源已经变化”。来源标题只用于可读展示，不参与身份判断；缺少 `flowRunSnapshot` 或来源字段的旧运行保持未核验。
+
+运行对比的两侧面板还提供来源动作：可回到本次执行的 Flow，或打开快照中保存的来源 Result、Prompt、来源 Flow。跳转只使用不可变运行快照里的 ID，并保留当前运行深链，不依赖当前资产列表是否已经载入。
 
 每个 Prompt 响应包含单调递增的 `revision`。编辑请求在 `PUT` 请求体中回传当前修订号，收藏与恢复使用 `{ "revision": n }`，删除使用同名查询参数。过期请求返回 `409 Conflict`；编辑器会读取最新资产基线但保留当前输入，由用户继续保存本地版本或显式采用最新版本。
 
