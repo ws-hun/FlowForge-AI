@@ -38,6 +38,8 @@
         </div>
       </section>
 
+      <RunFlowSnapshotComparison :source-run="sourceRun" :target-run="targetRun" />
+
       <RunExecutionEvidenceComparison :source-run="sourceRun" :target-run="targetRun" />
 
       <div class="run-comparison-grid">
@@ -210,6 +212,7 @@ import { computed } from 'vue'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import ExecutionInputArchive from '@/components/ai/ExecutionInputArchive.vue'
 import RunExecutionEvidenceComparison from '@/components/ai/RunExecutionEvidenceComparison.vue'
+import RunFlowSnapshotComparison from '@/components/ai/RunFlowSnapshotComparison.vue'
 import FlowRunTrace from '@/components/flow/FlowRunTrace.vue'
 import { formatExecutionSource } from '@/utils/aiProvider'
 import {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   compareRunExecutionInputs,
   compareRunFlowOrigins,
+  compareRunFlowSnapshots,
   compareRunProviderExecution,
   compareRunProviderInputDeclarations
 } from '../runComparison'
@@ -262,6 +263,98 @@ describe('run Flow origin comparison', () => {
       relation: 'unavailable',
       flowRelation: 'same',
       originRelation: 'unavailable'
+    })
+  })
+})
+
+describe('run Flow snapshot comparison', () => {
+  const node = (id: string, title: string, content = title): FlowRunSnapshot['nodes'][number] => ({
+    id,
+    type: 'prompt',
+    title,
+    description: `${title} description`,
+    content
+  })
+
+  it('confirms equal immutable Flow execution context', () => {
+    const saved = snapshot({
+      nodes: [node('a', 'Intent'), node('b', 'Draft')],
+      runtimeContext: 'Prepare a launch memo',
+      variableValues: { audience: 'product teams' }
+    })
+
+    expect(compareRunFlowSnapshots(
+      run('source', undefined, undefined, { flowRunSnapshot: saved }),
+      run('target', undefined, undefined, { flowRunSnapshot: structuredClone(saved) })
+    )).toEqual({
+      relation: 'same',
+      verification: 'saved-flow-snapshot',
+      sourceNodeCount: 2,
+      targetNodeCount: 2,
+      changes: []
+    })
+  })
+
+  it('describes metadata, node, context, and variable changes from source to target', () => {
+    const source = snapshot({
+      nodes: [node('a', 'Intent'), node('b', 'Draft'), node('c', 'Deliver')],
+      runtimeContext: 'First launch',
+      variableValues: { audience: 'product teams', tone: 'calm' }
+    })
+    const target = snapshot({
+      title: 'Launch Flow v2',
+      description: 'Prepare and review the launch',
+      nodes: [node('c', 'Deliver'), node('a', 'Intent', 'Updated intent'), node('d', 'Review')],
+      runtimeContext: 'Second launch',
+      variableValues: { audience: 'enterprise teams', format: 'memo' }
+    })
+
+    expect(compareRunFlowSnapshots(
+      run('source', undefined, undefined, { flowRunSnapshot: source }),
+      run('target', undefined, undefined, { flowRunSnapshot: target })
+    )).toEqual({
+      relation: 'different',
+      verification: 'saved-flow-snapshot',
+      sourceNodeCount: 3,
+      targetNodeCount: 3,
+      changes: [
+        { key: 'title', kind: 'title', title: 'Flow 名称' },
+        { key: 'description', kind: 'description', title: 'Flow 目标' },
+        { key: 'runtime-context', kind: 'runtime-context', title: '运行说明' },
+        { key: 'node-updated:a', kind: 'node-updated', title: 'Intent' },
+        { key: 'node-removed:b', kind: 'node-removed', title: 'Draft' },
+        { key: 'node-reordered:c', kind: 'node-reordered', title: 'Deliver' },
+        { key: 'node-added:d', kind: 'node-added', title: 'Review' },
+        { key: 'variable-updated:audience', kind: 'variable-updated', title: '{audience}' },
+        { key: 'variable-removed:tone', kind: 'variable-removed', title: '{tone}' },
+        { key: 'variable-added:format', kind: 'variable-added', title: '{format}' }
+      ]
+    })
+  })
+
+  it('does not report reorder when shared node order is unchanged', () => {
+    const source = snapshot({ nodes: [node('a', 'Intent'), node('b', 'Draft'), node('c', 'Deliver')] })
+    const target = snapshot({ nodes: [node('a', 'Intent'), node('c', 'Deliver'), node('d', 'Review')] })
+
+    expect(compareRunFlowSnapshots(
+      run('source', undefined, undefined, { flowRunSnapshot: source }),
+      run('target', undefined, undefined, { flowRunSnapshot: target })
+    ).changes).toEqual([
+      { key: 'node-removed:b', kind: 'node-removed', title: 'Draft' },
+      { key: 'node-added:d', kind: 'node-added', title: 'Review' }
+    ])
+  })
+
+  it('keeps missing legacy snapshots unavailable', () => {
+    expect(compareRunFlowSnapshots(
+      run('legacy', undefined, undefined, { flowRunSnapshot: null }),
+      run('modern', undefined, undefined, { flowRunSnapshot: snapshot({ nodes: [node('a', 'Intent')] }) })
+    )).toEqual({
+      relation: 'unavailable',
+      verification: 'saved-flow-snapshot',
+      sourceNodeCount: null,
+      targetNodeCount: 1,
+      changes: []
     })
   })
 })

@@ -1,4 +1,4 @@
-import type { FlowArtifactContract, TaskHistoryItem } from '@/types'
+import type { FlowArtifactContract, FlowNode, FlowRunSnapshot, TaskHistoryItem } from '@/types'
 
 export type RunInputComparison = {
   relation: 'same' | 'different'
@@ -40,6 +40,32 @@ export type RunFlowOriginComparison = {
   source: RunFlowOriginEvidence | null
   target: RunFlowOriginEvidence | null
   differences: RunFlowOriginDifference[]
+}
+
+export type RunFlowSnapshotChangeKind =
+  | 'title'
+  | 'description'
+  | 'runtime-context'
+  | 'node-added'
+  | 'node-removed'
+  | 'node-updated'
+  | 'node-reordered'
+  | 'variable-added'
+  | 'variable-removed'
+  | 'variable-updated'
+
+export type RunFlowSnapshotChange = {
+  key: string
+  kind: RunFlowSnapshotChangeKind
+  title: string
+}
+
+export type RunFlowSnapshotComparison = {
+  relation: 'same' | 'different' | 'unavailable'
+  verification: 'saved-flow-snapshot'
+  sourceNodeCount: number | null
+  targetNodeCount: number | null
+  changes: RunFlowSnapshotChange[]
 }
 
 export type RunProviderExecutionComparison = {
@@ -168,6 +194,44 @@ export function compareRunFlowOrigins(
   }
 }
 
+export function compareRunFlowSnapshots(
+  sourceRun: TaskHistoryItem,
+  targetRun: TaskHistoryItem
+): RunFlowSnapshotComparison {
+  const source = sourceRun.flowRunSnapshot
+  const target = targetRun.flowRunSnapshot
+  if (!source || !target) {
+    return {
+      relation: 'unavailable',
+      verification: 'saved-flow-snapshot',
+      sourceNodeCount: source?.nodes.length ?? null,
+      targetNodeCount: target?.nodes.length ?? null,
+      changes: []
+    }
+  }
+
+  const changes: RunFlowSnapshotChange[] = []
+  if (source.title !== target.title) {
+    changes.push({ key: 'title', kind: 'title', title: 'Flow 名称' })
+  }
+  if (source.description !== target.description) {
+    changes.push({ key: 'description', kind: 'description', title: 'Flow 目标' })
+  }
+  if (source.runtimeContext !== target.runtimeContext) {
+    changes.push({ key: 'runtime-context', kind: 'runtime-context', title: '运行说明' })
+  }
+  changes.push(...compareSnapshotNodes(source.nodes, target.nodes))
+  changes.push(...compareSnapshotVariables(source.variableValues, target.variableValues))
+
+  return {
+    relation: changes.length ? 'different' : 'same',
+    verification: 'saved-flow-snapshot',
+    sourceNodeCount: source.nodes.length,
+    targetNodeCount: target.nodes.length,
+    changes
+  }
+}
+
 export function compareRunProviderExecution(
   sourceRun: TaskHistoryItem,
   targetRun: TaskHistoryItem
@@ -236,6 +300,85 @@ function compareFlowOriginField<T>(
   differences: RunFlowOriginDifference[]
 ) {
   if (source !== target) differences.push(difference)
+}
+
+function compareSnapshotNodes(sourceNodes: FlowNode[], targetNodes: FlowNode[]) {
+  const sourceById = new Map(sourceNodes.map((node) => [node.id, node]))
+  const targetById = new Map(targetNodes.map((node) => [node.id, node]))
+  const sourceSharedOrder = sourceNodes.filter((node) => targetById.has(node.id)).map((node) => node.id)
+  const targetSharedOrder = targetNodes.filter((node) => sourceById.has(node.id)).map((node) => node.id)
+  const sourceIndexes = new Map(sourceSharedOrder.map((id, index) => [id, index]))
+  const targetIndexes = new Map(targetSharedOrder.map((id, index) => [id, index]))
+  const changes: RunFlowSnapshotChange[] = []
+
+  sourceNodes.forEach((sourceNode) => {
+    const targetNode = targetById.get(sourceNode.id)
+    if (!targetNode) {
+      changes.push({
+        key: `node-removed:${sourceNode.id}`,
+        kind: 'node-removed',
+        title: sourceNode.title
+      })
+      return
+    }
+    if (!sameFlowNode(sourceNode, targetNode)) {
+      changes.push({
+        key: `node-updated:${sourceNode.id}`,
+        kind: 'node-updated',
+        title: targetNode.title
+      })
+      return
+    }
+    if (sourceIndexes.get(sourceNode.id) !== targetIndexes.get(sourceNode.id)) {
+      changes.push({
+        key: `node-reordered:${sourceNode.id}`,
+        kind: 'node-reordered',
+        title: targetNode.title
+      })
+    }
+  })
+
+  targetNodes.forEach((targetNode) => {
+    if (!sourceById.has(targetNode.id)) {
+      changes.push({
+        key: `node-added:${targetNode.id}`,
+        kind: 'node-added',
+        title: targetNode.title
+      })
+    }
+  })
+  return changes
+}
+
+function compareSnapshotVariables(
+  sourceVariables: FlowRunSnapshot['variableValues'],
+  targetVariables: FlowRunSnapshot['variableValues']
+) {
+  const source = sourceVariables || {}
+  const target = targetVariables || {}
+  const names = new Set([...Object.keys(source), ...Object.keys(target)])
+  return Array.from(names).flatMap<RunFlowSnapshotChange>((name) => {
+    const sourceHasValue = Object.prototype.hasOwnProperty.call(source, name)
+    const targetHasValue = Object.prototype.hasOwnProperty.call(target, name)
+    if (!sourceHasValue) {
+      return [{ key: `variable-added:${name}`, kind: 'variable-added', title: `{${name}}` }]
+    }
+    if (!targetHasValue) {
+      return [{ key: `variable-removed:${name}`, kind: 'variable-removed', title: `{${name}}` }]
+    }
+    return source[name] === target[name]
+      ? []
+      : [{ key: `variable-updated:${name}`, kind: 'variable-updated', title: `{${name}}` }]
+  })
+}
+
+function sameFlowNode(source: FlowNode, target: FlowNode) {
+  return source.type === target.type
+    && source.title === target.title
+    && source.description === target.description
+    && source.content === target.content
+    && source.promptId === target.promptId
+    && source.promptTitle === target.promptTitle
 }
 
 function completeFlowOrigin(evidence: RunFlowOriginEvidence) {
