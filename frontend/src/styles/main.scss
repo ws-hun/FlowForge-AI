@@ -1464,6 +1464,61 @@ a {
   background: tokens.$surface;
 }
 
+.flow-snapshot-content-comparison {
+  margin-top: -8px;
+  padding-block: 11px;
+  background: tokens.$surface;
+}
+
+.flow-snapshot-comparison-body {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 10px;
+
+  > small {
+    color: tokens.$text-muted;
+    font-size: 11px;
+  }
+}
+
+.flow-snapshot-change-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border: 1px solid rgba(245, 158, 11, 0.14);
+    border-radius: tokens.$radius-sm;
+    background: rgba(245, 158, 11, 0.06);
+  }
+
+  span {
+    color: #9a6700;
+    font-family: tokens.$mono;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  strong {
+    max-width: 240px;
+    overflow: hidden;
+    color: tokens.$text-secondary;
+    font-size: 11px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 .execution-evidence-comparison {
   margin-top: -8px;
   background: tokens.$surface;
