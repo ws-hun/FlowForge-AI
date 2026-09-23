@@ -136,6 +136,8 @@ The comparison UI uses the same snapshot IDs for navigation. It can reopen the e
 
 The comparison UI also exposes a field-level explanation of saved Flow context. This is a frontend comparison of the two immutable `FlowRunSnapshot` payloads and covers Flow metadata, runtime context, variable names, node content, node membership, and shared-node order. It is explanatory evidence only; it does not alter the runtime plan, recompile a historical run, or infer missing legacy snapshot fields from the current Flow editor.
 
+Branching from either comparison side copies the saved Flow definition into a new editable Flow with fresh node IDs and seeds its first Run Brief from the snapshot. This is asset creation, not historical replay: it does not mutate the source Task, reuse its Result as execution output, or claim that the new Flow has already run. A failed source can therefore preserve useful structure without promoting its failed Result.
+
 The third comparison uses the saved v5 runtime contract to identify one Provider call and one initial Attempt for current Flow runs. Task-level Provider and model metadata can still be compared for older records, but missing call or Attempt fields remain `unknown`; they are never treated as differences and are never reconstructed from the current Provider Vault. A comparison can therefore report a concrete difference while also marking another field as unverifiable.
 
 Exact historical reruns use the stored Task input. They do not recompile the old Flow. When the source trace has a plan, the new replay preserves that immutable plan and records `stored-input-replay` plus the source Task ID.
