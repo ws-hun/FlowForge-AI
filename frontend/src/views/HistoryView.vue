@@ -221,12 +221,14 @@
       :has-prompt-for-run="hasTaskPrompt"
       :is-prompt-saving="workspace.isTaskPromptSaving"
       :is-flow-creating="workspace.isResultFlowCreating"
+      :is-snapshot-flow-creating="isComparisonSnapshotCreating"
       @close="closeComparison"
       @continue="continueFromRun"
       @open-flow="openComparisonFlow"
       @open-origin="openComparisonOrigin"
       @save-as-prompt="saveComparisonAsPrompt"
       @create-flow="createComparisonFlow"
+      @create-snapshot-flow="createComparisonSnapshotFlow"
     />
   </section>
 </template>
@@ -259,6 +261,7 @@ const comparisonOpen = ref(false)
 const comparisonSource = ref<TaskHistoryItem | null>(null)
 const comparisonTarget = ref<TaskHistoryItem | null>(null)
 const comparisonMode = ref<'rerun' | 'recovery' | 'continuation' | 'input-variant'>('rerun')
+const comparisonSnapshotCreatingRunIds = ref<string[]>([])
 type HistoryScope = 'all' | 'flow' | 'prompt' | 'failed'
 const historyQuery = ref('')
 const historyScope = ref<HistoryScope>('all')
@@ -629,6 +632,28 @@ async function createComparisonFlow(task: TaskHistoryItem) {
   ElMessage.success('已从历史 Result 创建 Flow')
   closeComparison()
   router.push({ path: '/workflows', query: { flow: flow.id } })
+}
+
+function isComparisonSnapshotCreating(runId: string) {
+  return comparisonSnapshotCreatingRunIds.value.includes(runId)
+}
+
+async function createComparisonSnapshotFlow(task: TaskHistoryItem) {
+  if (!task.flowRunSnapshot || isComparisonSnapshotCreating(task.id)) {
+    return
+  }
+  comparisonSnapshotCreatingRunIds.value = [...comparisonSnapshotCreatingRunIds.value, task.id]
+  try {
+    const flow = await workspace.createFlowFromRunSnapshot(task.flowRunSnapshot)
+    if (!flow) {
+      return
+    }
+    ElMessage.success('已从运行快照创建 Flow，并带入当时的运行上下文')
+    closeComparison()
+    router.push({ path: '/workflows', query: { flow: flow.id } })
+  } finally {
+    comparisonSnapshotCreatingRunIds.value = comparisonSnapshotCreatingRunIds.value.filter((id) => id !== task.id)
+  }
 }
 
 function createInputVariant(task: TaskHistoryItem) {

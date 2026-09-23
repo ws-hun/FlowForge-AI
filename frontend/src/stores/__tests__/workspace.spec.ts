@@ -504,4 +504,61 @@ describe('workspace bootstrap', () => {
       sourcePromptId: 'prompt-1'
     }))
   })
+
+  it('branches an immutable run snapshot with fresh node identity and its run brief', async () => {
+    api.listFlows.mockResolvedValueOnce({
+      data: [{
+        id: 'source-flow',
+        title: 'Launch Flow',
+        description: 'Prepare a launch plan',
+        nodes: [],
+        revision: 1,
+        createdAt: '2026-09-20T00:00:00Z',
+        updatedAt: '2026-09-20T00:00:00Z'
+      }]
+    })
+    api.createFlow.mockImplementationOnce(async (payload) => ({
+      data: {
+        id: 'branched-flow',
+        ...payload,
+        revision: 0,
+        createdAt: '2026-09-23T00:00:00Z',
+        updatedAt: '2026-09-23T00:00:00Z'
+      }
+    }))
+    const workspace = useWorkspaceStore()
+    await workspace.loadFlowDrafts()
+
+    const flow = await workspace.createFlowFromRunSnapshot({
+      flowId: 'source-flow',
+      title: 'Launch Flow',
+      description: 'Prepare a launch plan',
+      nodes: [{
+        id: 'historical-node',
+        type: 'prompt',
+        title: 'Launch brief',
+        description: 'Write the launch brief',
+        content: 'Prepare a brief for {audience}'
+      }],
+      flowUpdatedAt: '2026-09-20T00:00:00Z',
+      runtimeContext: 'Focus on launch readiness',
+      variableValues: { audience: 'product teams' }
+    })
+
+    expect(flow?.id).toBe('branched-flow')
+    expect(api.createFlow).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Launch Flow 续作',
+      description: 'Prepare a launch plan',
+      sourceFlowId: 'source-flow',
+      nodes: [expect.objectContaining({ title: 'Launch brief' })]
+    }))
+    const payload = api.createFlow.mock.calls[0][0]
+    expect(payload.nodes[0].id).not.toBe('historical-node')
+    expect(workspace.consumeFlowRunSeed('branched-flow')).toEqual({
+      flowId: 'branched-flow',
+      runtimeContext: 'Focus on launch readiness',
+      variableValues: { audience: 'product teams' }
+    })
+    expect(workspace.consumeFlowRunSeed('branched-flow')).toBeNull()
+  })
 })

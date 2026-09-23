@@ -97,13 +97,14 @@
               用此结果继续
             </button>
           </div>
-          <section v-if="sourceRun.status !== 'failed'" class="history-result-reuse run-comparison-result-reuse">
+          <section v-if="canReuseRun(sourceRun)" class="history-result-reuse run-comparison-result-reuse">
             <div>
-              <span class="section-kicker">复用 Result</span>
-              <strong>把来源结果带回下一次创作。</strong>
+              <span class="section-kicker">继续创作</span>
+              <strong>{{ reuseDescription(sourceRun, '来源') }}</strong>
             </div>
             <div class="history-result-reuse-actions">
               <button
+                v-if="sourceRun.status !== 'failed'"
                 type="button"
                 class="ghost-button"
                 :disabled="props.isPromptSaving(sourceRun.id)"
@@ -112,12 +113,22 @@
                 {{ promptActionLabel(sourceRun) }}
               </button>
               <button
+                v-if="sourceRun.status !== 'failed'"
                 type="button"
                 class="secondary-button"
                 :disabled="props.isPromptSaving(sourceRun.id) || props.isFlowCreating(sourceRun.id)"
                 @click="emit('create-flow', sourceRun)"
               >
                 {{ props.isFlowCreating(sourceRun.id) ? '创建中...' : '从 Result 创建 Flow' }}
+              </button>
+              <button
+                v-if="sourceRun.flowRunSnapshot"
+                type="button"
+                class="ghost-button"
+                :disabled="props.isSnapshotFlowCreating(sourceRun.id)"
+                @click="emit('create-snapshot-flow', sourceRun)"
+              >
+                {{ props.isSnapshotFlowCreating(sourceRun.id) ? '创建中...' : '从运行快照创建 Flow' }}
               </button>
             </div>
           </section>
@@ -177,13 +188,14 @@
               用此结果继续
             </button>
           </div>
-          <section v-if="targetRun.status !== 'failed'" class="history-result-reuse run-comparison-result-reuse">
+          <section v-if="canReuseRun(targetRun)" class="history-result-reuse run-comparison-result-reuse">
             <div>
-              <span class="section-kicker">复用 Result</span>
-              <strong>把本次结果带回下一次创作。</strong>
+              <span class="section-kicker">继续创作</span>
+              <strong>{{ reuseDescription(targetRun, '本次') }}</strong>
             </div>
             <div class="history-result-reuse-actions">
               <button
+                v-if="targetRun.status !== 'failed'"
                 type="button"
                 class="ghost-button"
                 :disabled="props.isPromptSaving(targetRun.id)"
@@ -192,12 +204,22 @@
                 {{ promptActionLabel(targetRun) }}
               </button>
               <button
+                v-if="targetRun.status !== 'failed'"
                 type="button"
                 class="secondary-button"
                 :disabled="props.isPromptSaving(targetRun.id) || props.isFlowCreating(targetRun.id)"
                 @click="emit('create-flow', targetRun)"
               >
                 {{ props.isFlowCreating(targetRun.id) ? '创建中...' : '从 Result 创建 Flow' }}
+              </button>
+              <button
+                v-if="targetRun.flowRunSnapshot"
+                type="button"
+                class="ghost-button"
+                :disabled="props.isSnapshotFlowCreating(targetRun.id)"
+                @click="emit('create-snapshot-flow', targetRun)"
+              >
+                {{ props.isSnapshotFlowCreating(targetRun.id) ? '创建中...' : '从运行快照创建 Flow' }}
               </button>
             </div>
           </section>
@@ -231,11 +253,13 @@ const props = withDefaults(defineProps<{
   hasPromptForRun?: (runId: string) => boolean
   isPromptSaving?: (runId: string) => boolean
   isFlowCreating?: (runId: string) => boolean
+  isSnapshotFlowCreating?: (runId: string) => boolean
 }>(), {
   mode: 'rerun',
   hasPromptForRun: () => false,
   isPromptSaving: () => false,
-  isFlowCreating: () => false
+  isFlowCreating: () => false,
+  isSnapshotFlowCreating: () => false
 })
 
 const emit = defineEmits<{
@@ -245,12 +269,27 @@ const emit = defineEmits<{
   'open-origin': [run: TaskHistoryItem]
   'save-as-prompt': [run: TaskHistoryItem]
   'create-flow': [run: TaskHistoryItem]
+  'create-snapshot-flow': [run: TaskHistoryItem]
 }>()
 
 function promptActionLabel(run: TaskHistoryItem) {
   if (props.hasPromptForRun(run.id)) return '打开 Prompt'
   if (props.isPromptSaving(run.id)) return '保存中...'
   return '保存为 Prompt'
+}
+
+function canReuseRun(run: TaskHistoryItem) {
+  return run.status !== 'failed' || Boolean(run.flowRunSnapshot)
+}
+
+function reuseDescription(run: TaskHistoryItem, prefix: '来源' | '本次') {
+  if (run.status === 'failed') {
+    return `保留${prefix}失败时的 Flow 结构与运行上下文。`
+  }
+  if (run.flowRunSnapshot) {
+    return `复用${prefix}结果，或保留完整 Flow 结构。`
+  }
+  return `把${prefix}结果带回下一次创作。`
 }
 
 const targetLabel = computed(() => {
