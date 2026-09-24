@@ -222,10 +222,12 @@
       :is-prompt-saving="workspace.isTaskPromptSaving"
       :is-flow-creating="workspace.isResultFlowCreating"
       :is-snapshot-flow-creating="isComparisonSnapshotCreating"
+      :can-open-node="canOpenComparisonNode"
       @close="closeComparison"
       @continue="continueFromRun"
       @open-flow="openComparisonFlow"
       @open-origin="openComparisonOrigin"
+      @open-node="openComparisonNode"
       @save-as-prompt="saveComparisonAsPrompt"
       @create-flow="createComparisonFlow"
       @create-snapshot-flow="createComparisonSnapshotFlow"
@@ -466,6 +468,24 @@ function openComparisonOrigin(run: TaskHistoryItem) {
     closeComparison()
     router.push({ path: '/workflows', query: { flow: sourceFlowId } })
   }
+}
+
+function openComparisonNode(payload: { run: TaskHistoryItem; nodeId: string }) {
+  const flowId = payload.run.flowRunSnapshot?.flowId || payload.run.sourceFlowId
+  if (!flowId) {
+    ElMessage.warning('这次运行没有可定位的 Flow')
+    return
+  }
+  closeComparison()
+  router.push({
+    path: '/workflows',
+    query: { flow: flowId, node: payload.nodeId, run: payload.run.id }
+  })
+}
+
+function canOpenComparisonNode(run: TaskHistoryItem, nodeId: string) {
+  const flowId = run.flowRunSnapshot?.flowId || run.sourceFlowId
+  return Boolean(flowId && workspace.flowDrafts.some((flow) => flow.id === flowId && flow.nodes.some((node) => node.id === nodeId)))
 }
 
 async function openRunFromRoute() {

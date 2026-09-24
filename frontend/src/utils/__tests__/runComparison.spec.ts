@@ -321,10 +321,10 @@ describe('run Flow snapshot comparison', () => {
         { key: 'title', kind: 'title', title: 'Flow 名称' },
         { key: 'description', kind: 'description', title: 'Flow 目标' },
         { key: 'runtime-context', kind: 'runtime-context', title: '运行说明' },
-        { key: 'node-updated:a', kind: 'node-updated', title: 'Intent' },
-        { key: 'node-removed:b', kind: 'node-removed', title: 'Draft' },
-        { key: 'node-reordered:c', kind: 'node-reordered', title: 'Deliver' },
-        { key: 'node-added:d', kind: 'node-added', title: 'Review' },
+        { key: 'node-updated:a', kind: 'node-updated', title: 'Intent', nodeId: 'a', side: 'target' },
+        { key: 'node-removed:b', kind: 'node-removed', title: 'Draft', nodeId: 'b', side: 'source' },
+        { key: 'node-reordered:c', kind: 'node-reordered', title: 'Deliver', nodeId: 'c', side: 'target' },
+        { key: 'node-added:d', kind: 'node-added', title: 'Review', nodeId: 'd', side: 'target' },
         { key: 'variable-updated:audience', kind: 'variable-updated', title: '{audience}' },
         { key: 'variable-removed:tone', kind: 'variable-removed', title: '{tone}' },
         { key: 'variable-added:format', kind: 'variable-added', title: '{format}' }
@@ -340,8 +340,8 @@ describe('run Flow snapshot comparison', () => {
       run('source', undefined, undefined, { flowRunSnapshot: source }),
       run('target', undefined, undefined, { flowRunSnapshot: target })
     ).changes).toEqual([
-      { key: 'node-removed:b', kind: 'node-removed', title: 'Draft' },
-      { key: 'node-added:d', kind: 'node-added', title: 'Review' }
+      { key: 'node-removed:b', kind: 'node-removed', title: 'Draft', nodeId: 'b', side: 'source' },
+      { key: 'node-added:d', kind: 'node-added', title: 'Review', nodeId: 'd', side: 'target' }
     ])
   })
 

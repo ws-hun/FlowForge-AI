@@ -38,7 +38,12 @@
         </div>
       </section>
 
-      <RunFlowSnapshotComparison :source-run="sourceRun" :target-run="targetRun" />
+      <RunFlowSnapshotComparison
+        :source-run="sourceRun"
+        :target-run="targetRun"
+        :can-open-node="canOpenNode"
+        @open-node="emit('open-node', $event)"
+      />
 
       <RunExecutionEvidenceComparison :source-run="sourceRun" :target-run="targetRun" />
 
@@ -254,12 +259,14 @@ const props = withDefaults(defineProps<{
   isPromptSaving?: (runId: string) => boolean
   isFlowCreating?: (runId: string) => boolean
   isSnapshotFlowCreating?: (runId: string) => boolean
+  canOpenNode?: (run: TaskHistoryItem, nodeId: string) => boolean
 }>(), {
   mode: 'rerun',
   hasPromptForRun: () => false,
   isPromptSaving: () => false,
   isFlowCreating: () => false,
-  isSnapshotFlowCreating: () => false
+  isSnapshotFlowCreating: () => false,
+  canOpenNode: () => true
 })
 
 const emit = defineEmits<{
@@ -267,6 +274,7 @@ const emit = defineEmits<{
   continue: [run: TaskHistoryItem]
   'open-flow': [run: TaskHistoryItem]
   'open-origin': [run: TaskHistoryItem]
+  'open-node': [payload: { run: TaskHistoryItem; nodeId: string }]
   'save-as-prompt': [run: TaskHistoryItem]
   'create-flow': [run: TaskHistoryItem]
   'create-snapshot-flow': [run: TaskHistoryItem]
@@ -290,6 +298,10 @@ function reuseDescription(run: TaskHistoryItem, prefix: '来源' | '本次') {
     return `复用${prefix}结果，或保留完整 Flow 结构。`
   }
   return `把${prefix}结果带回下一次创作。`
+}
+
+function canOpenNode(run: TaskHistoryItem, nodeId: string) {
+  return props.canOpenNode(run, nodeId)
 }
 
 const targetLabel = computed(() => {

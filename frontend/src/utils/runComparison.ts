@@ -58,6 +58,8 @@ export type RunFlowSnapshotChange = {
   key: string
   kind: RunFlowSnapshotChangeKind
   title: string
+  nodeId?: string
+  side?: 'source' | 'target'
 }
 
 export type RunFlowSnapshotComparison = {
@@ -317,7 +319,9 @@ function compareSnapshotNodes(sourceNodes: FlowNode[], targetNodes: FlowNode[]) 
       changes.push({
         key: `node-removed:${sourceNode.id}`,
         kind: 'node-removed',
-        title: sourceNode.title
+        title: sourceNode.title,
+        nodeId: sourceNode.id,
+        side: 'source'
       })
       return
     }
@@ -325,7 +329,9 @@ function compareSnapshotNodes(sourceNodes: FlowNode[], targetNodes: FlowNode[]) 
       changes.push({
         key: `node-updated:${sourceNode.id}`,
         kind: 'node-updated',
-        title: targetNode.title
+        title: targetNode.title,
+        nodeId: targetNode.id,
+        side: 'target'
       })
       return
     }
@@ -333,7 +339,9 @@ function compareSnapshotNodes(sourceNodes: FlowNode[], targetNodes: FlowNode[]) 
       changes.push({
         key: `node-reordered:${sourceNode.id}`,
         kind: 'node-reordered',
-        title: targetNode.title
+        title: targetNode.title,
+        nodeId: targetNode.id,
+        side: 'target'
       })
     }
   })
@@ -343,7 +351,9 @@ function compareSnapshotNodes(sourceNodes: FlowNode[], targetNodes: FlowNode[]) 
       changes.push({
         key: `node-added:${targetNode.id}`,
         kind: 'node-added',
-        title: targetNode.title
+        title: targetNode.title,
+        nodeId: targetNode.id,
+        side: 'target'
       })
     }
   })

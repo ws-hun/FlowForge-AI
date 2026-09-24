@@ -10,6 +10,14 @@
         <li v-for="change in visibleChanges" :key="change.key">
           <span>{{ changeLabel(change.kind) }}</span>
           <strong>{{ change.title }}</strong>
+          <button
+            v-if="canInspectNode(change)"
+            type="button"
+            class="flow-snapshot-change-action"
+            @click="openNode(change)"
+          >
+            检查节点
+          </button>
         </li>
       </ul>
       <small v-if="remainingCount">另有 {{ remainingCount }} 处变化</small>
@@ -21,6 +29,7 @@
 import { computed } from 'vue'
 import {
   compareRunFlowSnapshots,
+  type RunFlowSnapshotChange,
   type RunFlowSnapshotChangeKind
 } from '@/utils/runComparison'
 import type { TaskHistoryItem } from '@/types'
@@ -28,6 +37,11 @@ import type { TaskHistoryItem } from '@/types'
 const props = defineProps<{
   sourceRun: TaskHistoryItem
   targetRun: TaskHistoryItem
+  canOpenNode?: (run: TaskHistoryItem, nodeId: string) => boolean
+}>()
+
+const emit = defineEmits<{
+  openNode: [payload: { run: TaskHistoryItem; nodeId: string }]
 }>()
 
 const comparison = computed(() => compareRunFlowSnapshots(props.sourceRun, props.targetRun))
@@ -65,5 +79,26 @@ function changeLabel(kind: RunFlowSnapshotChangeKind) {
     'variable-updated': '更新变量'
   }
   return labels[kind]
+}
+
+function canInspectNode(change: RunFlowSnapshotChange) {
+  return Boolean(
+    change.nodeId
+      && change.side
+      && (props.canOpenNode?.(
+        change.side === 'source' ? props.sourceRun : props.targetRun,
+        change.nodeId
+      ) ?? true)
+  )
+}
+
+function openNode(change: RunFlowSnapshotChange) {
+  if (!change.nodeId || !change.side) {
+    return
+  }
+  emit('openNode', {
+    run: change.side === 'source' ? props.sourceRun : props.targetRun,
+    nodeId: change.nodeId
+  })
 }
 </script>
