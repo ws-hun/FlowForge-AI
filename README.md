@@ -145,6 +145,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Comparison Result Reuse | Done | 运行对比中的成功 Result 可直接保存为 Prompt 或创建 Flow，复用入口沿用不可变运行 ID 与按来源隔离的 loading 状态 |
 | Stage 3 | Immutable Flow Snapshot Diff | Done | 运行对比逐项解释保存快照中的 Flow 名称、目标、节点、运行说明和变量变化，不读取当前可变 Flow 反推历史 |
 | Stage 3 | Comparison Snapshot Branching | Done | 对比任一侧可从不可变运行快照创建独立 Flow 续作并带入运行简报；失败运行只复用结构，不沉淀错误 Result |
+| Stage 3 | Comparison Change Navigation | Done | 对比中的节点变化可直接定位到对应 Flow 节点，并保留运行深链用于回看该次不可变执行证据 |
 | Stage 3 | Flow Runtime Contract Verification | Done | 自动化测试锁定预览、真实 Provider 输入、历史保存输入、编译器版本与运行轨迹指纹的一致性 |
 | Stage 3 | Versioned Node Execution Plan | Done | Preview 与不可变运行轨迹共享 `flow-plan-v5`，固定节点顺序、输入输出产物契约、输入解析方式与唯一 Provider 边界 |
 | Stage 3 | Execution Plan Shape Integrity | Done | 服务端在运行轨迹与节点产物落库前校验 linear 顺序、节点职责、唯一 Provider 边界、产物链和依赖声明，防止现代计划漂移 |
@@ -240,6 +241,7 @@ History 以时间线保留每一次可追溯运行，不使用表格作为核心
 | 对比结果直接保存 Prompt / 创建 Flow | Done |
 | 对比 Flow 快照具体变化 | Done |
 | 从任一对比快照创建 Flow 续作 | Done |
+| 从对比变化定位 Flow 节点 | Done |
 | 失败运行上下文保留与恢复 | Done |
 | 历史 Result 继续创作 / 保存 Prompt / 创建 Flow | Done |
 
