@@ -1517,6 +1517,24 @@ a {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  .flow-snapshot-change-action {
+    flex: 0 0 auto;
+    min-height: 22px;
+    padding: 3px 6px;
+    border: 0;
+    border-radius: tokens.$radius-sm;
+    background: rgba(79, 124, 255, 0.08);
+    color: tokens.$primary;
+    font-size: 10px;
+    font-weight: 700;
+    transition: background 180ms ease, color 180ms ease;
+
+    &:hover {
+      background: rgba(79, 124, 255, 0.14);
+      color: tokens.$primary;
+    }
+  }
 }
 
 .execution-evidence-comparison {
