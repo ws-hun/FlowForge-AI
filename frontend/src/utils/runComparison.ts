@@ -1,4 +1,10 @@
-import type { FlowArtifactContract, FlowNode, FlowRunSnapshot, TaskHistoryItem } from '@/types'
+import type {
+  FlowArtifactContract,
+  FlowArtifactState,
+  FlowNode,
+  FlowRunSnapshot,
+  TaskHistoryItem
+} from '@/types'
 
 export type RunInputComparison = {
   relation: 'same' | 'different'
@@ -93,6 +99,46 @@ export type RunProviderExecutionDifference =
   | 'status'
   | 'provider-call-count'
   | 'attempt-count'
+
+export type RunArtifactEvidence = {
+  key: string
+  artifactKey: string
+  nodeId: string
+  nodeTitle: string
+  type: FlowArtifactContract['type']
+  storage: FlowArtifactContract['storage']
+  state: FlowArtifactState
+  contentFingerprint: string | null
+}
+
+export type RunArtifactEvidenceChangeKind =
+  | 'added'
+  | 'removed'
+  | 'state-changed'
+  | 'fingerprint-changed'
+
+export type RunArtifactEvidenceChange = {
+  key: string
+  artifactKey: string
+  nodeId: string
+  title: string
+  side: 'source' | 'target'
+  kind: RunArtifactEvidenceChangeKind
+  sourceState: RunArtifactEvidence['state'] | null
+  targetState: RunArtifactEvidence['state'] | null
+  sourceFingerprint: string | null
+  targetFingerprint: string | null
+}
+
+export type RunArtifactEvidenceComparison = {
+  relation: 'same' | 'different' | 'unavailable'
+  verification: 'saved-run-artifacts'
+  sourceArtifactCount: number | null
+  targetArtifactCount: number | null
+  source: RunArtifactEvidence[]
+  target: RunArtifactEvidence[]
+  changes: RunArtifactEvidenceChange[]
+}
 
 export function compareRunExecutionInputs(
   sourceRun: TaskHistoryItem,
@@ -280,6 +326,107 @@ export function compareRunProviderExecution(
   }
 }
 
+export function compareRunNodeArtifacts(
+  sourceRun: TaskHistoryItem,
+  targetRun: TaskHistoryItem
+): RunArtifactEvidenceComparison {
+  const source = savedRunArtifacts(sourceRun)
+  const target = savedRunArtifacts(targetRun)
+
+  if (!source || !target) {
+    return {
+      relation: 'unavailable',
+      verification: 'saved-run-artifacts',
+      sourceArtifactCount: source?.length ?? null,
+      targetArtifactCount: target?.length ?? null,
+      source: source ?? [],
+      target: target ?? [],
+      changes: []
+    }
+  }
+
+  const sourceByKey = new Map(source.map((artifact) => [artifact.key, artifact]))
+  const targetByKey = new Map(target.map((artifact) => [artifact.key, artifact]))
+  const changes: RunArtifactEvidenceChange[] = []
+
+  source.forEach((sourceArtifact) => {
+    const targetArtifact = targetByKey.get(sourceArtifact.key)
+    if (!targetArtifact) {
+      changes.push({
+        key: `artifact-removed:${sourceArtifact.key}`,
+        artifactKey: sourceArtifact.artifactKey,
+        nodeId: sourceArtifact.nodeId,
+        title: sourceArtifact.nodeTitle,
+        side: 'source',
+        kind: 'removed',
+        sourceState: sourceArtifact.state,
+        targetState: null,
+        sourceFingerprint: sourceArtifact.contentFingerprint,
+        targetFingerprint: null
+      })
+      return
+    }
+
+    if (sourceArtifact.state !== targetArtifact.state) {
+      changes.push({
+        key: `artifact-state:${sourceArtifact.key}`,
+        artifactKey: targetArtifact.artifactKey,
+        nodeId: targetArtifact.nodeId,
+        title: targetArtifact.nodeTitle,
+        side: 'target',
+        kind: 'state-changed',
+        sourceState: sourceArtifact.state,
+        targetState: targetArtifact.state,
+        sourceFingerprint: sourceArtifact.contentFingerprint,
+        targetFingerprint: targetArtifact.contentFingerprint
+      })
+    }
+
+    if (sourceArtifact.contentFingerprint !== targetArtifact.contentFingerprint) {
+      changes.push({
+        key: `artifact-fingerprint:${sourceArtifact.key}`,
+        artifactKey: targetArtifact.artifactKey,
+        nodeId: targetArtifact.nodeId,
+        title: targetArtifact.nodeTitle,
+        side: 'target',
+        kind: 'fingerprint-changed',
+        sourceState: sourceArtifact.state,
+        targetState: targetArtifact.state,
+        sourceFingerprint: sourceArtifact.contentFingerprint,
+        targetFingerprint: targetArtifact.contentFingerprint
+      })
+    }
+  })
+
+  target.forEach((targetArtifact) => {
+    if (sourceByKey.has(targetArtifact.key)) {
+      return
+    }
+    changes.push({
+      key: `artifact-added:${targetArtifact.key}`,
+      artifactKey: targetArtifact.artifactKey,
+      nodeId: targetArtifact.nodeId,
+      title: targetArtifact.nodeTitle,
+      side: 'target',
+      kind: 'added',
+      sourceState: null,
+      targetState: targetArtifact.state,
+      sourceFingerprint: null,
+      targetFingerprint: targetArtifact.contentFingerprint
+    })
+  })
+
+  return {
+    relation: changes.length ? 'different' : 'same',
+    verification: 'saved-run-artifacts',
+    sourceArtifactCount: source.length,
+    targetArtifactCount: target.length,
+    source,
+    target,
+    changes
+  }
+}
+
 function compareEvidenceField<T>(
   source: T | null,
   target: T | null,
@@ -445,6 +592,30 @@ function savedProviderInputs(run: TaskHistoryItem): FlowArtifactContract[] | nul
   const providerSteps = plan.steps.filter((step) => step.providerBoundary)
   const inputs = providerSteps.length === 1 ? providerSteps[0].providerInputArtifacts : null
   return inputs?.length ? inputs : null
+}
+
+function savedRunArtifacts(run: TaskHistoryItem): RunArtifactEvidence[] | null {
+  const trace = run.flowRunTrace
+  if (!trace) {
+    return null
+  }
+  const artifacts = trace.nodes.flatMap((node) => {
+    const artifact = node.outputArtifact
+    if (!artifact) {
+      return []
+    }
+    return [{
+      key: `${node.nodeId}:${artifact.key}`,
+      artifactKey: artifact.key,
+      nodeId: node.nodeId,
+      nodeTitle: node.title,
+      type: artifact.type,
+      storage: artifact.storage,
+      state: artifact.state,
+      contentFingerprint: artifact.contentFingerprint ?? null
+    }]
+  })
+  return artifacts.length ? artifacts : null
 }
 
 function sameArtifactContracts(

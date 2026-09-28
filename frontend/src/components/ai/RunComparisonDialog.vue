@@ -45,6 +45,13 @@
         @open-node="emit('open-node', $event)"
       />
 
+      <RunArtifactEvidenceComparison
+        :source-run="sourceRun"
+        :target-run="targetRun"
+        :can-open-node="canOpenNode"
+        @open-node="emit('open-node', $event)"
+      />
+
       <RunExecutionEvidenceComparison :source-run="sourceRun" :target-run="targetRun" />
 
       <div class="run-comparison-grid">
@@ -238,6 +245,7 @@
 import { computed } from 'vue'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import ExecutionInputArchive from '@/components/ai/ExecutionInputArchive.vue'
+import RunArtifactEvidenceComparison from '@/components/ai/RunArtifactEvidenceComparison.vue'
 import RunExecutionEvidenceComparison from '@/components/ai/RunExecutionEvidenceComparison.vue'
 import RunFlowSnapshotComparison from '@/components/ai/RunFlowSnapshotComparison.vue'
 import FlowRunTrace from '@/components/flow/FlowRunTrace.vue'

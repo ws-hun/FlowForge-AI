@@ -3,10 +3,17 @@ import {
   compareRunExecutionInputs,
   compareRunFlowOrigins,
   compareRunFlowSnapshots,
+  compareRunNodeArtifacts,
   compareRunProviderExecution,
   compareRunProviderInputDeclarations
 } from '../runComparison'
-import type { FlowArtifactContract, FlowRunSnapshot, FlowRunTrace, TaskHistoryItem } from '@/types'
+import type {
+  FlowArtifactContract,
+  FlowNodeArtifact,
+  FlowRunSnapshot,
+  FlowRunTrace,
+  TaskHistoryItem
+} from '@/types'
 
 function run(
   input: string,
@@ -356,6 +363,130 @@ describe('run Flow snapshot comparison', () => {
       targetNodeCount: 1,
       changes: []
     })
+  })
+})
+
+describe('run node Artifact evidence comparison', () => {
+  const artifact = (
+    key: string,
+    state: FlowNodeArtifact['state'] = 'materialized',
+    contentFingerprint: string | null = 'sha-same'
+  ): FlowNodeArtifact => ({
+    key,
+    type: 'instruction-contribution',
+    storage: 'node-artifact',
+    state,
+    contentFingerprint
+  })
+
+  const withArtifacts = (
+    artifacts: Array<{ nodeId: string; title: string; artifact?: FlowNodeArtifact | null }>
+  ): Partial<TaskHistoryItem> => ({
+    flowRunTrace: {
+      runId: crypto.randomUUID(),
+      flowId: 'flow-1',
+      status: 'completed',
+      executionMode: 'single-pass',
+      providerCallCount: 1,
+      nodes: artifacts.map((item) => ({
+        nodeId: item.nodeId,
+        nodeType: 'prompt',
+        title: item.title,
+        status: 'completed',
+        compiledContent: item.title,
+        outputArtifact: item.artifact
+      }))
+    }
+  })
+
+  it('confirms equal saved Artifact evidence without loading payloads', () => {
+    const saved = withArtifacts([
+      { nodeId: 'prompt-1', title: '写作指令', artifact: artifact('node:prompt-1:instruction') }
+    ])
+
+    expect(compareRunNodeArtifacts(
+      run('source', undefined, undefined, saved),
+      run('target', undefined, undefined, structuredClone(saved))
+    )).toMatchObject({
+      relation: 'same',
+      verification: 'saved-run-artifacts',
+      sourceArtifactCount: 1,
+      targetArtifactCount: 1,
+      changes: []
+    })
+  })
+
+  it('reports state and content fingerprint changes independently', () => {
+    const source = withArtifacts([
+      { nodeId: 'prompt-1', title: '写作指令', artifact: artifact('node:prompt-1:instruction') },
+      { nodeId: 'prompt-2', title: '交付规范', artifact: artifact('node:prompt-2:instruction', 'materialized', 'sha-old') }
+    ])
+    const target = withArtifacts([
+      { nodeId: 'prompt-1', title: '写作指令', artifact: artifact('node:prompt-1:instruction', 'failed') },
+      { nodeId: 'prompt-2', title: '交付规范', artifact: artifact('node:prompt-2:instruction', 'materialized', 'sha-new') }
+    ])
+
+    expect(compareRunNodeArtifacts(
+      run('source', undefined, undefined, source),
+      run('target', undefined, undefined, target)
+    )).toMatchObject({
+      relation: 'different',
+      changes: [
+        {
+          kind: 'state-changed',
+          nodeId: 'prompt-1',
+          side: 'target',
+          sourceState: 'materialized',
+          targetState: 'failed'
+        },
+        {
+          kind: 'fingerprint-changed',
+          nodeId: 'prompt-2',
+          side: 'target',
+          sourceFingerprint: 'sha-old',
+          targetFingerprint: 'sha-new'
+        }
+      ]
+    })
+  })
+
+  it('reports Artifact additions and removals against the run that preserved them', () => {
+    const comparison = compareRunNodeArtifacts(
+      run('source', undefined, undefined, withArtifacts([
+        { nodeId: 'source-only', title: '旧节点', artifact: artifact('node:source-only:instruction') }
+      ])),
+      run('target', undefined, undefined, withArtifacts([
+        { nodeId: 'target-only', title: '新节点', artifact: artifact('node:target-only:instruction') }
+      ]))
+    )
+
+    expect(comparison.changes).toEqual([
+      expect.objectContaining({ kind: 'removed', nodeId: 'source-only', side: 'source' }),
+      expect.objectContaining({ kind: 'added', nodeId: 'target-only', side: 'target' })
+    ])
+  })
+
+  it('keeps legacy or empty traces unavailable instead of reconstructing evidence', () => {
+    expect(compareRunNodeArtifacts(
+      run('legacy', undefined, undefined, { flowRunTrace: null }),
+      run('modern', undefined, undefined, withArtifacts([
+        { nodeId: 'prompt-1', title: '写作指令', artifact: artifact('node:prompt-1:instruction') }
+      ]))
+    )).toMatchObject({
+      relation: 'unavailable',
+      sourceArtifactCount: null,
+      targetArtifactCount: 1,
+      changes: []
+    })
+
+    expect(compareRunNodeArtifacts(
+      run('empty', undefined, undefined, withArtifacts([
+        { nodeId: 'prompt-1', title: '写作指令' }
+      ])),
+      run('modern', undefined, undefined, withArtifacts([
+        { nodeId: 'prompt-1', title: '写作指令', artifact: artifact('node:prompt-1:instruction') }
+      ]))
+    ).relation).toBe('unavailable')
   })
 })
 
