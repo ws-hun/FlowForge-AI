@@ -42,6 +42,7 @@ import {
   type RunArtifactEvidenceChange,
   type RunArtifactEvidenceChangeKind
 } from '@/utils/runComparison'
+import { flowArtifactStorageLabel, flowArtifactTypeLabel } from '@/utils/flowExecutionPlan'
 import type { TaskHistoryItem } from '@/types'
 
 const props = defineProps<{
@@ -83,6 +84,7 @@ function changeLabel(kind: RunArtifactEvidenceChangeKind) {
   const labels: Record<RunArtifactEvidenceChangeKind, string> = {
     added: '新增产物',
     removed: '缺失产物',
+    'contract-changed': '契约变化',
     'state-changed': '状态变化',
     'fingerprint-changed': '内容变化'
   }
@@ -96,10 +98,20 @@ function detailLabel(change: RunArtifactEvidenceChange) {
   if (change.kind === 'removed') {
     return `${artifactStateLabel(change.sourceState)} · 目标运行未保存`
   }
+  if (change.kind === 'contract-changed') {
+    return `${artifactContractLabel(change.sourceType, change.sourceStorage)} → ${artifactContractLabel(change.targetType, change.targetStorage)}`
+  }
   if (change.kind === 'state-changed') {
     return `${artifactStateLabel(change.sourceState)} → ${artifactStateLabel(change.targetState)}`
   }
   return `${fingerprintLabel(change.sourceFingerprint)} → ${fingerprintLabel(change.targetFingerprint)}`
+}
+
+function artifactContractLabel(
+  type: RunArtifactEvidenceChange['sourceType'],
+  storage: RunArtifactEvidenceChange['sourceStorage']
+) {
+  return `${type ? flowArtifactTypeLabel(type) : '未记录'} · ${storage ? flowArtifactStorageLabel(storage) : '未记录'}`
 }
 
 function artifactStateLabel(state: RunArtifactEvidenceChange['sourceState']) {

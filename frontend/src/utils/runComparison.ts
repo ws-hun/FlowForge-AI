@@ -114,6 +114,7 @@ export type RunArtifactEvidence = {
 export type RunArtifactEvidenceChangeKind =
   | 'added'
   | 'removed'
+  | 'contract-changed'
   | 'state-changed'
   | 'fingerprint-changed'
 
@@ -124,6 +125,10 @@ export type RunArtifactEvidenceChange = {
   title: string
   side: 'source' | 'target'
   kind: RunArtifactEvidenceChangeKind
+  sourceType: RunArtifactEvidence['type'] | null
+  targetType: RunArtifactEvidence['type'] | null
+  sourceStorage: RunArtifactEvidence['storage'] | null
+  targetStorage: RunArtifactEvidence['storage'] | null
   sourceState: RunArtifactEvidence['state'] | null
   targetState: RunArtifactEvidence['state'] | null
   sourceFingerprint: string | null
@@ -359,12 +364,38 @@ export function compareRunNodeArtifacts(
         title: sourceArtifact.nodeTitle,
         side: 'source',
         kind: 'removed',
+        sourceType: sourceArtifact.type,
+        targetType: null,
+        sourceStorage: sourceArtifact.storage,
+        targetStorage: null,
         sourceState: sourceArtifact.state,
         targetState: null,
         sourceFingerprint: sourceArtifact.contentFingerprint,
         targetFingerprint: null
       })
       return
+    }
+
+    if (
+      sourceArtifact.type !== targetArtifact.type
+      || sourceArtifact.storage !== targetArtifact.storage
+    ) {
+      changes.push({
+        key: `artifact-contract:${sourceArtifact.key}`,
+        artifactKey: targetArtifact.artifactKey,
+        nodeId: targetArtifact.nodeId,
+        title: targetArtifact.nodeTitle,
+        side: 'target',
+        kind: 'contract-changed',
+        sourceType: sourceArtifact.type,
+        targetType: targetArtifact.type,
+        sourceStorage: sourceArtifact.storage,
+        targetStorage: targetArtifact.storage,
+        sourceState: sourceArtifact.state,
+        targetState: targetArtifact.state,
+        sourceFingerprint: sourceArtifact.contentFingerprint,
+        targetFingerprint: targetArtifact.contentFingerprint
+      })
     }
 
     if (sourceArtifact.state !== targetArtifact.state) {
@@ -375,6 +406,10 @@ export function compareRunNodeArtifacts(
         title: targetArtifact.nodeTitle,
         side: 'target',
         kind: 'state-changed',
+        sourceType: sourceArtifact.type,
+        targetType: targetArtifact.type,
+        sourceStorage: sourceArtifact.storage,
+        targetStorage: targetArtifact.storage,
         sourceState: sourceArtifact.state,
         targetState: targetArtifact.state,
         sourceFingerprint: sourceArtifact.contentFingerprint,
@@ -390,6 +425,10 @@ export function compareRunNodeArtifacts(
         title: targetArtifact.nodeTitle,
         side: 'target',
         kind: 'fingerprint-changed',
+        sourceType: sourceArtifact.type,
+        targetType: targetArtifact.type,
+        sourceStorage: sourceArtifact.storage,
+        targetStorage: targetArtifact.storage,
         sourceState: sourceArtifact.state,
         targetState: targetArtifact.state,
         sourceFingerprint: sourceArtifact.contentFingerprint,
@@ -409,6 +448,10 @@ export function compareRunNodeArtifacts(
       title: targetArtifact.nodeTitle,
       side: 'target',
       kind: 'added',
+      sourceType: null,
+      targetType: targetArtifact.type,
+      sourceStorage: null,
+      targetStorage: targetArtifact.storage,
       sourceState: null,
       targetState: targetArtifact.state,
       sourceFingerprint: null,

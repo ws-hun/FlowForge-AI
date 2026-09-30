@@ -129,9 +129,9 @@ The History comparison surface also separates four kinds of execution evidence:
 - The exact Provider input fingerprint, when both runs recorded one.
 - The ordered Provider fan-in declaration, when both runs recorded a v5 plan.
 - Provider, model, terminal status, Provider call count, and the current single-attempt boundary.
-- Saved node Artifact membership, state, and content fingerprint from each immutable run trace.
+- Saved node Artifact membership, semantic type, storage, state, and content fingerprint from each immutable run trace.
 
-Artifact evidence comparison is metadata-only. It does not load payloads and does not query current Flow or Artifact state to fill a historical gap. Both runs must preserve at least one node `outputArtifact`; otherwise the Artifact comparison is `unavailable`. When evidence exists on both sides, missing nodes, state transitions, and fingerprint changes are reported against the side that preserved the relevant node identity, allowing valid changes to reuse the existing `flow`, `node`, and `run` inspection link.
+Artifact evidence comparison is metadata-only. It does not load payloads and does not query current Flow or Artifact state to fill a historical gap. Both runs must preserve at least one node `outputArtifact`; otherwise the Artifact comparison is `unavailable`. When evidence exists on both sides, missing nodes, semantic type or storage contract changes, state transitions, and fingerprint changes are reported against the side that preserved the relevant node identity, allowing valid changes to reuse the existing `flow`, `node`, and `run` inspection link.
 
 It additionally compares Flow asset identity and creation origin from the immutable `flowRunSnapshot`. Flow ID, source Task/Prompt/Flow ID, intermediate Prompt identity for Result promotion, and source Flow revision identity are compared as saved identifiers; titles are display-only. This allows different Flow assets to retain a shared creation origin without being reported as the same Flow. Missing snapshots or undeclared legacy origins remain unavailable and are never reconstructed from current assets.
 

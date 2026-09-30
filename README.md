@@ -155,6 +155,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Database-backed Provider Input Integrity | Done | V11 迁移在 PostgreSQL 层约束引用身份、合法 storage、来源字段和 64 位小写 SHA-256 指纹 |
 | Stage 3 | Runtime Evidence Comparison | Done | 运行对比独立核验输入指纹、v5 fan-in、Provider、模型、状态与单次调用边界，旧记录缺失字段保持未知 |
 | Stage 3 | Node Artifact Evidence Comparison | Done | 运行对比核验节点产物是否存在、状态与内容指纹；缺少历史证据时保持未核验且不预加载 payload |
+| Stage 3 | Artifact Contract Evidence Comparison | Done | 运行对比同时核验节点 Artifact 的语义类型与 storage 契约，识别同一 key 的运行时契约漂移 |
 | Stage 3 | Versioned Input Resolution Contract | Done | `flow-input-resolution-v1` 明确当前 `compiled-reference`，为未来 `persisted-artifact` 逐节点运行时保留升级边界 |
 | Stage 3 | Provider Attempt Recovery Contract | Done | `flow-provider-attempt-policy-v1` 校验真实调用链，明确当前不在原产物上重试，失败恢复会创建新的可比较运行 |
 | Stage 3 | Failed Run Recovery Identity | Done | `POST /api/tasks/{id}/recover` 从失败运行创建新的不可变运行，并以 `recoveryOfTaskId` 保留来源关系 |
@@ -808,7 +809,7 @@ AI Command 中尚未执行的输入与来源上下文保存在当前浏览器的
 
 运行对比会同时核对 Provider 输入指纹与 v5 执行计划中保存的有序 fan-in 声明。声明比较覆盖 Artifact key、语义类型和 storage；任一运行缺少 v5 声明时，界面明确显示无法核验，不使用当前 Flow 反向补造历史结构。
 
-运行对比还会直接比较两次不可变轨迹中保存的节点 `outputArtifact` 元数据，包括 Artifact 是否存在、物化状态和内容指纹。该比较不预加载 payload，也不会从当前 Flow 或数据库中的最新资产反推旧运行；任一侧没有保存 Artifact 证据时整组保持“无法核验”。可定位的变化沿用 `flow`、`node`、`run` 深链回到对应运行节点，已删除节点不会生成失效入口。
+运行对比还会直接比较两次不可变轨迹中保存的节点 `outputArtifact` 元数据，包括 Artifact 是否存在、语义类型、storage、物化状态和内容指纹。即使 key 没变，只要类型或 storage 契约发生漂移也会显示为变化。该比较不预加载 payload，也不会从当前 Flow 或数据库中的最新资产反推旧运行；任一侧没有保存 Artifact 证据时整组保持“无法核验”。可定位的变化沿用 `flow`、`node`、`run` 深链回到对应运行节点，已删除节点不会生成失效入口。
 
 Attempt 表是未来 retry / recovery 的持久化基础，不代表运行时已经启用重试。当前 `single-pass` 仍只调用 Provider 一次，`providerCallCount` 仍为 `1`，不会创建 `automatic-retry` 或 `manual-recovery`，也没有启用 `node-sequential`。
 

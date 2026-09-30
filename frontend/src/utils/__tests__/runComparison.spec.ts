@@ -450,6 +450,48 @@ describe('run node Artifact evidence comparison', () => {
     })
   })
 
+  it('reports Artifact contract changes even when state and fingerprint stay equal', () => {
+    const source = withArtifacts([
+      {
+        nodeId: 'prompt-1',
+        title: '写作指令',
+        artifact: {
+          ...artifact('node:prompt-1:instruction'),
+          type: 'instruction-contribution',
+          storage: 'node-artifact'
+        }
+      }
+    ])
+    const target = withArtifacts([
+      {
+        nodeId: 'prompt-1',
+        title: '写作指令',
+        artifact: {
+          ...artifact('node:prompt-1:instruction'),
+          type: 'result-document',
+          storage: 'trace-content'
+        }
+      }
+    ])
+
+    expect(compareRunNodeArtifacts(
+      run('source', undefined, undefined, source),
+      run('target', undefined, undefined, target)
+    )).toMatchObject({
+      relation: 'different',
+      changes: [
+        expect.objectContaining({
+          kind: 'contract-changed',
+          nodeId: 'prompt-1',
+          sourceType: 'instruction-contribution',
+          targetType: 'result-document',
+          sourceStorage: 'node-artifact',
+          targetStorage: 'trace-content'
+        })
+      ]
+    })
+  })
+
   it('reports Artifact additions and removals against the run that preserved them', () => {
     const comparison = compareRunNodeArtifacts(
       run('source', undefined, undefined, withArtifacts([
