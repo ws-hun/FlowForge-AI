@@ -177,6 +177,16 @@
           <button type="button" class="ghost-button" @click="adoptLatestFlowAfterConflict">采用最新版本</button>
         </div>
 
+        <FlowEditorSaveBar
+          :flow-changed="flowMetaChanged"
+          :node-changed="nodeEditorChanged"
+          :conflict="flowConflictVisible"
+          :recovered="flowEditorDraftRecovered"
+          :busy="workspace.flowLoading"
+          @save="saveAllFlowEdits"
+          @discard="discardAllFlowEdits"
+        />
+
         <div v-if="workspace.activeFlow && providerState !== 'ready'" class="flow-readiness-note">
           <span class="flow-run-dot warning"></span>
           <div>
@@ -903,6 +913,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { EditPen, Plus } from '@element-plus/icons-vue'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
+import FlowEditorSaveBar from '@/components/flow/FlowEditorSaveBar.vue'
 import FlowExecutionInputPreview from '@/components/flow/FlowExecutionInputPreview.vue'
 import FlowRunTrace from '@/components/flow/FlowRunTrace.vue'
 import { formatExecutionSource } from '@/utils/aiProvider'
@@ -2958,6 +2969,16 @@ async function persistFlowMeta(notify: boolean, pendingNodePatch: PendingNodeEdi
 
 async function saveFlowMeta() {
   await persistFlowMeta(true, capturePendingNodeEditorPatch())
+}
+
+async function saveAllFlowEdits() {
+  await persistPendingEdits()
+}
+
+function discardAllFlowEdits() {
+  resetEditorsToSavedState()
+  clearFlowEditorDraft()
+  ElMessage.info('未保存的 Flow 编辑已放弃')
 }
 
 async function confirmDeleteFlow() {
