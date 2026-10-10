@@ -134,6 +134,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Local Workspace Preferences | Done | 工作区名称和个人显示名保存在当前浏览器，并同步到 Settings、Profile 与顶部身份入口 |
 | Stage 3 | Flow Edit Conflict Protection | Done | Flow 更新、修订恢复和删除基于服务端修订号执行，多个窗口同时创作时拒绝静默覆盖并重新载入最新状态 |
 | Stage 3 | Atomic Pending Flow Edits | Done | 切换、预览或执行前同时保存 Flow 目标与节点修改时只提交一次完整更新，避免一次创作决策产生多个中间修订 |
+| Stage 3 | Unified Flow Editor Save Boundary | Done | 画布顶部统一显示 Flow 目标与节点的未保存范围，支持一次保存全部或放弃完整编辑，不混淆自动保存的 Run Brief |
 | Stage 3 | Portable Result Documents | Done | AI Command、Flow、运行对比与 History 中的结果可复制或下载为 Markdown，并携带可用的 Provider、模型、Token 与耗时来源 |
 | Stage 3 | Legacy Result Presentation | Done | 旧版 JSON Result 自动呈现为可读文档，同时保留原始 JSON 且不修改不可变历史 |
 | Stage 3 | Structured Result Rendering | Done | Result 安全文本渲染保留标题、列表、代码、强调、引用与文档分隔结构 |
@@ -360,6 +361,7 @@ Prompt Library 是 AI 工作方式资产库，不是普通 Prompt 管理表。
 | AI Command 修改同步回 Flow Run Brief | Done |
 | Flow 节点内容运行前检查 | Done |
 | Flow / 节点保存状态提示 | Done |
+| 画布顶部统一 Flow 编辑保存条 | Done |
 | 未保存编辑在切换、预览、执行、复用和离开页面前统一确认 | Done |
 | Flow URL 深链与浏览器前进后退恢复 | Done |
 | Flow 创作修订快照 / 恢复前影响预览 | Done |
@@ -874,6 +876,8 @@ DELETE /api/flows/{id}?revision={revision}
 每个 Flow 响应包含单调递增的 `revision`。`PUT /api/flows/{id}` 在请求体中回传当前 `revision`，恢复修订时提交 `{ "revision": n }`，删除时使用同名查询参数。服务端会锁定 Flow 并校验修订号后再写入历史快照；过期修改返回 `409 Conflict`，前端重新载入服务器最新状态，同时保留仍可对应到当前节点的编辑器文字，避免多窗口创作时静默覆盖。
 
 Flow Space 会把尚未创建的 Flow 想法与模板选择，以及已存在 Flow 中尚未提交的标题、目标、当前节点文字和保存基线快照保留在当前浏览器。刷新后会先恢复对应创作位置；如果服务器已有新修订，本地文字会叠加在最新可保存基线上并提示用户确认；如果原 Flow 或节点已删除，则可基于完整本地快照创建重新生成节点 ID 的独立恢复副本。草稿本身不会进入服务器修订或运行历史，创建、保存、放弃或采用最新版本后会立即清除。
+
+Flow Space 画布顶部的统一保存条会实时显示当前待提交的是 Flow 目标、节点内容，还是两者同时存在。`保存全部` 复用同一条原子保存路径；`放弃修改` 会恢复已保存的 Flow 并清除本地编辑草稿。Run Brief 与变量值仍按 Flow 独立自动保存，因此不会被误认为已经包含在 Flow 编辑版本中。
 
 Prompt / Flow 更新、收藏、恢复或删除不存在的资产时返回 `404 Not Found`；请求内容不合法时返回 `400 Bad Request`；Flow 修订号过期时返回 `409 Conflict`。只有真实 AI Provider 调用、配置或响应处理失败才使用 `502 Bad Gateway`。其他内部状态异常记录服务端日志并返回不泄露实现细节的 `500 Internal Server Error`。
 

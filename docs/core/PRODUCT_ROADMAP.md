@@ -209,6 +209,7 @@ Current Stage 3 capabilities:
 - Any historical server input can branch into an editable AI Command variant with explicit run lineage and without inheriting a stale Flow snapshot.
 - Flow mutations use server revisions and row-level serialization so concurrent browser sessions cannot silently overwrite a newer Flow, restore an old revision over fresh work, or delete an unseen update.
 - Pending Flow metadata and node edits are committed as one complete mutation before navigation, preview, or execution, so one user decision produces one predictable revision instead of intermediate snapshots.
+- Flow Space now exposes one calm editor save boundary at the canvas: users can see whether Flow metadata or node content is pending, save both through the same atomic mutation, or discard the complete local edit without confusing it with the separately auto-saved Run Brief.
 - Prompt mutations use the same revision contract as Flows, preserving local editor input on conflict while preventing stale edits, favorite changes, restores, or deletes from silently replacing a newer creative asset.
 - AI Command drafts preserve unexecuted input, source identity, Flow variables, and continuation intent locally across reloads without creating false server History; missing Flow or Result sources degrade to an independent task while retaining usable input.
 - Prompt editor drafts reopen unfinished local creation after reload, rebase against the latest asset revision when possible, and become a new Prompt when the original asset no longer exists.
