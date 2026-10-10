@@ -3687,6 +3687,90 @@ a {
   }
 }
 
+.flow-editor-save-bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+  padding: 12px 14px;
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  border-radius: tokens.$radius-lg;
+  background: rgba(255, 251, 235, 0.82);
+  box-shadow: tokens.$shadow-soft;
+
+  &.conflict {
+    border-color: rgba(239, 68, 68, 0.2);
+    background: rgba(254, 242, 242, 0.82);
+  }
+
+  &.recovered {
+    border-color: rgba(79, 124, 255, 0.2);
+    background: rgba(239, 244, 255, 0.82);
+  }
+}
+
+.flow-editor-save-bar-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: tokens.$warning;
+
+  .conflict & {
+    background: tokens.$error;
+  }
+
+  .recovered & {
+    background: tokens.$primary;
+  }
+}
+
+.flow-editor-save-bar-copy {
+  min-width: 0;
+
+  strong {
+    display: block;
+    color: tokens.$text-primary;
+    font-size: 13px;
+  }
+
+  p {
+    margin: 3px 0 0;
+    color: tokens.$text-secondary;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+}
+
+.flow-editor-save-bar-scope {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+
+  span {
+    padding: 4px 7px;
+    border: 1px solid rgba(245, 158, 11, 0.18);
+    border-radius: tokens.$radius-sm;
+    color: #9a6700;
+    font-family: tokens.$mono;
+    font-size: 10px;
+    font-weight: 700;
+  }
+}
+
+.flow-editor-save-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+
+  .ghost-button,
+  .secondary-button {
+    min-height: 34px;
+  }
+}
+
 .flow-draft-recovery-note:not(.orphaned) {
   border-color: rgba(79, 124, 255, 0.18);
   background: rgba(239, 244, 255, 0.72);
@@ -7836,6 +7920,23 @@ a {
   .flow-canvas-header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .flow-editor-save-bar {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .flow-editor-save-bar-scope,
+  .flow-editor-save-bar-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .flow-editor-save-bar-actions {
+    .ghost-button,
+    .secondary-button {
+      flex: 1;
+    }
   }
 
   .flow-readiness-note,
