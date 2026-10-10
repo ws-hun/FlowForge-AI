@@ -402,9 +402,11 @@
           <FlowRunTrace
             v-if="activeFlowResult.flowRunTrace"
             :trace="activeFlowResult.flowRunTrace"
+            :focused-artifact-key="focusedArtifactKey"
             node-action-label="定位节点"
             :navigable-node-ids="workspace.activeFlow.nodes.map((node) => node.id)"
             @open-node="openExecutionPreviewNode"
+            @artifact-focus-invalid="handleArtifactFocusInvalid"
           />
           <FlowRunSnapshot
             v-if="activeFlowRunSnapshot"
@@ -938,6 +940,7 @@ import { compareFlowRevision } from '@/utils/flowRevisions'
 import { canPersistFlowContext, MAX_FLOW_CONTEXT_LENGTH } from '@/utils/flowContext'
 import { shouldConfirmFlowRunSettingsReplacement } from '@/utils/flowRunSnapshots'
 import { persistFlowCreationDraft, readFlowCreationDraft } from '@/utils/flowCreationDraft'
+import { resolveFlowArtifactFocus } from '@/utils/flowArtifactFocus'
 import {
   buildFlowEditorPreview,
   buildRecoveredFlowSnapshot,
@@ -1001,6 +1004,7 @@ const flowRuns = ref<TaskHistoryItem[]>([])
 const flowRunsLoading = ref(false)
 const flowRunsLoadError = ref(false)
 const selectedFlowRun = ref<TaskHistoryItem | null>(null)
+const focusedArtifactKey = ref(typeof route.query.artifact === 'string' ? route.query.artifact : '')
 const flowVersions = ref<FlowVersion[]>([])
 const flowVersionsLoading = ref(false)
 const flowVersionsLoadError = ref(false)
@@ -1589,10 +1593,10 @@ watch(
 )
 
 watch(
-  [() => route.query.flow, () => route.query.node, () => route.query.run],
-  ([flowId, nodeId, runId]) => {
+  [() => route.query.flow, () => route.query.node, () => route.query.run, () => route.query.artifact],
+  ([flowId, nodeId, runId, artifactKey]) => {
     if (flowRouteReady.value) {
-      void applyFlowRouteSelection(flowId, nodeId, runId)
+      void applyFlowRouteSelection(flowId, nodeId, runId, artifactKey)
     }
   }
 )
@@ -2235,7 +2239,8 @@ async function openSourceFlowById(sourceFlowId: string) {
 async function applyFlowRouteSelection(
   flowValue: unknown = route.query.flow,
   nodeValue: unknown = route.query.node,
-  runValue: unknown = route.query.run
+  runValue: unknown = route.query.run,
+  artifactValue: unknown = route.query.artifact
 ) {
   routeSelectionApplying.value = true
   let preserveRoute = false
@@ -2245,8 +2250,14 @@ async function applyFlowRouteSelection(
       await nextTick()
       await openNodeFromRoute(nodeValue)
       const runAvailable = await openFlowRunFromRoute(runValue)
+      if (runAvailable) {
+        applyArtifactFocusFromRoute(artifactValue)
+      } else {
+        focusedArtifactKey.value = ''
+      }
       preserveRoute = !runAvailable && flowRunsLoadError.value
     } else {
+      focusedArtifactKey.value = ''
       preserveRoute = flowAssetsUnavailable.value
     }
   } finally {
@@ -2328,6 +2339,7 @@ async function openFlowRunFromRoute(value: unknown = route.query.run) {
   const runId = typeof value === 'string' ? value : ''
   if (!runId) {
     selectedFlowRun.value = null
+    focusedArtifactKey.value = ''
     return true
   }
   if (runId === selectedFlowRun.value?.id) {
@@ -2356,6 +2368,39 @@ async function openFlowRunFromRoute(value: unknown = route.query.run) {
   return true
 }
 
+function applyArtifactFocusFromRoute(value: unknown) {
+  const artifactKey = typeof value === 'string' ? value.trim() : ''
+  if (!artifactKey) {
+    focusedArtifactKey.value = ''
+    return true
+  }
+
+  const run = selectedFlowRun.value
+  const resolution = resolveFlowArtifactFocus(
+    run?.flowRunTrace,
+    run?.id || '',
+    selectedNodeId.value,
+    artifactKey
+  )
+  if (!resolution.valid) {
+    focusedArtifactKey.value = ''
+    ElMessage.warning('这个 Artifact 不属于当前运行节点，历史证据未打开')
+    return false
+  }
+
+  focusedArtifactKey.value = artifactKey
+  return true
+}
+
+function handleArtifactFocusInvalid(artifactKey: string) {
+  if (focusedArtifactKey.value !== artifactKey) {
+    return
+  }
+  focusedArtifactKey.value = ''
+  ElMessage.warning('这个 Artifact 详情不可核验，已保留运行轨迹但没有加载伪造内容')
+  void syncActiveRouteState()
+}
+
 function syncActiveRouteState() {
   if (!flowRouteReady.value) {
     return Promise.resolve()
@@ -2364,10 +2409,12 @@ function syncActiveRouteState() {
   const flowId = workspace.activeFlowId
   const nodeId = selectedNodeId.value
   const runId = selectedFlowRun.value?.id || ''
+  const artifactKey = focusedArtifactKey.value
   const routeFlowId = typeof route.query.flow === 'string' ? route.query.flow : ''
   const routeNodeId = typeof route.query.node === 'string' ? route.query.node : ''
   const routeRunId = typeof route.query.run === 'string' ? route.query.run : ''
-  if (flowId === routeFlowId && nodeId === routeNodeId && runId === routeRunId) {
+  const routeArtifactKey = typeof route.query.artifact === 'string' ? route.query.artifact : ''
+  if (flowId === routeFlowId && nodeId === routeNodeId && runId === routeRunId && artifactKey === routeArtifactKey) {
     return Promise.resolve()
   }
 
@@ -2387,6 +2434,11 @@ function syncActiveRouteState() {
   } else {
     delete query.run
   }
+  if (artifactKey) {
+    query.artifact = artifactKey
+  } else {
+    delete query.artifact
+  }
   return router.replace({ query })
 }
 
@@ -2394,6 +2446,7 @@ async function selectFlowNode(nodeId: string) {
   if (nodeId === selectedNode.value?.id || !(await resolvePendingEdits())) {
     return
   }
+  focusedArtifactKey.value = ''
   selectedNodeId.value = nodeId
 }
 
@@ -2699,6 +2752,9 @@ async function duplicateSelectedPromptNode() {
 
 function selectFlowRun(run: TaskHistoryItem) {
   selectedFlowRun.value = run
+  if (!routeSelectionApplying.value) {
+    focusedArtifactKey.value = ''
+  }
   savedResultPrompt.value = null
   flowExecutionVisible.value = true
   flowRunPhase.value = run.status === 'failed' ? 'error' : 'completed'

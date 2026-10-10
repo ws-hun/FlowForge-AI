@@ -1,5 +1,5 @@
 <template>
-  <details class="flow-run-trace">
+  <details ref="traceDetails" class="flow-run-trace">
     <summary>
       <span>
         <strong>服务端运行轨迹</strong>
@@ -334,17 +334,21 @@ const props = withDefaults(
     trace: FlowRunTrace
     nodeActionLabel?: string
     navigableNodeIds?: string[]
+    focusedArtifactKey?: string
   }>(),
   {
     nodeActionLabel: '',
-    navigableNodeIds: () => []
+    navigableNodeIds: () => [],
+    focusedArtifactKey: ''
   }
 )
 
 const emit = defineEmits<{
   openNode: [nodeId: string]
+  artifactFocusInvalid: [artifactKey: string]
 }>()
 
+const traceDetails = ref<HTMLDetailsElement | null>(null)
 const artifactDetails = ref<Record<string, FlowNodeArtifactDetail>>({})
 const lineageDetails = ref<Record<string, FlowNodeArtifactLineage>>({})
 const openArtifactKeys = ref<Record<string, boolean>>({})
@@ -361,8 +365,45 @@ watch(
     openArtifactKeys.value = {}
     loadingArtifactKey.value = ''
     lineageLoadingKey.value = ''
-  }
+  },
+  { flush: 'post' }
 )
+
+watch(
+  () => [props.focusedArtifactKey, props.trace.runId, props.trace.flowId],
+  () => {
+    void focusRequestedArtifact()
+  },
+  { immediate: true, flush: 'post' }
+)
+
+async function focusRequestedArtifact() {
+  const artifactKey = props.focusedArtifactKey?.trim()
+  if (!artifactKey) {
+    return
+  }
+
+  await nextTick()
+  const node = props.trace.nodes.find((item) => item.outputArtifact?.key === artifactKey)
+  if (!node || !canInspectArtifact(node)) {
+    emit('artifactFocusInvalid', artifactKey)
+    return
+  }
+
+  if (traceDetails.value) {
+    traceDetails.value.open = true
+  }
+  const detail = await loadArtifact(props.trace.runId || '', artifactKey)
+  if (!detail || props.focusedArtifactKey?.trim() !== artifactKey) {
+    return
+  }
+
+  openArtifactKeys.value[artifactKey] = true
+  await nextTick()
+  const target = Array.from(document.querySelectorAll<HTMLElement>('[data-artifact-key]'))
+    .find((element) => element.dataset.artifactKey === artifactKey)
+  target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+}
 
 function canInspectArtifact(node: FlowNodeRunTrace) {
   return Boolean(

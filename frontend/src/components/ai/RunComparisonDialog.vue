@@ -282,7 +282,7 @@ const emit = defineEmits<{
   continue: [run: TaskHistoryItem]
   'open-flow': [run: TaskHistoryItem]
   'open-origin': [run: TaskHistoryItem]
-  'open-node': [payload: { run: TaskHistoryItem; nodeId: string }]
+  'open-node': [payload: { run: TaskHistoryItem; nodeId: string; artifactKey?: string }]
   'save-as-prompt': [run: TaskHistoryItem]
   'create-flow': [run: TaskHistoryItem]
   'create-snapshot-flow': [run: TaskHistoryItem]

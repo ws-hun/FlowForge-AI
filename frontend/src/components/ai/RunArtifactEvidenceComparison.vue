@@ -52,7 +52,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  openNode: [payload: { run: TaskHistoryItem; nodeId: string }]
+  openNode: [payload: { run: TaskHistoryItem; nodeId: string; artifactKey?: string }]
 }>()
 
 const comparison = computed(() => compareRunNodeArtifacts(props.sourceRun, props.targetRun))
@@ -137,7 +137,8 @@ function canInspectNode(change: RunArtifactEvidenceChange) {
 function openNode(change: RunArtifactEvidenceChange) {
   emit('openNode', {
     run: change.side === 'source' ? props.sourceRun : props.targetRun,
-    nodeId: change.nodeId
+    nodeId: change.nodeId,
+    artifactKey: change.artifactKey
   })
 }
 </script>

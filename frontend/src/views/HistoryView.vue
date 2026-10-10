@@ -470,7 +470,7 @@ function openComparisonOrigin(run: TaskHistoryItem) {
   }
 }
 
-function openComparisonNode(payload: { run: TaskHistoryItem; nodeId: string }) {
+function openComparisonNode(payload: { run: TaskHistoryItem; nodeId: string; artifactKey?: string }) {
   const flowId = payload.run.flowRunSnapshot?.flowId || payload.run.sourceFlowId
   if (!flowId) {
     ElMessage.warning('这次运行没有可定位的 Flow')
@@ -479,7 +479,12 @@ function openComparisonNode(payload: { run: TaskHistoryItem; nodeId: string }) {
   closeComparison()
   router.push({
     path: '/workflows',
-    query: { flow: flowId, node: payload.nodeId, run: payload.run.id }
+    query: {
+      flow: flowId,
+      node: payload.nodeId,
+      run: payload.run.id,
+      ...(payload.artifactKey ? { artifact: payload.artifactKey } : {})
+    }
   })
 }
 
