@@ -71,16 +71,16 @@
               <button
                 v-if="canInspectArtifact(node)"
                 type="button"
-                :disabled="loadingArtifactKey === node.outputArtifact.key"
+                :disabled="artifactIsLoading(node.outputArtifact.key)"
                 @click="toggleArtifact(node)"
               >
                 <Loading
-                  v-if="loadingArtifactKey === node.outputArtifact.key"
+                  v-if="artifactIsLoading(node.outputArtifact.key)"
                   class="flow-run-trace-artifact-loading"
                 />
                 <View v-else />
                 {{
-                  loadingArtifactKey === node.outputArtifact.key
+                  artifactIsLoading(node.outputArtifact.key)
                     ? '加载中'
                     : artifactIsOpen(node.outputArtifact.key)
                       ? artifactCloseLabel(node)
@@ -177,7 +177,7 @@
                       v-if="reference.artifactStorage === 'node-artifact' && reference.artifactState === 'materialized'"
                       type="button"
                       title="定位到已声明输入产物"
-                      :disabled="loadingArtifactKey === reference.artifactKey"
+                      :disabled="artifactIsLoading(reference.artifactKey)"
                       @click="revealProviderInputReference(reference.artifactKey)"
                     >
                       <View />
@@ -211,7 +211,7 @@
                 <button
                   v-if="canInspectUpstreamArtifact(artifactDetails[node.outputArtifact.key])"
                   type="button"
-                  :disabled="loadingArtifactKey === artifactDetails[node.outputArtifact.key]?.inputArtifactKey"
+                  :disabled="artifactIsLoading(artifactDetails[node.outputArtifact.key]?.inputArtifactKey || '')"
                   @click="revealUpstreamArtifact(artifactDetails[node.outputArtifact.key])"
                 >
                   <Back />
@@ -293,7 +293,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Back, CopyDocument, Loading, Right, View } from '@element-plus/icons-vue'
 import type {
@@ -322,6 +322,8 @@ import {
   flowProviderCallCountLabel
 } from '@/utils/flowExecutionPlan'
 import { flowArtifactLineageStatusLabel } from '@/utils/flowArtifactLineage'
+import { createFlowArtifactLoader } from '@/utils/flowArtifactLoader'
+import { createLatestRequestGate } from '@/utils/latestRequest'
 import {
   flowProviderCallMetrics,
   flowProviderCallSource,
@@ -349,28 +351,40 @@ const emit = defineEmits<{
 }>()
 
 const traceDetails = ref<HTMLDetailsElement | null>(null)
-const artifactDetails = ref<Record<string, FlowNodeArtifactDetail>>({})
 const lineageDetails = ref<Record<string, FlowNodeArtifactLineage>>({})
 const openArtifactKeys = ref<Record<string, boolean>>({})
-const loadingArtifactKey = ref('')
 const lineageLoadingKey = ref('')
 const inspectionGeneration = ref(0)
+const artifactLoader = createFlowArtifactLoader(
+  async (taskId, artifactKey) => (await getTaskArtifact(taskId, artifactKey)).data,
+  () => ElMessage.error('节点产物加载失败')
+)
+const artifactDetails = artifactLoader.details
+const loadingArtifactKeys = artifactLoader.loading
+const artifactFocusRequest = createLatestRequestGate()
+
+artifactLoader.reset(props.trace.runId || '', props.trace.flowId)
 
 watch(
-  () => [props.trace.runId, props.trace.flowId],
+  [() => props.trace.runId, () => props.trace.flowId],
   () => {
     inspectionGeneration.value += 1
-    artifactDetails.value = {}
     lineageDetails.value = {}
     openArtifactKeys.value = {}
-    loadingArtifactKey.value = ''
     lineageLoadingKey.value = ''
+    artifactLoader.reset(props.trace.runId || '', props.trace.flowId)
   },
-  { flush: 'post' }
+  { flush: 'sync' }
 )
 
+onBeforeUnmount(() => {
+  inspectionGeneration.value += 1
+  artifactFocusRequest.invalidate()
+  artifactLoader.reset('', '')
+})
+
 watch(
-  () => [props.focusedArtifactKey, props.trace.runId, props.trace.flowId],
+  [() => props.focusedArtifactKey, () => props.trace.runId, () => props.trace.flowId],
   () => {
     void focusRequestedArtifact()
   },
@@ -378,12 +392,16 @@ watch(
 )
 
 async function focusRequestedArtifact() {
+  const focusRequest = artifactFocusRequest.begin()
+  const requestGeneration = inspectionGeneration.value
+  const taskId = props.trace.runId || ''
   const artifactKey = props.focusedArtifactKey?.trim()
   if (!artifactKey) {
     return
   }
 
   await nextTick()
+  if (!artifactFocusRequest.isCurrent(focusRequest) || !inspectionIsCurrent(requestGeneration, taskId)) return
   const node = props.trace.nodes.find((item) => item.outputArtifact?.key === artifactKey)
   if (!node || !canInspectArtifact(node)) {
     emit('artifactFocusInvalid', artifactKey)
@@ -393,16 +411,21 @@ async function focusRequestedArtifact() {
   if (traceDetails.value) {
     traceDetails.value.open = true
   }
-  const detail = await loadArtifact(props.trace.runId || '', artifactKey)
-  if (!detail || props.focusedArtifactKey?.trim() !== artifactKey) {
+  const detail = await loadArtifact(taskId, artifactKey)
+  if (!detail || !artifactFocusRequest.isCurrent(focusRequest)
+    || !inspectionIsCurrent(requestGeneration, taskId) || props.focusedArtifactKey?.trim() !== artifactKey) {
     return
   }
 
   openArtifactKeys.value[artifactKey] = true
   await nextTick()
-  const target = Array.from(document.querySelectorAll<HTMLElement>('[data-artifact-key]'))
-    .find((element) => element.dataset.artifactKey === artifactKey)
-  target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  if (artifactFocusRequest.isCurrent(focusRequest) && inspectionIsCurrent(requestGeneration, taskId)) {
+    scrollToArtifact(artifactKey)
+  }
+}
+
+function inspectionIsCurrent(generation: number, taskId: string) {
+  return generation === inspectionGeneration.value && taskId === props.trace.runId
 }
 
 function canInspectArtifact(node: FlowNodeRunTrace) {
@@ -428,6 +451,17 @@ function artifactIsOpen(artifactKey: string) {
   return Boolean(openArtifactKeys.value[artifactKey])
 }
 
+function artifactIsLoading(artifactKey: string) {
+  return Boolean(loadingArtifactKeys.value[artifactKey])
+}
+
+function scrollToArtifact(artifactKey: string) {
+  const target = Array.from(
+    traceDetails.value?.querySelectorAll<HTMLElement>('[data-artifact-key]') || []
+  ).find((element) => element.dataset.artifactKey === artifactKey)
+  target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+}
+
 async function toggleArtifact(node: FlowNodeRunTrace) {
   const artifact = node.outputArtifact
   const taskId = props.trace.runId
@@ -439,36 +473,24 @@ async function toggleArtifact(node: FlowNodeRunTrace) {
     return
   }
 
+  const requestGeneration = inspectionGeneration.value
   const detail = await loadArtifact(taskId, artifact.key)
-  if (detail) {
+  if (detail && inspectionIsCurrent(requestGeneration, taskId)) {
     openArtifactKeys.value[artifact.key] = true
   }
 }
 
-async function loadArtifact(taskId: string, artifactKey: string) {
-  if (artifactDetails.value[artifactKey]) {
-    return artifactDetails.value[artifactKey]
-  }
+function loadArtifact(taskId: string, artifactKey: string) {
+  return artifactLoader.load(taskId, artifactKey)
+}
+
+async function revealArtifact(taskId: string, artifactKey: string) {
   const requestGeneration = inspectionGeneration.value
-  loadingArtifactKey.value = artifactKey
-  try {
-    const { data } = await getTaskArtifact(taskId, artifactKey)
-    if (requestGeneration !== inspectionGeneration.value || taskId !== props.trace.runId) {
-      return null
-    }
-    artifactDetails.value[artifactKey] = data
-    return data
-  } catch {
-    if (requestGeneration !== inspectionGeneration.value || taskId !== props.trace.runId) {
-      return null
-    }
-    ElMessage.error('节点产物加载失败')
-    return null
-  } finally {
-    if (requestGeneration === inspectionGeneration.value) {
-      loadingArtifactKey.value = ''
-    }
-  }
+  const detail = await loadArtifact(taskId, artifactKey)
+  if (!detail || !inspectionIsCurrent(requestGeneration, taskId)) return
+  openArtifactKeys.value[artifactKey] = true
+  await nextTick()
+  if (inspectionIsCurrent(requestGeneration, taskId)) scrollToArtifact(artifactKey)
 }
 
 function canInspectUpstreamArtifact(detail: FlowNodeArtifactDetail | undefined) {
@@ -485,15 +507,7 @@ async function revealUpstreamArtifact(detail: FlowNodeArtifactDetail | undefined
   if (!taskId || !artifactKey || !canInspectUpstreamArtifact(detail)) {
     return
   }
-  const upstream = await loadArtifact(taskId, artifactKey)
-  if (!upstream) {
-    return
-  }
-  openArtifactKeys.value[artifactKey] = true
-  await nextTick()
-  const target = Array.from(document.querySelectorAll<HTMLElement>('[data-artifact-key]'))
-    .find((element) => element.dataset.artifactKey === artifactKey)
-  target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  await revealArtifact(taskId, artifactKey)
 }
 
 async function revealProviderInputReference(artifactKey: string) {
@@ -501,15 +515,7 @@ async function revealProviderInputReference(artifactKey: string) {
   if (!taskId) {
     return
   }
-  const inputArtifact = await loadArtifact(taskId, artifactKey)
-  if (!inputArtifact) {
-    return
-  }
-  openArtifactKeys.value[artifactKey] = true
-  await nextTick()
-  const target = Array.from(document.querySelectorAll<HTMLElement>('[data-artifact-key]'))
-    .find((element) => element.dataset.artifactKey === artifactKey)
-  target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  await revealArtifact(taskId, artifactKey)
 }
 
 async function toggleLineage(artifactKey: string, event: Event) {
@@ -547,15 +553,7 @@ async function revealLineageEntry(entry: FlowNodeArtifactLineageEntry) {
   if (!taskId || !entry.persisted) {
     return
   }
-  const detail = await loadArtifact(taskId, entry.artifactKey)
-  if (!detail) {
-    return
-  }
-  openArtifactKeys.value[entry.artifactKey] = true
-  await nextTick()
-  const target = Array.from(document.querySelectorAll<HTMLElement>('[data-artifact-key]'))
-    .find((element) => element.dataset.artifactKey === entry.artifactKey)
-  target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  await revealArtifact(taskId, entry.artifactKey)
 }
 
 async function copyArtifact(artifactKey: string) {
