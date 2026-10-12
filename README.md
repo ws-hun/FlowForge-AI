@@ -164,6 +164,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Immutable Node Artifact Records | Done | 成功和失败轨迹保存节点产物状态、真实存储来源与内容指纹，失败或跳过节点不伪造输出 |
 | Stage 3 | Addressable Node Artifact Payloads | Done | 每个现代 Flow 节点产物独立落库、按运行与稳定 Key 读取，并可在运行轨迹内按需检查和复制 |
 | Stage 3 | Artifact Inspection Continuity | Done | 同一运行/Key 共享正在进行的读取，独立展示每项加载状态；切换运行后旧响应失效，同名产物只在当前轨迹内定位 |
+| Stage 3 | Readable Artifact Documents | Done | AI Task / Output 产物复用安全文档渲染，支持 Markdown 与整体结构化 JSON；原文默认折叠、复制保留原文，Input / Prompt 保持字面内容 |
 | Stage 3 | Navigable Node Artifact Lineage | Done | 当前节点产物保存真实上游 Key、契约、状态、解析方式与指纹，可从运行轨迹按需回看已物化上游 |
 | Stage 3 | Complete Artifact Lineage Path | Done | 运行轨迹可按需查看从节点产物回到 Flow 快照目标的 metadata-only 来源链，并诚实显示旧记录、断链和循环终止状态 |
 | Stage 3 | Node Provider Provenance | Done | 唯一 AI Task 边界保存真实 Provider、模型、Token、耗时和失败来源，Input、Prompt 与 Output 节点不伪造调用信息 |
@@ -781,6 +782,8 @@ V10 起，新 v5 运行会在 `flow_provider_input_references` 中把这份有�
 新计划同时保存 `flow-failure-policy-v1`：Provider 失败时停止本次运行，后续节点标记为 `skipped`，本次调用最多尝试 `1` 次且不会自动重试。服务端在生成轨迹和持久化节点产物前都会校验该策略，Preview 与历史 Execution Path 复用同一说明。旧计划没有策略字段时保持 `failurePolicy: null`，不会补造历史行为。
 
 现代 `flowRunTrace.nodes[].outputArtifact` 保存产物状态与内容指纹，同时在 `flow_node_artifacts` 中独立保存可寻址 payload。Input / Prompt 保存变量替换后的编译文本，AI Task 保存 Summary + Result，Output 保存 Result 文档；落库前必须重新计算并匹配 trace 指纹。每个现代产物同时保存上游 Key、类型、存储、状态、输入解析方式和可用指纹，运行轨迹可按需打开并跳转到已物化上游。Provider 失败和下游跳过不会生成虚假 payload 或指纹。
+
+运行轨迹中的 AI Task / Output 产物按保存的媒体类型阅读：`text/markdown` 与 `application/json` 复用结果页的安全文档正文，整体 JSON 对象/数组可转换为标题、列表和代码展示。原始产物默认折叠且逐字符保留，复制始终读取保存的原文。Input / Prompt、不支持或缺失媒体类型的产物仍显示纯文本；失败调用保留真实调用证据并隐藏无正文的复制操作。此展示层不改变 payload、指纹或执行语义，也不增加读取请求。
 
 `compiled-reference` 明确表示当前血缘来自一次完整 Flow 编译引用，不表示运行时从数据库逐节点读取上游 payload。运行轨迹只在用户点击“查看产物”或“查看上游”时调用单项读取 API；“来源链”另行按需读取 metadata-only 路径，因此不会预加载整次运行的所有 payload。路径回到 `flow-snapshot` 只代表这次历史运行的可解释来源，不代表已经启用 `persisted-artifact` 执行。当前 Runtime 仍执行一次共享 Provider 调用。旧 v1 / v2 / v3 计划与迁移前产物保持缺失字段为 `null`，不会根据当前 Flow 现场补造历史血缘。
 
