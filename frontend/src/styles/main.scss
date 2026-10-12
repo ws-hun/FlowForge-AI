@@ -2559,6 +2559,14 @@ a {
   }
 }
 
+.rendered-document--unframed {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
 .result-inline-strong {
   color: tokens.$text-primary;
   font-weight: 680;
@@ -4314,7 +4322,7 @@ a {
   border-radius: tokens.$radius-md;
   background: rgba(255, 255, 255, 0.82);
 
-  header {
+  > header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -4355,18 +4363,64 @@ a {
       }
     }
   }
+}
 
-  pre {
-    max-height: 320px;
-    margin: 0;
-    overflow: auto;
-    padding: 12px;
-    color: tokens.$text-secondary;
-    font-family: tokens.$mono;
+.flow-artifact-payload {
+  min-width: 0;
+  padding: 16px;
+
+  .rendered-document {
+    font-size: 13px;
+    overflow-wrap: anywhere;
+
+    h4 {
+      font-size: 18px;
+      letter-spacing: 0;
+
+      &.level-1,
+      &.level-2 {
+        font-size: 18px;
+      }
+
+      &.level-4 {
+        font-size: 15px;
+      }
+    }
+
+    .rendered-code {
+      max-height: 320px;
+      font-size: 12px;
+      overflow-wrap: normal;
+    }
+  }
+}
+
+.flow-artifact-text {
+  max-height: 320px;
+  margin: 0;
+  overflow: auto;
+  color: tokens.$text-secondary;
+  font-family: tokens.$mono;
+  font-size: 11px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.flow-artifact-raw {
+  margin-top: 16px;
+  border-top: 1px solid tokens.$border;
+
+  > summary {
+    padding: 12px 0;
+    color: tokens.$text-muted;
+    cursor: pointer;
     font-size: 11px;
-    line-height: 1.7;
-    white-space: pre-wrap;
-    word-break: break-word;
+    transition: color 200ms ease;
+
+    &:hover {
+      color: tokens.$primary;
+    }
   }
 }
 

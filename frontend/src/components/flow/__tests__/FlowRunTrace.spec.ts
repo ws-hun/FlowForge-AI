@@ -4,9 +4,9 @@ import { createApp, h, nextTick, shallowRef, type App } from 'vue'
 import type { FlowNodeArtifactDetail, FlowRunTrace as Trace } from '@/types'
 import FlowRunTrace from '../FlowRunTrace.vue'
 
-const api = vi.hoisted(() => ({ getTaskArtifact: vi.fn(), getTaskArtifactLineage: vi.fn(), error: vi.fn() }))
+const api = vi.hoisted(() => ({ getTaskArtifact: vi.fn(), getTaskArtifactLineage: vi.fn(), error: vi.fn(), success: vi.fn() }))
 vi.mock('@/api/tasks', () => api)
-vi.mock('element-plus', () => ({ ElMessage: { error: api.error } }))
+vi.mock('element-plus', () => ({ ElMessage: { error: api.error, success: api.success } }))
 vi.mock('@/components/flow/FlowExecutionPlan.vue', () => ({ default: { render: () => null } }))
 vi.mock('@/components/flow/FlowProviderAttempts.vue', () => ({ default: { render: () => null } }))
 
@@ -166,6 +166,28 @@ describe('Flow run Artifact inspection', () => {
     expect(api.getTaskArtifact).toHaveBeenCalledTimes(1)
     expect(container.querySelector('[data-artifact-key]')).not.toBeNull()
     expect(container.querySelector('[data-artifact-key] pre')).toBeNull()
+    expect(container.querySelector('[aria-label="复制节点产物"]')).toBeNull()
+  })
+
+  it('renders a Provider document and copies the exact saved payload rather than its readable conversion', async () => {
+    const savedTrace = trace('run-1')
+    savedTrace.nodes[0].nodeType = 'ai-task'
+    savedTrace.nodes[0].status = 'completed'
+    savedTrace.nodes[0].outputArtifact!.type = 'provider-result'
+    const payload = '  # 摘要\r\n\r\n- **交付**文档  \r\n'
+    api.getTaskArtifact.mockResolvedValue({ data: {
+      ...detail('run-1'), artifactType: 'provider-result', mediaType: 'text/markdown', payload
+    } })
+    const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
+    const { container } = mount({ trace: savedTrace, focusedArtifactKey: key })
+    await flush()
+    expect(container.querySelector('[data-artifact-key] h4')?.textContent?.trim()).toBe('摘要')
+    expect(container.querySelector<HTMLDetailsElement>('.flow-artifact-raw')?.open).toBe(false)
+    container.querySelector<HTMLButtonElement>('[aria-label="复制节点产物"]')!.click()
+    await flush()
+    expect(copy).toHaveBeenCalledWith(payload)
+    expect(api.success).toHaveBeenCalledWith('节点产物已复制')
+    expect(api.getTaskArtifact).toHaveBeenCalledTimes(1)
   })
 
   it('does not scroll or report a late response after leaving the trace', async () => {

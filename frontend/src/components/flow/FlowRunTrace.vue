@@ -98,6 +98,7 @@
               <header>
                 <span>{{ artifactDetails[node.outputArtifact.key]?.mediaType || 'text/plain' }}</span>
                 <button
+                  v-if="hasArtifactPayload(artifactDetails[node.outputArtifact.key])"
                   type="button"
                   title="复制节点产物"
                   aria-label="复制节点产物"
@@ -274,7 +275,10 @@
                   </ol>
                 </div>
               </details>
-              <pre v-if="artifactDetails[node.outputArtifact.key]?.payload">{{ artifactDetails[node.outputArtifact.key]?.payload }}</pre>
+              <FlowArtifactPayload
+                v-if="artifactDetails[node.outputArtifact.key]"
+                :detail="artifactDetails[node.outputArtifact.key]!"
+              />
             </section>
           </Transition>
           <button
@@ -311,6 +315,7 @@ import type {
 import { getTaskArtifact, getTaskArtifactLineage } from '@/api/tasks'
 import FlowExecutionPlan from '@/components/flow/FlowExecutionPlan.vue'
 import FlowProviderAttempts from '@/components/flow/FlowProviderAttempts.vue'
+import FlowArtifactPayload from '@/components/flow/FlowArtifactPayload.vue'
 import {
   flowArtifactInputResolutionLabel,
   flowArtifactStateLabel,
@@ -557,12 +562,20 @@ async function revealLineageEntry(entry: FlowNodeArtifactLineageEntry) {
 }
 
 async function copyArtifact(artifactKey: string) {
+  const detail = artifactDetails.value[artifactKey]
+  if (!hasArtifactPayload(detail)) return
   try {
-    await navigator.clipboard.writeText(artifactDetails.value[artifactKey]?.payload || '')
+    await navigator.clipboard.writeText(detail.payload)
     ElMessage.success('节点产物已复制')
   } catch {
     ElMessage.error('复制失败，请展开后手动复制')
   }
+}
+
+function hasArtifactPayload(
+  detail: FlowNodeArtifactDetail | undefined
+): detail is FlowNodeArtifactDetail & { payload: string } {
+  return detail?.state === 'materialized' && typeof detail.payload === 'string'
 }
 
 function artifactInputTypeLabel(detail: FlowNodeArtifactDetail | undefined) {

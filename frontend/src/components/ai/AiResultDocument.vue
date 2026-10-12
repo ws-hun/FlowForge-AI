@@ -45,32 +45,7 @@
 
     <div class="doc-section">
       <h3>结果</h3>
-      <div class="document-body rendered-document">
-        <template v-for="(block, index) in resultBlocks" :key="`${block.type}-${index}`">
-          <h4 v-if="block.type === 'heading'" :class="`level-${block.level}`">
-            <ResultInlineText :text="block.content" />
-          </h4>
-          <p v-else-if="block.type === 'paragraph'"><ResultInlineText :text="block.content" /></p>
-          <ul v-else-if="block.type === 'list' && !block.ordered" class="rendered-list">
-            <li v-for="(item, itemIndex) in block.items" :key="itemIndex">
-              <ResultInlineText :text="item" />
-            </li>
-          </ul>
-          <ol v-else-if="block.type === 'list'" class="rendered-list">
-            <li v-for="(item, itemIndex) in block.items" :key="itemIndex">
-              <ResultInlineText :text="item" />
-            </li>
-          </ol>
-          <div v-else-if="block.type === 'code'" class="rendered-code-wrap">
-            <span v-if="block.language">{{ block.language }}</span>
-            <pre class="rendered-code">{{ block.content }}</pre>
-          </div>
-          <blockquote v-else-if="block.type === 'quote'">
-            <ResultInlineText :text="block.content" />
-          </blockquote>
-          <hr v-else-if="block.type === 'divider'" />
-        </template>
-      </div>
+      <ResultDocumentBody :blocks="resultBlocks" />
     </div>
 
     <el-collapse v-if="showRaw || resolvedResult.sourceJson">
@@ -88,7 +63,7 @@
 import { computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { CopyDocument, Download } from '@element-plus/icons-vue'
-import ResultInlineText from '@/components/ai/ResultInlineText.vue'
+import ResultDocumentBody from '@/components/ai/ResultDocumentBody.vue'
 import { formatExecutionDuration, formatProviderName, formatTokenUsage } from '@/utils/aiProvider'
 import {
   buildResultMarkdown,
