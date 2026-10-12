@@ -163,6 +163,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Node Runtime Role Guidance | Done | Flow canvas 与 Inspector 解释每个节点如何参与执行，并明确当前只有 AI Task 触发 Provider 调用 |
 | Stage 3 | Immutable Node Artifact Records | Done | 成功和失败轨迹保存节点产物状态、真实存储来源与内容指纹，失败或跳过节点不伪造输出 |
 | Stage 3 | Addressable Node Artifact Payloads | Done | 每个现代 Flow 节点产物独立落库、按运行与稳定 Key 读取，并可在运行轨迹内按需检查和复制 |
+| Stage 3 | Artifact Inspection Continuity | Done | 同一运行/Key 共享正在进行的读取，独立展示每项加载状态；切换运行后旧响应失效，同名产物只在当前轨迹内定位 |
 | Stage 3 | Navigable Node Artifact Lineage | Done | 当前节点产物保存真实上游 Key、契约、状态、解析方式与指纹，可从运行轨迹按需回看已物化上游 |
 | Stage 3 | Complete Artifact Lineage Path | Done | 运行轨迹可按需查看从节点产物回到 Flow 快照目标的 metadata-only 来源链，并诚实显示旧记录、断链和循环终止状态 |
 | Stage 3 | Node Provider Provenance | Done | 唯一 AI Task 边界保存真实 Provider、模型、Token、耗时和失败来源，Input、Prompt 与 Output 节点不伪造调用信息 |
@@ -554,7 +555,7 @@ Model     gpt-4o-mini
 ```text
 JDK 17+
 Maven 3.9+
-Node.js 18+
+Node.js 20+ (recommended: 22 LTS)
 PostgreSQL 16+
 ```
 
@@ -811,7 +812,9 @@ AI Command 中尚未执行的输入与来源上下文保存在当前浏览器的
 
 运行对比会同时核对 Provider 输入指纹与 v5 执行计划中保存的有序 fan-in 声明。声明比较覆盖 Artifact key、语义类型和 storage；任一运行缺少 v5 声明时，界面明确显示无法核验，不使用当前 Flow 反向补造历史结构。
 
-运行对比还会直接比较两次不可变轨迹中保存的节点 `outputArtifact` 元数据，包括 Artifact 是否存在、语义类型、storage、物化状态和内容指纹。即使 key 没变，只要类型或 storage 契约发生漂移也会显示为变化。该比较不预加载 payload，也不会从当前 Flow 或数据库中的最新资产反推旧运行；任一侧没有保存 Artifact 证据时整组保持“无法核验”。可定位的变化沿用 `flow`、`node`、`run` 深链回到对应运行节点，已删除节点不会生成失效入口。
+运行对比还会直接比较两次不可变轨迹中保存的节点 `outputArtifact` 元数据，包括 Artifact 是否存在、语义类型、storage、物化状态和内容指纹。即使 key 没变，只要类型或 storage 契约发生漂移也会显示为变化。该比较不预加载 payload，也不会从当前 Flow 或数据库中的最新资产反推旧运行；任一侧没有保存 Artifact 证据时整组保持“无法核验”。可定位的变化使用 `flow`、`node`、`run`、`artifact` 深链回到对应运行产物，校验其所属运行、节点与可读取状态后自动展开详情，已删除节点不会生成失效入口。
+
+同一运行中，手动查看、上游定位与深链聚焦共享同一 Artifact 的正在进行的读取；不同 Artifact 各自保持加载状态。响应中的 Task、Flow 与 Key 必须匹配请求才能缓存。同一运行对象刷新保留已读取内容，切换运行或离开页面后旧响应不会覆盖新证据；清除深链聚焦后旧请求也不会重新展开详情。滚动定位仅搜索当前运行轨迹，避免对比页面中同名产物跳错位置。
 
 Attempt 表是未来 retry / recovery 的持久化基础，不代表运行时已经启用重试。当前 `single-pass` 仍只调用 Provider 一次，`providerCallCount` 仍为 `1`，不会创建 `automatic-retry` 或 `manual-recovery`，也没有启用 `node-sequential`。
 
@@ -891,6 +894,8 @@ npm run test:unit
 npm run typecheck
 npm run build
 ```
+
+前端包含纯逻辑测试与 `happy-dom` 环境下的 Vue 组件交互测试。Artifact 请求去重、并发加载、运行切换、自动展开和滚动目标均通过模拟 API 验证，无需启动后端或调用真实模型。测试依赖要求 Node.js 20+。
 
 Backend:
 
