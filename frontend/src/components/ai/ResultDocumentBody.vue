@@ -15,6 +15,24 @@
           <ResultInlineText :text="item" />
         </li>
       </ol>
+      <div v-else-if="block.type === 'table'" class="rendered-table-scroll" role="region" tabindex="0" aria-label="结果表格">
+        <table class="rendered-table">
+          <thead>
+            <tr>
+              <th v-for="(header, column) in block.headers" :key="column" scope="col" :style="{ textAlign: block.alignments[column] }">
+                <ResultInlineText :text="header" />
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(row, rowIndex) in block.rows" :key="rowIndex">
+              <td v-for="(cell, column) in row" :key="column" :style="{ textAlign: block.alignments[column] }">
+                <ResultInlineText :text="cell" />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <div v-else-if="block.type === 'code'" class="rendered-code-wrap">
         <span v-if="block.language">{{ block.language }}</span>
         <pre class="rendered-code">{{ block.content }}</pre>

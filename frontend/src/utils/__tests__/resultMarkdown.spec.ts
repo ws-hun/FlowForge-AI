@@ -33,6 +33,30 @@ describe('resultMarkdown', () => {
     ])
   })
 
+  it('parses Markdown tables, column alignment, escaped pipes and inline code pipes', () => {
+    const source = '| Node | Role | Count |\n| :--- | :---: | ---: |\n'
+      + '| Input | `text | context` | 2 |\n| Output | result\\|document | 1 |'
+    expect(parseResultMarkdown(source)).toEqual([{
+      type: 'table',
+      headers: ['Node', 'Role', 'Count'],
+      alignments: ['left', 'center', 'right'],
+      rows: [
+        ['Input', '`text | context`', '2'],
+        ['Output', 'result|document', '1']
+      ]
+    }])
+  })
+
+  it('does not classify prose or malformed tables as a Markdown table', () => {
+    expect(parseResultMarkdown('A | B\nnot a delimiter')).toEqual([
+      { type: 'paragraph', content: 'A | B not a delimiter' }
+    ])
+    expect(parseResultMarkdown('| A | B |\n| --- | --- |\n| only one cell |')).toEqual([
+      { type: 'table', headers: ['A', 'B'], alignments: ['left', 'left'], rows: [] },
+      { type: 'paragraph', content: '| only one cell |' }
+    ])
+  })
+
   it('keeps strong, code and emphasis as safe inline segments', () => {
     const source = 'Use **Flow Space**, run ' + tick + 'v1' + tick + ', then *review*.'
     expect(parseInlineMarkdown(source)).toEqual([

@@ -2595,6 +2595,48 @@ a {
   }
 }
 
+.rendered-table-scroll {
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid tokens.$border;
+  border-radius: tokens.$radius-md;
+  background: tokens.$surface;
+
+  &:focus-visible {
+    outline: 2px solid rgba(79, 124, 255, 0.45);
+    outline-offset: 2px;
+  }
+}
+
+.rendered-table {
+  width: 100%;
+  min-width: max-content;
+  border-collapse: collapse;
+  color: tokens.$text-secondary;
+  font-size: 13px;
+  line-height: 1.65;
+
+  th,
+  td {
+    min-width: 112px;
+    max-width: 360px;
+    padding: 10px 14px;
+    border-bottom: 1px solid tokens.$border;
+    overflow-wrap: anywhere;
+    vertical-align: top;
+  }
+
+  th {
+    background: tokens.$surface-secondary;
+    color: tokens.$text-primary;
+    font-weight: 680;
+  }
+
+  tr:last-child td {
+    border-bottom: 0;
+  }
+}
+
 .rendered-code-wrap {
   overflow: hidden;
   border: 1px solid rgba(17, 24, 39, 0.08);

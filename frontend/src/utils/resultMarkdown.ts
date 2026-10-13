@@ -4,6 +4,7 @@ export type ResultBlock =
   | { type: 'heading'; level: number; content: string }
   | { type: 'paragraph'; content: string }
   | { type: 'list'; ordered: boolean; items: string[] }
+  | { type: 'table'; headers: string[]; alignments: ('left' | 'center' | 'right')[]; rows: string[][] }
   | { type: 'code'; language: string; content: string }
   | { type: 'quote'; content: string }
   | { type: 'divider' }
@@ -43,7 +44,8 @@ export function parseResultMarkdown(text: string): ResultBlock[] {
     quoteLines = []
   }
 
-  for (const rawLine of lines) {
+  for (let index = 0; index < lines.length; index += 1) {
+    const rawLine = lines[index]
     const trimmed = rawLine.trim()
 
     if (trimmed.startsWith(CODE_FENCE)) {
@@ -64,6 +66,31 @@ export function parseResultMarkdown(text: string): ResultBlock[] {
 
     if (inCode) {
       codeLines.push(rawLine)
+      continue
+    }
+
+    const headers = parseTableRow(trimmed)
+    const delimiter = parseTableRow(lines[index + 1]?.trim() || '')
+    if (headers && delimiter && headers.length === delimiter.length
+      && delimiter.every((cell) => /^:?-{3,}:?$/.test(cell))) {
+      flushParagraph()
+      flushList()
+      flushQuote()
+      const alignments = delimiter.map((cell) => {
+        const left = cell.startsWith(':')
+        const right = cell.endsWith(':')
+        return left && right ? 'center' : right ? 'right' : 'left'
+      })
+      const rows: string[][] = []
+      index += 2
+      while (index < lines.length) {
+        const row = parseTableRow(lines[index].trim())
+        if (!row || row.length !== headers.length) break
+        rows.push(row)
+        index += 1
+      }
+      index -= 1
+      blocks.push({ type: 'table', headers, alignments, rows })
       continue
     }
 
@@ -123,6 +150,33 @@ export function parseResultMarkdown(text: string): ResultBlock[] {
   flushQuote()
 
   return blocks.length ? blocks : [{ type: 'paragraph', content: text }]
+}
+
+function parseTableRow(line: string): string[] | null {
+  if (!line.includes('|')) return null
+  const cells: string[] = []
+  let cell = ''
+  let inCode = false
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index]
+    if (character === '\\' && line[index + 1] === '|') {
+      cell += '|'
+      index += 1
+    } else if (character === '`') {
+      inCode = !inCode
+      cell += character
+    } else if (character === '|' && !inCode) {
+      cells.push(cell.trim())
+      cell = ''
+    } else {
+      cell += character
+    }
+  }
+  cells.push(cell.trim())
+  if (line.trimStart().startsWith('|')) cells.shift()
+  if (line.trimEnd().endsWith('|')) cells.pop()
+  return cells.length > 1 ? cells : null
 }
 
 export function parseInlineMarkdown(text: string): ResultInlineSegment[] {

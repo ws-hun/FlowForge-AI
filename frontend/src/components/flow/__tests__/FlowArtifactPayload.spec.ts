@@ -74,6 +74,17 @@ describe('Flow Artifact payload presentation', () => {
     expect(container.querySelector('.rendered-document')?.textContent).toContain('分三步交付。')
   })
 
+  it('renders safe, horizontally navigable tables from Result Artifacts', () => {
+    const { container } = mount(artifact({
+      artifactType: 'result-document',
+      payload: '| 节点 | 状态 |\n| --- | --- |\n| <script> | 已完成 |'
+    }))
+    expect(container.querySelector('[role="region"][aria-label="结果表格"]')?.getAttribute('tabindex')).toBe('0')
+    expect(container.querySelectorAll('thead th')).toHaveLength(2)
+    expect(container.querySelector('tbody td')?.textContent).toBe('<script>')
+    expect(container.querySelector('script')).toBeNull()
+  })
+
   it('keeps the exact saved payload in a collapsed raw view', () => {
     const payload = '  # 计划\r\n\r\n- 工作空间  \r\n'
     const { container } = mount(artifact({ payload }))
