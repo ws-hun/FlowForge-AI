@@ -63,6 +63,17 @@ describe('Flow Artifact payload presentation', () => {
     expect(container.querySelector('.rendered-document--unframed')).not.toBeNull()
   })
 
+  it('keeps the saved AI Task summary and result as separate document sections', () => {
+    const { container } = mount(artifact({
+      artifactType: 'provider-result',
+      payload: '## 摘要\n\n> 给产品团队的计划\n\n## 结果\n\n分三步交付。'
+    }))
+    expect(Array.from(container.querySelectorAll('h4')).map((heading) => heading.textContent?.trim()))
+      .toEqual(['摘要', '结果'])
+    expect(container.querySelector('blockquote')?.textContent?.trim()).toBe('给产品团队的计划')
+    expect(container.querySelector('.rendered-document')?.textContent).toContain('分三步交付。')
+  })
+
   it('keeps the exact saved payload in a collapsed raw view', () => {
     const payload = '  # 计划\r\n\r\n- 工作空间  \r\n'
     const { container } = mount(artifact({ payload }))

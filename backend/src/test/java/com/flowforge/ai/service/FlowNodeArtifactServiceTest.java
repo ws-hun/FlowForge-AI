@@ -89,7 +89,7 @@ class FlowNodeArtifactServiceTest {
                         "Provider result",
                         "provider-result",
                         "Execution guidance",
-                        compiler.fingerprint("Focused summary\nDetailed result")
+                        compiler.fingerprint(providerResultPayload("Focused summary", "Detailed result"))
                 ),
                 node(
                         "output-1",
@@ -113,7 +113,7 @@ class FlowNodeArtifactServiceTest {
                         "node:output-1:result-document"
                 );
         assertThat(saved).extracting(FlowNodeArtifact::getPayload)
-                .containsExactly("Product context", "Focused summary\nDetailed result", "Detailed result");
+                .containsExactly("Product context", providerResultPayload("Focused summary", "Detailed result"), "Detailed result");
         assertThat(saved).extracting(FlowNodeArtifact::getMediaType)
                 .containsExactly("text/plain", "text/markdown", "text/markdown");
         assertThat(saved).extracting(FlowNodeArtifact::getInputArtifactKey)
@@ -132,7 +132,7 @@ class FlowNodeArtifactServiceTest {
                 .containsExactly(
                         compiler.fingerprint("Flow objective"),
                         compiler.fingerprint("Product context"),
-                        compiler.fingerprint("Focused summary\nDetailed result")
+                        compiler.fingerprint(providerResultPayload("Focused summary", "Detailed result"))
                 );
         assertThat(saved).extracting(FlowNodeArtifact::getProviderCallStatus)
                 .containsExactly(null, "completed", null);
@@ -524,7 +524,7 @@ class FlowNodeArtifactServiceTest {
                 "Provider result",
                 "provider-result",
                 "Execution guidance",
-                compiler.fingerprint("Focused summary\nDetailed result")
+                compiler.fingerprint(providerResultPayload("Focused summary", "Detailed result"))
         )));
         FlowExecutionStepResponse step = trace.executionPlan().steps().get(0);
         FlowExecutionStepResponse missingBoundary = new FlowExecutionStepResponse(
@@ -571,7 +571,7 @@ class FlowNodeArtifactServiceTest {
                 "Provider result",
                 "provider-result",
                 "Execution guidance",
-                compiler.fingerprint("Focused summary\nDetailed result")
+                compiler.fingerprint(providerResultPayload("Focused summary", "Detailed result"))
         )));
 
         assertThatThrownBy(() -> artifactService.persist(
@@ -699,7 +699,7 @@ class FlowNodeArtifactServiceTest {
                 ),
                 currentNode(
                         "ai-task-1", "ai-task", "Provider result", "completed", "provider-result",
-                        "Make tradeoffs explicit", "Focused summary\nDetailed result"
+                        "Make tradeoffs explicit", providerResultPayload("Focused summary", "Detailed result")
                 ),
                 currentNode(
                         "output-1", "output", "Result document", "completed", "result-document",
@@ -746,6 +746,10 @@ class FlowNodeArtifactServiceTest {
                         compiler.fingerprint(artifactPayload)
                 )
         );
+    }
+
+    private String providerResultPayload(String summary, String result) {
+        return "## 摘要\n\n> " + summary + "\n\n## 结果\n\n" + result;
     }
 
     private Task completedTask(UUID taskId) {

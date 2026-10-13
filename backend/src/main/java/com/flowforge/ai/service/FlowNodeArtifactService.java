@@ -368,7 +368,7 @@ public class FlowNodeArtifactService {
         }
         return switch (node.nodeType()) {
             case "input", "prompt" -> node.compiledContent();
-            case "ai-task" -> result == null ? null : result.summary() + "\n" + result.result();
+            case "ai-task" -> FlowNodeArtifactPayloads.providerResult(result);
             case "output" -> result == null ? null : result.result();
             default -> throw new IllegalArgumentException("Unsupported Flow node type: " + node.nodeType());
         };
