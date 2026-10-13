@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, h, nextTick, shallowRef, type App } from 'vue'
 import type { FlowNodeArtifactDetail } from '@/types'
 import FlowArtifactPayload from '../FlowArtifactPayload.vue'
@@ -31,6 +31,29 @@ afterEach(() => {
 })
 
 describe('Flow Artifact payload presentation', () => {
+  it.each([
+    ['text/markdown', 'flowforge-result-document.md'],
+    ['application/json; charset=utf-8', 'flowforge-result-document.json'],
+    ['text/plain', 'flowforge-result-document.txt']
+  ])('downloads the exact saved payload as %s', async (mediaType, filename) => {
+    const payload = '  # 原始结果\r\n{"kept": true}  \n'
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:artifact')
+    const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    const downloadedFilenames: string[] = []
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      downloadedFilenames.push(this.download)
+    })
+    const { container } = mount(artifact({ mediaType, payload }))
+    container.querySelector<HTMLButtonElement>('[aria-label="下载原始产物"]')!.click()
+
+    const blob = createObjectURL.mock.calls[0][0] as Blob
+    expect(await blob.text()).toBe(payload)
+    expect(blob.type).toBe(mediaType.split(';')[0] + ';charset=utf-8')
+    expect(click).toHaveBeenCalledOnce()
+    expect(downloadedFilenames).toEqual([filename])
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:artifact')
+  })
+
   it('renders result headings, lists, emphasis and code using the shared document body', () => {
     const { container } = mount(artifact({ payload: '# 计划\n\n- **构建**空间\n\n```js\nconst ready = true\n```' }))
     expect(container.querySelector('h4')?.textContent?.trim()).toBe('计划')
