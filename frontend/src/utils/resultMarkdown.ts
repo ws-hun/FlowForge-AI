@@ -10,8 +10,9 @@ export type ResultBlock =
   | { type: 'divider' }
 
 export type ResultInlineSegment = {
-  type: 'text' | 'strong' | 'code' | 'emphasis'
+  type: 'text' | 'strong' | 'code' | 'emphasis' | 'link'
   content: string
+  href?: string
 }
 
 export function parseResultMarkdown(text: string): ResultBlock[] {
@@ -180,7 +181,7 @@ function parseTableRow(line: string): string[] | null {
 }
 
 export function parseInlineMarkdown(text: string): ResultInlineSegment[] {
-  const pattern = /(\*\*[^*]+\*\*|\x60[^\x60]+\x60|\*[^*]+\*)/g
+  const pattern = /(\[[^\]]+\]\((?:https?:\/\/|mailto:)[^)\s]+\)|\*\*[^*]+\*\*|\x60[^\x60]+\x60|\*[^*]+\*)/gi
   const segments: ResultInlineSegment[] = []
   let cursor = 0
 
@@ -191,7 +192,15 @@ export function parseInlineMarkdown(text: string): ResultInlineSegment[] {
     }
 
     const token = match[0]
-    if (token.startsWith('**')) {
+    if (token.startsWith('[')) {
+      const labelEnd = token.indexOf('](')
+      const href = token.slice(labelEnd + 2, -1)
+      if (isSafeMarkdownLink(href)) {
+        segments.push({ type: 'link', content: token.slice(1, labelEnd), href })
+      } else {
+        segments.push({ type: 'text', content: token })
+      }
+    } else if (token.startsWith('**')) {
       segments.push({ type: 'strong', content: token.slice(2, -2) })
     } else if (token.startsWith(String.fromCharCode(96))) {
       segments.push({ type: 'code', content: token.slice(1, -1) })
@@ -205,6 +214,18 @@ export function parseInlineMarkdown(text: string): ResultInlineSegment[] {
     segments.push({ type: 'text', content: text.slice(cursor) })
   }
   return segments.length ? segments : [{ type: 'text', content: text }]
+}
+
+function isSafeMarkdownLink(href: string) {
+  try {
+    const url = new URL(href)
+    return ['http:', 'https:', 'mailto:'].includes(url.protocol)
+      && !url.username
+      && !url.password
+      && (url.protocol === 'mailto:' || Boolean(url.hostname))
+  } catch {
+    return false
+  }
 }
 
 export function cleanResultInlineText(text: string) {

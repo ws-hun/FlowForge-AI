@@ -85,6 +85,18 @@ describe('Flow Artifact payload presentation', () => {
     expect(container.querySelector('script')).toBeNull()
   })
 
+  it('renders safe HTTP links while leaving script-protocol links inert', () => {
+    const { container } = mount(artifact({
+      payload: '[参考文档](https://example.com/guide) [不安全](javascript:alert(1))'
+    }))
+    const link = container.querySelector<HTMLAnchorElement>('a')!
+    expect(link.textContent).toBe('参考文档')
+    expect(link.href).toBe('https://example.com/guide')
+    expect(link.target).toBe('_blank')
+    expect(link.rel).toContain('noopener')
+    expect(container.textContent).toContain('[不安全](javascript:alert(1))')
+  })
+
   it('keeps the exact saved payload in a collapsed raw view', () => {
     const payload = '  # 计划\r\n\r\n- 工作空间  \r\n'
     const { container } = mount(artifact({ payload }))

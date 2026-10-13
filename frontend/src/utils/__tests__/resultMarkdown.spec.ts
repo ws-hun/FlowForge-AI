@@ -70,6 +70,18 @@ describe('resultMarkdown', () => {
     ])
   })
 
+  it('parses only absolute HTTP, HTTPS and mailto links', () => {
+    expect(parseInlineMarkdown('[Docs](https://example.com/guide) [Mail](mailto:team@example.com) [Unsafe](javascript:alert(1))'))
+      .toEqual([
+        { type: 'link', content: 'Docs', href: 'https://example.com/guide' },
+        { type: 'text', content: ' ' },
+        { type: 'link', content: 'Mail', href: 'mailto:team@example.com' },
+        { type: 'text', content: ' [Unsafe](javascript:alert(1))' }
+      ])
+    expect(parseInlineMarkdown('[Credentials](https://user:secret@example.com)'))
+      .toEqual([{ type: 'text', content: '[Credentials](https://user:secret@example.com)' }])
+  })
+
   it('creates plain key-point text without markdown markers', () => {
     const source = '**Owner:** use ' + tick + 'Flow Space' + tick + ' for *review*'
     expect(cleanResultInlineText(source)).toBe('Owner: use Flow Space for review')

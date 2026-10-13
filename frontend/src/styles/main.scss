@@ -2582,6 +2582,23 @@ a {
   font-size: 0.88em;
 }
 
+.rendered-document a {
+  color: #315fcf;
+  text-decoration: underline;
+  text-decoration-color: rgba(49, 95, 207, 0.34);
+  text-underline-offset: 2px;
+
+  &:hover {
+    text-decoration-color: currentcolor;
+  }
+
+  &:focus-visible {
+    border-radius: tokens.$radius-sm;
+    outline: 2px solid rgba(79, 124, 255, 0.45);
+    outline-offset: 2px;
+  }
+}
+
 .rendered-list {
   display: grid;
   gap: 8px;
