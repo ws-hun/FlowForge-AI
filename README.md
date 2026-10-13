@@ -137,7 +137,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Unified Flow Editor Save Boundary | Done | 画布顶部统一显示 Flow 目标与节点的未保存范围，支持一次保存全部或放弃完整编辑，不混淆自动保存的 Run Brief |
 | Stage 3 | Portable Result Documents | Done | AI Command、Flow、运行对比与 History 中的结果可复制或下载为 Markdown，并携带可用的 Provider、模型、Token 与耗时来源 |
 | Stage 3 | Legacy Result Presentation | Done | 旧版 JSON Result 自动呈现为可读文档，同时保留原始 JSON 且不修改不可变历史 |
-| Stage 3 | Structured Result Rendering | Done | Result 安全文本渲染保留标题、列表、表格、安全链接、代码、强调、引用与文档分隔结构 |
+| Stage 3 | Structured Result Rendering | Done | Result 安全文本渲染保留语义标题层级、列表、表格、安全链接、代码、强调、引用与文档分隔结构 |
 | Stage 3 | Versioned Flow Compilation | Done | Flow 预览与运行轨迹记录编译器版本和真实 Provider 输入指纹，历史精确重跑不冒充重新编译 |
 | Stage 3 | Traceable Flow Run Identity | Done | 每次 Flow 执行在调用 Provider 前获得稳定运行 ID，轨迹可区分当前 Flow 编译与历史输入重放并关联来源运行 |
 | Stage 3 | Recoverable Provider Failures | Done | Provider 失败响应关联已保存运行，AI Command 与 Flow Space 可精确打开失败上下文，不再依赖时间窗口猜测 |
