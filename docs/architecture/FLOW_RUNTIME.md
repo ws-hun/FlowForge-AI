@@ -85,7 +85,7 @@ For the current single-pass trace, node states have a deliberately narrow meanin
 New direct Flow runs persist one independently addressable database artifact for every planned node output:
 
 - Input and Prompt payloads contain their variable-resolved `compiledContent` with `text/plain` media type.
-- AI Task payloads contain the persisted Summary and Result with `text/markdown` media type.
+- AI Task payloads contain the persisted Summary and Result as distinct `## 摘要` and `## 结果` Markdown sections with `text/markdown` media type. Summary lines are quoted so model-generated Markdown cannot replace the document's section hierarchy; the Result body is retained as authored.
 - Output payloads contain the persisted Result document with `text/markdown` media type.
 - Every materialized payload is verified against the SHA-256 fingerprint stored in the immutable run trace before persistence.
 - Every modern artifact records its upstream key, semantic type, storage owner, state, resolution method, and available content fingerprint.

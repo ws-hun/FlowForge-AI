@@ -781,7 +781,7 @@ V10 起，新 v5 运行会在 `flow_provider_input_references` 中把这份有�
 
 新计划同时保存 `flow-failure-policy-v1`：Provider 失败时停止本次运行，后续节点标记为 `skipped`，本次调用最多尝试 `1` 次且不会自动重试。服务端在生成轨迹和持久化节点产物前都会校验该策略，Preview 与历史 Execution Path 复用同一说明。旧计划没有策略字段时保持 `failurePolicy: null`，不会补造历史行为。
 
-现代 `flowRunTrace.nodes[].outputArtifact` 保存产物状态与内容指纹，同时在 `flow_node_artifacts` 中独立保存可寻址 payload。Input / Prompt 保存变量替换后的编译文本，AI Task 保存 Summary + Result，Output 保存 Result 文档；落库前必须重新计算并匹配 trace 指纹。每个现代产物同时保存上游 Key、类型、存储、状态、输入解析方式和可用指纹，运行轨迹可按需打开并跳转到已物化上游。Provider 失败和下游跳过不会生成虚假 payload 或指纹。
+现代 `flowRunTrace.nodes[].outputArtifact` 保存产物状态与内容指纹，同时在 `flow_node_artifacts` 中独立保存可寻址 payload。Input / Prompt 保存变量替换后的编译文本，AI Task 保存分为“摘要 / 结果”章节的 Markdown 文档，Output 保存 Result 文档；轨迹和持久化共用同一格式函数，落库前必须重新计算并匹配 trace 指纹。每个现代产物同时保存上游 Key、类型、存储、状态、输入解析方式和可用指纹，运行轨迹可按需打开并跳转到已物化上游。Provider 失败和下游跳过不会生成虚假 payload 或指纹。
 
 运行轨迹中的 AI Task / Output 产物按保存的媒体类型阅读：`text/markdown` 与 `application/json` 复用结果页的安全文档正文，整体 JSON 对象/数组可转换为标题、列表和代码展示。原始产物默认折叠且逐字符保留，复制与下载始终使用保存的原文，下载扩展名由媒体类型决定。Input / Prompt、不支持或缺失媒体类型的产物仍显示纯文本；失败调用保留真实调用证据并隐藏无正文的复制与下载操作。此展示层不改变 payload、指纹或执行语义，也不增加读取请求。
 
