@@ -56,11 +56,18 @@ describe('Flow Artifact payload presentation', () => {
 
   it('renders result headings, lists, emphasis and code using the shared document body', () => {
     const { container } = mount(artifact({ payload: '# 计划\n\n- **构建**空间\n\n```js\nconst ready = true\n```' }))
-    expect(container.querySelector('h4')?.textContent?.trim()).toBe('计划')
+    expect(container.querySelector('h1')?.textContent?.trim()).toBe('计划')
     expect(container.querySelector('li')?.textContent?.trim()).toBe('构建空间')
     expect(container.querySelector('.result-inline-strong')?.textContent).toBe('构建')
     expect(container.querySelector('.rendered-code')?.textContent).toBe('const ready = true')
     expect(container.querySelector('.rendered-document--unframed')).not.toBeNull()
+  })
+
+  it('preserves Markdown heading levels as semantic document headings', () => {
+    const { container } = mount(artifact({ payload: '# Main\n\n### Detail' }))
+    expect(container.querySelector('h1')?.textContent?.trim()).toBe('Main')
+    expect(container.querySelector('h3')?.textContent?.trim()).toBe('Detail')
+    expect(container.querySelector('h4')).toBeNull()
   })
 
   it('keeps the saved AI Task summary and result as separate document sections', () => {
@@ -68,7 +75,7 @@ describe('Flow Artifact payload presentation', () => {
       artifactType: 'provider-result',
       payload: '## 摘要\n\n> 给产品团队的计划\n\n## 结果\n\n分三步交付。'
     }))
-    expect(Array.from(container.querySelectorAll('h4')).map((heading) => heading.textContent?.trim()))
+    expect(Array.from(container.querySelectorAll('h2')).map((heading) => heading.textContent?.trim()))
       .toEqual(['摘要', '结果'])
     expect(container.querySelector('blockquote')?.textContent?.trim()).toBe('给产品团队的计划')
     expect(container.querySelector('.rendered-document')?.textContent).toContain('分三步交付。')
@@ -109,7 +116,7 @@ describe('Flow Artifact payload presentation', () => {
   it.each(['text/markdown', 'application/json; charset=utf-8'])('renders whole structured results for %s without changing their raw bytes', (mediaType) => {
     const payload = ' {"endpoints":[{"method":"post","path":"/workflows","description":"创建工作流"}]} \n'
     const { container } = mount(artifact({ mediaType, payload }))
-    expect(container.querySelector('h4')?.textContent?.trim()).toBe('Endpoints')
+    expect(container.querySelector('h2')?.textContent?.trim()).toBe('Endpoints')
     expect(container.querySelector('.rendered-document')?.textContent).toContain('POST /workflows')
     expect(container.querySelector('.flow-artifact-raw pre')?.textContent).toBe(payload)
   })
@@ -126,14 +133,14 @@ describe('Flow Artifact payload presentation', () => {
     const payload = '# 原始内容\n<script>alert(1)</script>'
     const { container } = mount(artifact({ mediaType, payload }))
     expect(container.querySelector('pre')?.textContent).toBe(payload)
-    expect(container.querySelector('h4')).toBeNull()
+    expect(container.querySelector('h1')).toBeNull()
     expect(container.querySelector('script')).toBeNull()
   })
 
   it('escapes HTML in rendered text, inline code and fenced code', () => {
     const { container } = mount(artifact({ payload: '# <img src=x onerror=alert(1)>\n\n`<script>alert(1)</script>`\n\n```html\n<iframe src=x></iframe>\n```' }))
     expect(container.querySelectorAll('img, script, iframe')).toHaveLength(0)
-    expect(container.querySelector('h4')?.textContent).toContain('<img src=x onerror=alert(1)>')
+    expect(container.querySelector('h1')?.textContent).toContain('<img src=x onerror=alert(1)>')
     expect(container.querySelector('.result-inline-code')?.textContent).toBe('<script>alert(1)</script>')
     expect(container.querySelector('.rendered-code')?.textContent).toBe('<iframe src=x></iframe>')
   })
@@ -149,6 +156,6 @@ describe('Flow Artifact payload presentation', () => {
     update(artifact({ id: 'artifact-2', taskId: 'run-2', payload: '# 新计划' }))
     await nextTick()
     expect(container.querySelector<HTMLDetailsElement>('.flow-artifact-raw')?.open).toBe(false)
-    expect(container.querySelector('h4')?.textContent?.trim()).toBe('新计划')
+    expect(container.querySelector('h1')?.textContent?.trim()).toBe('新计划')
   })
 })

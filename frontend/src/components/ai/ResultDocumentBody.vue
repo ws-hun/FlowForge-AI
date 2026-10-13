@@ -1,9 +1,9 @@
 <template>
   <div class="document-body rendered-document" :class="{ 'rendered-document--unframed': unframed }">
     <template v-for="(block, index) in blocks" :key="`${block.type}-${index}`">
-      <h4 v-if="block.type === 'heading'" :class="`level-${block.level}`">
+      <component v-if="block.type === 'heading'" :is="headingTag(block.level)" :class="`level-${block.level}`">
         <ResultInlineText :text="block.content" />
-      </h4>
+      </component>
       <p v-else-if="block.type === 'paragraph'"><ResultInlineText :text="block.content" /></p>
       <ul v-else-if="block.type === 'list' && !block.ordered" class="rendered-list">
         <li v-for="(item, itemIndex) in block.items" :key="itemIndex">
@@ -50,4 +50,8 @@ import ResultInlineText from '@/components/ai/ResultInlineText.vue'
 import type { ResultBlock } from '@/utils/resultMarkdown'
 
 withDefaults(defineProps<{ blocks: ResultBlock[]; unframed?: boolean }>(), { unframed: false })
+
+function headingTag(level: number) {
+  return `h${Math.max(1, Math.min(4, level))}`
+}
 </script>

@@ -181,7 +181,7 @@ describe('Flow run Artifact inspection', () => {
     const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
     const { container } = mount({ trace: savedTrace, focusedArtifactKey: key })
     await flush()
-    expect(container.querySelector('[data-artifact-key] h4')?.textContent?.trim()).toBe('摘要')
+    expect(container.querySelector('[data-artifact-key] h1')?.textContent?.trim()).toBe('摘要')
     expect(container.querySelector<HTMLDetailsElement>('.flow-artifact-raw')?.open).toBe(false)
     container.querySelector<HTMLButtonElement>('[aria-label="复制节点产物"]')!.click()
     await flush()

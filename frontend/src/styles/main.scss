@@ -2515,11 +2515,13 @@ a {
   border-radius: tokens.$radius-lg;
   background: linear-gradient(180deg, #fff, rgba(243, 245, 247, 0.58));
 
+  h1,
+  h2,
+  h3,
   h4 {
     margin: 18px 0 2px;
     color: tokens.$text-primary;
     font-size: 20px;
-    letter-spacing: -0.03em;
     line-height: 1.35;
 
     &:first-child {
@@ -2529,6 +2531,10 @@ a {
     &.level-1,
     &.level-2 {
       font-size: 22px;
+    }
+
+    &.level-3 {
+      font-size: 18px;
     }
 
     &.level-4 {
@@ -4469,9 +4475,11 @@ a {
     font-size: 13px;
     overflow-wrap: anywhere;
 
+    h1,
+    h2,
+    h3,
     h4 {
       font-size: 18px;
-      letter-spacing: 0;
 
       &.level-1,
       &.level-2 {
