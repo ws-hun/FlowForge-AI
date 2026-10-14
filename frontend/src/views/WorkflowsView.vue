@@ -222,13 +222,13 @@
               :aria-pressed="selectedNode?.id === node.id"
               @click="selectFlowNode(node.id)"
             >
-              <div class="flow-node-meta">
+              <span class="flow-node-meta">
                 <span class="flow-node-type">{{ nodeLabel(node.type) }}</span>
                 <span class="flow-node-state">{{ flowNodeNeedsAttention(node) ? '待补充' : nodeStateLabel(nodeStatus(node.id)) }}</span>
-              </div>
+              </span>
               <small class="flow-node-operation">{{ flowExecutionOperationLabel(flowExecutionOperationForNode(node.type)) }}</small>
               <strong>{{ node.title }}</strong>
-              <p>{{ node.description }}</p>
+              <span class="flow-node-description">{{ node.description }}</span>
             </button>
             <div
               v-if="index < workspace.activeFlow.nodes.length - 1"

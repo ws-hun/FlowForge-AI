@@ -5613,7 +5613,8 @@ a {
     line-height: 1.25;
   }
 
-  p {
+  .flow-node-description {
+    display: block;
     margin: 0;
     color: tokens.$text-secondary;
     font-size: 13px;
