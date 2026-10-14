@@ -74,20 +74,30 @@
       <div class="flow-input-preview-viewbar">
         <div class="flow-input-preview-tabs" role="tablist" aria-label="执行输入预览方式">
           <button
+            :id="`${tabsId}-outline-tab`"
+            ref="outlineTab"
             type="button"
             role="tab"
+            :aria-controls="`${tabsId}-outline-panel`"
             :aria-selected="activeView === 'outline'"
+            :tabindex="activeView === 'outline' ? 0 : -1"
             :class="{ 'is-active': activeView === 'outline' }"
             @click="activeView = 'outline'"
+            @keydown="onViewTabKeydown"
           >
             执行结构
           </button>
           <button
+            :id="`${tabsId}-raw-tab`"
+            ref="rawTab"
             type="button"
             role="tab"
+            :aria-controls="`${tabsId}-raw-panel`"
             :aria-selected="activeView === 'raw'"
+            :tabindex="activeView === 'raw' ? 0 : -1"
             :class="{ 'is-active': activeView === 'raw' }"
             @click="activeView = 'raw'"
+            @keydown="onViewTabKeydown"
           >
             原始输入
           </button>
@@ -99,36 +109,53 @@
         </span>
       </div>
 
-      <FlowExecutionPlan
-        v-if="activeView === 'outline'"
-        :plan="preview.executionPlan"
-        :stale="stale"
-        node-action-label="定位节点"
-        :navigable-node-ids="preview.flowRunSnapshot.nodes.map((node) => node.id)"
-        @open-node="openSectionNode"
-      />
+      <div
+        v-show="activeView === 'outline'"
+        :id="`${tabsId}-outline-panel`"
+        class="flow-input-preview-tabpanel"
+        role="tabpanel"
+        :aria-labelledby="`${tabsId}-outline-tab`"
+        tabindex="0"
+      >
+        <FlowExecutionPlan
+          :plan="preview.executionPlan"
+          :stale="stale"
+          node-action-label="定位节点"
+          :navigable-node-ids="preview.flowRunSnapshot.nodes.map((node) => node.id)"
+          @open-node="openSectionNode"
+        />
 
-      <div v-if="activeView === 'outline'" class="flow-input-preview-sections" :class="{ 'is-stale': stale }">
-        <article v-for="section in preview.sections" :key="`${section.kind}-${section.nodeId || section.title}`" class="flow-input-preview-section">
-          <header>
-            <span>{{ sectionKindLabel(section.kind) }}</span>
-            <strong>{{ section.title }}</strong>
-            <button
-              v-if="section.nodeId && nodeActionLabel"
-              type="button"
-              class="flow-input-preview-node-link"
-              :disabled="stale"
-              :aria-label="`${nodeActionLabel}：${section.title}`"
-              @click="openSectionNode(section.nodeId)"
-            >
-              {{ nodeActionLabel }}
-              <Right class="flow-input-preview-node-link-icon" />
-            </button>
-          </header>
-          <p>{{ section.content }}</p>
-        </article>
+        <div class="flow-input-preview-sections" :class="{ 'is-stale': stale }">
+          <article v-for="section in preview.sections" :key="`${section.kind}-${section.nodeId || section.title}`" class="flow-input-preview-section">
+            <header>
+              <span>{{ sectionKindLabel(section.kind) }}</span>
+              <strong>{{ section.title }}</strong>
+              <button
+                v-if="section.nodeId && nodeActionLabel"
+                type="button"
+                class="flow-input-preview-node-link"
+                :disabled="stale"
+                :aria-label="`${nodeActionLabel}：${section.title}`"
+                @click="openSectionNode(section.nodeId)"
+              >
+                {{ nodeActionLabel }}
+                <Right class="flow-input-preview-node-link-icon" />
+              </button>
+            </header>
+            <p>{{ section.content }}</p>
+          </article>
+        </div>
       </div>
-      <pre v-else :class="{ 'is-stale': stale }">{{ preview.executionInput }}</pre>
+      <div
+        v-show="activeView === 'raw'"
+        :id="`${tabsId}-raw-panel`"
+        class="flow-input-preview-tabpanel"
+        role="tabpanel"
+        :aria-labelledby="`${tabsId}-raw-tab`"
+        tabindex="0"
+      >
+        <pre :class="{ 'is-stale': stale }">{{ preview.executionInput }}</pre>
+      </div>
     </div>
     <div v-else-if="error" class="flow-input-preview-error" :class="`is-${errorPresentation.kind}`">
       <div>
@@ -149,7 +176,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, useId, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { CopyDocument, RefreshRight, Right } from '@element-plus/icons-vue'
 import { previewFlowExecution } from '@/api/flows'
@@ -196,6 +223,9 @@ const error = ref('')
 const lastErrorStatus = ref<number | null>(null)
 const requestVersion = ref(0)
 const activeView = ref<'outline' | 'raw'>('outline')
+const tabsId = useId()
+const outlineTab = ref<HTMLButtonElement | null>(null)
+const rawTab = ref<HTMLButtonElement | null>(null)
 const preparationGate = createLatestRequestGate()
 
 const requestBusy = computed(() => preparing.value || loading.value)
@@ -256,6 +286,22 @@ function onToggle(event: Event) {
   if (details.open && (!preview.value || stale.value)) {
     void loadPreview()
   }
+}
+
+function onViewTabKeydown(event: KeyboardEvent) {
+  const nextView = event.key === 'ArrowRight' || event.key === 'ArrowLeft'
+    ? activeView.value === 'outline' ? 'raw' : 'outline'
+    : event.key === 'Home'
+      ? 'outline'
+      : event.key === 'End'
+        ? 'raw'
+        : null
+
+  if (!nextView) return
+  event.preventDefault()
+  activeView.value = nextView
+  if (nextView === 'outline') outlineTab.value?.focus()
+  else rawTab.value?.focus()
 }
 
 async function loadPreview() {
