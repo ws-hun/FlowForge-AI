@@ -623,7 +623,7 @@
         <template v-if="workspace.activeFlow && selectedNode">
           <div ref="nodeInspector" class="panel-heading">
             <span class="section-kicker">节点检查</span>
-            <h2>{{ selectedNode.title }}</h2>
+            <h2 ref="nodeInspectorHeading" tabindex="-1">{{ selectedNode.title }}</h2>
             <p>{{ selectedNode.description }}</p>
           </div>
 
@@ -1028,6 +1028,7 @@ const flowRunCompletedAt = ref('')
 const nodeRunStates = ref<Record<string, FlowNodeRunState>>({})
 const selectedNodeId = ref('')
 const nodeInspector = ref<HTMLElement | null>(null)
+const nodeInspectorHeading = ref<HTMLHeadingElement | null>(null)
 const flowRouteReady = ref(false)
 const flowAssetsUnavailable = ref(false)
 const routeSelectionApplying = ref(false)
@@ -2464,6 +2465,7 @@ async function openExecutionPreviewNode(nodeId: string) {
 
   await nextTick()
   nodeInspector.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  nodeInspectorHeading.value?.focus({ preventScroll: true })
 }
 
 async function focusExecutionPreviewVariable(variable: string) {
