@@ -219,6 +219,7 @@
                 `is-${nodeStatus(node.id)}`,
                 { active: selectedNode?.id === node.id, 'is-incomplete': flowNodeNeedsAttention(node) }
               ]"
+              :aria-pressed="selectedNode?.id === node.id"
               @click="selectFlowNode(node.id)"
             >
               <div class="flow-node-meta">
