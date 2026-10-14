@@ -4,6 +4,7 @@ export type ResultBlock =
   | { type: 'heading'; level: number; content: string }
   | { type: 'paragraph'; content: string }
   | { type: 'list'; ordered: boolean; items: string[] }
+  | { type: 'checklist'; items: { checked: boolean; content: string }[] }
   | { type: 'table'; headers: string[]; alignments: ('left' | 'center' | 'right')[]; rows: string[][] }
   | { type: 'code'; language: string; content: string }
   | { type: 'quote'; content: string }
@@ -20,6 +21,7 @@ export function parseResultMarkdown(text: string): ResultBlock[] {
   const blocks: ResultBlock[] = []
   let paragraph: string[] = []
   let listItems: string[] = []
+  let checklistItems: { checked: boolean; content: string }[] = []
   let quoteLines: string[] = []
   let orderedList = false
   let codeLines: string[] = []
@@ -37,6 +39,12 @@ export function parseResultMarkdown(text: string): ResultBlock[] {
     blocks.push({ type: 'list', ordered: orderedList, items: listItems.map((item) => item.trim()).filter(Boolean) })
     listItems = []
     orderedList = false
+  }
+
+  const flushChecklist = () => {
+    if (!checklistItems.length) return
+    blocks.push({ type: 'checklist', items: checklistItems })
+    checklistItems = []
   }
 
   const flushQuote = () => {
@@ -58,6 +66,7 @@ export function parseResultMarkdown(text: string): ResultBlock[] {
       } else {
         flushParagraph()
         flushList()
+        flushChecklist()
         flushQuote()
         codeLanguage = trimmed.slice(CODE_FENCE.length).trim()
         inCode = true
@@ -76,6 +85,7 @@ export function parseResultMarkdown(text: string): ResultBlock[] {
       && delimiter.every((cell) => /^:?-{3,}:?$/.test(cell))) {
       flushParagraph()
       flushList()
+      flushChecklist()
       flushQuote()
       const alignments = delimiter.map((cell) => {
         const left = cell.startsWith(':')
@@ -98,6 +108,7 @@ export function parseResultMarkdown(text: string): ResultBlock[] {
     if (!trimmed) {
       flushParagraph()
       flushList()
+      flushChecklist()
       flushQuote()
       continue
     }
@@ -106,6 +117,7 @@ export function parseResultMarkdown(text: string): ResultBlock[] {
     if (quote) {
       flushParagraph()
       flushList()
+      flushChecklist()
       quoteLines.push(quote[1].trim())
       continue
     }
@@ -115,6 +127,7 @@ export function parseResultMarkdown(text: string): ResultBlock[] {
     if (heading) {
       flushParagraph()
       flushList()
+      flushChecklist()
       blocks.push({ type: 'heading', level: heading[1].length, content: heading[2].trim() })
       continue
     }
@@ -122,7 +135,16 @@ export function parseResultMarkdown(text: string): ResultBlock[] {
     if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
       flushParagraph()
       flushList()
+      flushChecklist()
       blocks.push({ type: 'divider' })
+      continue
+    }
+
+    const checklist = trimmed.match(/^[-*]\s+\[([ xX])\]\s+(.+)$/)
+    if (checklist) {
+      flushParagraph()
+      flushList()
+      checklistItems.push({ checked: checklist[1].toLowerCase() === 'x', content: checklist[2].trim() })
       continue
     }
 
@@ -130,6 +152,7 @@ export function parseResultMarkdown(text: string): ResultBlock[] {
     const numbered = trimmed.match(/^\d+[.)、]\s+(.+)$/)
     if (bullet || numbered) {
       flushParagraph()
+      flushChecklist()
       const isOrdered = Boolean(numbered)
       if (listItems.length && orderedList !== isOrdered) {
         flushList()
@@ -140,6 +163,7 @@ export function parseResultMarkdown(text: string): ResultBlock[] {
     }
 
     flushList()
+    flushChecklist()
     paragraph.push(trimmed)
   }
 
@@ -148,6 +172,7 @@ export function parseResultMarkdown(text: string): ResultBlock[] {
   }
   flushParagraph()
   flushList()
+  flushChecklist()
   flushQuote()
 
   return blocks.length ? blocks : [{ type: 'paragraph', content: text }]
@@ -239,4 +264,14 @@ export function cleanResultInlineText(text: string) {
     .map((segment) => segment.content)
     .join('')
     .trim()
+}
+
+export function cleanResultBlockText(block: ResultBlock) {
+  if (block.type === 'list') {
+    return block.items.map(cleanResultInlineText)
+  }
+  if (block.type === 'checklist') {
+    return block.items.map((item) => cleanResultInlineText(item.content))
+  }
+  return []
 }

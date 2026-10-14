@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  cleanResultBlockText,
   cleanResultInlineText,
   parseInlineMarkdown,
   parseResultMarkdown
@@ -55,6 +56,28 @@ describe('resultMarkdown', () => {
       { type: 'table', headers: ['A', 'B'], alignments: ['left', 'left'], rows: [] },
       { type: 'paragraph', content: '| only one cell |' }
     ])
+  })
+
+  it('parses checked and unchecked task lists without merging them with bullets', () => {
+    expect(parseResultMarkdown('- [x] **Prepare** the Flow\n- [ ] Review [the result](https://example.com)\n- Ordinary note')).toEqual([
+      {
+        type: 'checklist',
+        items: [
+          { checked: true, content: '**Prepare** the Flow' },
+          { checked: false, content: 'Review [the result](https://example.com)' }
+        ]
+      },
+      { type: 'list', ordered: false, items: ['Ordinary note'] }
+    ])
+  })
+
+  it('ends task lists at document boundaries and exposes clean key-point text', () => {
+    const source = '- [x] Review [the guide](https://example.com)\n\n> Keep the result safe\n\n| Item | State |\n| --- | --- |\n| Plan | Ready |\n\n## Next\n- [ ] Ship **the Flow**'
+    const blocks = parseResultMarkdown(source)
+
+    expect(blocks.map((block) => block.type)).toEqual(['checklist', 'quote', 'table', 'heading', 'checklist'])
+    expect(cleanResultBlockText(blocks[0])).toEqual(['Review the guide'])
+    expect(cleanResultBlockText(blocks[4])).toEqual(['Ship the Flow'])
   })
 
   it('keeps strong, code and emphasis as safe inline segments', () => {

@@ -15,6 +15,12 @@
           <ResultInlineText :text="item" />
         </li>
       </ol>
+      <ul v-else-if="block.type === 'checklist'" class="rendered-checklist">
+        <li v-for="(item, itemIndex) in block.items" :key="itemIndex">
+          <input type="checkbox" :checked="item.checked" disabled :aria-label="item.checked ? '已完成' : '未完成'" />
+          <span><ResultInlineText :text="item.content" /></span>
+        </li>
+      </ul>
       <div v-else-if="block.type === 'table'" class="rendered-table-scroll" role="region" tabindex="0" aria-label="结果表格">
         <table class="rendered-table">
           <thead>

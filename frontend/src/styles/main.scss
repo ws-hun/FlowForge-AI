@@ -2618,6 +2618,34 @@ a {
   }
 }
 
+.rendered-checklist {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  color: tokens.$text-secondary;
+  list-style: none;
+  line-height: 1.72;
+
+  li {
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+  }
+
+  input {
+    width: 15px;
+    height: 15px;
+    margin: 3px 0 0;
+    accent-color: tokens.$success;
+  }
+
+  input:disabled {
+    opacity: 1;
+  }
+}
+
 .rendered-table-scroll {
   max-width: 100%;
   overflow: auto;

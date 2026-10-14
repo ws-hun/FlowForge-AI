@@ -70,6 +70,14 @@ describe('Flow Artifact payload presentation', () => {
     expect(container.querySelector('h4')).toBeNull()
   })
 
+  it('renders task-list status as disabled, accessible checkboxes', () => {
+    const { container } = mount(artifact({ payload: '- [x] 已完成步骤\n- [ ] 待执行步骤' }))
+    const checkboxes = Array.from(container.querySelectorAll<HTMLInputElement>('.rendered-checklist input'))
+    expect(checkboxes.map((checkbox) => checkbox.checked)).toEqual([true, false])
+    expect(checkboxes.every((checkbox) => checkbox.disabled)).toBe(true)
+    expect(checkboxes.map((checkbox) => checkbox.getAttribute('aria-label'))).toEqual(['已完成', '未完成'])
+  })
+
   it('keeps the saved AI Task summary and result as separate document sections', () => {
     const { container } = mount(artifact({
       artifactType: 'provider-result',

@@ -71,6 +71,7 @@ import {
   resolveResultDocument
 } from '@/utils/resultDocument'
 import {
+  cleanResultBlockText,
   cleanResultInlineText,
   parseResultMarkdown,
   type ResultBlock
@@ -144,9 +145,7 @@ const portableDocument = computed(() =>
 
 const keyPoints = computed(() => {
   const listItems = resultBlocks.value
-    .filter((block): block is Extract<ResultBlock, { type: 'list' }> => block.type === 'list')
-    .flatMap((block) => block.items)
-    .map(cleanResultInlineText)
+    .flatMap(cleanResultBlockText)
     .filter((item) => item.length > 8)
 
   if (listItems.length) {
