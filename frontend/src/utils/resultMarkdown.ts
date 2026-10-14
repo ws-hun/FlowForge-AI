@@ -229,10 +229,14 @@ function isSafeMarkdownLink(href: string) {
 }
 
 export function cleanResultInlineText(text: string) {
-  return text
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/\x60([^\x60]+)\x60/g, '$1')
-    .replace(/\*([^*]+)\*/g, '$1')
+  const normalized = text
     .replace(/^#+\s*/, '')
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (token, label: string, href: string) =>
+      isSafeMarkdownLink(href) ? label : token
+    )
+    .trim()
+  return parseInlineMarkdown(normalized)
+    .map((segment) => segment.content)
+    .join('')
     .trim()
 }

@@ -86,4 +86,11 @@ describe('resultMarkdown', () => {
     const source = '**Owner:** use ' + tick + 'Flow Space' + tick + ' for *review*'
     expect(cleanResultInlineText(source)).toBe('Owner: use Flow Space for review')
   })
+
+  it('keeps safe link labels in key points without exposing URL syntax', () => {
+    expect(cleanResultInlineText('Read **[the guide](https://example.com/start)** and `ship` it'))
+      .toBe('Read the guide and ship it')
+    expect(cleanResultInlineText('[Unsafe](javascript:alert(1))'))
+      .toBe('[Unsafe](javascript:alert(1))')
+  })
 })
