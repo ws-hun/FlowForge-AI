@@ -137,7 +137,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Unified Flow Editor Save Boundary | Done | 画布顶部统一显示 Flow 目标与节点的未保存范围，支持一次保存全部或放弃完整编辑，不混淆自动保存的 Run Brief |
 | Stage 3 | Portable Result Documents | Done | AI Command、Flow、运行对比与 History 中的结果可复制或下载为 Markdown，并携带可用的 Provider、模型、Token 与耗时来源 |
 | Stage 3 | Legacy Result Presentation | Done | 旧版 JSON Result 自动呈现为可读文档，同时保留原始 JSON 且不修改不可变历史 |
-| Stage 3 | Structured Result Rendering | Done | Result 安全文本渲染保留语义标题层级、列表、表格、安全链接、代码、强调、引用与文档分隔结构 |
+| Stage 3 | Structured Result Rendering | Done | Result 安全文本渲染保留语义标题层级、普通列表与完成状态清单、表格、安全链接、代码、强调、引用与文档分隔结构 |
 | Stage 3 | Versioned Flow Compilation | Done | Flow 预览与运行轨迹记录编译器版本和真实 Provider 输入指纹，历史精确重跑不冒充重新编译 |
 | Stage 3 | Traceable Flow Run Identity | Done | 每次 Flow 执行在调用 Provider 前获得稳定运行 ID，轨迹可区分当前 Flow 编译与历史输入重放并关联来源运行 |
 | Stage 3 | Recoverable Provider Failures | Done | Provider 失败响应关联已保存运行，AI Command 与 Flow Space 可精确打开失败上下文，不再依赖时间窗口猜测 |
@@ -783,7 +783,7 @@ V10 起，新 v5 运行会在 `flow_provider_input_references` 中把这份有�
 
 现代 `flowRunTrace.nodes[].outputArtifact` 保存产物状态与内容指纹，同时在 `flow_node_artifacts` 中独立保存可寻址 payload。Input / Prompt 保存变量替换后的编译文本，AI Task 保存分为“摘要 / 结果”章节的 Markdown 文档，Output 保存 Result 文档；轨迹和持久化共用同一格式函数，落库前必须重新计算并匹配 trace 指纹。每个现代产物同时保存上游 Key、类型、存储、状态、输入解析方式和可用指纹，运行轨迹可按需打开并跳转到已物化上游。Provider 失败和下游跳过不会生成虚假 payload 或指纹。
 
-运行轨迹中的 AI Task / Output 产物按保存的媒体类型阅读：`text/markdown` 与 `application/json` 复用结果页的安全文档正文，整体 JSON 对象/数组可转换为标题、列表和代码展示。原始产物默认折叠且逐字符保留，复制与下载始终使用保存的原文，下载扩展名由媒体类型决定。Input / Prompt、不支持或缺失媒体类型的产物仍显示纯文本；失败调用保留真实调用证据并隐藏无正文的复制与下载操作。此展示层不改变 payload、指纹或执行语义，也不增加读取请求。
+运行轨迹中的 AI Task / Output 产物按保存的媒体类型阅读：`text/markdown` 与 `application/json` 复用结果页的安全文档正文，整体 JSON 对象/数组可转换为标题、列表和代码展示。Markdown 的 `- [x]` / `- [ ]` 任务清单以只读复选框呈现，并保留完成状态；普通列表与清单都参与 Result 关键点提取。原始产物默认折叠且逐字符保留，复制与下载始终使用保存的原文，下载扩展名由媒体类型决定。Input / Prompt、不支持或缺失媒体类型的产物仍显示纯文本；失败调用保留真实调用证据并隐藏无正文的复制与下载操作。此展示层不改变 payload、指纹或执行语义，也不增加读取请求。
 
 `compiled-reference` 明确表示当前血缘来自一次完整 Flow 编译引用，不表示运行时从数据库逐节点读取上游 payload。运行轨迹只在用户点击“查看产物”或“查看上游”时调用单项读取 API；“来源链”另行按需读取 metadata-only 路径，因此不会预加载整次运行的所有 payload。路径回到 `flow-snapshot` 只代表这次历史运行的可解释来源，不代表已经启用 `persisted-artifact` 执行。当前 Runtime 仍执行一次共享 Provider 调用。旧 v1 / v2 / v3 计划与迁移前产物保持缺失字段为 `null`，不会根据当前 Flow 现场补造历史血缘。
 
