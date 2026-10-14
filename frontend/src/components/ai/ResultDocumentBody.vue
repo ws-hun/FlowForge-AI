@@ -17,8 +17,13 @@
       </ol>
       <ul v-else-if="block.type === 'checklist'" class="rendered-checklist">
         <li v-for="(item, itemIndex) in block.items" :key="itemIndex">
-          <input type="checkbox" :checked="item.checked" disabled :aria-label="item.checked ? '已完成' : '未完成'" />
-          <span><ResultInlineText :text="item.content" /></span>
+          <input
+            type="checkbox"
+            :checked="item.checked"
+            disabled
+            :aria-labelledby="`${checklistId}-${index}-${itemIndex}`"
+          />
+          <span :id="`${checklistId}-${index}-${itemIndex}`"><ResultInlineText :text="item.content" /></span>
         </li>
       </ul>
       <div v-else-if="block.type === 'table'" class="rendered-table-scroll" role="region" tabindex="0" aria-label="结果表格">
@@ -52,10 +57,13 @@
 </template>
 
 <script setup lang="ts">
+import { useId } from 'vue'
 import ResultInlineText from '@/components/ai/ResultInlineText.vue'
 import type { ResultBlock } from '@/utils/resultMarkdown'
 
 withDefaults(defineProps<{ blocks: ResultBlock[]; unframed?: boolean }>(), { unframed: false })
+
+const checklistId = useId()
 
 function headingTag(level: number) {
   return `h${Math.max(1, Math.min(4, level))}`

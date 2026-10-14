@@ -75,7 +75,8 @@ describe('Flow Artifact payload presentation', () => {
     const checkboxes = Array.from(container.querySelectorAll<HTMLInputElement>('.rendered-checklist input'))
     expect(checkboxes.map((checkbox) => checkbox.checked)).toEqual([true, false])
     expect(checkboxes.every((checkbox) => checkbox.disabled)).toBe(true)
-    expect(checkboxes.map((checkbox) => checkbox.getAttribute('aria-label'))).toEqual(['已完成', '未完成'])
+    expect(checkboxes.map((checkbox) => container.querySelector(`#${checkbox.getAttribute('aria-labelledby')}`)?.textContent))
+      .toEqual(['已完成步骤', '待执行步骤'])
   })
 
   it('keeps the saved AI Task summary and result as separate document sections', () => {
