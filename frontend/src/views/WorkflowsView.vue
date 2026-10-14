@@ -209,7 +209,7 @@
           </div>
         </div>
 
-        <div v-if="workspace.activeFlow" class="flow-map">
+        <div v-if="workspace.activeFlow" class="flow-map" role="group" aria-label="Flow 节点序列">
           <template v-for="(node, index) in workspace.activeFlow.nodes" :key="node.id">
             <button
               type="button"
