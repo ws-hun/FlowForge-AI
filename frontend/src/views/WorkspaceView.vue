@@ -15,6 +15,7 @@
         ref="inputRef"
         v-model="workspace.taskInput"
         class="workspace-input"
+        aria-label="描述要创建的 AI 工作"
         placeholder="例如：帮我把一个产品想法拆解成 PRD、接口草案和执行任务..."
         @input="workspace.clearTaskSource"
       ></textarea>

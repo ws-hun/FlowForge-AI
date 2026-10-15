@@ -17,7 +17,7 @@
     <div class="history-explorer">
       <label class="history-search-field">
         <Search class="history-search-icon" />
-        <input v-model="historyQuery" type="search" placeholder="搜索运行、来源或结果..." />
+        <input v-model="historyQuery" type="search" aria-label="搜索运行、来源或结果" placeholder="搜索运行、来源或结果..." />
       </label>
       <div class="history-scope-tabs" role="tablist" aria-label="历史运行范围">
         <button

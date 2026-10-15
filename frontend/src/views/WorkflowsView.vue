@@ -27,6 +27,7 @@
           <textarea
             v-model="flowIntent"
             class="quiet-textarea flow-intent-input"
+            aria-label="描述要创建的 Flow"
             placeholder="例如：把一个产品想法依次拆解成 PRD、接口草案和任务清单..."
           ></textarea>
           <div v-if="flowCreationDraftRecovered" class="editor-save-state dirty">
@@ -301,6 +302,7 @@
                   :id="`flow-variable-${index}`"
                   v-model="flowVariableValues[variable]"
                   class="quiet-textarea"
+                  :aria-label="`填写变量 ${variable}`"
                   :placeholder="`填写 ${variable}`"
                 ></textarea>
               </div>
@@ -315,6 +317,7 @@
           <textarea
             v-model="flowRunContext"
             class="quiet-textarea flow-context-input"
+            aria-label="补充本次 Flow 运行简报"
             placeholder="为本次运行补充上下文，例如目标用户、输出格式、约束条件或业务背景..."
           ></textarea>
 
@@ -497,8 +500,8 @@
             </div>
             <button type="button" class="ghost-button" @click="openActiveFlowSource">打开来源</button>
           </div>
-          <input v-model="flowTitle" class="quiet-input" placeholder="Flow 标题" />
-          <textarea v-model="flowDescription" class="quiet-textarea" placeholder="Flow 目标"></textarea>
+          <input v-model="flowTitle" class="quiet-input" aria-label="Flow 标题" placeholder="Flow 标题" />
+          <textarea v-model="flowDescription" class="quiet-textarea" aria-label="Flow 目标" placeholder="Flow 目标"></textarea>
           <div class="editor-save-state" :class="{ dirty: flowMetaChanged }">
             <span></span>
             {{ flowEditorDraftRecovered && flowMetaChanged

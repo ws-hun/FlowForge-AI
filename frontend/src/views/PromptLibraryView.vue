@@ -7,7 +7,7 @@
     </header>
 
     <div class="library-toolbar">
-      <input v-model="search" class="quiet-input" placeholder="搜索 Prompt、标签或场景..." />
+      <input v-model="search" class="quiet-input" type="search" aria-label="搜索 Prompt、标签或场景" placeholder="搜索 Prompt、标签或场景..." />
       <button
         v-for="category in visibleCategories"
         :key="category"

@@ -50,6 +50,7 @@
         <textarea
           v-model="workspace.taskInput"
           class="workspace-input"
+          aria-label="描述要执行的 AI 任务"
           :placeholder="taskInputPlaceholder"
         ></textarea>
         <div v-if="hasTaskSource" class="task-source-context">
