@@ -42,16 +42,17 @@
     </div>
 
     <div v-if="visibleResults.length" :id="resultsId" class="global-search-results" role="listbox" aria-label="全局搜索结果">
-      <button
+      <div
         v-for="(result, index) in visibleResults"
         :key="result.id"
         :id="resultDomId(index)"
-        type="button"
         role="option"
+        tabindex="-1"
         :aria-selected="activeIndex === index"
         class="global-search-result"
         :class="{ active: activeIndex === index }"
         @mouseenter="activeIndex = index"
+        @mousedown.prevent
         @click="openResult(result)"
       >
         <span class="global-search-result-icon" :class="result.kind">
@@ -62,7 +63,7 @@
           <small>{{ result.description }}</small>
         </span>
         <em>{{ result.label }}</em>
-      </button>
+      </div>
     </div>
 
     <div v-else class="global-search-empty">

@@ -63,6 +63,8 @@ describe('Global search combobox', () => {
     expect(input.getAttribute('aria-controls')).toBe(listbox.id)
     expect(input.getAttribute('aria-activedescendant')).toBe(options[0].id)
     expect(options[0].getAttribute('aria-selected')).toBe('true')
+    expect(options.every((option) => option.tabIndex === -1)).toBe(true)
+    expect(options.some((option) => option.matches('button, a, input'))).toBe(false)
     input.focus()
     expect(document.activeElement).toBe(input)
 
@@ -88,5 +90,12 @@ describe('Global search combobox', () => {
 
     expect(input.getAttribute('aria-activedescendant')).toBe(initialActiveOption)
     expect(mocks.routerPush).not.toHaveBeenCalled()
+  })
+
+  it('opens a result from pointer activation', async () => {
+    const container = await mountSearch()
+    container.querySelector<HTMLElement>('[role="option"]')!.click()
+
+    expect(mocks.routerPush).toHaveBeenCalledWith('/tasks')
   })
 })
