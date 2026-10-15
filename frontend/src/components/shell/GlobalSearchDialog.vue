@@ -13,6 +13,13 @@
       <input
         ref="searchInput"
         v-model="query"
+        role="combobox"
+        aria-label="搜索 Flow、Prompt、结果或操作"
+        aria-autocomplete="list"
+        aria-haspopup="listbox"
+        :aria-expanded="visibleResults.length > 0"
+        :aria-controls="visibleResults.length ? resultsId : undefined"
+        :aria-activedescendant="activeResultId"
         type="search"
         placeholder="搜索 Flow、Prompt、结果..."
         @keydown.down.prevent="moveSelection(1)"
@@ -36,10 +43,11 @@
       </button>
     </div>
 
-    <div v-if="visibleResults.length" class="global-search-results" role="listbox" aria-label="全局搜索结果">
+    <div v-if="visibleResults.length" :id="resultsId" class="global-search-results" role="listbox" aria-label="全局搜索结果">
       <button
         v-for="(result, index) in visibleResults"
         :key="result.id"
+        :id="resultDomId(index)"
         type="button"
         role="option"
         :aria-selected="activeIndex === index"
@@ -72,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
 import type { Component } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import { useRouter } from 'vue-router'
@@ -110,6 +118,7 @@ const workspace = useWorkspaceStore()
 const query = ref('')
 const activeIndex = ref(0)
 const searchInput = ref<HTMLInputElement | null>(null)
+const resultsId = `${useId()}-results`
 const prompts = ref<PromptAsset[]>([])
 const promptLoading = ref(false)
 const promptLoadError = ref('')
@@ -189,6 +198,9 @@ const visibleResults = computed(() => {
     .sort((left, right) => searchScore(right, keyword) - searchScore(left, keyword))
     .slice(0, 12)
 })
+const activeResultId = computed(() =>
+  visibleResults.value.length ? resultDomId(activeIndex.value) : undefined
+)
 
 watch(
   () => props.open,
@@ -289,6 +301,10 @@ function moveSelection(offset: number) {
   const count = visibleResults.value.length
   if (!count) return
   activeIndex.value = (activeIndex.value + offset + count) % count
+}
+
+function resultDomId(index: number) {
+  return `${resultsId}-option-${index}`
 }
 
 function openSelectedResult() {
