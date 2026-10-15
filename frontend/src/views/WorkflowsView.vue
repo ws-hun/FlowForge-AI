@@ -806,16 +806,19 @@
           <input
             v-model="promptSearch"
             class="quiet-input prompt-node-search"
+            type="search"
+            aria-label="搜索要加入 Flow 的 Prompt"
             placeholder="搜索 Prompt、分类或标签..."
           />
 
-          <div v-if="promptFilterChips.length" class="prompt-node-filters">
+          <div v-if="promptFilterChips.length" class="prompt-node-filters" role="group" aria-label="Prompt 筛选条件">
             <button
               v-for="filter in promptFilterChips"
               :key="filter.value"
               type="button"
               class="prompt-filter-chip"
               :class="{ active: activePromptFilter === filter.value }"
+              :aria-pressed="activePromptFilter === filter.value"
               @click="activePromptFilter = filter.value"
             >
               {{ filter.label }}

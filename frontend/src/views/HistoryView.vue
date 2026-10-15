@@ -19,13 +19,12 @@
         <Search class="history-search-icon" />
         <input v-model="historyQuery" type="search" aria-label="搜索运行、来源或结果" placeholder="搜索运行、来源或结果..." />
       </label>
-      <div class="history-scope-tabs" role="tablist" aria-label="历史运行范围">
+      <div class="history-scope-tabs" role="group" aria-label="历史运行范围">
         <button
           v-for="scope in historyScopes"
           :key="scope.value"
           type="button"
-          role="tab"
-          :aria-selected="historyScope === scope.value"
+          :aria-pressed="historyScope === scope.value"
           :class="{ active: historyScope === scope.value }"
           @click="historyScope = scope.value"
         >

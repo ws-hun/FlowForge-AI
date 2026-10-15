@@ -14,11 +14,20 @@
         type="button"
         class="category-pill"
         :class="{ active: activeCategory === category }"
+        :aria-label="`按分类筛选：${category === 'all' ? '全部' : category}`"
+        :aria-pressed="activeCategory === category"
         @click="activeCategory = category"
       >
         {{ category === 'all' ? '全部' : category }}
       </button>
-      <button type="button" class="ghost-button" :class="{ active: favoriteOnly }" @click="favoriteOnly = !favoriteOnly">
+      <button
+        type="button"
+        class="ghost-button"
+        :class="{ active: favoriteOnly }"
+        aria-label="只显示收藏的 Prompt"
+        :aria-pressed="favoriteOnly"
+        @click="favoriteOnly = !favoriteOnly"
+      >
         收藏
       </button>
       <button type="button" class="primary-button" @click="openCreate">新建 Prompt</button>
