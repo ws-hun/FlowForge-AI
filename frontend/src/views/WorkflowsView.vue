@@ -210,37 +210,43 @@
           </div>
         </div>
 
-        <div v-if="workspace.activeFlow" class="flow-map" role="group" aria-label="Flow 节点序列">
-          <template v-for="(node, index) in workspace.activeFlow.nodes" :key="node.id">
-            <button
-              type="button"
-              class="flow-card-node"
-              :class="[
-                node.type,
-                `is-${nodeStatus(node.id)}`,
-                { active: selectedNode?.id === node.id, 'is-incomplete': flowNodeNeedsAttention(node) }
-              ]"
-              :aria-pressed="selectedNode?.id === node.id"
-              @click="selectFlowNode(node.id)"
-            >
-              <span class="flow-node-meta">
-                <span class="flow-node-type">{{ nodeLabel(node.type) }}</span>
-                <span class="flow-node-state">{{ flowNodeNeedsAttention(node) ? '待补充' : nodeStateLabel(nodeStatus(node.id)) }}</span>
-              </span>
-              <small class="flow-node-operation">{{ flowExecutionOperationLabel(flowExecutionOperationForNode(node.type)) }}</small>
-              <strong>{{ node.title }}</strong>
-              <span class="flow-node-description">{{ node.description }}</span>
-            </button>
-            <div
-              v-if="index < workspace.activeFlow.nodes.length - 1"
-              class="flow-connector"
-              :class="{
-                prepared: connectorPrepared(index),
-                active: connectorCompleted(index),
-                running: connectorRunning(index)
-              }"
-            ></div>
-          </template>
+        <div v-if="workspace.activeFlow" class="flow-canvas-frame">
+          <div class="flow-canvas-toolbar">
+            <div class="flow-canvas-count">
+              <strong>画布</strong>
+              <span>{{ canvasNodes.length }} 个节点 · {{ canvasEdges.length }} 条连接</span>
+            </div>
+            <span class="flow-execution-mode" title="连线与布局仅保存在当前浏览器；运行时仍按节点列表顺序执行。">
+              <i></i> 执行：按顺序
+            </span>
+          </div>
+          <VueFlow
+            v-model:nodes="canvasNodes"
+            v-model:edges="canvasEdges"
+            class="flow-canvas-graph"
+            :node-types="flowNodeTypes"
+            :default-edge-options="defaultCanvasEdgeOptions"
+            :delete-key-code="['Backspace', 'Delete']"
+            :min-zoom="0.2"
+            :max-zoom="1.6"
+            fit-view-on-init
+            @pane-ready="setFlowCanvasInstance"
+            @node-click="handleFlowCanvasNodeClick"
+            @node-drag-stop="persistCanvasState"
+            @connect="connectFlowCanvasNodes"
+          >
+            <Panel position="bottom-right" class="flow-canvas-controls">
+              <button type="button" title="缩小画布" aria-label="缩小画布" @click="flowCanvasInstance?.zoomOut()">
+                <el-icon><ZoomOut /></el-icon>
+              </button>
+              <button type="button" title="放大画布" aria-label="放大画布" @click="flowCanvasInstance?.zoomIn()">
+                <el-icon><ZoomIn /></el-icon>
+              </button>
+              <button type="button" title="适配全部节点" aria-label="适配全部节点" @click="fitFlowCanvas">
+                <el-icon><FullScreen /></el-icon>
+              </button>
+            </Panel>
+          </VueFlow>
         </div>
 
         <section v-if="workspace.activeFlow" class="flow-run-brief">
@@ -917,10 +923,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { EditPen, Plus } from '@element-plus/icons-vue'
+import { EditPen, FullScreen, Plus, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
+import { addEdge, MarkerType, Panel, VueFlow } from '@vue-flow/core'
+import type { Connection, Edge, NodeMouseEvent, VueFlowStore } from '@vue-flow/core'
+import '@vue-flow/core/dist/style.css'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import FlowEditorSaveBar from '@/components/flow/FlowEditorSaveBar.vue'
 import FlowExecutionInputPreview from '@/components/flow/FlowExecutionInputPreview.vue'
@@ -940,6 +949,7 @@ import {
   flowNodeReadinessLabel
 } from '@/utils/flowNodeReadiness'
 import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
+import FlowCanvasNode from '@/components/flow/FlowCanvasNode.vue'
 import { listFlowRuns, listFlowVersions } from '@/api/flows'
 import { createPrompt, listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
@@ -957,6 +967,14 @@ import {
   removeFlowEditorDraft
 } from '@/utils/flowEditorDraft'
 import { extractPromptVariables, isValidPromptVariableName } from '@/utils/promptVariables'
+import {
+  buildFlowCanvasNodes,
+  readFlowCanvasState,
+  resolveFlowCanvasEdges,
+  writeFlowCanvasState,
+  type FlowCanvasGraphNode,
+  type FlowCanvasNodeData
+} from '@/utils/flowCanvasState'
 import type { FlowEditorDraft } from '@/utils/flowEditorDraft'
 import type {
   FlowNode,
@@ -1033,6 +1051,16 @@ const flowRunStartedAt = ref('')
 const flowRunCompletedAt = ref('')
 const nodeRunStates = ref<Record<string, FlowNodeRunState>>({})
 const selectedNodeId = ref('')
+const canvasNodes = shallowRef<FlowCanvasGraphNode[]>([])
+const canvasEdges = shallowRef<Edge[]>([])
+const flowCanvasInstance = shallowRef<VueFlowStore | null>(null)
+const activeCanvasFlowId = ref('')
+const flowNodeTypes = { flowCanvas: FlowCanvasNode }
+const defaultCanvasEdgeOptions = {
+  type: 'smoothstep',
+  markerEnd: MarkerType.ArrowClosed,
+  style: { stroke: '#aebbe0', strokeWidth: 2 }
+}
 const nodeInspector = ref<HTMLElement | null>(null)
 const nodeInspectorHeading = ref<HTMLHeadingElement | null>(null)
 const flowRouteReady = ref(false)
@@ -1556,6 +1584,34 @@ watch([flowIntent, selectedFlowTemplate], () => {
     updatedAt: new Date().toISOString()
   })
 })
+
+watch(
+  () => workspace.activeFlow?.id,
+  (flowId) => {
+    if (flowId) {
+      loadFlowCanvas(flowId)
+    } else {
+      activeCanvasFlowId.value = ''
+      canvasNodes.value = []
+      canvasEdges.value = []
+    }
+  },
+  { immediate: true }
+)
+
+watch(
+  () => workspace.activeFlow?.nodes.map((node) => [
+    node.id,
+    node.type,
+    node.title,
+    node.description,
+    nodeStatus(node.id),
+    flowNodeNeedsAttention(node)
+  ].join(':')).join('|'),
+  refreshFlowCanvasNodes
+)
+
+watch(canvasEdges, persistCanvasState, { deep: true })
 
 watch(
   () => workspace.activeFlow?.id,
@@ -2456,6 +2512,61 @@ async function selectFlowNode(nodeId: string) {
   }
   focusedArtifactKey.value = ''
   selectedNodeId.value = nodeId
+}
+
+function canvasNodeData(node: FlowNode): Omit<FlowCanvasNodeData, 'flowNode'> {
+  const state = nodeStatus(node.id)
+  return {
+    kindLabel: nodeLabel(node.type),
+    stateLabel: flowNodeNeedsAttention(node) ? '待补充' : nodeStateLabel(state),
+    operationLabel: flowExecutionOperationLabel(flowExecutionOperationForNode(node.type)),
+    incomplete: flowNodeNeedsAttention(node)
+  }
+}
+
+function loadFlowCanvas(flowId: string) {
+  const flow = workspace.activeFlow
+  if (!flow || flow.id !== flowId) return
+  const saved = readFlowCanvasState(flowId)
+  activeCanvasFlowId.value = flowId
+  canvasNodes.value = buildFlowCanvasNodes(flow, saved.positions, canvasNodeData)
+  canvasEdges.value = resolveFlowCanvasEdges(saved.edges, flow.nodes, MarkerType.ArrowClosed, saved.hasSavedEdges)
+  void nextTick(() => flowCanvasInstance.value?.fitView({ padding: 0.18 }))
+}
+
+function refreshFlowCanvasNodes() {
+  const flow = workspace.activeFlow
+  if (!flow || flow.id !== activeCanvasFlowId.value) return
+  const saved = readFlowCanvasState(flow.id)
+  canvasNodes.value = buildFlowCanvasNodes(flow, saved.positions, canvasNodeData)
+  canvasEdges.value = resolveFlowCanvasEdges(saved.edges, flow.nodes, MarkerType.ArrowClosed, saved.hasSavedEdges)
+}
+
+function setFlowCanvasInstance(instance: VueFlowStore) {
+  flowCanvasInstance.value = instance
+  void instance.fitView({ padding: 0.18 })
+}
+
+function fitFlowCanvas() {
+  void flowCanvasInstance.value?.fitView({ padding: 0.18, duration: 240 })
+}
+
+function persistCanvasState() {
+  const flowId = activeCanvasFlowId.value
+  if (flowId && flowId === workspace.activeFlowId) {
+    writeFlowCanvasState(flowId, canvasNodes.value, canvasEdges.value)
+  }
+}
+
+function connectFlowCanvasNodes(connection: Connection) {
+  if (!connection.source || !connection.target || connection.source === connection.target) return
+  const id = globalThis.crypto?.randomUUID?.() || `edge-${Date.now()}`
+  canvasEdges.value = addEdge({ ...connection, id, type: 'smoothstep', markerEnd: MarkerType.ArrowClosed }, canvasEdges.value) as Edge[]
+  persistCanvasState()
+}
+
+async function handleFlowCanvasNodeClick({ node }: NodeMouseEvent) {
+  await selectFlowNode(node.id)
 }
 
 async function openExecutionPreviewNode(nodeId: string) {
