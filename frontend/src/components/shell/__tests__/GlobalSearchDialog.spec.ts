@@ -76,4 +76,17 @@ describe('Global search combobox', () => {
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     expect(mocks.routerPush).toHaveBeenCalledWith('/workflows')
   })
+
+  it('leaves IME candidate navigation and confirmation keys to the input method', async () => {
+    const container = await mountSearch()
+    const input = container.querySelector<HTMLInputElement>('[role="combobox"]')!
+    const initialActiveOption = input.getAttribute('aria-activedescendant')
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, isComposing: true }))
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, isComposing: true }))
+    await nextTick()
+
+    expect(input.getAttribute('aria-activedescendant')).toBe(initialActiveOption)
+    expect(mocks.routerPush).not.toHaveBeenCalled()
+  })
 })

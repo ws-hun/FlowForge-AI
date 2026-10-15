@@ -22,9 +22,7 @@
         :aria-activedescendant="activeResultId"
         type="search"
         placeholder="搜索 Flow、Prompt、结果..."
-        @keydown.down.prevent="moveSelection(1)"
-        @keydown.up.prevent="moveSelection(-1)"
-        @keydown.enter.prevent="openSelectedResult"
+        @keydown="handleSearchKeydown"
       />
       <button type="button" class="global-search-close" title="关闭" aria-label="关闭搜索" @click="emit('close')">
         <Close />
@@ -305,6 +303,22 @@ function moveSelection(offset: number) {
 
 function resultDomId(index: number) {
   return `${resultsId}-option-${index}`
+}
+
+function handleSearchKeydown(event: KeyboardEvent) {
+  if (event.isComposing || event.keyCode === 229) {
+    return
+  }
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    moveSelection(1)
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    moveSelection(-1)
+  } else if (event.key === 'Enter') {
+    event.preventDefault()
+    openSelectedResult()
+  }
 }
 
 function openSelectedResult() {
