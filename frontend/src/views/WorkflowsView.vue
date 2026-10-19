@@ -246,6 +246,9 @@
               <button type="button" title="适配全部节点" aria-label="适配全部节点" @click="fitFlowCanvas">
                 <el-icon><FullScreen /></el-icon>
               </button>
+              <button type="button" title="按执行顺序排列节点" aria-label="按执行顺序排列节点" @click="arrangeFlowCanvas">
+                <el-icon><Sort /></el-icon>
+              </button>
               <button
                 v-if="selectedCanvasEdgeCount"
                 type="button"
@@ -936,7 +939,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, EditPen, FullScreen, Plus, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
+import { Delete, EditPen, FullScreen, Plus, Sort, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
 import { addEdge, MarkerType, Panel, VueFlow } from '@vue-flow/core'
 import type { Connection, Edge, NodeMouseEvent, VueFlowStore } from '@vue-flow/core'
 import '@vue-flow/core/dist/style.css'
@@ -2574,6 +2577,15 @@ function restoreFlowCanvasViewport(flowId: string) {
 
 function fitFlowCanvas() {
   void flowCanvasInstance.value?.fitView({ padding: 0.18, duration: 240 }).then(persistCanvasViewport)
+}
+
+function arrangeFlowCanvas() {
+  const flow = workspace.activeFlow
+  if (!flow) return
+  canvasNodes.value = buildFlowCanvasNodes(flow, {}, canvasNodeData)
+  void nextTick(() => {
+    void flowCanvasInstance.value?.fitView({ padding: 0.18, duration: 240 }).then(persistCanvasState)
+  })
 }
 
 function persistCanvasState() {
