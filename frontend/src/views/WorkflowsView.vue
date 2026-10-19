@@ -246,6 +246,15 @@
               <button type="button" title="适配全部节点" aria-label="适配全部节点" @click="fitFlowCanvas">
                 <el-icon><FullScreen /></el-icon>
               </button>
+              <button
+                v-if="selectedCanvasEdgeCount"
+                type="button"
+                title="删除选中的连接"
+                aria-label="删除选中的连接"
+                @click="deleteSelectedCanvasEdges"
+              >
+                <el-icon><Delete /></el-icon>
+              </button>
             </Panel>
           </VueFlow>
         </div>
@@ -927,7 +936,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { EditPen, FullScreen, Plus, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
+import { Delete, EditPen, FullScreen, Plus, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
 import { addEdge, MarkerType, Panel, VueFlow } from '@vue-flow/core'
 import type { Connection, Edge, NodeMouseEvent, VueFlowStore } from '@vue-flow/core'
 import '@vue-flow/core/dist/style.css'
@@ -971,6 +980,7 @@ import { extractPromptVariables, isValidPromptVariableName } from '@/utils/promp
 import {
   buildFlowCanvasNodes,
   readFlowCanvasState,
+  removeFlowCanvasEdges,
   resolveFlowCanvasEdges,
   writeFlowCanvasState,
   type FlowCanvasGraphNode,
@@ -1054,6 +1064,7 @@ const nodeRunStates = ref<Record<string, FlowNodeRunState>>({})
 const selectedNodeId = ref('')
 const canvasNodes = shallowRef<FlowCanvasGraphNode[]>([])
 const canvasEdges = shallowRef<Edge[]>([])
+const selectedCanvasEdgeCount = computed(() => flowCanvasInstance.value?.getSelectedEdges.value.length || 0)
 const flowCanvasInstance = shallowRef<VueFlowStore | null>(null)
 const activeCanvasFlowId = ref('')
 const flowNodeTypes = { flowCanvas: FlowCanvasNode }
@@ -2573,6 +2584,12 @@ function persistCanvasState() {
 }
 
 function persistCanvasViewport() {
+  persistCanvasState()
+}
+
+function deleteSelectedCanvasEdges() {
+  const selectedIds = flowCanvasInstance.value?.getSelectedEdges.value.map((edge) => edge.id) || []
+  canvasEdges.value = removeFlowCanvasEdges(canvasEdges.value, selectedIds)
   persistCanvasState()
 }
 

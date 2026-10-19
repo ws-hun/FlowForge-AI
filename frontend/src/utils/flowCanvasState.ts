@@ -127,6 +127,11 @@ export function resolveFlowCanvasEdges(
   return validEdges.map((edge) => ({ ...edge, type: 'smoothstep', markerEnd: arrowMarker, deletable: true, selectable: true }))
 }
 
+export function removeFlowCanvasEdges(edges: Edge[], edgeIds: string[]): Edge[] {
+  const removedIds = new Set(edgeIds)
+  return edges.filter((edge) => !removedIds.has(edge.id))
+}
+
 function isStoredEdge(value: unknown): value is StoredFlowCanvasState['edges'][number] {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const candidate = value as Record<string, unknown>

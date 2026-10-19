@@ -3,10 +3,12 @@ import {
   buildFlowCanvasNodes,
   buildSequentialCanvasEdges,
   readFlowCanvasState,
+  removeFlowCanvasEdges,
   resolveFlowCanvasEdges,
   writeFlowCanvasState
 } from '@/utils/flowCanvasState'
 import type { FlowDraft, FlowNode } from '@/types'
+import type { Edge } from '@vue-flow/core'
 import { MarkerType } from '@vue-flow/core'
 
 const nodes: FlowNode[] = [
@@ -72,5 +74,14 @@ describe('flow canvas state', () => {
       edges: [],
       viewport
     })
+  })
+
+  it('removes visual connections by selected graph IDs', () => {
+    const edges = [
+      { id: 'keep', source: 'input', target: 'prompt' },
+      { id: 'remove', source: 'prompt', target: 'ai' }
+    ] as Edge[]
+
+    expect(removeFlowCanvasEdges(edges, ['remove']).map((edge) => edge.id)).toEqual(['keep'])
   })
 })
