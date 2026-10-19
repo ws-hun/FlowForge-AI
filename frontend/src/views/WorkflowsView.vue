@@ -991,6 +991,7 @@ import { extractPromptVariables, isValidPromptVariableName } from '@/utils/promp
 import {
   buildFlowCanvasNodes,
   buildSequentialCanvasEdges,
+  canCreateFlowCanvasEdge,
   readFlowCanvasState,
   removeFlowCanvasEdges,
   resolveFlowCanvasEdges,
@@ -2622,7 +2623,7 @@ function deleteSelectedCanvasEdges() {
 }
 
 function connectFlowCanvasNodes(connection: Connection) {
-  if (!connection.source || !connection.target || connection.source === connection.target) return
+  if (!canCreateFlowCanvasEdge(connection, canvasEdges.value)) return
   const id = globalThis.crypto?.randomUUID?.() || `edge-${Date.now()}`
   canvasEdges.value = addEdge({ ...connection, id, type: 'smoothstep', markerEnd: MarkerType.ArrowClosed }, canvasEdges.value) as Edge[]
   persistCanvasState()

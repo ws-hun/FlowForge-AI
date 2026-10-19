@@ -1,5 +1,5 @@
 import { Position } from '@vue-flow/core'
-import type { Edge, MarkerType, Node, ViewportTransform } from '@vue-flow/core'
+import type { Connection, Edge, MarkerType, Node, ViewportTransform } from '@vue-flow/core'
 import type { FlowDraft, FlowNode } from '@/types'
 
 export type FlowCanvasNodeData = {
@@ -130,6 +130,17 @@ export function resolveFlowCanvasEdges(
 export function removeFlowCanvasEdges(edges: Edge[], edgeIds: string[]): Edge[] {
   const removedIds = new Set(edgeIds)
   return edges.filter((edge) => !removedIds.has(edge.id))
+}
+
+export function canCreateFlowCanvasEdge(connection: Connection, edges: Edge[]): boolean {
+  const { source, target, sourceHandle, targetHandle } = connection
+  if (!source || !target || source === target) return false
+  return !edges.some((edge) =>
+    edge.source === source &&
+    edge.target === target &&
+    (edge.sourceHandle || null) === (sourceHandle || null) &&
+    (edge.targetHandle || null) === (targetHandle || null)
+  )
 }
 
 function isStoredEdge(value: unknown): value is StoredFlowCanvasState['edges'][number] {

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   buildFlowCanvasNodes,
   buildSequentialCanvasEdges,
+  canCreateFlowCanvasEdge,
   readFlowCanvasState,
   removeFlowCanvasEdges,
   resolveFlowCanvasEdges,
@@ -83,5 +84,12 @@ describe('flow canvas state', () => {
     ] as Edge[]
 
     expect(removeFlowCanvasEdges(edges, ['remove']).map((edge) => edge.id)).toEqual(['keep'])
+  })
+
+  it('rejects self-connections and duplicate visual connections', () => {
+    const edges = [{ id: 'existing', source: 'input', target: 'prompt', sourceHandle: 'out', targetHandle: 'in' }] as Edge[]
+    expect(canCreateFlowCanvasEdge({ source: 'input', target: 'input' }, edges)).toBe(false)
+    expect(canCreateFlowCanvasEdge({ source: 'input', target: 'prompt', sourceHandle: 'out', targetHandle: 'in' }, edges)).toBe(false)
+    expect(canCreateFlowCanvasEdge({ source: 'prompt', target: 'ai' }, edges)).toBe(true)
   })
 })
