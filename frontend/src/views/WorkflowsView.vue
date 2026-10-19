@@ -250,6 +250,14 @@
                 <el-icon><Sort /></el-icon>
               </button>
               <button
+                type="button"
+                title="恢复按执行顺序的默认连线"
+                aria-label="恢复按执行顺序的默认连线"
+                @click="restoreSequentialCanvasEdges"
+              >
+                <el-icon><Refresh /></el-icon>
+              </button>
+              <button
                 v-if="selectedCanvasEdgeCount"
                 type="button"
                 title="删除选中的连接"
@@ -939,7 +947,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, EditPen, FullScreen, Plus, Sort, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
+import { Delete, EditPen, FullScreen, Plus, Refresh, Sort, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
 import { addEdge, MarkerType, Panel, VueFlow } from '@vue-flow/core'
 import type { Connection, Edge, NodeMouseEvent, VueFlowStore } from '@vue-flow/core'
 import '@vue-flow/core/dist/style.css'
@@ -982,6 +990,7 @@ import {
 import { extractPromptVariables, isValidPromptVariableName } from '@/utils/promptVariables'
 import {
   buildFlowCanvasNodes,
+  buildSequentialCanvasEdges,
   readFlowCanvasState,
   removeFlowCanvasEdges,
   resolveFlowCanvasEdges,
@@ -2586,6 +2595,13 @@ function arrangeFlowCanvas() {
   void nextTick(() => {
     void flowCanvasInstance.value?.fitView({ padding: 0.18, duration: 240 }).then(persistCanvasState)
   })
+}
+
+function restoreSequentialCanvasEdges() {
+  const flow = workspace.activeFlow
+  if (!flow) return
+  canvasEdges.value = buildSequentialCanvasEdges(flow.nodes, MarkerType.ArrowClosed)
+  persistCanvasState()
 }
 
 function persistCanvasState() {
