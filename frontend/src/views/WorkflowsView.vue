@@ -233,6 +233,7 @@
             @pane-ready="setFlowCanvasInstance"
             @node-click="handleFlowCanvasNodeClick"
             @node-drag-stop="persistCanvasState"
+            @move-end="persistCanvasViewport"
             @connect="connectFlowCanvasNodes"
           >
             <Panel position="bottom-right" class="flow-canvas-controls">
@@ -2531,7 +2532,7 @@ function loadFlowCanvas(flowId: string) {
   activeCanvasFlowId.value = flowId
   canvasNodes.value = buildFlowCanvasNodes(flow, saved.positions, canvasNodeData)
   canvasEdges.value = resolveFlowCanvasEdges(saved.edges, flow.nodes, MarkerType.ArrowClosed, saved.hasSavedEdges)
-  void nextTick(() => flowCanvasInstance.value?.fitView({ padding: 0.18 }))
+  restoreFlowCanvasViewport(flowId)
 }
 
 function refreshFlowCanvasNodes() {
@@ -2544,18 +2545,35 @@ function refreshFlowCanvasNodes() {
 
 function setFlowCanvasInstance(instance: VueFlowStore) {
   flowCanvasInstance.value = instance
-  void instance.fitView({ padding: 0.18 })
+  restoreFlowCanvasViewport(activeCanvasFlowId.value)
+}
+
+function restoreFlowCanvasViewport(flowId: string) {
+  void nextTick(() => {
+    const instance = flowCanvasInstance.value
+    if (!instance || !flowId || activeCanvasFlowId.value !== flowId) return
+    const { viewport } = readFlowCanvasState(flowId)
+    if (viewport) {
+      void instance.setViewport(viewport)
+    } else {
+      void instance.fitView({ padding: 0.18 })
+    }
+  })
 }
 
 function fitFlowCanvas() {
-  void flowCanvasInstance.value?.fitView({ padding: 0.18, duration: 240 })
+  void flowCanvasInstance.value?.fitView({ padding: 0.18, duration: 240 }).then(persistCanvasViewport)
 }
 
 function persistCanvasState() {
   const flowId = activeCanvasFlowId.value
   if (flowId && flowId === workspace.activeFlowId) {
-    writeFlowCanvasState(flowId, canvasNodes.value, canvasEdges.value)
+    writeFlowCanvasState(flowId, canvasNodes.value, canvasEdges.value, flowCanvasInstance.value?.getViewport() || null)
   }
+}
+
+function persistCanvasViewport() {
+  persistCanvasState()
 }
 
 function connectFlowCanvasNodes(connection: Connection) {

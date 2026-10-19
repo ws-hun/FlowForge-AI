@@ -1,5 +1,5 @@
 import { Position } from '@vue-flow/core'
-import type { Edge, MarkerType, Node } from '@vue-flow/core'
+import type { Edge, MarkerType, Node, ViewportTransform } from '@vue-flow/core'
 import type { FlowDraft, FlowNode } from '@/types'
 
 export type FlowCanvasNodeData = {
@@ -14,6 +14,7 @@ export type FlowCanvasGraphNode = Node<FlowCanvasNodeData>
 export type StoredFlowCanvasState = {
   positions: Record<string, { x: number; y: number }>
   edges: Array<Pick<Edge, 'id' | 'source' | 'target' | 'sourceHandle' | 'targetHandle'>>
+  viewport: ViewportTransform | null
   hasSavedEdges: boolean
 }
 
@@ -58,10 +59,12 @@ export function buildSequentialCanvasEdges(
 }
 
 export function readFlowCanvasState(flowId: string): StoredFlowCanvasState {
-  if (typeof window === 'undefined') return { positions: {}, edges: [], hasSavedEdges: false }
+  if (typeof window === 'undefined') return { positions: {}, edges: [], viewport: null, hasSavedEdges: false }
   try {
     const value = JSON.parse(window.localStorage.getItem(`${STORAGE_PREFIX}${flowId}`) || 'null')
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return { positions: {}, edges: [], hasSavedEdges: false }
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return { positions: {}, edges: [], viewport: null, hasSavedEdges: false }
+    }
 
     const candidate = value as Record<string, unknown>
     const positions: StoredFlowCanvasState['positions'] = {}
@@ -80,17 +83,19 @@ export function readFlowCanvasState(flowId: string): StoredFlowCanvasState {
     return {
       positions,
       edges: Array.isArray(candidate.edges) ? candidate.edges.filter(isStoredEdge) : [],
+      viewport: isViewport(candidate.viewport) ? candidate.viewport : null,
       hasSavedEdges: Array.isArray(candidate.edges)
     }
   } catch {
-    return { positions: {}, edges: [], hasSavedEdges: false }
+    return { positions: {}, edges: [], viewport: null, hasSavedEdges: false }
   }
 }
 
 export function writeFlowCanvasState(
   flowId: string,
   nodes: ReadonlyArray<{ id: string; position: { x: number; y: number } }>,
-  edges: ReadonlyArray<Pick<Edge, 'id' | 'source' | 'target' | 'sourceHandle' | 'targetHandle'>>
+  edges: ReadonlyArray<Pick<Edge, 'id' | 'source' | 'target' | 'sourceHandle' | 'targetHandle'>>,
+  viewport: ViewportTransform | null = null
 ) {
   if (typeof window === 'undefined') return
   const state: StoredFlowCanvasState = {
@@ -98,6 +103,7 @@ export function writeFlowCanvasState(
     edges: edges.map(({ id, source, target, sourceHandle, targetHandle }) => ({
       id, source, target, sourceHandle, targetHandle
     })),
+    viewport,
     hasSavedEdges: true
   }
   try {
@@ -125,4 +131,13 @@ function isStoredEdge(value: unknown): value is StoredFlowCanvasState['edges'][n
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const candidate = value as Record<string, unknown>
   return typeof candidate.id === 'string' && typeof candidate.source === 'string' && typeof candidate.target === 'string'
+}
+
+function isViewport(value: unknown): value is ViewportTransform {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const candidate = value as Record<string, unknown>
+  return Number.isFinite(candidate.x) &&
+    Number.isFinite(candidate.y) &&
+    Number.isFinite(candidate.zoom) &&
+    (candidate.zoom as number) > 0
 }
