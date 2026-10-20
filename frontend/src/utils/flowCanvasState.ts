@@ -41,6 +41,12 @@ export function buildFlowCanvasNodes(
   }))
 }
 
+export function captureFlowCanvasPositions(
+  nodes: ReadonlyArray<Pick<FlowCanvasGraphNode, 'id' | 'position'>>
+): StoredFlowCanvasState['positions'] {
+  return Object.fromEntries(nodes.map(({ id, position }) => [id, { x: position.x, y: position.y }]))
+}
+
 export function buildSequentialCanvasEdges(
   nodes: FlowNode[],
   arrowMarker: MarkerType

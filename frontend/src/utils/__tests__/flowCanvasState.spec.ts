@@ -3,6 +3,7 @@ import {
   buildFlowCanvasNodes,
   buildSequentialCanvasEdges,
   canCreateFlowCanvasEdge,
+  captureFlowCanvasPositions,
   readFlowCanvasState,
   removeFlowCanvasEdges,
   resolveFlowCanvasEdges,
@@ -37,6 +38,16 @@ describe('flow canvas state', () => {
     expect(edges.map(({ source, target }) => [source, target])).toEqual([
       ['input', 'prompt'], ['prompt', 'ai'], ['ai', 'output']
     ])
+  })
+
+  it('captures current canvas positions for content-only node refreshes', () => {
+    const graphNodes = buildFlowCanvasNodes(flow, { prompt: { x: 420, y: 260 } }, nodeData)
+    expect(captureFlowCanvasPositions(graphNodes)).toEqual({
+      input: { x: 80, y: 120 },
+      prompt: { x: 420, y: 260 },
+      ai: { x: 680, y: 120 },
+      output: { x: 980, y: 144 }
+    })
   })
 
   it('restores only valid local edges and falls back to the visual chain', () => {

@@ -991,6 +991,7 @@ import {
   buildFlowCanvasNodes,
   buildSequentialCanvasEdges,
   canCreateFlowCanvasEdge,
+  captureFlowCanvasPositions,
   readFlowCanvasState,
   removeFlowCanvasEdges,
   resolveFlowCanvasEdges,
@@ -2562,7 +2563,8 @@ function refreshFlowCanvasNodes() {
   const flow = workspace.activeFlow
   if (!flow || flow.id !== activeCanvasFlowId.value) return
   const saved = readFlowCanvasState(flow.id)
-  canvasNodes.value = buildFlowCanvasNodes(flow, saved.positions, canvasNodeData)
+  const positions = { ...saved.positions, ...captureFlowCanvasPositions(canvasNodes.value) }
+  canvasNodes.value = buildFlowCanvasNodes(flow, positions, canvasNodeData)
   canvasEdges.value = resolveFlowCanvasEdges(saved.edges, flow.nodes, MarkerType.ArrowClosed, saved.hasSavedEdges)
 }
 
