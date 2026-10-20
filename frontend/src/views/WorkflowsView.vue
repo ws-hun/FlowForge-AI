@@ -229,7 +229,6 @@
             :delete-key-code="['Backspace', 'Delete']"
             :min-zoom="0.2"
             :max-zoom="1.6"
-            fit-view-on-init
             @pane-ready="setFlowCanvasInstance"
             @node-click="handleFlowCanvasNodeClick"
             @node-drag-stop="persistCanvasState"
