@@ -126,9 +126,15 @@ export function resolveFlowCanvasEdges(
   hasSavedEdges = savedEdges.length > 0
 ): Edge[] {
   const nodeIds = new Set(nodes.map((node) => node.id))
-  const validEdges = savedEdges.filter((edge) =>
-    nodeIds.has(edge.source) && nodeIds.has(edge.target) && edge.source !== edge.target
-  )
+  const validEdges: StoredFlowCanvasState['edges'] = []
+  const seenConnections = new Set<string>()
+  for (const edge of savedEdges) {
+    if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target) || edge.source === edge.target) continue
+    const key = JSON.stringify([edge.source, edge.sourceHandle || null, edge.target, edge.targetHandle || null])
+    if (seenConnections.has(key)) continue
+    seenConnections.add(key)
+    validEdges.push(edge)
+  }
   if (!hasSavedEdges) return buildSequentialCanvasEdges(nodes, arrowMarker)
   return validEdges.map((edge) => ({ ...edge, type: 'smoothstep', markerEnd: arrowMarker, deletable: true, selectable: true }))
 }

@@ -51,7 +51,11 @@ describe('flow canvas state', () => {
   })
 
   it('restores only valid local edges and falls back to the visual chain', () => {
-    const saved = [{ id: 'saved', source: 'input', target: 'output' }, { id: 'stale', source: 'gone', target: 'output' }]
+    const saved = [
+      { id: 'saved', source: 'input', target: 'output' },
+      { id: 'duplicate', source: 'input', target: 'output' },
+      { id: 'stale', source: 'gone', target: 'output' }
+    ]
     expect(resolveFlowCanvasEdges(saved, nodes, MarkerType.ArrowClosed).map((edge) => edge.id)).toEqual(['saved'])
     expect(resolveFlowCanvasEdges([], nodes, MarkerType.ArrowClosed, false)).toHaveLength(3)
     expect(resolveFlowCanvasEdges([], nodes, MarkerType.ArrowClosed, true)).toHaveLength(0)
