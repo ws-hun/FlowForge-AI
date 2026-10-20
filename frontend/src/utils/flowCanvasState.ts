@@ -128,10 +128,13 @@ export function resolveFlowCanvasEdges(
   const nodeIds = new Set(nodes.map((node) => node.id))
   const validEdges: StoredFlowCanvasState['edges'] = []
   const seenConnections = new Set<string>()
+  const seenIds = new Set<string>()
   for (const edge of savedEdges) {
     if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target) || edge.source === edge.target) continue
+    if (seenIds.has(edge.id)) continue
     const key = JSON.stringify([edge.source, edge.sourceHandle || null, edge.target, edge.targetHandle || null])
     if (seenConnections.has(key)) continue
+    seenIds.add(edge.id)
     seenConnections.add(key)
     validEdges.push(edge)
   }

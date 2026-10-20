@@ -54,6 +54,7 @@ describe('flow canvas state', () => {
     const saved = [
       { id: 'saved', source: 'input', target: 'output' },
       { id: 'duplicate', source: 'input', target: 'output' },
+      { id: 'saved', source: 'prompt', target: 'output' },
       { id: 'stale', source: 'gone', target: 'output' }
     ]
     expect(resolveFlowCanvasEdges(saved, nodes, MarkerType.ArrowClosed).map((edge) => edge.id)).toEqual(['saved'])
