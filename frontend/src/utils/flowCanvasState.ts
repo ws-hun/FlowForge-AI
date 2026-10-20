@@ -25,20 +25,24 @@ export function buildFlowCanvasNodes(
   positions: StoredFlowCanvasState['positions'],
   getData: (node: FlowNode) => Omit<FlowCanvasNodeData, 'flowNode'>
 ): FlowCanvasGraphNode[] {
-  return flow.nodes.map((node, index) => ({
-    id: node.id,
-    type: 'flowCanvas',
-    class: 'flow-node-wrapper',
-    position: positions[node.id] || { x: 80 + index * 300, y: 120 + (index % 2) * 24 },
-    sourcePosition: Position.Right,
-    targetPosition: Position.Left,
-    draggable: true,
-    connectable: true,
-    selectable: true,
-    deletable: false,
-    width: 248,
-    data: { flowNode: node, ...getData(node) }
-  }))
+  return flow.nodes.map((node, index) => {
+    const data = getData(node)
+    return {
+      id: node.id,
+      type: 'flowCanvas',
+      class: 'flow-node-wrapper',
+      position: positions[node.id] || { x: 80 + index * 300, y: 120 + (index % 2) * 24 },
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
+      draggable: true,
+      connectable: true,
+      selectable: true,
+      deletable: false,
+      width: 248,
+      ariaLabel: `${node.title}，${data.kindLabel}，${data.stateLabel}，${data.operationLabel}`,
+      data: { flowNode: node, ...data }
+    }
+  })
 }
 
 export function captureFlowCanvasPositions(

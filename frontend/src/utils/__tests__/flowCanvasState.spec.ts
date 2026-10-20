@@ -50,6 +50,17 @@ describe('flow canvas state', () => {
     })
   })
 
+  it('provides accessible canvas labels with node type, state and responsibility', () => {
+    const [canvasNode] = buildFlowCanvasNodes(flow, {}, (node) => ({
+      kindLabel: node.type,
+      stateLabel: '待补充',
+      operationLabel: '准备上下文',
+      incomplete: true
+    }))
+
+    expect(canvasNode.ariaLabel).toBe('Input，input，待补充，准备上下文')
+  })
+
   it('restores only valid local edges and falls back to the visual chain', () => {
     const saved = [
       { id: 'saved', source: 'input', target: 'output' },
