@@ -5,6 +5,7 @@ import {
   hasFlowCanvasRevisionConflict,
   preserveLatestCanvasSyncSnapshot,
   resolveMissingCloudCanvasDecision,
+  resolveKnownCanvasRevision,
   resolveOfflineCanvasRestoreDecision,
   resolveFlowCanvasRestoreDecision
 } from '@/utils/flowCanvasSync'
@@ -24,6 +25,12 @@ describe('flow canvas synchronization policy', () => {
 
     expect(preserveLatestCanvasSyncSnapshot(newerPending, attempted)).toBe(newerPending)
     expect(preserveLatestCanvasSyncSnapshot(undefined, attempted)).toBe(attempted)
+  })
+
+  it('prefers the persisted acknowledged revision after re-entering a conflicted flow', () => {
+    expect(resolveKnownCanvasRevision(4, 5)).toBe(4)
+    expect(resolveKnownCanvasRevision(null, 5)).toBe(5)
+    expect(resolveKnownCanvasRevision(undefined, undefined)).toBeUndefined()
   })
 
   it('invalidates late sync completions independently for each flow', () => {
