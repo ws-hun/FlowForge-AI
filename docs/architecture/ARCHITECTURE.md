@@ -56,6 +56,8 @@ src/
 
 Canvas layout snapshots are stored locally with the last confirmed server revision. A fetched revision is not written into that marker until the cloud state is applied, the user explicitly chooses to overwrite it, or a local save succeeds. After reload, local edits can resume automatically only when the server revision still matches; an unknown or changed revision keeps both versions available for explicit resolution. Legacy local snapshots can migrate when the cloud has no canvas record, while a previously confirmed nonzero revision missing from the cloud is treated as a conflict rather than silently recreated. Conflict comparison normalizes node positions, viewport, and connection endpoints; generated edge IDs do not create false topology conflicts.
 
+Canvas save failures requeue the attempted snapshot only when no newer edit is already waiting. A network retry therefore always favors the latest local canvas state, while revision conflicts still require the user's explicit choice.
+
 ### History Module
 - Execution history tracking
 
