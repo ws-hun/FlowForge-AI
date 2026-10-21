@@ -92,7 +92,7 @@ Current Stage 3 capabilities:
 - Canvas recovery compares normalized local and server layouts before restoring or retrying; stale local work is preserved for explicit conflict resolution, and a recovered network automatically retries only non-conflicting sync failures.
 - Canvas conflict checks compare edge endpoints rather than generated IDs; compatibility ID generation avoids current collisions and repairs duplicate identifiers in legacy local snapshots without dropping valid connections.
 - Flow canvas editing enforces the API's 500-connection limit before submission, with a direct explanation when no more visual edges can be added.
-- Canvas camera coordinates and zoom are normalized to server bounds before local persistence and synchronization, and legacy migration sends the repaired live graph rather than malformed raw cache entries.
+- Canvas node/navigation coordinates, viewport zoom, 500-edge capacity, and 120-character edge IDs mirror server constraints; legacy migration sends the repaired live graph rather than malformed raw cache entries.
 - Canvas layout and visual connections now sync to a dedicated versioned Flow state without creating Flow content revisions. Existing browser layouts migrate when no cloud layout exists, offline edits remain locally available, and multi-window conflicts require an explicit local-or-cloud choice.
 - Flow variables with preflight validation and atomic rename.
 - Server-compiled execution previews.
