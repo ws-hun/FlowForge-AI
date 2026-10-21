@@ -27,6 +27,26 @@ describe('flow canvas edit history', () => {
     expect(original.positions.node).toEqual({ x: 10, y: 20 })
   })
 
+  it('walks backward and forward across multiple canvas edits', () => {
+    const first = snapshot(10)
+    const second = snapshot(20)
+    const third = snapshot(30)
+    const history = recordFlowCanvasEdit(
+      recordFlowCanvasEdit(createFlowCanvasHistory(), first),
+      second
+    )
+
+    const undoSecond = undoFlowCanvasEdit(history, third)
+    const undoFirst = undoFlowCanvasEdit(undoSecond.history, second)
+    expect(undoSecond.snapshot).toEqual(second)
+    expect(undoFirst.snapshot).toEqual(first)
+
+    const redoFirst = redoFlowCanvasEdit(undoFirst.history, first)
+    const redoSecond = redoFlowCanvasEdit(redoFirst.history, second)
+    expect(redoFirst.snapshot).toEqual(second)
+    expect(redoSecond.snapshot).toEqual(third)
+  })
+
   it('clears redo states after a new edit', () => {
     const initial = snapshot(10)
     const edited = snapshot(40)
