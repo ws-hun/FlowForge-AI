@@ -152,6 +152,23 @@ describe('flow canvas state', () => {
     expect(readFlowCanvasState('flow').viewport).toBeNull()
   })
 
+  it('keeps legacy canvas snapshots without a viewport readable', () => {
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: () => JSON.stringify({
+          positions: { prompt: { x: 320, y: 160 } },
+          edges: [{ id: 'legacy', source: 'input', target: 'prompt' }]
+        })
+      }
+    })
+    expect(readFlowCanvasState('flow')).toMatchObject({
+      positions: { prompt: { x: 320, y: 160 } },
+      edges: [{ id: 'legacy', source: 'input', target: 'prompt' }],
+      viewport: null,
+      hasSavedEdges: true
+    })
+  })
+
   it('persists viewport together with canvas positions and connections', () => {
     const storage = new Map<string, string>()
     vi.stubGlobal('window', {
