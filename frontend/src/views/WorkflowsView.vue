@@ -1092,6 +1092,7 @@ import {
   flowCanvasStatesDiffer,
   hasFlowCanvasRevisionConflict,
   isFlowCanvasViewportRestoreCurrent,
+  pendingBackgroundCanvasSyncIds,
   preserveLatestCanvasSyncSnapshot,
   resolveMissingCloudCanvasDecision,
   resolveKnownCanvasRevision,
@@ -2887,8 +2888,11 @@ function handleCanvasNetworkOnline() {
   const activeFlowId = activeCanvasFlowId.value
   if (canvasSyncStatus.value === 'local') void retryFlowCanvasSync()
 
-  for (const flowId of pendingCanvasSaves.keys()) {
-    if (flowId === activeFlowId || canvasSyncRetryingFlows.has(flowId)) continue
+  for (const flowId of pendingBackgroundCanvasSyncIds(
+    pendingCanvasSaves.keys(),
+    activeFlowId,
+    canvasSyncRetryingFlows
+  )) {
     canvasSyncRetryingFlows.add(flowId)
     void restoreFlowCanvasFromServer(
       flowId,

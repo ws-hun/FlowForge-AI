@@ -4,6 +4,7 @@ import {
   flowCanvasStatesDiffer,
   hasFlowCanvasRevisionConflict,
   isFlowCanvasViewportRestoreCurrent,
+  pendingBackgroundCanvasSyncIds,
   preserveLatestCanvasSyncSnapshot,
   resolveMissingCloudCanvasDecision,
   resolveKnownCanvasRevision,
@@ -68,6 +69,14 @@ describe('flow canvas synchronization policy', () => {
     expect(isFlowCanvasViewportRestoreCurrent({ ...current, activeFlowId: 'flow-b' })).toBe(false)
     expect(isFlowCanvasViewportRestoreCurrent({ ...current, workspaceFlowId: 'flow-b' })).toBe(false)
     expect(isFlowCanvasViewportRestoreCurrent({ ...current, currentGeneration: 4 })).toBe(false)
+  })
+
+  it('retries only inactive pending canvases without a running retry', () => {
+    expect(pendingBackgroundCanvasSyncIds(
+      ['active', 'background-a', 'background-b'],
+      'active',
+      new Set(['background-b'])
+    )).toEqual(['background-a'])
   })
 
   it('prefers saved cloud state when the user did not edit during loading', () => {

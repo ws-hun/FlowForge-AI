@@ -26,6 +26,16 @@ export function isFlowCanvasViewportRestoreCurrent(input: {
     input.restoreGeneration === input.currentGeneration
 }
 
+export function pendingBackgroundCanvasSyncIds(
+  pendingFlowIds: Iterable<string>,
+  activeFlowId: string,
+  retryingFlowIds: ReadonlySet<string>
+): string[] {
+  return [...pendingFlowIds].filter((flowId) =>
+    flowId !== activeFlowId && !retryingFlowIds.has(flowId)
+  )
+}
+
 export function preserveLatestCanvasSyncSnapshot<T>(pending: T | undefined, failed: T): T {
   return pending ?? failed
 }
