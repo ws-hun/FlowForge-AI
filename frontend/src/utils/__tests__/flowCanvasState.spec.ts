@@ -88,7 +88,10 @@ describe('flow canvas state', () => {
       { id: 'saved', source: 'prompt', target: 'output' },
       { id: 'stale', source: 'gone', target: 'output' }
     ]
-    expect(resolveFlowCanvasEdges(saved, nodes, MarkerType.ArrowClosed).map((edge) => edge.id)).toEqual(['saved'])
+    const restored = resolveFlowCanvasEdges(saved, nodes, MarkerType.ArrowClosed)
+    expect(restored.map((edge) => edge.id)).toEqual(['saved'])
+    expect(restored[0].ariaLabel).toBe('Input 连接到 Output')
+    expect(restored[0].focusable).toBe(true)
     expect(resolveFlowCanvasEdges([], nodes, MarkerType.ArrowClosed, false)).toHaveLength(3)
     expect(resolveFlowCanvasEdges([], nodes, MarkerType.ArrowClosed, true)).toHaveLength(0)
   })
