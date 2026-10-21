@@ -1628,6 +1628,8 @@ watch(
   { immediate: true }
 )
 
+watch(selectedNodeId, syncFlowCanvasSelection)
+
 watch(
   () => workspace.activeFlow?.nodes.map((node) => [
     node.id,
@@ -2575,6 +2577,17 @@ function refreshFlowCanvasNodes() {
 function setFlowCanvasInstance(instance: VueFlowStore) {
   flowCanvasInstance.value = instance
   restoreFlowCanvasViewport(activeCanvasFlowId.value)
+  syncFlowCanvasSelection(selectedNodeId.value)
+}
+
+function syncFlowCanvasSelection(nodeId: string) {
+  void nextTick(() => {
+    const instance = flowCanvasInstance.value
+    if (!instance) return
+    instance.removeSelectedElements()
+    const node = nodeId ? instance.findNode(nodeId) : undefined
+    if (node) instance.addSelectedNodes([node])
+  })
 }
 
 function restoreFlowCanvasViewport(flowId: string) {
