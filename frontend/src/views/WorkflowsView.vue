@@ -1183,6 +1183,7 @@ const canvasEditGenerations = new Map<string, number>()
 const canvasSyncAvailable = new Set<string>()
 const pendingCanvasSaves = new Map<string, Omit<SaveFlowCanvasStatePayload, 'revision'>>()
 const canvasSavingFlows = new Set<string>()
+const canvasSyncRetryingFlows = new Set<string>()
 let canvasSaveTimer: ReturnType<typeof setTimeout> | null = null
 let scheduledCanvasSaveFlowId = ''
 const flowNodeTypes = { flowCanvas: FlowCanvasNode }
@@ -2774,7 +2775,8 @@ async function restoreFlowCanvasFromServer(
 async function retryFlowCanvasSync() {
   const flowId = activeCanvasFlowId.value
   const flow = workspace.activeFlow
-  if (!flowId || !flow || flowId !== workspace.activeFlowId || flow.id !== flowId) return
+  if (!flowId || !flow || flowId !== workspace.activeFlowId || flow.id !== flowId || canvasSyncRetryingFlows.has(flowId)) return
+  canvasSyncRetryingFlows.add(flowId)
   canvasSyncStatus.value = 'loading'
   try {
     const { data } = await getFlowCanvasState(flowId)
@@ -2833,6 +2835,8 @@ async function retryFlowCanvasSync() {
     if (flowId === activeCanvasFlowId.value) {
       canvasSyncStatus.value = apiErrorStatus(error) === 409 ? 'conflict' : 'local'
     }
+  } finally {
+    canvasSyncRetryingFlows.delete(flowId)
   }
 }
 
