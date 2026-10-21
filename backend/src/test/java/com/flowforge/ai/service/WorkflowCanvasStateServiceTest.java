@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -69,6 +70,31 @@ class WorkflowCanvasStateServiceTest {
         assertThat(response.saved()).isFalse();
         assertThat(response.positions()).isEmpty();
         assertThat(response.edges()).isEmpty();
+    }
+
+    @Test
+    void readsPersistedCanvasPayloadIntoItsTypedResponse() throws Exception {
+        WorkflowCanvasState saved = WorkflowCanvasState.builder()
+                .flowId(flowId)
+                .revision(4L)
+                .stateJson(objectMapper.writeValueAsString(Map.of(
+                        "positions", Map.of("input", new FlowCanvasPositionDto(80.0, 120.0)),
+                        "edges", List.of(new FlowCanvasEdgeDto("edge-1", "input", "output", "source", "target")),
+                        "viewport", new FlowCanvasViewportDto(-20.0, 10.0, 0.8)
+                )))
+                .updatedAt(LocalDateTime.of(2026, 10, 21, 12, 0))
+                .build();
+        when(workflowRepository.existsById(flowId)).thenReturn(true);
+        when(canvasStateRepository.findById(flowId)).thenReturn(Optional.of(saved));
+
+        FlowCanvasStateResponse response = service.getCanvasState(flowId);
+
+        assertThat(response.revision()).isEqualTo(4L);
+        assertThat(response.saved()).isTrue();
+        assertThat(response.positions()).containsEntry("input", new FlowCanvasPositionDto(80.0, 120.0));
+        assertThat(response.edges()).containsExactly(new FlowCanvasEdgeDto("edge-1", "input", "output", "source", "target"));
+        assertThat(response.viewport()).isEqualTo(new FlowCanvasViewportDto(-20.0, 10.0, 0.8));
+        assertThat(response.updatedAt()).isEqualTo(saved.getUpdatedAt());
     }
 
     @Test
