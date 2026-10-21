@@ -220,7 +220,8 @@ export function resolveFlowCanvasEdges(
     if (edge.targetHandle && edge.targetHandle !== 'target') continue
     const key = JSON.stringify([edge.source, edge.sourceHandle || null, edge.target, edge.targetHandle || null])
     if (seenConnections.has(key)) continue
-    const id = seenIds.has(edge.id) ? createFlowCanvasEdgeId(seenIds) : edge.id
+    const validId = edge.id.trim().length > 0 && edge.id.length <= 120
+    const id = !validId || seenIds.has(edge.id) ? createFlowCanvasEdgeId(seenIds) : edge.id
     seenIds.add(id)
     seenConnections.add(key)
     validEdges.push({ ...edge, id })

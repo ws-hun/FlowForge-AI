@@ -155,6 +155,17 @@ describe('flow canvas state', () => {
     expect(resolveFlowCanvasEdges([], nodes, MarkerType.ArrowClosed, true)).toHaveLength(0)
   })
 
+  it('repairs blank and overlong edge IDs before they reach the API', () => {
+    const restored = resolveFlowCanvasEdges([
+      { id: '', source: 'input', target: 'prompt' },
+      { id: 'x'.repeat(121), source: 'prompt', target: 'ai' }
+    ], nodes, MarkerType.ArrowClosed)
+
+    expect(restored).toHaveLength(2)
+    expect(restored.every((edge) => edge.id.trim().length > 0 && edge.id.length <= 120)).toBe(true)
+    expect(new Set(restored.map((edge) => edge.id)).size).toBe(2)
+  })
+
   it('restores a valid saved viewport and ignores malformed viewport data', () => {
     const getItem = vi.fn().mockReturnValue(JSON.stringify({
       positions: {},
