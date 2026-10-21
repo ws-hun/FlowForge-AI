@@ -60,13 +60,14 @@ public class WorkflowCanvasStateService {
             }
             state = WorkflowCanvasState.builder()
                     .flowId(flowId)
-                    .revision(0L)
+                    .revision(1L)
                     .stateJson(serialize(request.positions(), request.edges(), request.viewport()))
                     .build();
         } else {
             if (!state.getRevision().equals(request.revision())) {
                 throw new ResourceConflictException("Canvas changed in another window");
             }
+            state.setRevision(state.getRevision() + 1);
             state.setStateJson(serialize(request.positions(), request.edges(), request.viewport()));
         }
 

@@ -6,7 +6,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -32,7 +31,6 @@ public class WorkflowCanvasState {
     @Column(name = "state_json", nullable = false, columnDefinition = "TEXT")
     private String stateJson;
 
-    @Version
     @Column(nullable = false)
     private Long revision;
 
@@ -41,7 +39,7 @@ public class WorkflowCanvasState {
 
     @PrePersist
     void prePersist() {
-        if (revision == null) revision = 0L;
+        if (revision == null) revision = 1L;
         if (updatedAt == null) updatedAt = LocalDateTime.now();
     }
 

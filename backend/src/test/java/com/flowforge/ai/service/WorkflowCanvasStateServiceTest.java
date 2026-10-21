@@ -82,6 +82,7 @@ class WorkflowCanvasStateServiceTest {
         FlowCanvasStateResponse response = service.saveCanvasState(flowId, request);
 
         assertThat(response.saved()).isTrue();
+        assertThat(response.revision()).isEqualTo(1L);
         assertThat(response.positions()).containsEntry("input", new FlowCanvasPositionDto(80.0, 120.0));
         assertThat(response.edges()).containsExactlyElementsOf(request.edges());
         verify(workflowRepository, never()).save(any(Workflow.class));
@@ -100,6 +101,41 @@ class WorkflowCanvasStateServiceTest {
         assertThatThrownBy(() -> service.saveCanvasState(flowId, validRequest(2L)))
                 .isInstanceOf(ResourceConflictException.class);
         verify(canvasStateRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void incrementsCanvasRevisionOnEveryAcceptedSave() {
+        WorkflowCanvasState saved = WorkflowCanvasState.builder()
+                .flowId(flowId)
+                .revision(3L)
+                .stateJson("{}")
+                .build();
+        when(workflowRepository.findByIdForUpdate(flowId)).thenReturn(Optional.of(flow));
+        when(canvasStateRepository.findById(flowId)).thenReturn(Optional.of(saved));
+        when(canvasStateRepository.saveAndFlush(saved)).thenAnswer(invocation -> invocation.getArgument(0));
+
+        FlowCanvasStateResponse response = service.saveCanvasState(flowId, validRequest(3L));
+
+        assertThat(response.revision()).isEqualTo(4L);
+        verify(canvasStateRepository).saveAndFlush(saved);
+    }
+
+    @Test
+    void rejectsASecondFirstSaveUsingTheEmptyCanvasRevision() {
+        WorkflowCanvasState created = WorkflowCanvasState.builder()
+                .flowId(flowId)
+                .revision(1L)
+                .stateJson("{}")
+                .build();
+        when(workflowRepository.findByIdForUpdate(flowId)).thenReturn(Optional.of(flow));
+        when(canvasStateRepository.findById(flowId)).thenReturn(Optional.empty(), Optional.of(created));
+        when(canvasStateRepository.saveAndFlush(any(WorkflowCanvasState.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.saveCanvasState(flowId, validRequest(0L));
+
+        assertThatThrownBy(() -> service.saveCanvasState(flowId, validRequest(0L)))
+                .isInstanceOf(ResourceConflictException.class);
     }
 
     @Test
