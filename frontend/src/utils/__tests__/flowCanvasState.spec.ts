@@ -305,6 +305,6 @@ describe('flow canvas state', () => {
     vi.stubGlobal('crypto', {})
     vi.spyOn(Date, 'now').mockReturnValue(1234)
     expect(createFlowCanvasEdgeId()).toBe('edge-1234-1')
-    expect(createFlowCanvasEdgeId()).toBe('edge-1234-2')
+    expect(createFlowCanvasEdgeId(new Set(['edge-1234-2']))).toBe('edge-1234-3')
   })
 })

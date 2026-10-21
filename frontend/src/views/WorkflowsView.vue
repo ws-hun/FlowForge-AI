@@ -3195,7 +3195,7 @@ function connectFlowCanvasNodes(connection: Connection) {
     return
   }
   recordCanvasEdit()
-  const id = createFlowCanvasEdgeId()
+  const id = createFlowCanvasEdgeId(new Set(canvasEdges.value.map((edge) => edge.id)))
   canvasEdges.value = addEdge(
     createFlowCanvasEdge(connection, id, workspace.activeFlow?.nodes || [], MarkerType.ArrowClosed),
     canvasEdges.value

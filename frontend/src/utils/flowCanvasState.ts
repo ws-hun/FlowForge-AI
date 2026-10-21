@@ -255,10 +255,17 @@ export function canCreateFlowCanvasEdge(connection: Connection, edges: Edge[]): 
   )
 }
 
-export function createFlowCanvasEdgeId(): string {
-  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID()
-  fallbackEdgeSequence += 1
-  return `edge-${Date.now()}-${fallbackEdgeSequence}`
+export function createFlowCanvasEdgeId(existingIds: ReadonlySet<string> = new Set()): string {
+  let id = ''
+  do {
+    if (globalThis.crypto?.randomUUID) {
+      id = globalThis.crypto.randomUUID()
+    } else {
+      fallbackEdgeSequence += 1
+      id = `edge-${Date.now()}-${fallbackEdgeSequence}`
+    }
+  } while (existingIds.has(id))
+  return id
 }
 
 export function createFlowCanvasEdge(
