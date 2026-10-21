@@ -1160,7 +1160,7 @@ const canvasSyncStatus = ref<'loading' | 'synced' | 'local' | 'saving' | 'confli
 const canvasSyncLabel = computed(() => ({
   loading: '恢复画布',
   synced: '已同步',
-  local: '本地可用',
+  local: '仅本地保存',
   saving: '保存中',
   conflict: '需要解决冲突'
 })[canvasSyncStatus.value])
