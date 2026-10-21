@@ -8,18 +8,18 @@ export type MissingCloudCanvasDecision = 'empty' | 'migrate-local' | 'conflict'
 
 export function createFlowCanvasSyncEpochs() {
   const epochs = new Map<string, number>()
+  const current = (flowId: string) => epochs.get(flowId) || 0
+  const invalidate = (flowId: string) => {
+    const next = current(flowId) + 1
+    epochs.set(flowId, next)
+    return next
+  }
+  const matches = (flowId: string, epoch: number) => current(flowId) === epoch
+
   return {
-    current(flowId: string) {
-      return epochs.get(flowId) || 0
-    },
-    invalidate(flowId: string) {
-      const next = this.current(flowId) + 1
-      epochs.set(flowId, next)
-      return next
-    },
-    matches(flowId: string, epoch: number) {
-      return this.current(flowId) === epoch
-    }
+    current,
+    invalidate,
+    matches
   }
 }
 

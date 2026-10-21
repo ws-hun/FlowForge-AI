@@ -19,13 +19,14 @@ const nodes: FlowNode[] = [
 describe('flow canvas synchronization policy', () => {
   it('invalidates late sync completions independently for each flow', () => {
     const epochs = createFlowCanvasSyncEpochs()
-    const requestEpoch = epochs.current('flow-a')
+    const { current, invalidate, matches } = epochs
+    const requestEpoch = current('flow-a')
 
-    epochs.invalidate('flow-a')
+    invalidate('flow-a')
 
-    expect(epochs.matches('flow-a', requestEpoch)).toBe(false)
-    expect(epochs.matches('flow-b', 0)).toBe(true)
-    expect(epochs.current('flow-a')).toBe(1)
+    expect(matches('flow-a', requestEpoch)).toBe(false)
+    expect(matches('flow-b', 0)).toBe(true)
+    expect(current('flow-a')).toBe(1)
   })
 
   it('prefers saved cloud state when the user did not edit during loading', () => {
