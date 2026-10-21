@@ -151,6 +151,21 @@ class WorkflowControllerTest {
     }
 
     @Test
+    void rejectsCanvasViewportOutsideTheSupportedZoomRange() throws Exception {
+        mockMvc.perform(put("/api/flows/{id}/canvas", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "revision": 0,
+                                  "positions": {},
+                                  "edges": [],
+                                  "viewport": {"x": 0, "y": 0, "zoom": 2}
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void previewsTheServerCompiledExecutionInputForASavedFlow() throws Exception {
         UUID flowId = UUID.randomUUID();
         LocalDateTime updatedAt = LocalDateTime.of(2026, 7, 15, 10, 20);

@@ -129,6 +129,25 @@ class WorkflowCanvasStateServiceTest {
     }
 
     @Test
+    void rejectsDuplicateCanvasConnections() {
+        when(workflowRepository.findByIdForUpdate(flowId)).thenReturn(Optional.of(flow));
+        FlowCanvasStateRequest request = new FlowCanvasStateRequest(
+                0L,
+                Map.of(),
+                List.of(
+                        new FlowCanvasEdgeDto("edge-1", "input", "output", "source", "target"),
+                        new FlowCanvasEdgeDto("edge-2", "input", "output", "source", "target")
+                ),
+                null
+        );
+
+        assertThatThrownBy(() -> service.saveCanvasState(flowId, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("duplicate");
+        verify(canvasStateRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
     void returnsNotFoundForAFlowThatDoesNotExist() {
         when(workflowRepository.existsById(flowId)).thenReturn(false);
         assertThatThrownBy(() -> service.getCanvasState(flowId))
