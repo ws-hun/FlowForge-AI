@@ -23,6 +23,7 @@ const STORAGE_PREFIX = 'flowforge.canvas.v1:'
 export const MAX_FLOW_CANVAS_EDGES = 500
 export const MAX_FLOW_CANVAS_OFFSET = 100_000
 export const MAX_FLOW_CANVAS_EDGE_ID_LENGTH = 120
+export const MAX_DEFAULT_FLOW_CANVAS_COLUMNS = 4
 const MIN_CANVAS_ZOOM = 0.2
 const MAX_CANVAS_ZOOM = 1.6
 let fallbackEdgeSequence = 0
@@ -58,7 +59,7 @@ export function buildDefaultFlowCanvasPositions(
   columnCount?: number
 ): StoredFlowCanvasState['positions'] {
   const columns = columnCount === undefined
-    ? Math.max(1, Math.min(4, Math.ceil(Math.sqrt(nodes.length))))
+    ? Math.max(1, Math.min(MAX_DEFAULT_FLOW_CANVAS_COLUMNS, Math.ceil(Math.sqrt(nodes.length))))
     : Number.isFinite(columnCount)
       ? Math.max(1, Math.floor(columnCount))
       : 1

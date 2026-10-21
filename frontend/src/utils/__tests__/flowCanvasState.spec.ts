@@ -14,6 +14,7 @@ import {
   MAX_FLOW_CANVAS_EDGES,
   MAX_FLOW_CANVAS_EDGE_ID_LENGTH,
   MAX_FLOW_CANVAS_OFFSET,
+  MAX_DEFAULT_FLOW_CANVAS_COLUMNS,
   normalizeFlowCanvasViewport,
   readFlowCanvasState,
   removeFlowCanvasState,
@@ -158,6 +159,19 @@ describe('flow canvas state', () => {
       expect(positions.every(({ x, y }) => Number.isFinite(x) && Number.isFinite(y))).toBe(true)
       expect(positions.every(({ x }) => x >= 80 && x <= 980)).toBe(true)
     }
+  })
+
+  it.each([3, 4, 5, 16, 17, 50])('keeps the default layout within four columns for %i nodes', (count) => {
+    const flowNodes = Array.from({ length: count }, (_, index) => ({
+      id: `bounded-${index}`,
+      type: 'prompt' as const,
+      title: `Node ${index}`,
+      description: ''
+    }))
+    const positions = Object.values(buildDefaultFlowCanvasPositions(flowNodes))
+    const columns = new Set(positions.map(({ x }) => x)).size
+
+    expect(columns).toBe(Math.min(MAX_DEFAULT_FLOW_CANVAS_COLUMNS, Math.ceil(Math.sqrt(count))))
   })
 
   it('keeps saved positions while laying out newly added nodes on the default grid', () => {
