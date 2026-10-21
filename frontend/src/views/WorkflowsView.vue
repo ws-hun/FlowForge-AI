@@ -232,10 +232,10 @@
                   重试同步
                 </button>
                 <template v-if="canvasSyncStatus === 'conflict'">
-                  <button type="button" class="flow-canvas-sync-retry" @click="keepLocalCanvasAfterConflict">
+                  <button type="button" class="flow-canvas-sync-retry" :disabled="canvasConflictResolving" @click="keepLocalCanvasAfterConflict">
                     保留本地
                   </button>
-                  <button type="button" class="flow-canvas-sync-retry" @click="useCloudCanvasAfterConflict">
+                  <button type="button" class="flow-canvas-sync-retry" :disabled="canvasConflictResolving" @click="useCloudCanvasAfterConflict">
                     使用云端
                   </button>
                 </template>
@@ -1173,6 +1173,7 @@ const canvasHistory = ref<FlowCanvasHistory>(createFlowCanvasHistory())
 const canUndoCanvasEdit = computed(() => canvasHistory.value.past.length > 0)
 const canRedoCanvasEdit = computed(() => canvasHistory.value.future.length > 0)
 const canvasSyncStatus = ref<'loading' | 'synced' | 'local' | 'saving' | 'conflict'>('loading')
+const canvasConflictResolving = ref(false)
 const canvasSyncLabel = computed(() => ({
   loading: '恢复画布',
   synced: '已同步',
@@ -2879,7 +2880,8 @@ function handleCanvasNetworkOnline() {
 
 async function keepLocalCanvasAfterConflict() {
   const flowId = activeCanvasFlowId.value
-  if (!flowId || flowId !== workspace.activeFlowId) return
+  if (!flowId || flowId !== workspace.activeFlowId || canvasConflictResolving.value) return
+  canvasConflictResolving.value = true
   try {
     await ElMessageBox.confirm(
       '保留本地画布会覆盖云端当前布局与连线。',
@@ -2897,12 +2899,15 @@ async function keepLocalCanvasAfterConflict() {
     void drainCanvasSaves(flowId)
   } catch (error: unknown) {
     if (error !== 'cancel' && error !== 'close') ElMessage.error(apiErrorMessage(error, '画布冲突处理失败'))
+  } finally {
+    canvasConflictResolving.value = false
   }
 }
 
 async function useCloudCanvasAfterConflict() {
   const flowId = activeCanvasFlowId.value
-  if (!flowId || flowId !== workspace.activeFlowId) return
+  if (!flowId || flowId !== workspace.activeFlowId || canvasConflictResolving.value) return
+  canvasConflictResolving.value = true
   try {
     await ElMessageBox.confirm(
       '使用云端画布会替换当前本地布局与连线。',
@@ -2918,6 +2923,8 @@ async function useCloudCanvasAfterConflict() {
     canvasSyncStatus.value = 'synced'
   } catch (error: unknown) {
     if (error !== 'cancel' && error !== 'close') ElMessage.error(apiErrorMessage(error, '读取云端画布失败'))
+  } finally {
+    canvasConflictResolving.value = false
   }
 }
 
