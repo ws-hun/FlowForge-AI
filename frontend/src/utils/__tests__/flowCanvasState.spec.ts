@@ -4,6 +4,7 @@ import {
   buildSequentialCanvasEdges,
   canCreateFlowCanvasEdge,
   captureFlowCanvasPositions,
+  createFlowCanvasEdgeId,
   readFlowCanvasState,
   removeFlowCanvasEdges,
   resolveFlowCanvasEdges,
@@ -24,7 +25,10 @@ const flow = { id: 'flow', nodes } as FlowDraft
 const nodeData = () => ({ kindLabel: 'Node', stateLabel: 'Ready', operationLabel: 'Prepare', incomplete: false })
 
 describe('flow canvas state', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
 
   it('restores saved positions while assigning defaults to newly added nodes', () => {
     const canvasNodes = buildFlowCanvasNodes(flow, { prompt: { x: 420, y: 260 } }, nodeData)
@@ -122,5 +126,12 @@ describe('flow canvas state', () => {
     expect(canCreateFlowCanvasEdge({ source: 'input', target: 'input' }, edges)).toBe(false)
     expect(canCreateFlowCanvasEdge({ source: 'input', target: 'prompt', sourceHandle: 'out', targetHandle: 'in' }, edges)).toBe(false)
     expect(canCreateFlowCanvasEdge({ source: 'prompt', target: 'ai' }, edges)).toBe(true)
+  })
+
+  it('creates unique fallback edge IDs when randomUUID is unavailable', () => {
+    vi.stubGlobal('crypto', {})
+    vi.spyOn(Date, 'now').mockReturnValue(1234)
+    expect(createFlowCanvasEdgeId()).toBe('edge-1234-1')
+    expect(createFlowCanvasEdgeId()).toBe('edge-1234-2')
   })
 })

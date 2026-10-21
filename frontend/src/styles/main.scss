@@ -5789,6 +5789,14 @@ a {
   }
 }
 
+.flow-canvas-graph .vue-flow__minimap {
+  overflow: hidden;
+  border: 1px solid tokens.$border;
+  border-radius: tokens.$radius-md;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: tokens.$shadow-soft;
+}
+
 .flow-run-brief {
   display: grid;
   gap: 12px;

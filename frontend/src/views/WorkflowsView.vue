@@ -994,6 +994,7 @@ import {
   buildSequentialCanvasEdges,
   canCreateFlowCanvasEdge,
   captureFlowCanvasPositions,
+  createFlowCanvasEdgeId,
   readFlowCanvasState,
   removeFlowCanvasEdges,
   resolveFlowCanvasEdges,
@@ -2627,7 +2628,7 @@ function deleteSelectedCanvasEdges() {
 
 function connectFlowCanvasNodes(connection: Connection) {
   if (!canCreateFlowCanvasEdge(connection, canvasEdges.value)) return
-  const id = globalThis.crypto?.randomUUID?.() || `edge-${Date.now()}`
+  const id = createFlowCanvasEdgeId()
   canvasEdges.value = addEdge({ ...connection, id, type: 'smoothstep', markerEnd: MarkerType.ArrowClosed }, canvasEdges.value) as Edge[]
   persistCanvasState()
 }

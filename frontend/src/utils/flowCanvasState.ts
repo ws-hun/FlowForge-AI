@@ -22,6 +22,7 @@ const STORAGE_PREFIX = 'flowforge.canvas.v1:'
 const MIN_CANVAS_ZOOM = 0.2
 const MAX_CANVAS_ZOOM = 1.6
 const MAX_CANVAS_OFFSET = 100_000
+let fallbackEdgeSequence = 0
 
 export function buildFlowCanvasNodes(
   flow: FlowDraft,
@@ -163,6 +164,12 @@ export function canCreateFlowCanvasEdge(connection: Connection, edges: Edge[]): 
     (edge.sourceHandle || null) === (sourceHandle || null) &&
     (edge.targetHandle || null) === (targetHandle || null)
   )
+}
+
+export function createFlowCanvasEdgeId(): string {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID()
+  fallbackEdgeSequence += 1
+  return `edge-${Date.now()}-${fallbackEdgeSequence}`
 }
 
 function isStoredEdge(value: unknown): value is StoredFlowCanvasState['edges'][number] {
