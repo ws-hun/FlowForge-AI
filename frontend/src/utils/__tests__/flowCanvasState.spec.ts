@@ -86,6 +86,7 @@ describe('flow canvas state', () => {
       { id: 'saved', source: 'input', target: 'output' },
       { id: 'duplicate', source: 'input', target: 'output' },
       { id: 'saved', source: 'prompt', target: 'output' },
+      { id: 'invalid-handle', source: 'prompt', target: 'output', sourceHandle: 'missing' },
       { id: 'stale', source: 'gone', target: 'output' }
     ]
     const restored = resolveFlowCanvasEdges(saved, nodes, MarkerType.ArrowClosed)

@@ -145,6 +145,8 @@ export function resolveFlowCanvasEdges(
   const seenIds = new Set<string>()
   for (const edge of savedEdges) {
     if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target) || edge.source === edge.target) continue
+    if (edge.sourceHandle && edge.sourceHandle !== 'source') continue
+    if (edge.targetHandle && edge.targetHandle !== 'target') continue
     if (seenIds.has(edge.id)) continue
     const key = JSON.stringify([edge.source, edge.sourceHandle || null, edge.target, edge.targetHandle || null])
     if (seenConnections.has(key)) continue
