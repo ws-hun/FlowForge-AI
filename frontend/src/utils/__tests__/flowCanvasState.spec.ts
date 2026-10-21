@@ -9,6 +9,7 @@ import {
   createFlowCanvasEdgeId,
   mergeFlowCanvasPositions,
   readFlowCanvasState,
+  removeFlowCanvasState,
   removeFlowCanvasEdges,
   resolveFlowCanvasEdges,
   writeFlowCanvasState
@@ -208,6 +209,18 @@ describe('flow canvas state', () => {
       }
     })
     expect(writeFlowCanvasState('flow', [], [])).toBe(false)
+  })
+
+  it('removes the saved canvas state for a deleted flow', () => {
+    const removeItem = vi.fn()
+    vi.stubGlobal('window', { localStorage: { removeItem } })
+    removeFlowCanvasState('flow')
+    expect(removeItem).toHaveBeenCalledWith('flowforge.canvas.v1:flow')
+  })
+
+  it('keeps flow deletion safe when browser storage is unavailable', () => {
+    vi.stubGlobal('window', { localStorage: { removeItem: () => { throw new Error('storage denied') } } })
+    expect(() => removeFlowCanvasState('flow')).not.toThrow()
   })
 
   it('removes visual connections by selected graph IDs', () => {

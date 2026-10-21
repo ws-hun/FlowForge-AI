@@ -1031,6 +1031,7 @@ import {
   createFlowCanvasEdgeId,
   mergeFlowCanvasPositions,
   readFlowCanvasState,
+  removeFlowCanvasState,
   removeFlowCanvasEdges,
   resolveFlowCanvasEdges,
   writeFlowCanvasState,
@@ -3413,6 +3414,7 @@ async function confirmDeleteFlow() {
   if (!workspace.activeFlow) {
     return
   }
+  const flowId = workspace.activeFlow.id
 
   try {
     await ElMessageBox.confirm(`删除「${workspace.activeFlow.title}」后无法继续编辑这个 Flow。`, '删除 Flow', {
@@ -3420,8 +3422,9 @@ async function confirmDeleteFlow() {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    const deleted = await workspace.deleteFlowDraft(workspace.activeFlow.id)
+    const deleted = await workspace.deleteFlowDraft(flowId)
     if (deleted) {
+      removeFlowCanvasState(flowId)
       flowTitle.value = workspace.activeFlow?.title || ''
       flowDescription.value = workspace.activeFlow?.description || ''
       selectedNodeId.value = workspace.activeFlow?.nodes[0]?.id || ''

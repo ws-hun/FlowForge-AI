@@ -152,6 +152,15 @@ export function readFlowCanvasState(flowId: string): StoredFlowCanvasState {
   }
 }
 
+export function removeFlowCanvasState(flowId: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.removeItem(`${STORAGE_PREFIX}${flowId}`)
+  } catch {
+    // Browser storage can be unavailable in restricted contexts.
+  }
+}
+
 export function writeFlowCanvasState(
   flowId: string,
   nodes: ReadonlyArray<{ id: string; position: { x: number; y: number } }>,
