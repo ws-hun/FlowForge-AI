@@ -39,7 +39,7 @@
         <button
           type="button"
           :class="workspace.activeFlow ? 'secondary-button' : 'primary-button'"
-          :disabled="!flowIntent.trim() || workspace.flowLoading"
+          :disabled="!flowIntent.trim() || workspace.flowLoading || flowExecutionBusy"
           @click="createFlow"
         >
           {{ workspace.flowLoading ? '保存中...' : '创建 Flow 草稿' }}
@@ -505,7 +505,7 @@
             can-create-flow
             can-reuse-run-settings
             :can-open-source-flow="flowSourceStillAvailable(activeFlowRunSnapshot)"
-            :creating="workspace.flowLoading"
+            :creating="workspace.flowLoading || flowExecutionBusy"
             @create-flow="createFlowFromSnapshot"
             @reuse-run-settings="reuseFlowRunSettings"
             @open-source-run="openFlowSnapshotSourceRun"
@@ -662,7 +662,7 @@
                 <button
                   type="button"
                   class="secondary-button"
-                  :disabled="branchingFlowVersion || restoringFlowVersion || workspace.flowLoading"
+                  :disabled="branchingFlowVersion || restoringFlowVersion || workspace.flowLoading || flowExecutionBusy"
                   @click="createFlowVariantFromVersion(selectedFlowVersion)"
                 >
                   {{ branchingFlowVersion ? '创建中...' : '创建变体' }}
@@ -670,7 +670,7 @@
                 <button
                   type="button"
                   class="ghost-button"
-                  :disabled="restoringFlowVersion || branchingFlowVersion || workspace.flowLoading || !selectedFlowVersionDiff?.hasChanges"
+                  :disabled="restoringFlowVersion || branchingFlowVersion || workspace.flowLoading || flowExecutionBusy || !selectedFlowVersionDiff?.hasChanges"
                   @click="restoreFlowVersionSnapshot(selectedFlowVersion)"
                 >
                   {{ restoringFlowVersion ? '恢复中...' : '恢复此修订' }}
@@ -2249,6 +2249,7 @@ function handleBeforeUnload(event: BeforeUnloadEvent) {
 }
 
 async function createFlowVariantFromVersion(version: FlowVersion) {
+  if (workspace.flowLoading || flowExecutionBusy.value) return
   if (!(await resolvePendingEdits())) {
     return
   }
@@ -2269,6 +2270,7 @@ async function createFlowVariantFromVersion(version: FlowVersion) {
 }
 
 async function restoreFlowVersionSnapshot(version: FlowVersion) {
+  if (workspace.flowLoading || flowExecutionBusy.value) return
   if (!(await resolvePendingEdits())) {
     return
   }
@@ -2303,6 +2305,7 @@ async function restoreFlowVersionSnapshot(version: FlowVersion) {
 }
 
 async function createFlow() {
+  if (workspace.flowLoading || flowExecutionBusy.value) return
   if (!(await resolvePendingEdits())) {
     return
   }
@@ -2341,6 +2344,7 @@ async function duplicateActiveFlow() {
 }
 
 async function createFlowFromSnapshot(snapshot: FlowRunSnapshotType) {
+  if (workspace.flowLoading || flowExecutionBusy.value) return
   if (!(await resolvePendingEdits())) {
     return
   }
