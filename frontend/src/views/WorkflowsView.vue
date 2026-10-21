@@ -2685,8 +2685,10 @@ async function restoreFlowCanvasFromServer(
   editGeneration: number,
   localState: ReturnType<typeof readFlowCanvasState>
 ) {
+  const syncEpoch = canvasSyncEpochs.current(flowId)
   try {
     const { data } = await getFlowCanvasState(flowId)
+    if (!canvasSyncEpochs.matches(flowId, syncEpoch)) return
     const knownRevision = canvasServerRevisions.get(flowId) ?? localState.serverRevision ?? undefined
     canvasServerRevisions.set(flowId, data.revision)
     canvasSyncAvailable.add(flowId)
@@ -2777,10 +2779,11 @@ async function retryFlowCanvasSync() {
   const flow = workspace.activeFlow
   if (!flowId || !flow || flowId !== workspace.activeFlowId || flow.id !== flowId || canvasSyncRetryingFlows.has(flowId)) return
   canvasSyncRetryingFlows.add(flowId)
+  const syncEpoch = canvasSyncEpochs.current(flowId)
   canvasSyncStatus.value = 'loading'
   try {
     const { data } = await getFlowCanvasState(flowId)
-    if (flowId !== activeCanvasFlowId.value || flowId !== workspace.activeFlowId) return
+    if (!canvasSyncEpochs.matches(flowId, syncEpoch) || flowId !== activeCanvasFlowId.value || flowId !== workspace.activeFlowId) return
     const pending = pendingCanvasSaves.has(flowId)
     const localState = readFlowCanvasState(flowId)
     const knownRevision = canvasServerRevisions.get(flowId) ?? localState.serverRevision ?? undefined
