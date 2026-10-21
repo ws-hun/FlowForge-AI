@@ -65,6 +65,16 @@ describe('flow canvas edit history', () => {
     expect(history.past).toEqual([initial])
   })
 
+  it('clears redo after a new gesture even when its snapshot matches older history', () => {
+    const initial = snapshot(10)
+    const edited = snapshot(40)
+    const undone = undoFlowCanvasEdit(recordFlowCanvasEdit(createFlowCanvasHistory(), initial), edited)
+    const recorded = recordFlowCanvasEdit(undone.history, initial)
+
+    expect(recorded.past).toEqual([initial])
+    expect(recorded.future).toEqual([])
+  })
+
   it('copies snapshots when adding them to history', () => {
     const original = snapshot(10)
     const history = recordFlowCanvasEdit(createFlowCanvasHistory(), original)
