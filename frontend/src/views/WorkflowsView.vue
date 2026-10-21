@@ -1058,6 +1058,7 @@ import {
   removeFlowCanvasState,
   removeFlowCanvasEdges,
   resolveFlowCanvasEdges,
+  writeFlowCanvasServerRevision,
   writeFlowCanvasState,
   type FlowCanvasGraphNode,
   type FlowCanvasNodeData
@@ -2682,7 +2683,7 @@ async function restoreFlowCanvasFromServer(
 ) {
   try {
     const { data } = await getFlowCanvasState(flowId)
-    const knownRevision = canvasServerRevisions.get(flowId)
+    const knownRevision = canvasServerRevisions.get(flowId) ?? localState.serverRevision ?? undefined
     canvasServerRevisions.set(flowId, data.revision)
     canvasSyncAvailable.add(flowId)
 
@@ -2765,11 +2766,11 @@ async function retryFlowCanvasSync() {
     const { data } = await getFlowCanvasState(flowId)
     if (flowId !== activeCanvasFlowId.value || flowId !== workspace.activeFlowId) return
     const pending = pendingCanvasSaves.has(flowId)
-    const knownRevision = canvasServerRevisions.get(flowId)
+    const localState = readFlowCanvasState(flowId)
+    const knownRevision = canvasServerRevisions.get(flowId) ?? localState.serverRevision ?? undefined
     canvasServerRevisions.set(flowId, data.revision)
     canvasSyncAvailable.add(flowId)
     if (data.saved && !pending) {
-      const localState = readFlowCanvasState(flowId)
       const hasLocalCanvas = localState.hasSavedEdges || Object.keys(localState.positions).length > 0 || Boolean(localState.viewport)
       const offlineDecision = resolveOfflineCanvasRestoreDecision({
         localDiffersFromCloud: hasLocalCanvas && flowCanvasStatesDiffer(localState, data, flow.nodes),
@@ -2822,6 +2823,7 @@ async function keepLocalCanvasAfterConflict() {
     const { data } = await getFlowCanvasState(flowId)
     if (flowId !== activeCanvasFlowId.value || flowId !== workspace.activeFlowId) return
     canvasServerRevisions.set(flowId, data.revision)
+    writeFlowCanvasServerRevision(flowId, data.revision)
     canvasSyncAvailable.add(flowId)
     if (!pendingCanvasSaves.has(flowId)) {
       pendingCanvasSaves.set(flowId, currentCanvasSyncSnapshot())
@@ -2860,6 +2862,7 @@ function applyServerCanvasState(state: FlowCanvasState) {
   canvasNodes.value = buildFlowCanvasNodes(flow, positions, canvasNodeData)
   canvasEdges.value = resolveFlowCanvasEdges(state.edges, flow.nodes, MarkerType.ArrowClosed, state.saved)
   writeFlowCanvasState(state.flowId, canvasNodes.value, canvasEdges.value, state.viewport)
+  writeFlowCanvasServerRevision(state.flowId, state.revision)
   if (state.viewport) {
     void nextTick(() => flowCanvasInstance.value?.setViewport(state.viewport!))
   } else {
@@ -2952,6 +2955,8 @@ function persistCanvasState() {
       canvasEdges.value,
       flowCanvasInstance.value?.getViewport() || null
     )
+    const serverRevision = canvasServerRevisions.get(flowId)
+    if (serverRevision !== undefined) writeFlowCanvasServerRevision(flowId, serverRevision)
     if (!saved && !canvasStorageWarningShown) {
       canvasStorageWarningShown = true
       ElMessage.warning('浏览器无法保存画布布局，刷新后可能重置')
@@ -3039,6 +3044,7 @@ async function drainCanvasSaves(flowId: string) {
           revision: canvasServerRevisions.get(flowId) || 0
         })
         canvasServerRevisions.set(flowId, data.revision)
+        writeFlowCanvasServerRevision(flowId, data.revision)
         if (flowId === activeCanvasFlowId.value) canvasSyncStatus.value = 'synced'
       } catch (error: unknown) {
         pendingCanvasSaves.set(flowId, snapshot)

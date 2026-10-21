@@ -12,6 +12,7 @@ import {
   removeFlowCanvasState,
   removeFlowCanvasEdges,
   resolveFlowCanvasEdges,
+  writeFlowCanvasServerRevision,
   writeFlowCanvasState
 } from '@/utils/flowCanvasState'
 import type { FlowDraft, FlowNode } from '@/types'
@@ -198,8 +199,34 @@ describe('flow canvas state', () => {
     expect(readFlowCanvasState('flow')).toMatchObject({
       positions: { input: { x: 12, y: 24 } },
       edges: [],
-      viewport
+      viewport,
+      serverRevision: null
     })
+  })
+
+  it('persists the last confirmed server revision without changing canvas content', () => {
+    const storage = new Map<string, string>()
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: (key: string) => storage.get(key) || null,
+        setItem: (key: string, value: string) => storage.set(key, value)
+      }
+    })
+    writeFlowCanvasState('flow', [{ id: 'input', position: { x: 12, y: 24 } }], [], { x: 4, y: 8, zoom: 1 })
+
+    expect(writeFlowCanvasServerRevision('flow', 7)).toBe(true)
+    expect(readFlowCanvasState('flow')).toMatchObject({
+      positions: { input: { x: 12, y: 24 } },
+      viewport: { x: 4, y: 8, zoom: 1 },
+      serverRevision: 7
+    })
+    writeFlowCanvasState('flow', [{ id: 'input', position: { x: 48, y: 96 } }], [], null)
+    expect(readFlowCanvasState('flow')).toMatchObject({
+      positions: { input: { x: 48, y: 96 } },
+      serverRevision: 7
+    })
+    expect(writeFlowCanvasServerRevision('flow', -1)).toBe(false)
+    expect(readFlowCanvasState('flow').serverRevision).toBe(7)
   })
 
   it('reports when browser storage rejects the canvas snapshot', () => {

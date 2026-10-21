@@ -16,6 +16,7 @@ export type StoredFlowCanvasState = {
   edges: Array<Pick<Edge, 'id' | 'source' | 'target' | 'sourceHandle' | 'targetHandle'>>
   viewport: ViewportTransform | null
   hasSavedEdges: boolean
+  serverRevision?: number | null
 }
 
 const STORAGE_PREFIX = 'flowforge.canvas.v1:'
@@ -118,11 +119,11 @@ export function buildSequentialCanvasEdges(
 }
 
 export function readFlowCanvasState(flowId: string): StoredFlowCanvasState {
-  if (typeof window === 'undefined') return { positions: {}, edges: [], viewport: null, hasSavedEdges: false }
+  if (typeof window === 'undefined') return { positions: {}, edges: [], viewport: null, hasSavedEdges: false, serverRevision: null }
   try {
     const value = JSON.parse(window.localStorage.getItem(`${STORAGE_PREFIX}${flowId}`) || 'null')
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      return { positions: {}, edges: [], viewport: null, hasSavedEdges: false }
+      return { positions: {}, edges: [], viewport: null, hasSavedEdges: false, serverRevision: null }
     }
 
     const candidate = value as Record<string, unknown>
@@ -145,10 +146,28 @@ export function readFlowCanvasState(flowId: string): StoredFlowCanvasState {
       positions,
       edges: Array.isArray(candidate.edges) ? candidate.edges.filter(isStoredEdge) : [],
       viewport: isViewport(candidate.viewport) ? candidate.viewport : null,
-      hasSavedEdges: Array.isArray(candidate.edges)
+      hasSavedEdges: Array.isArray(candidate.edges),
+      serverRevision: Number.isSafeInteger(candidate.serverRevision) && Number(candidate.serverRevision) >= 0
+        ? Number(candidate.serverRevision)
+        : null
     }
   } catch {
-    return { positions: {}, edges: [], viewport: null, hasSavedEdges: false }
+    return { positions: {}, edges: [], viewport: null, hasSavedEdges: false, serverRevision: null }
+  }
+}
+
+export function writeFlowCanvasServerRevision(flowId: string, revision: number): boolean {
+  if (typeof window === 'undefined' || !Number.isSafeInteger(revision) || revision < 0) return false
+  const key = `${STORAGE_PREFIX}${flowId}`
+  try {
+    const raw = window.localStorage.getItem(key)
+    if (!raw) return false
+    const state = JSON.parse(raw)
+    if (!state || typeof state !== 'object' || Array.isArray(state)) return false
+    window.localStorage.setItem(key, JSON.stringify({ ...state, serverRevision: revision }))
+    return true
+  } catch {
+    return false
   }
 }
 
@@ -174,7 +193,8 @@ export function writeFlowCanvasState(
       id, source, target, sourceHandle, targetHandle
     })),
     viewport,
-    hasSavedEdges: true
+    hasSavedEdges: true,
+    serverRevision: readFlowCanvasState(flowId).serverRevision ?? null
   }
   try {
     window.localStorage.setItem(`${STORAGE_PREFIX}${flowId}`, JSON.stringify(state))
