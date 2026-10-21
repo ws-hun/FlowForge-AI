@@ -2646,7 +2646,15 @@ function deleteSelectedCanvasEdges() {
 }
 
 function connectFlowCanvasNodes(connection: Connection) {
-  if (!canCreateFlowCanvasEdge(connection, canvasEdges.value)) return
+  if (!connection.source || !connection.target) return
+  if (connection.source === connection.target) {
+    ElMessage.info('节点不能连接到自身')
+    return
+  }
+  if (!canCreateFlowCanvasEdge(connection, canvasEdges.value)) {
+    ElMessage.info('这条连接已经存在')
+    return
+  }
   const id = createFlowCanvasEdgeId()
   const sourceTitle = workspace.activeFlow?.nodes.find((node) => node.id === connection.source)?.title || connection.source
   const targetTitle = workspace.activeFlow?.nodes.find((node) => node.id === connection.target)?.title || connection.target
