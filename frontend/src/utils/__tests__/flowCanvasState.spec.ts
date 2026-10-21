@@ -89,6 +89,15 @@ describe('flow canvas state', () => {
     })
   })
 
+  it('keeps a one-column canvas layout valid for narrow workspaces', () => {
+    const narrowFlow: FlowNode[] = [nodes[0], nodes[1], nodes[2]]
+    expect(buildDefaultFlowCanvasPositions(narrowFlow, 1)).toEqual({
+      input: { x: 80, y: 120 },
+      prompt: { x: 80, y: 340 },
+      ai: { x: 80, y: 560 }
+    })
+  })
+
   it('provides accessible canvas labels with node type, state and responsibility', () => {
     const [canvasNode] = buildFlowCanvasNodes(flow, {}, (node) => ({
       kindLabel: node.type,
