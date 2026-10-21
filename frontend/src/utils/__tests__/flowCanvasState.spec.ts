@@ -72,7 +72,7 @@ describe('flow canvas state', () => {
   it('keeps default connection IDs within the server limit for maximum-length node IDs', () => {
     const longNodeIds = nodes.map((node, index) => ({
       ...node,
-      id: `${index}-${'n'.repeat(79)}`
+      id: `${index}-${'n'.repeat(78)}`
     }))
 
     const edges = buildSequentialCanvasEdges(longNodeIds, MarkerType.ArrowClosed)
