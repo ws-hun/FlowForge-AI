@@ -2649,6 +2649,9 @@ function connectFlowCanvasNodes(connection: Connection) {
 
 async function handleFlowCanvasNodeClick({ node }: NodeMouseEvent) {
   await selectFlowNode(node.id)
+  if (selectedNodeId.value !== node.id) {
+    syncFlowCanvasSelection(selectedNodeId.value)
+  }
 }
 
 async function openExecutionPreviewNode(nodeId: string) {
