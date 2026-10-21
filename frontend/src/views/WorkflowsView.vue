@@ -3269,6 +3269,7 @@ function handleFlowCanvasKeyboardSelection(event: KeyboardEvent) {
     return
   }
   if (!isFlowCanvasNodeSelectionKey(event.key)) return
+  event.preventDefault()
   const flowId = activeCanvasFlowId.value
   void nextTick(() => {
     if (!flowId || flowId !== activeCanvasFlowId.value) return
