@@ -2726,6 +2726,7 @@ function recordCanvasEditState(edges: ReadonlyArray<Edge>) {
 function recordRemovedCanvasEdges(changes: EdgeChange[]) {
   if (!changes.some((change) => change.type === 'remove')) return
   recordCanvasEditState(restoreRemovedFlowCanvasEdges(canvasEdges.value, changes))
+  void nextTick(persistCanvasState)
 }
 
 function applyCanvasEditSnapshot(snapshot: ReturnType<typeof captureFlowCanvasEditSnapshot>) {
