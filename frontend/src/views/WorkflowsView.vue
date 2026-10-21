@@ -235,6 +235,7 @@
             :snap-grid="[16, 16]"
             @pane-ready="setFlowCanvasInstance"
             @node-click="handleFlowCanvasNodeClick"
+            @node-drag-start="recordCanvasEdit"
             @node-drag-stop="persistCanvasState"
             @move-end="persistCanvasViewport"
             @connect="connectFlowCanvasNodes"
@@ -259,6 +260,24 @@
               </button>
               <button type="button" title="适配全部节点" aria-label="适配全部节点" @click="fitFlowCanvas">
                 <el-icon><FullScreen /></el-icon>
+              </button>
+              <button
+                type="button"
+                title="撤销画布编辑"
+                aria-label="撤销画布编辑"
+                :disabled="!canUndoCanvasEdit"
+                @click="undoCanvasEdit"
+              >
+                <el-icon><RefreshLeft /></el-icon>
+              </button>
+              <button
+                type="button"
+                title="重做画布编辑"
+                aria-label="重做画布编辑"
+                :disabled="!canRedoCanvasEdit"
+                @click="redoCanvasEdit"
+              >
+                <el-icon><RefreshRight /></el-icon>
               </button>
               <button type="button" title="按执行顺序排列节点" aria-label="按执行顺序排列节点" @click="arrangeFlowCanvas">
                 <el-icon><Sort /></el-icon>
@@ -961,7 +980,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, EditPen, FullScreen, Plus, Refresh, Sort, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
+import { Delete, EditPen, FullScreen, Plus, Refresh, RefreshLeft, RefreshRight, Sort, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
 import { addEdge, MarkerType, Panel, VueFlow } from '@vue-flow/core'
 import type { Connection, Edge, NodeMouseEvent, VueFlowStore } from '@vue-flow/core'
 import '@vue-flow/core/dist/style.css'
@@ -1017,6 +1036,14 @@ import {
   type FlowCanvasGraphNode,
   type FlowCanvasNodeData
 } from '@/utils/flowCanvasState'
+import {
+  captureFlowCanvasEditSnapshot,
+  createFlowCanvasHistory,
+  recordFlowCanvasEdit,
+  redoFlowCanvasEdit,
+  undoFlowCanvasEdit,
+  type FlowCanvasHistory
+} from '@/utils/flowCanvasHistory'
 import type { FlowEditorDraft } from '@/utils/flowEditorDraft'
 import type {
   FlowNode,
@@ -1095,6 +1122,9 @@ const nodeRunStates = ref<Record<string, FlowNodeRunState>>({})
 const selectedNodeId = ref('')
 const canvasNodes = shallowRef<FlowCanvasGraphNode[]>([])
 const canvasEdges = shallowRef<Edge[]>([])
+const canvasHistory = ref<FlowCanvasHistory>(createFlowCanvasHistory())
+const canUndoCanvasEdit = computed(() => canvasHistory.value.past.length > 0)
+const canRedoCanvasEdit = computed(() => canvasHistory.value.future.length > 0)
 const selectedCanvasEdgeCount = computed(() => flowCanvasInstance.value?.getSelectedEdges.value.length || 0)
 const flowCanvasInstance = shallowRef<VueFlowStore | null>(null)
 const activeCanvasFlowId = ref('')
@@ -1789,6 +1819,7 @@ watch(
 
 onMounted(async () => {
   window.addEventListener('beforeunload', handleBeforeUnload)
+  window.addEventListener('keydown', handleFlowCanvasHistoryShortcut)
   await Promise.all([workspace.bootstrap(), loadPromptAssets()])
   flowAssetsUnavailable.value = !workspace.flowAssetsReady
   const draftRestored = workspace.flowAssetsReady ? await restoreFlowEditorDraft() : false
@@ -1803,6 +1834,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
+  window.removeEventListener('keydown', handleFlowCanvasHistoryShortcut)
   promptAssetsRequest.invalidate()
   flowRunsRequest.invalidate()
   flowVersionsRequest.invalidate()
@@ -2577,6 +2609,7 @@ function loadFlowCanvas(flowId: string) {
   const saved = readFlowCanvasState(flowId)
   canvasViewportRestoreGeneration += 1
   activeCanvasFlowId.value = flowId
+  canvasHistory.value = createFlowCanvasHistory()
   const positions = saved.positions
   const canvasPositions = mergeFlowCanvasPositions(flow.nodes, positions)
   canvasNodes.value = buildFlowCanvasNodes(flow, canvasPositions, canvasNodeData)
@@ -2642,6 +2675,7 @@ function fitFlowCanvas() {
 function arrangeFlowCanvas() {
   const flow = workspace.activeFlow
   if (!flow) return
+  recordCanvasEdit()
   const positions = Object.fromEntries(
     flow.nodes.map((node, index) => [node.id, { x: 80 + index * 300, y: 120 }])
   )
@@ -2654,6 +2688,7 @@ function arrangeFlowCanvas() {
 function restoreSequentialCanvasEdges() {
   const flow = workspace.activeFlow
   if (!flow) return
+  recordCanvasEdit()
   canvasEdges.value = buildSequentialCanvasEdges(flow.nodes, MarkerType.ArrowClosed)
   persistCanvasState()
 }
@@ -2674,12 +2709,64 @@ function persistCanvasState() {
   }
 }
 
+function recordCanvasEdit() {
+  canvasHistory.value = recordFlowCanvasEdit(
+    canvasHistory.value,
+    captureFlowCanvasEditSnapshot(canvasNodes.value, canvasEdges.value)
+  )
+}
+
+function applyCanvasEditSnapshot(snapshot: ReturnType<typeof captureFlowCanvasEditSnapshot>) {
+  canvasNodes.value = canvasNodes.value.map((node) => ({
+    ...node,
+    position: snapshot.positions[node.id] || node.position
+  }))
+  canvasEdges.value = resolveFlowCanvasEdges(snapshot.edges, workspace.activeFlow?.nodes || [], MarkerType.ArrowClosed, true)
+  persistCanvasState()
+}
+
+function undoCanvasEdit() {
+  const result = undoFlowCanvasEdit(
+    canvasHistory.value,
+    captureFlowCanvasEditSnapshot(canvasNodes.value, canvasEdges.value)
+  )
+  if (!result.snapshot) return
+  canvasHistory.value = result.history
+  applyCanvasEditSnapshot(result.snapshot)
+}
+
+function redoCanvasEdit() {
+  const result = redoFlowCanvasEdit(
+    canvasHistory.value,
+    captureFlowCanvasEditSnapshot(canvasNodes.value, canvasEdges.value)
+  )
+  if (!result.snapshot) return
+  canvasHistory.value = result.history
+  applyCanvasEditSnapshot(result.snapshot)
+}
+
+function handleFlowCanvasHistoryShortcut(event: KeyboardEvent) {
+  if (!workspace.activeFlow || !(event.metaKey || event.ctrlKey) || event.altKey) return
+  if (!(event.target instanceof Element) || !event.target.closest('.flow-canvas-graph')) return
+  if (event.target.closest('input, textarea, select, [contenteditable="true"]')) return
+  const key = event.key.toLowerCase()
+  if (key !== 'z' && key !== 'y') return
+  event.preventDefault()
+  if (key === 'y' || event.shiftKey) {
+    redoCanvasEdit()
+  } else {
+    undoCanvasEdit()
+  }
+}
+
 function persistCanvasViewport() {
   persistCanvasState()
 }
 
 function deleteSelectedCanvasEdges() {
   const selectedIds = flowCanvasInstance.value?.getSelectedEdges.value.map((edge) => edge.id) || []
+  if (!selectedIds.length) return
+  recordCanvasEdit()
   canvasEdges.value = removeFlowCanvasEdges(canvasEdges.value, selectedIds)
   persistCanvasState()
 }
@@ -2694,6 +2781,7 @@ function connectFlowCanvasNodes(connection: Connection) {
     ElMessage.info('这条连接已经存在')
     return
   }
+  recordCanvasEdit()
   const id = createFlowCanvasEdgeId()
   canvasEdges.value = addEdge(
     createFlowCanvasEdge(connection, id, workspace.activeFlow?.nodes || [], MarkerType.ArrowClosed),
