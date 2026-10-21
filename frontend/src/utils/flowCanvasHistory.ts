@@ -79,7 +79,7 @@ export function recordFlowCanvasEdit(
   snapshot: FlowCanvasEditSnapshot
 ): FlowCanvasHistory {
   return {
-    past: [...history.past, snapshot].slice(-FLOW_CANVAS_HISTORY_LIMIT),
+    past: [...history.past, cloneFlowCanvasEditSnapshot(snapshot)].slice(-FLOW_CANVAS_HISTORY_LIMIT),
     future: []
   }
 }
@@ -111,5 +111,12 @@ export function redoFlowCanvasEdit(
       future: history.future.slice(1)
     },
     snapshot
+  }
+}
+
+function cloneFlowCanvasEditSnapshot(snapshot: FlowCanvasEditSnapshot): FlowCanvasEditSnapshot {
+  return {
+    positions: Object.fromEntries(Object.entries(snapshot.positions).map(([id, position]) => [id, { ...position }])),
+    edges: snapshot.edges.map((edge) => ({ ...edge }))
   }
 }

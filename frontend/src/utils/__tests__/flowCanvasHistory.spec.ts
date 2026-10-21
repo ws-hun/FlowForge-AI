@@ -55,6 +55,15 @@ describe('flow canvas edit history', () => {
     expect(recordFlowCanvasEdit(undone.history, initial).future).toEqual([])
   })
 
+  it('copies snapshots when adding them to history', () => {
+    const original = snapshot(10)
+    const history = recordFlowCanvasEdit(createFlowCanvasHistory(), original)
+    original.positions.node.x = 500
+    original.edges[0].target = 'changed'
+
+    expect(history.past[0]).toEqual(snapshot(10))
+  })
+
   it('keeps history bounded', () => {
     const history = Array.from({ length: FLOW_CANVAS_HISTORY_LIMIT + 5 }, (_, index) => snapshot(index))
       .reduce(recordFlowCanvasEdit, createFlowCanvasHistory())
