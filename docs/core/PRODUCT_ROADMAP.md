@@ -93,6 +93,7 @@ Current Stage 3 capabilities:
 - Auto-arrange uses a compact single row for short Flows and a balanced grid of up to four columns for longer Flows; applying the confirmed cloud canvas resets local undo history so discarded work cannot reappear through undo.
 - Canvas recovery compares normalized local and server layouts before restoring or retrying; stale local work is preserved for explicit conflict resolution, and a recovered network automatically retries only non-conflicting sync failures.
 - Canvas conflicts remain anchored to the locally acknowledged server revision across same-session Flow navigation; reading a newer remote revision alone never authorizes an overwrite.
+- Deferred canvas viewport restores verify both the active workspace Flow and navigation generation, so a late callback cannot move a different Flow's canvas.
 - Canvas conflict checks compare edge endpoints rather than generated IDs; compatibility ID generation avoids current collisions and repairs duplicate identifiers in legacy local snapshots without dropping valid connections.
 - Flow canvas editing enforces the API's 500-connection limit before submission, with a direct explanation when no more visual edges can be added.
 - Prompt and Context additions stop at the API's 50-node Flow limit in both the workspace controls and shared creation boundary, before a rejected persistence request is sent.
