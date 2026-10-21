@@ -237,6 +237,7 @@
             @node-click="handleFlowCanvasNodeClick"
             @node-drag-start="recordCanvasEdit"
             @node-drag-stop="persistCanvasState"
+            @edges-change="recordRemovedCanvasEdges"
             @move-end="persistCanvasViewport"
             @connect="connectFlowCanvasNodes"
           >
@@ -982,7 +983,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, EditPen, FullScreen, Plus, Refresh, RefreshLeft, RefreshRight, Sort, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
 import { addEdge, MarkerType, Panel, VueFlow } from '@vue-flow/core'
-import type { Connection, Edge, NodeMouseEvent, VueFlowStore } from '@vue-flow/core'
+import type { Connection, Edge, EdgeChange, NodeMouseEvent, VueFlowStore } from '@vue-flow/core'
 import '@vue-flow/core/dist/style.css'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import FlowEditorSaveBar from '@/components/flow/FlowEditorSaveBar.vue'
@@ -2711,10 +2712,31 @@ function persistCanvasState() {
 }
 
 function recordCanvasEdit() {
+  recordCanvasEditState(canvasEdges.value)
+}
+
+function recordCanvasEditState(edges: ReadonlyArray<Edge>) {
   canvasHistory.value = recordFlowCanvasEdit(
     canvasHistory.value,
-    captureFlowCanvasEditSnapshot(canvasNodes.value, canvasEdges.value)
+    captureFlowCanvasEditSnapshot(canvasNodes.value, edges)
   )
+}
+
+function recordRemovedCanvasEdges(changes: EdgeChange[]) {
+  const removed = changes.filter((change) => change.type === 'remove')
+  if (!removed.length) return
+  const previousEdges = [...canvasEdges.value]
+  for (const edge of removed) {
+    if (previousEdges.some((existing) => existing.id === edge.id)) continue
+    previousEdges.push({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      sourceHandle: edge.sourceHandle,
+      targetHandle: edge.targetHandle
+    })
+  }
+  recordCanvasEditState(previousEdges)
 }
 
 function applyCanvasEditSnapshot(snapshot: ReturnType<typeof captureFlowCanvasEditSnapshot>) {
