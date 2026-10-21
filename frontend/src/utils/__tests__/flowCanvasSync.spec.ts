@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   flowCanvasStatesDiffer,
   hasFlowCanvasRevisionConflict,
+  resolveMissingCloudCanvasDecision,
   resolveOfflineCanvasRestoreDecision,
   resolveFlowCanvasRestoreDecision
 } from '@/utils/flowCanvasSync'
@@ -89,6 +90,29 @@ describe('flow canvas synchronization policy', () => {
       knownRevision: 3,
       remoteRevision: 4
     })).toBe('identical')
+  })
+
+  it('migrates local canvas when the cloud is empty unless a prior revision disappeared', () => {
+    expect(resolveMissingCloudCanvasDecision({
+      localSaved: true,
+      knownRevision: undefined,
+      remoteRevision: 0
+    })).toBe('migrate-local')
+    expect(resolveMissingCloudCanvasDecision({
+      localSaved: true,
+      knownRevision: 0,
+      remoteRevision: 0
+    })).toBe('migrate-local')
+    expect(resolveMissingCloudCanvasDecision({
+      localSaved: true,
+      knownRevision: 3,
+      remoteRevision: 0
+    })).toBe('conflict')
+    expect(resolveMissingCloudCanvasDecision({
+      localSaved: false,
+      knownRevision: undefined,
+      remoteRevision: 0
+    })).toBe('empty')
   })
 
   it('compares normalized local and cloud state while ignoring stale node IDs', () => {

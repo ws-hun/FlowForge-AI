@@ -4,6 +4,17 @@ import { mergeFlowCanvasPositions, resolveFlowCanvasEdges, type StoredFlowCanvas
 
 export type FlowCanvasRestoreDecision = 'use-cloud' | 'save-local' | 'migrate-local' | 'empty' | 'conflict'
 export type OfflineCanvasRestoreDecision = 'identical' | 'resume-local' | 'conflict'
+export type MissingCloudCanvasDecision = 'empty' | 'migrate-local' | 'conflict'
+
+export function resolveMissingCloudCanvasDecision(input: {
+  localSaved: boolean
+  knownRevision: number | undefined
+  remoteRevision: number
+}): MissingCloudCanvasDecision {
+  if (!input.localSaved) return 'empty'
+  if (input.knownRevision !== undefined && input.knownRevision !== input.remoteRevision) return 'conflict'
+  return 'migrate-local'
+}
 
 export function resolveOfflineCanvasRestoreDecision(input: {
   localDiffersFromCloud: boolean

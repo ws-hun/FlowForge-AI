@@ -1076,6 +1076,7 @@ import {
 import {
   flowCanvasStatesDiffer,
   hasFlowCanvasRevisionConflict,
+  resolveMissingCloudCanvasDecision,
   resolveOfflineCanvasRestoreDecision,
   resolveFlowCanvasRestoreDecision
 } from '@/utils/flowCanvasSync'
@@ -2741,6 +2742,17 @@ async function restoreFlowCanvasFromServer(
     }
 
     if (decision === 'migrate-local') {
+      const missingCloudDecision = resolveMissingCloudCanvasDecision({
+        localSaved: hasLocalCanvas,
+        knownRevision,
+        remoteRevision: data.revision
+      })
+      if (missingCloudDecision === 'conflict') {
+        queueCurrentCanvasStateForSync(flowId)
+        canvasSyncAvailable.delete(flowId)
+        canvasSyncStatus.value = 'conflict'
+        return
+      }
       pendingCanvasSaves.set(flowId, {
         positions: localState.positions,
         edges: localState.edges,
@@ -2770,8 +2782,8 @@ async function retryFlowCanvasSync() {
     const knownRevision = canvasServerRevisions.get(flowId) ?? localState.serverRevision ?? undefined
     canvasServerRevisions.set(flowId, data.revision)
     canvasSyncAvailable.add(flowId)
+    const hasLocalCanvas = localState.hasSavedEdges || Object.keys(localState.positions).length > 0 || Boolean(localState.viewport)
     if (data.saved && !pending) {
-      const hasLocalCanvas = localState.hasSavedEdges || Object.keys(localState.positions).length > 0 || Boolean(localState.viewport)
       const offlineDecision = resolveOfflineCanvasRestoreDecision({
         localDiffersFromCloud: hasLocalCanvas && flowCanvasStatesDiffer(localState, data, flow.nodes),
         knownRevision,
@@ -2786,6 +2798,21 @@ async function retryFlowCanvasSync() {
         queueCurrentCanvasStateForSync(flowId)
         canvasSyncAvailable.delete(flowId)
         canvasSyncStatus.value = 'conflict'
+      }
+    } else if (!data.saved && !pending) {
+      const missingCloudDecision = resolveMissingCloudCanvasDecision({
+        localSaved: hasLocalCanvas,
+        knownRevision,
+        remoteRevision: data.revision
+      })
+      if (missingCloudDecision === 'migrate-local') {
+        queueCurrentCanvasStateForSync(flowId)
+      } else if (missingCloudDecision === 'conflict') {
+        queueCurrentCanvasStateForSync(flowId)
+        canvasSyncAvailable.delete(flowId)
+        canvasSyncStatus.value = 'conflict'
+      } else {
+        canvasSyncStatus.value = 'synced'
       }
     } else if (hasFlowCanvasRevisionConflict({
       remoteSaved: data.saved,
