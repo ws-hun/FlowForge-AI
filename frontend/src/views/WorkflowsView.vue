@@ -2947,7 +2947,15 @@ function applyServerCanvasState(state: FlowCanvasState) {
   writeFlowCanvasState(state.flowId, canvasNodes.value, canvasEdges.value, state.viewport)
   writeFlowCanvasServerRevision(state.flowId, state.revision)
   if (state.viewport) {
-    void nextTick(() => flowCanvasInstance.value?.setViewport(state.viewport!))
+    const restoreGeneration = canvasViewportRestoreGeneration
+    void nextTick(() => {
+      if (
+        state.flowId !== activeCanvasFlowId.value ||
+        state.flowId !== workspace.activeFlowId ||
+        restoreGeneration !== canvasViewportRestoreGeneration
+      ) return
+      flowCanvasInstance.value?.setViewport(state.viewport!)
+    })
   } else {
     restoreFlowCanvasViewport(state.flowId)
   }
