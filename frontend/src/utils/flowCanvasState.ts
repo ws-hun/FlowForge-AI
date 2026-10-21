@@ -88,7 +88,9 @@ export function readFlowCanvasState(flowId: string): StoredFlowCanvasState {
         if (
           value && typeof value === 'object' &&
           Number.isFinite((value as { x?: unknown }).x) &&
-          Number.isFinite((value as { y?: unknown }).y)
+          Number.isFinite((value as { y?: unknown }).y) &&
+          Math.abs((value as { x: number }).x) <= MAX_CANVAS_OFFSET &&
+          Math.abs((value as { y: number }).y) <= MAX_CANVAS_OFFSET
         ) {
           positions[id] = { x: (value as { x: number }).x, y: (value as { y: number }).y }
         }

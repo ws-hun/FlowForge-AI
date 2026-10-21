@@ -38,6 +38,19 @@ describe('flow canvas state', () => {
     expect(canvasNodes[0].focusable).toBe(true)
   })
 
+  it('ignores out-of-range saved node positions', () => {
+    const getItem = vi.fn().mockReturnValue(JSON.stringify({
+      positions: {
+        input: { x: 999_999, y: 12 },
+        prompt: { x: -24, y: -48 }
+      },
+      edges: []
+    }))
+    vi.stubGlobal('window', { localStorage: { getItem } })
+    const saved = readFlowCanvasState('flow')
+    expect(saved.positions).toEqual({ prompt: { x: -24, y: -48 } })
+  })
+
   it('starts with a visual linear chain without changing the Flow model', () => {
     const edges = buildSequentialCanvasEdges(nodes, MarkerType.ArrowClosed)
     expect(edges.map(({ source, target }) => [source, target])).toEqual([
