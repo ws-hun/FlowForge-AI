@@ -2772,11 +2772,7 @@ async function restoreFlowCanvasFromServer(
         canvasSyncStatus.value = 'conflict'
         return
       }
-      pendingCanvasSaves.set(flowId, {
-        positions: localState.positions,
-        edges: localState.edges,
-        viewport: localState.viewport
-      })
+      pendingCanvasSaves.set(flowId, currentCanvasSyncSnapshot())
       void drainCanvasSaves(flowId)
       return
     }
