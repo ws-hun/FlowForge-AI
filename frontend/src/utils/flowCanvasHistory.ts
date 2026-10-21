@@ -16,7 +16,25 @@ export type FlowCanvasHistory = {
   future: FlowCanvasEditSnapshot[]
 }
 
+export type FlowCanvasHistoryAction = 'undo' | 'redo' | null
+
 export const FLOW_CANVAS_HISTORY_LIMIT = 50
+
+export function resolveFlowCanvasHistoryShortcut(input: {
+  key: string
+  metaKey: boolean
+  ctrlKey: boolean
+  shiftKey: boolean
+  altKey: boolean
+  insideCanvas: boolean
+  editableTarget: boolean
+}): FlowCanvasHistoryAction {
+  if ((!input.metaKey && !input.ctrlKey) || input.altKey || !input.insideCanvas || input.editableTarget) return null
+  const key = input.key.toLowerCase()
+  if (key === 'y' || (key === 'z' && input.shiftKey)) return 'redo'
+  if (key === 'z') return 'undo'
+  return null
+}
 
 export function createFlowCanvasHistory(): FlowCanvasHistory {
   return { past: [], future: [] }

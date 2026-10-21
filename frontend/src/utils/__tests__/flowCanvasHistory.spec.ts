@@ -5,6 +5,7 @@ import {
   FLOW_CANVAS_HISTORY_LIMIT,
   recordFlowCanvasEdit,
   redoFlowCanvasEdit,
+  resolveFlowCanvasHistoryShortcut,
   undoFlowCanvasEdit
 } from '@/utils/flowCanvasHistory'
 
@@ -45,5 +46,15 @@ describe('flow canvas edit history', () => {
     const empty = createFlowCanvasHistory()
     expect(undoFlowCanvasEdit(empty, snapshot(0))).toEqual({ history: empty, snapshot: null })
     expect(redoFlowCanvasEdit(empty, snapshot(0))).toEqual({ history: empty, snapshot: null })
+  })
+
+  it('resolves undo and redo shortcuts only for the focused canvas', () => {
+    const base = { metaKey: false, ctrlKey: true, shiftKey: false, altKey: false, insideCanvas: true, editableTarget: false }
+    expect(resolveFlowCanvasHistoryShortcut({ ...base, key: 'z' })).toBe('undo')
+    expect(resolveFlowCanvasHistoryShortcut({ ...base, key: 'z', metaKey: true, shiftKey: true })).toBe('redo')
+    expect(resolveFlowCanvasHistoryShortcut({ ...base, key: 'y' })).toBe('redo')
+    expect(resolveFlowCanvasHistoryShortcut({ ...base, key: 'z', insideCanvas: false })).toBeNull()
+    expect(resolveFlowCanvasHistoryShortcut({ ...base, key: 'z', editableTarget: true })).toBeNull()
+    expect(resolveFlowCanvasHistoryShortcut({ ...base, key: 'z', altKey: true })).toBeNull()
   })
 })

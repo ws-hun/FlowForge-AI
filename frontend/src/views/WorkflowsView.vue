@@ -1041,6 +1041,7 @@ import {
   createFlowCanvasHistory,
   recordFlowCanvasEdit,
   redoFlowCanvasEdit,
+  resolveFlowCanvasHistoryShortcut,
   undoFlowCanvasEdit,
   type FlowCanvasHistory
 } from '@/utils/flowCanvasHistory'
@@ -2746,13 +2747,20 @@ function redoCanvasEdit() {
 }
 
 function handleFlowCanvasHistoryShortcut(event: KeyboardEvent) {
-  if (!workspace.activeFlow || !(event.metaKey || event.ctrlKey) || event.altKey) return
-  if (!(event.target instanceof Element) || !event.target.closest('.flow-canvas-graph')) return
-  if (event.target.closest('input, textarea, select, [contenteditable="true"]')) return
-  const key = event.key.toLowerCase()
-  if (key !== 'z' && key !== 'y') return
+  if (!workspace.activeFlow) return
+  const target = event.target instanceof Element ? event.target : null
+  const action = resolveFlowCanvasHistoryShortcut({
+    key: event.key,
+    metaKey: event.metaKey,
+    ctrlKey: event.ctrlKey,
+    shiftKey: event.shiftKey,
+    altKey: event.altKey,
+    insideCanvas: Boolean(target?.closest('.flow-canvas-graph')),
+    editableTarget: Boolean(target?.closest('input, textarea, select, [contenteditable="true"]'))
+  })
+  if (!action) return
   event.preventDefault()
-  if (key === 'y' || event.shiftKey) {
+  if (action === 'redo') {
     redoCanvasEdit()
   } else {
     undoCanvasEdit()
