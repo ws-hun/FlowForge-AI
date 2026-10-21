@@ -93,6 +93,7 @@ Current Stage 3 capabilities:
 - Canvas conflicts remain anchored to the locally acknowledged server revision across same-session Flow navigation; reading a newer remote revision alone never authorizes an overwrite.
 - Canvas conflict checks compare edge endpoints rather than generated IDs; compatibility ID generation avoids current collisions and repairs duplicate identifiers in legacy local snapshots without dropping valid connections.
 - Flow canvas editing enforces the API's 500-connection limit before submission, with a direct explanation when no more visual edges can be added.
+- Prompt and Context additions stop at the API's 50-node Flow limit in both the workspace controls and shared creation boundary, before a rejected persistence request is sent.
 - Default visual connections use bounded identifiers with an edge-order discriminator, remaining unique even when legal Flow node IDs share maximum-length prefixes.
 - Canvas node/navigation coordinates, viewport zoom, 500-edge capacity, and 120-character edge IDs mirror server constraints; legacy migration sends the repaired live graph rather than malformed raw cache entries.
 - Canvas layout and visual connections now sync to a dedicated versioned Flow state without creating Flow content revisions. Existing browser layouts migrate when no cloud layout exists, offline edits remain locally available, and multi-window conflicts require an explicit local-or-cloud choice.
