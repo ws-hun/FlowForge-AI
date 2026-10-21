@@ -1,11 +1,11 @@
-export type FlowCanvasRestoreDecision = 'use-cloud' | 'save-local' | 'migrate-local' | 'empty'
+export type FlowCanvasRestoreDecision = 'use-cloud' | 'save-local' | 'migrate-local' | 'empty' | 'conflict'
 
 export function resolveFlowCanvasRestoreDecision(input: {
   remoteSaved: boolean
   localSaved: boolean
   editedWhileLoading: boolean
 }): FlowCanvasRestoreDecision {
-  if (input.editedWhileLoading) return 'save-local'
+  if (input.editedWhileLoading) return input.remoteSaved ? 'conflict' : 'save-local'
   if (input.remoteSaved) return 'use-cloud'
   return input.localSaved ? 'migrate-local' : 'empty'
 }

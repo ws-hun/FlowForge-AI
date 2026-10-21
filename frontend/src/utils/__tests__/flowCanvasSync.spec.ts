@@ -23,10 +23,18 @@ describe('flow canvas synchronization policy', () => {
 
   it('keeps edits made while loading and saves them to the server', () => {
     expect(resolveFlowCanvasRestoreDecision({
-      remoteSaved: true,
+      remoteSaved: false,
       localSaved: false,
       editedWhileLoading: true
     })).toBe('save-local')
+  })
+
+  it('requires a decision when local edits race with a saved cloud canvas', () => {
+    expect(resolveFlowCanvasRestoreDecision({
+      remoteSaved: true,
+      localSaved: true,
+      editedWhileLoading: true
+    })).toBe('conflict')
   })
 
   it('recognizes a server change when pending local edits exist', () => {

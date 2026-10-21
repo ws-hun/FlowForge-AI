@@ -2693,6 +2693,12 @@ async function restoreFlowCanvasFromServer(
       queueCurrentCanvasStateForSync(flowId)
       return
     }
+    if (decision === 'conflict') {
+      queueCurrentCanvasStateForSync(flowId)
+      canvasSyncAvailable.delete(flowId)
+      canvasSyncStatus.value = 'conflict'
+      return
+    }
     if (decision === 'use-cloud') {
       applyServerCanvasState(data)
       canvasSyncStatus.value = 'synced'
