@@ -79,10 +79,19 @@ export function recordFlowCanvasEdit(
   history: FlowCanvasHistory,
   snapshot: FlowCanvasEditSnapshot
 ): FlowCanvasHistory {
+  const previous = history.past[history.past.length - 1]
+  if (previous && sameFlowCanvasEditSnapshot(previous, snapshot)) {
+    if (!history.future.length) return history
+    return { ...history, future: [] }
+  }
   return {
     past: [...history.past, cloneFlowCanvasEditSnapshot(snapshot)].slice(-FLOW_CANVAS_HISTORY_LIMIT),
     future: []
   }
+}
+
+function sameFlowCanvasEditSnapshot(left: FlowCanvasEditSnapshot, right: FlowCanvasEditSnapshot): boolean {
+  return JSON.stringify(left) === JSON.stringify(right)
 }
 
 export function undoFlowCanvasEdit(

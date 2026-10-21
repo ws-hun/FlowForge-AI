@@ -55,6 +55,16 @@ describe('flow canvas edit history', () => {
     expect(recordFlowCanvasEdit(undone.history, initial).future).toEqual([])
   })
 
+  it('does not add duplicate adjacent snapshots to undo history', () => {
+    const initial = snapshot(10)
+    const history = recordFlowCanvasEdit(
+      recordFlowCanvasEdit(createFlowCanvasHistory(), initial),
+      initial
+    )
+
+    expect(history.past).toEqual([initial])
+  })
+
   it('copies snapshots when adding them to history', () => {
     const original = snapshot(10)
     const history = recordFlowCanvasEdit(createFlowCanvasHistory(), original)
