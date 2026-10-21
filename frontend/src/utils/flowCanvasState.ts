@@ -19,6 +19,9 @@ export type StoredFlowCanvasState = {
 }
 
 const STORAGE_PREFIX = 'flowforge.canvas.v1:'
+const MIN_CANVAS_ZOOM = 0.2
+const MAX_CANVAS_ZOOM = 1.6
+const MAX_CANVAS_OFFSET = 100_000
 
 export function buildFlowCanvasNodes(
   flow: FlowDraft,
@@ -173,6 +176,9 @@ function isViewport(value: unknown): value is ViewportTransform {
   const candidate = value as Record<string, unknown>
   return Number.isFinite(candidate.x) &&
     Number.isFinite(candidate.y) &&
+    Math.abs(candidate.x as number) <= MAX_CANVAS_OFFSET &&
+    Math.abs(candidate.y as number) <= MAX_CANVAS_OFFSET &&
     Number.isFinite(candidate.zoom) &&
-    (candidate.zoom as number) > 0
+    (candidate.zoom as number) >= MIN_CANVAS_ZOOM &&
+    (candidate.zoom as number) <= MAX_CANVAS_ZOOM
 }

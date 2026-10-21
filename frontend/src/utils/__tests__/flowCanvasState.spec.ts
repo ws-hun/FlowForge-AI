@@ -84,6 +84,10 @@ describe('flow canvas state', () => {
 
     getItem.mockReturnValueOnce(JSON.stringify({ viewport: { x: 0, y: 0, zoom: 0 } }))
     expect(readFlowCanvasState('flow').viewport).toBeNull()
+    getItem.mockReturnValueOnce(JSON.stringify({ viewport: { x: 0, y: 0, zoom: 3 } }))
+    expect(readFlowCanvasState('flow').viewport).toBeNull()
+    getItem.mockReturnValueOnce(JSON.stringify({ viewport: { x: 1_000_000, y: 0, zoom: 1 } }))
+    expect(readFlowCanvasState('flow').viewport).toBeNull()
   })
 
   it('persists viewport together with canvas positions and connections', () => {
