@@ -50,6 +50,17 @@ export function buildFlowCanvasNodes(
   })
 }
 
+export function buildDefaultFlowCanvasPositions(
+  nodes: FlowNode[],
+  columnCount = 4
+): StoredFlowCanvasState['positions'] {
+  const columns = Math.max(1, Math.floor(columnCount))
+  return Object.fromEntries(nodes.map((node, index) => [node.id, {
+    x: 80 + (index % columns) * 300,
+    y: 120 + Math.floor(index / columns) * 220
+  }]))
+}
+
 export function captureFlowCanvasPositions(
   nodes: ReadonlyArray<Pick<FlowCanvasGraphNode, 'id' | 'position'>>
 ): StoredFlowCanvasState['positions'] {

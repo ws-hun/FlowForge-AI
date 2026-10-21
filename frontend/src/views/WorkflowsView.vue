@@ -993,6 +993,7 @@ import {
 import { extractPromptVariables, isValidPromptVariableName } from '@/utils/promptVariables'
 import {
   buildFlowCanvasNodes,
+  buildDefaultFlowCanvasPositions,
   buildSequentialCanvasEdges,
   canCreateFlowCanvasEdge,
   captureFlowCanvasPositions,
@@ -2565,7 +2566,11 @@ function loadFlowCanvas(flowId: string) {
   const saved = readFlowCanvasState(flowId)
   canvasViewportRestoreGeneration += 1
   activeCanvasFlowId.value = flowId
-  canvasNodes.value = buildFlowCanvasNodes(flow, saved.positions, canvasNodeData)
+  const positions = saved.positions
+  const canvasPositions = Object.keys(positions).length
+    ? positions
+    : buildDefaultFlowCanvasPositions(flow.nodes)
+  canvasNodes.value = buildFlowCanvasNodes(flow, canvasPositions, canvasNodeData)
   canvasEdges.value = resolveFlowCanvasEdges(saved.edges, flow.nodes, MarkerType.ArrowClosed, saved.hasSavedEdges)
   restoreFlowCanvasViewport(flowId)
 }

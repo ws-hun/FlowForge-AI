@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   buildFlowCanvasNodes,
+  buildDefaultFlowCanvasPositions,
   buildSequentialCanvasEdges,
   canCreateFlowCanvasEdge,
   captureFlowCanvasPositions,
@@ -68,6 +69,23 @@ describe('flow canvas state', () => {
       prompt: { x: 420, y: 260 },
       ai: { x: 680, y: 120 },
       output: { x: 980, y: 144 }
+    })
+  })
+
+  it('places long flows on a balanced two-dimensional default layout', () => {
+    const extendedNodes = Array.from({ length: 6 }, (_, index) => ({
+      id: `node-${index}`,
+      type: 'prompt' as const,
+      title: `Node ${index}`,
+      description: ''
+    }))
+    expect(buildDefaultFlowCanvasPositions(extendedNodes)).toEqual({
+      'node-0': { x: 80, y: 120 },
+      'node-1': { x: 380, y: 120 },
+      'node-2': { x: 680, y: 120 },
+      'node-3': { x: 980, y: 120 },
+      'node-4': { x: 80, y: 340 },
+      'node-5': { x: 380, y: 340 }
     })
   })
 
