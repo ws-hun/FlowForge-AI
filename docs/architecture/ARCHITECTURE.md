@@ -54,7 +54,7 @@ src/
 - Persisted Flow canvas with Prompt, Result, Flow, and revision lineage
 - Idempotent Result-to-Flow promotion without restricting normal Prompt reuse
 
-Canvas layout snapshots are stored locally with the last confirmed server revision. A fetched revision is not written into that marker until the cloud state is applied, the user explicitly chooses to overwrite it, or a local save succeeds. After reload, local edits can resume automatically only when the server revision still matches; an unknown or changed revision keeps both versions available for explicit resolution. Legacy local snapshots can migrate when the cloud has no canvas record, while a previously confirmed nonzero revision missing from the cloud is treated as a conflict rather than silently recreated.
+Canvas layout snapshots are stored locally with the last confirmed server revision. A fetched revision is not written into that marker until the cloud state is applied, the user explicitly chooses to overwrite it, or a local save succeeds. After reload, local edits can resume automatically only when the server revision still matches; an unknown or changed revision keeps both versions available for explicit resolution. Legacy local snapshots can migrate when the cloud has no canvas record, while a previously confirmed nonzero revision missing from the cloud is treated as a conflict rather than silently recreated. Conflict comparison normalizes node positions, viewport, and connection endpoints; generated edge IDs do not create false topology conflicts.
 
 ### History Module
 - Execution history tracking
