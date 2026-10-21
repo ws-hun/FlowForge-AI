@@ -239,6 +239,10 @@
             @move-end="persistCanvasViewport"
             @connect="connectFlowCanvasNodes"
           >
+            <div v-if="!canvasEdges.length && canvasNodes.length > 1" class="flow-canvas-empty-connections">
+              <span>当前没有画布连接</span>
+              <button type="button" @click="restoreSequentialCanvasEdges">恢复默认连线</button>
+            </div>
             <Panel position="bottom-right" class="flow-canvas-controls">
               <button type="button" title="缩小画布" aria-label="缩小画布" @click="flowCanvasInstance?.zoomOut()">
                 <el-icon><ZoomOut /></el-icon>
