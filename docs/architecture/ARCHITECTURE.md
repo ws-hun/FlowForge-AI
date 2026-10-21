@@ -60,7 +60,7 @@ Canvas save failures requeue the attempted snapshot only when no newer edit is a
 
 Canvas revision tracking distinguishes the last locally acknowledged baseline from the latest revision merely observed in a conflict response. Re-entering a conflicted Flow continues comparing against the acknowledged baseline until the user resolves the conflict, preventing a same-session navigation from silently converting a conflict into an overwrite.
 
-The editor mirrors persistence limits at interaction time: node positions and canvas navigation use the API's +/-100,000 coordinate boundary, viewport coordinates and zoom are normalized before local or remote saves, and new connections stop at the API's 500-edge maximum. Restored edge IDs are normalized to the API's nonblank 120-character contract.
+The editor mirrors persistence limits at interaction time: node positions and canvas navigation use the API's +/-100,000 coordinate boundary, viewport coordinates and zoom are normalized before local or remote saves, and new connections stop at the API's 500-edge maximum. Restored edge IDs are normalized to the API's nonblank 120-character contract; generated default edge IDs stay within that limit even for maximum-length node IDs.
 
 ### History Module
 - Execution history tracking
