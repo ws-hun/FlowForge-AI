@@ -2884,7 +2884,18 @@ async function retryFlowCanvasSync() {
 }
 
 function handleCanvasNetworkOnline() {
+  const activeFlowId = activeCanvasFlowId.value
   if (canvasSyncStatus.value === 'local') void retryFlowCanvasSync()
+
+  for (const flowId of pendingCanvasSaves.keys()) {
+    if (flowId === activeFlowId || canvasSyncRetryingFlows.has(flowId)) continue
+    canvasSyncRetryingFlows.add(flowId)
+    void restoreFlowCanvasFromServer(
+      flowId,
+      canvasEditGenerations.get(flowId) || 0,
+      readFlowCanvasState(flowId)
+    ).finally(() => canvasSyncRetryingFlows.delete(flowId))
+  }
 }
 
 async function keepLocalCanvasAfterConflict() {
