@@ -235,6 +235,23 @@ describe('flow canvas state', () => {
     })
   })
 
+  it('stores a normalized viewport rather than an API-invalid camera transform', () => {
+    const storage = new Map<string, string>()
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: (key: string) => storage.get(key) || null,
+        setItem: (key: string, value: string) => storage.set(key, value)
+      }
+    })
+    writeFlowCanvasState('flow', [], [], { x: 150_000, y: -150_000, zoom: 0.1 })
+
+    expect(readFlowCanvasState('flow').viewport).toEqual({
+      x: 100_000,
+      y: -100_000,
+      zoom: 0.2
+    })
+  })
+
   it('persists the last confirmed server revision without changing canvas content', () => {
     const storage = new Map<string, string>()
     vi.stubGlobal('window', {
