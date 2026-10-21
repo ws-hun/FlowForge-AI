@@ -5712,12 +5712,22 @@ a {
     touch-action: none;
   }
 
+  .vue-flow__node:focus-visible .flow-canvas-node {
+    outline: 3px solid rgba(79, 124, 255, 0.62);
+    outline-offset: 3px;
+  }
+
   .vue-flow__edge-path {
     stroke: #aebbe0;
     stroke-width: 2;
   }
 
   .vue-flow__edge.selected .vue-flow__edge-path {
+    stroke: tokens.$primary;
+    stroke-width: 2.5;
+  }
+
+  .vue-flow__edge:focus-visible .vue-flow__edge-path {
     stroke: tokens.$primary;
     stroke-width: 2.5;
   }
