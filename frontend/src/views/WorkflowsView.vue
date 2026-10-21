@@ -1042,6 +1042,7 @@ import {
   createFlowCanvasHistory,
   recordFlowCanvasEdit,
   redoFlowCanvasEdit,
+  restoreRemovedFlowCanvasEdges,
   resolveFlowCanvasHistoryShortcut,
   undoFlowCanvasEdit,
   type FlowCanvasHistory
@@ -2723,20 +2724,8 @@ function recordCanvasEditState(edges: ReadonlyArray<Edge>) {
 }
 
 function recordRemovedCanvasEdges(changes: EdgeChange[]) {
-  const removed = changes.filter((change) => change.type === 'remove')
-  if (!removed.length) return
-  const previousEdges = [...canvasEdges.value]
-  for (const edge of removed) {
-    if (previousEdges.some((existing) => existing.id === edge.id)) continue
-    previousEdges.push({
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      sourceHandle: edge.sourceHandle,
-      targetHandle: edge.targetHandle
-    })
-  }
-  recordCanvasEditState(previousEdges)
+  if (!changes.some((change) => change.type === 'remove')) return
+  recordCanvasEditState(restoreRemovedFlowCanvasEdges(canvasEdges.value, changes))
 }
 
 function applyCanvasEditSnapshot(snapshot: ReturnType<typeof captureFlowCanvasEditSnapshot>) {

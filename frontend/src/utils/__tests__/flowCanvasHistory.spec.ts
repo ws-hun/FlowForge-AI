@@ -5,6 +5,7 @@ import {
   FLOW_CANVAS_HISTORY_LIMIT,
   recordFlowCanvasEdit,
   redoFlowCanvasEdit,
+  restoreRemovedFlowCanvasEdges,
   resolveFlowCanvasHistoryShortcut,
   undoFlowCanvasEdit
 } from '@/utils/flowCanvasHistory'
@@ -56,5 +57,18 @@ describe('flow canvas edit history', () => {
     expect(resolveFlowCanvasHistoryShortcut({ ...base, key: 'z', insideCanvas: false })).toBeNull()
     expect(resolveFlowCanvasHistoryShortcut({ ...base, key: 'z', editableTarget: true })).toBeNull()
     expect(resolveFlowCanvasHistoryShortcut({ ...base, key: 'z', altKey: true })).toBeNull()
+  })
+
+  it('reconstructs removed edges whether they are still in the model or already gone', () => {
+    const removed = {
+      id: 'removed', type: 'remove' as const, source: 'a', target: 'b',
+      sourceHandle: 'source', targetHandle: 'target'
+    }
+    expect(restoreRemovedFlowCanvasEdges([], [removed])).toEqual([{
+      id: 'removed', source: 'a', target: 'b', sourceHandle: 'source', targetHandle: 'target'
+    }])
+    expect(restoreRemovedFlowCanvasEdges([{
+      id: 'removed', source: 'a', target: 'b', sourceHandle: 'source', targetHandle: 'target'
+    }], [removed])).toHaveLength(1)
   })
 })

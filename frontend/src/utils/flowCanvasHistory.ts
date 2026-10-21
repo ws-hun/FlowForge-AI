@@ -1,4 +1,4 @@
-import type { Edge } from '@vue-flow/core'
+import type { Edge, EdgeChange } from '@vue-flow/core'
 
 export type FlowCanvasEditSnapshot = {
   positions: Record<string, { x: number; y: number }>
@@ -19,6 +19,24 @@ export type FlowCanvasHistory = {
 export type FlowCanvasHistoryAction = 'undo' | 'redo' | null
 
 export const FLOW_CANVAS_HISTORY_LIMIT = 50
+
+export function restoreRemovedFlowCanvasEdges(
+  currentEdges: ReadonlyArray<Pick<Edge, 'id' | 'source' | 'target' | 'sourceHandle' | 'targetHandle'>>,
+  changes: ReadonlyArray<EdgeChange>
+): FlowCanvasEditSnapshot['edges'] {
+  const previousEdges = currentEdges.map((edge) => ({ ...edge }))
+  for (const edge of changes) {
+    if (edge.type !== 'remove' || previousEdges.some((existing) => existing.id === edge.id)) continue
+    previousEdges.push({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      sourceHandle: edge.sourceHandle,
+      targetHandle: edge.targetHandle
+    })
+  }
+  return previousEdges
+}
 
 export function resolveFlowCanvasHistoryShortcut(input: {
   key: string
