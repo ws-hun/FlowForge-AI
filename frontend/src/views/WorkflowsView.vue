@@ -2590,7 +2590,10 @@ function refreshFlowCanvasNodes() {
   if (!flow || flow.id !== activeCanvasFlowId.value) return
   const saved = readFlowCanvasState(flow.id)
   const selectedEdgeIds = flowCanvasInstance.value?.getSelectedEdges.value.map((edge) => edge.id) || []
-  const positions = { ...saved.positions, ...captureFlowCanvasPositions(canvasNodes.value) }
+  const positions = mergeFlowCanvasPositions(
+    flow.nodes,
+    { ...saved.positions, ...captureFlowCanvasPositions(canvasNodes.value) }
+  )
   canvasNodes.value = buildFlowCanvasNodes(flow, positions, canvasNodeData)
   canvasEdges.value = resolveFlowCanvasEdges(saved.edges, flow.nodes, MarkerType.ArrowClosed, saved.hasSavedEdges)
   void nextTick(() => syncFlowCanvasSelection(selectedNodeId.value, selectedEdgeIds))
