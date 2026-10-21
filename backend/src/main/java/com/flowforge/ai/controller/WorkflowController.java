@@ -1,5 +1,7 @@
 package com.flowforge.ai.controller;
 
+import com.flowforge.ai.dto.FlowCanvasStateRequest;
+import com.flowforge.ai.dto.FlowCanvasStateResponse;
 import com.flowforge.ai.dto.FlowExecutionPreviewRequest;
 import com.flowforge.ai.dto.FlowExecutionPreviewResponse;
 import com.flowforge.ai.dto.FlowRequest;
@@ -8,6 +10,7 @@ import com.flowforge.ai.dto.FlowVersionResponse;
 import com.flowforge.ai.dto.RevisionRequest;
 import com.flowforge.ai.dto.TaskHistoryResponse;
 import com.flowforge.ai.service.TaskService;
+import com.flowforge.ai.service.WorkflowCanvasStateService;
 import com.flowforge.ai.service.WorkflowService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +33,7 @@ import java.util.UUID;
 public class WorkflowController {
 
     private final WorkflowService workflowService;
+    private final WorkflowCanvasStateService workflowCanvasStateService;
     private final TaskService taskService;
 
     @GetMapping
@@ -45,6 +49,19 @@ public class WorkflowController {
     @PutMapping("/{id}")
     public FlowResponse updateFlow(@PathVariable("id") UUID id, @Valid @RequestBody FlowRequest request) {
         return workflowService.updateFlow(id, request);
+    }
+
+    @GetMapping("/{id}/canvas")
+    public FlowCanvasStateResponse getCanvasState(@PathVariable("id") UUID id) {
+        return workflowCanvasStateService.getCanvasState(id);
+    }
+
+    @PutMapping("/{id}/canvas")
+    public FlowCanvasStateResponse saveCanvasState(
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody FlowCanvasStateRequest request
+    ) {
+        return workflowCanvasStateService.saveCanvasState(id, request);
     }
 
     @GetMapping("/{id}/runs")

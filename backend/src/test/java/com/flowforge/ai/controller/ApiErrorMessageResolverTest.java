@@ -9,6 +9,10 @@ class ApiErrorMessageResolverTest {
     @Test
     void localizesCommonResourceAndValidationMessages() {
         assertThat(ApiErrorMessageResolver.resolve("Flow not found")).isEqualTo("找不到这个 Flow");
+        assertThat(ApiErrorMessageResolver.resolve("Canvas changed in another window"))
+                .isEqualTo("画布已在其他窗口更新，请刷新后继续编辑");
+        assertThat(ApiErrorMessageResolver.resolve("Canvas contains duplicate edges"))
+                .isEqualTo("画布中存在重复连线");
         assertThat(ApiErrorMessageResolver.resolve("Source Prompt not found")).isEqualTo("找不到来源 Prompt");
         assertThat(ApiErrorMessageResolver.resolve("Flow source must be either Prompt or Flow"))
                 .isEqualTo("Flow 只能保留一种来源");

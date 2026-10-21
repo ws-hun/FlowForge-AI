@@ -1,8 +1,13 @@
 package com.flowforge.ai.controller;
 
+import com.flowforge.ai.dto.FlowCanvasEdgeDto;
+import com.flowforge.ai.dto.FlowCanvasPositionDto;
+import com.flowforge.ai.dto.FlowCanvasStateRequest;
+import com.flowforge.ai.dto.FlowCanvasStateResponse;
+import com.flowforge.ai.dto.FlowCanvasViewportDto;
+import com.flowforge.ai.dto.FlowArtifactContractResponse;
 import com.flowforge.ai.dto.FlowExecutionPreviewRequest;
 import com.flowforge.ai.dto.FlowExecutionPreviewResponse;
-import com.flowforge.ai.dto.FlowArtifactContractResponse;
 import com.flowforge.ai.dto.FlowExecutionFailurePolicyResponse;
 import com.flowforge.ai.dto.FlowExecutionPlanResponse;
 import com.flowforge.ai.dto.FlowExecutionSectionResponse;
@@ -12,6 +17,7 @@ import com.flowforge.ai.dto.FlowResponse;
 import com.flowforge.ai.dto.FlowRunSnapshotResponse;
 import com.flowforge.ai.exception.ResourceConflictException;
 import com.flowforge.ai.service.TaskService;
+import com.flowforge.ai.service.WorkflowCanvasStateService;
 import com.flowforge.ai.service.WorkflowService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +54,9 @@ class WorkflowControllerTest {
     private WorkflowService workflowService;
 
     @MockBean
+    private WorkflowCanvasStateService workflowCanvasStateService;
+
+    @MockBean
     private TaskService taskService;
 
     @Test
@@ -80,6 +89,65 @@ class WorkflowControllerTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
 
         verify(workflowService).restoreVersion(flowId, versionId, 3L);
+    }
+
+    @Test
+    void readsThePersistedCanvasState() throws Exception {
+        UUID flowId = UUID.randomUUID();
+        when(workflowCanvasStateService.getCanvasState(flowId)).thenReturn(
+                new FlowCanvasStateResponse(flowId, 2L, true, Map.of(), List.of(), null, LocalDateTime.now())
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+                        "/api/flows/{id}/canvas", flowId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.flowId").value(flowId.toString()))
+                .andExpect(jsonPath("$.revision").value(2))
+                .andExpect(jsonPath("$.saved").value(true));
+
+        verify(workflowCanvasStateService).getCanvasState(flowId);
+    }
+
+    @Test
+    void savesTheCanvasStateWithAnIndependentRevision() throws Exception {
+        UUID flowId = UUID.randomUUID();
+        FlowCanvasStateResponse response = new FlowCanvasStateResponse(
+                flowId,
+                1L,
+                true,
+                Map.of("input", new FlowCanvasPositionDto(80.0, 120.0)),
+                List.of(new FlowCanvasEdgeDto("edge-1", "input", "output", "source", "target")),
+                new FlowCanvasViewportDto(0.0, 0.0, 1.0),
+                LocalDateTime.now()
+        );
+        when(workflowCanvasStateService.saveCanvasState(eq(flowId), any(FlowCanvasStateRequest.class)))
+                .thenReturn(response);
+
+        mockMvc.perform(put("/api/flows/{id}/canvas", flowId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "revision": 0,
+                                  "positions": {"input": {"x": 80, "y": 120}},
+                                  "edges": [{"id": "edge-1", "source": "input", "target": "output", "sourceHandle": "source", "targetHandle": "target"}],
+                                  "viewport": {"x": 0, "y": 0, "zoom": 1}
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.revision").value(1))
+                .andExpect(jsonPath("$.positions.input.x").value(80));
+
+        verify(workflowCanvasStateService).saveCanvasState(eq(flowId), argThat(request ->
+                request.revision() == 0 && request.edges().size() == 1 && request.viewport().zoom() == 1.0
+        ));
+    }
+
+    @Test
+    void rejectsCanvasStateWithoutARevision() throws Exception {
+        mockMvc.perform(put("/api/flows/{id}/canvas", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"positions\":{},\"edges\":[]}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
