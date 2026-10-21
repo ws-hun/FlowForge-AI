@@ -22,6 +22,7 @@ export type StoredFlowCanvasState = {
 const STORAGE_PREFIX = 'flowforge.canvas.v1:'
 export const MAX_FLOW_CANVAS_EDGES = 500
 export const MAX_FLOW_CANVAS_OFFSET = 100_000
+export const MAX_FLOW_CANVAS_EDGE_ID_LENGTH = 120
 const MIN_CANVAS_ZOOM = 0.2
 const MAX_CANVAS_ZOOM = 1.6
 let fallbackEdgeSequence = 0
@@ -232,7 +233,7 @@ export function resolveFlowCanvasEdges(
     if (edge.targetHandle && edge.targetHandle !== 'target') continue
     const key = JSON.stringify([edge.source, edge.sourceHandle || null, edge.target, edge.targetHandle || null])
     if (seenConnections.has(key)) continue
-    const validId = edge.id.trim().length > 0 && edge.id.length <= 120
+    const validId = edge.id.trim().length > 0 && edge.id.length <= MAX_FLOW_CANVAS_EDGE_ID_LENGTH
     const id = !validId || seenIds.has(edge.id) ? createFlowCanvasEdgeId(seenIds) : edge.id
     seenIds.add(id)
     seenConnections.add(key)

@@ -9,6 +9,7 @@ import {
   createFlowCanvasEdgeId,
   mergeFlowCanvasPositions,
   MAX_FLOW_CANVAS_EDGES,
+  MAX_FLOW_CANVAS_EDGE_ID_LENGTH,
   MAX_FLOW_CANVAS_OFFSET,
   normalizeFlowCanvasViewport,
   readFlowCanvasState,
@@ -165,11 +166,11 @@ describe('flow canvas state', () => {
   it('repairs blank and overlong edge IDs before they reach the API', () => {
     const restored = resolveFlowCanvasEdges([
       { id: '', source: 'input', target: 'prompt' },
-      { id: 'x'.repeat(121), source: 'prompt', target: 'ai' }
+      { id: 'x'.repeat(MAX_FLOW_CANVAS_EDGE_ID_LENGTH + 1), source: 'prompt', target: 'ai' }
     ], nodes, MarkerType.ArrowClosed)
 
     expect(restored).toHaveLength(2)
-    expect(restored.every((edge) => edge.id.trim().length > 0 && edge.id.length <= 120)).toBe(true)
+    expect(restored.every((edge) => edge.id.trim().length > 0 && edge.id.length <= MAX_FLOW_CANVAS_EDGE_ID_LENGTH)).toBe(true)
     expect(new Set(restored.map((edge) => edge.id)).size).toBe(2)
   })
 
