@@ -9,6 +9,7 @@ import {
   createFlowCanvasEdgeId,
   mergeFlowCanvasPositions,
   MAX_FLOW_CANVAS_EDGES,
+  MAX_FLOW_CANVAS_OFFSET,
   readFlowCanvasState,
   removeFlowCanvasState,
   removeFlowCanvasEdges,
@@ -109,6 +110,10 @@ describe('flow canvas state', () => {
       ai: { x: 680, y: 120 },
       output: { x: 980, y: 120 }
     })
+  })
+
+  it('matches the server node-position boundary', () => {
+    expect(MAX_FLOW_CANVAS_OFFSET).toBe(100_000)
   })
 
   it('places nodes into unused grid cells around manually moved nodes', () => {

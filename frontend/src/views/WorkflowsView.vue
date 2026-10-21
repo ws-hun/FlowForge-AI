@@ -255,6 +255,7 @@
             :delete-key-code="['Backspace', 'Delete']"
             :min-zoom="0.2"
             :max-zoom="1.6"
+            :node-extent="canvasNodeExtent"
             :snap-to-grid="true"
             :snap-grid="[16, 16]"
             @pane-ready="setFlowCanvasInstance"
@@ -1007,7 +1008,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, EditPen, FullScreen, Plus, Refresh, RefreshLeft, RefreshRight, Sort, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
 import { addEdge, MarkerType, Panel, VueFlow } from '@vue-flow/core'
-import type { Connection, Edge, EdgeChange, NodeMouseEvent, VueFlowStore } from '@vue-flow/core'
+import type { Connection, CoordinateExtent, Edge, EdgeChange, NodeMouseEvent, VueFlowStore } from '@vue-flow/core'
 import '@vue-flow/core/dist/style.css'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import FlowEditorSaveBar from '@/components/flow/FlowEditorSaveBar.vue'
@@ -1055,6 +1056,7 @@ import {
   createFlowCanvasEdge,
   createFlowCanvasEdgeId,
   MAX_FLOW_CANVAS_EDGES,
+  MAX_FLOW_CANVAS_OFFSET,
   mergeFlowCanvasPositions,
   readFlowCanvasState,
   removeFlowCanvasState,
@@ -1187,6 +1189,7 @@ const canvasSyncAvailable = new Set<string>()
 const pendingCanvasSaves = new Map<string, Omit<SaveFlowCanvasStatePayload, 'revision'>>()
 const canvasSavingFlows = new Set<string>()
 const canvasSyncRetryingFlows = new Set<string>()
+const canvasNodeExtent: CoordinateExtent = [[-MAX_FLOW_CANVAS_OFFSET, -MAX_FLOW_CANVAS_OFFSET], [MAX_FLOW_CANVAS_OFFSET, MAX_FLOW_CANVAS_OFFSET]]
 let canvasSaveTimer: ReturnType<typeof setTimeout> | null = null
 let scheduledCanvasSaveFlowId = ''
 const flowNodeTypes = { flowCanvas: FlowCanvasNode }
