@@ -1629,7 +1629,7 @@ watch(
   { immediate: true }
 )
 
-watch(selectedNodeId, syncFlowCanvasSelection)
+watch(selectedNodeId, (nodeId) => syncFlowCanvasSelection(nodeId))
 
 watch(
   () => workspace.activeFlow?.nodes.map((node) => [
@@ -2570,9 +2570,11 @@ function refreshFlowCanvasNodes() {
   const flow = workspace.activeFlow
   if (!flow || flow.id !== activeCanvasFlowId.value) return
   const saved = readFlowCanvasState(flow.id)
+  const selectedEdgeIds = flowCanvasInstance.value?.getSelectedEdges.value.map((edge) => edge.id) || []
   const positions = { ...saved.positions, ...captureFlowCanvasPositions(canvasNodes.value) }
   canvasNodes.value = buildFlowCanvasNodes(flow, positions, canvasNodeData)
   canvasEdges.value = resolveFlowCanvasEdges(saved.edges, flow.nodes, MarkerType.ArrowClosed, saved.hasSavedEdges)
+  void nextTick(() => syncFlowCanvasSelection(selectedNodeId.value, selectedEdgeIds))
 }
 
 function setFlowCanvasInstance(instance: VueFlowStore) {
@@ -2581,13 +2583,15 @@ function setFlowCanvasInstance(instance: VueFlowStore) {
   syncFlowCanvasSelection(selectedNodeId.value)
 }
 
-function syncFlowCanvasSelection(nodeId: string) {
+function syncFlowCanvasSelection(nodeId: string, edgeIds: string[] = []) {
   void nextTick(() => {
     const instance = flowCanvasInstance.value
     if (!instance) return
     instance.removeSelectedElements()
     const node = nodeId ? instance.findNode(nodeId) : undefined
     if (node) instance.addSelectedNodes([node])
+    const edges = edgeIds.map((edgeId) => instance.findEdge(edgeId)).filter((edge) => edge !== undefined)
+    if (edges.length) instance.addSelectedEdges(edges)
   })
 }
 
