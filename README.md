@@ -161,6 +161,7 @@ FlowForge 目前处于 **Stage 3: Workflow Builder** 阶段。
 | Stage 3 | Provider Attempt Recovery Contract | Done | `flow-provider-attempt-policy-v1` 校验真实调用链，明确当前不在原产物上重试，失败恢复会创建新的可比较运行 |
 | Stage 3 | Failed Run Recovery Identity | Done | `POST /api/tasks/{id}/recover` 从失败运行创建新的不可变运行，并以 `recoveryOfTaskId` 保留来源关系 |
 | Stage 3 | Node Runtime Role Guidance | Done | Flow canvas 与 Inspector 解释每个节点如何参与执行，并明确当前只有 AI Task 触发 Provider 调用 |
+| Stage 3 | Persisted Flow Canvas State | Done | 画布布局、连线和视口独立保存到 PostgreSQL，拥有独立修订号与跨窗口冲突处理，不污染 Flow 内容修订 |
 | Stage 3 | Immutable Node Artifact Records | Done | 成功和失败轨迹保存节点产物状态、真实存储来源与内容指纹，失败或跳过节点不伪造输出 |
 | Stage 3 | Addressable Node Artifact Payloads | Done | 每个现代 Flow 节点产物独立落库、按运行与稳定 Key 读取，并可在运行轨迹内按需检查和复制 |
 | Stage 3 | Artifact Inspection Continuity | Done | 同一运行/Key 共享正在进行的读取，独立展示每项加载状态；切换运行后旧响应失效，同名产物只在当前轨迹内定位 |
@@ -868,6 +869,8 @@ Prompt 编辑器会把尚未提交的名称、分类、描述、正文、标签�
 GET    /api/flows
 POST   /api/flows
 PUT    /api/flows/{id}
+GET    /api/flows/{id}/canvas
+PUT    /api/flows/{id}/canvas
 GET    /api/flows/{id}/runs
 POST   /api/flows/{id}/execution-preview
 GET    /api/flows/{id}/versions
@@ -876,6 +879,8 @@ DELETE /api/flows/{id}?revision={revision}
 ```
 
 `POST /api/flows/{id}/execution-preview` 只读取已保存的 Flow，不调用 AI Provider，也不会创建任务或写入历史。它接收本次 `runtimeContext` 与 `variableValues`，返回服务端编译的 `executionInput`、不可变 `flowRunSnapshot`、有序 `sections`、`executionPlan`，以及 `executable`、`missingVariables`、`incompleteNodes` 就绪检查结果。结构视图、节点路径与 Raw 输入来自同一个编译过程，真实执行仍是一笔 Provider 请求。
+
+画布使用独立的 `GET /api/flows/{id}/canvas` 与 `PUT /api/flows/{id}/canvas` 保存节点位置、视觉连线和视口变换。请求包含画布自己的 `revision`；空白画布从 `0` 开始，首次保存后返回 `1`，后续每次成功保存递增。画布写入不会创建 Flow 内容修订；过期画布写入返回 `409 Conflict`，前端允许显式选择保留本地或采用云端状态。旧版浏览器布局仅在云端尚无画布状态时迁移。当前连线仅用于画布表达，Flow 运行仍按保存的节点顺序执行，不会按连线拓扑运行。
 
 创建 Flow 时可选传入 `sourceFlowId`，并可同时传入 `sourceFlowVersionId`。服务端会验证修订真实属于来源 Flow，并固化来源标题和版本号；后续编辑不会改变这条来源关系。
 
