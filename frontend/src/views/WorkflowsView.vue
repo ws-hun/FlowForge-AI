@@ -607,7 +607,7 @@
             <button type="button" class="secondary-button" :disabled="workspace.flowLoading" @click="duplicateActiveFlow">
               创建变体
             </button>
-            <button type="button" class="danger-button" :disabled="workspace.flowLoading" @click="confirmDeleteFlow">
+            <button type="button" class="danger-button" :disabled="workspace.flowLoading || flowExecutionBusy" @click="confirmDeleteFlow">
               删除
             </button>
           </div>
@@ -3785,7 +3785,7 @@ function discardAllFlowEdits() {
 }
 
 async function confirmDeleteFlow() {
-  if (!workspace.activeFlow) {
+  if (!workspace.activeFlow || workspace.flowLoading || flowExecutionBusy.value) {
     return
   }
   const flowId = workspace.activeFlow.id
