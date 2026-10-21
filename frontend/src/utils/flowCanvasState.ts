@@ -61,6 +61,19 @@ export function buildDefaultFlowCanvasPositions(
   }]))
 }
 
+export function mergeFlowCanvasPositions(
+  nodes: FlowNode[],
+  savedPositions: StoredFlowCanvasState['positions'],
+  columnCount = 4
+): StoredFlowCanvasState['positions'] {
+  return {
+    ...buildDefaultFlowCanvasPositions(nodes, columnCount),
+    ...Object.fromEntries(nodes
+      .filter((node) => savedPositions[node.id])
+      .map((node) => [node.id, savedPositions[node.id]]))
+  }
+}
+
 export function captureFlowCanvasPositions(
   nodes: ReadonlyArray<Pick<FlowCanvasGraphNode, 'id' | 'position'>>
 ): StoredFlowCanvasState['positions'] {

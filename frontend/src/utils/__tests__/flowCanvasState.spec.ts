@@ -7,6 +7,7 @@ import {
   captureFlowCanvasPositions,
   createFlowCanvasEdge,
   createFlowCanvasEdgeId,
+  mergeFlowCanvasPositions,
   readFlowCanvasState,
   removeFlowCanvasEdges,
   resolveFlowCanvasEdges,
@@ -95,6 +96,15 @@ describe('flow canvas state', () => {
       input: { x: 80, y: 120 },
       prompt: { x: 80, y: 340 },
       ai: { x: 80, y: 560 }
+    })
+  })
+
+  it('keeps saved positions while laying out newly added nodes on the default grid', () => {
+    expect(mergeFlowCanvasPositions(nodes, { prompt: { x: 512, y: 288 } })).toEqual({
+      input: { x: 80, y: 120 },
+      prompt: { x: 512, y: 288 },
+      ai: { x: 680, y: 120 },
+      output: { x: 980, y: 120 }
     })
   })
 

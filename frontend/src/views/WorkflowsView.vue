@@ -1010,6 +1010,7 @@ import {
   captureFlowCanvasPositions,
   createFlowCanvasEdge,
   createFlowCanvasEdgeId,
+  mergeFlowCanvasPositions,
   readFlowCanvasState,
   removeFlowCanvasEdges,
   resolveFlowCanvasEdges,
@@ -2578,9 +2579,7 @@ function loadFlowCanvas(flowId: string) {
   canvasViewportRestoreGeneration += 1
   activeCanvasFlowId.value = flowId
   const positions = saved.positions
-  const canvasPositions = Object.keys(positions).length
-    ? positions
-    : buildDefaultFlowCanvasPositions(flow.nodes)
+  const canvasPositions = mergeFlowCanvasPositions(flow.nodes, positions)
   canvasNodes.value = buildFlowCanvasNodes(flow, canvasPositions, canvasNodeData)
   canvasEdges.value = resolveFlowCanvasEdges(saved.edges, flow.nodes, MarkerType.ArrowClosed, saved.hasSavedEdges)
   restoreFlowCanvasViewport(flowId)
