@@ -2616,7 +2616,10 @@ function fitFlowCanvas() {
 function arrangeFlowCanvas() {
   const flow = workspace.activeFlow
   if (!flow) return
-  canvasNodes.value = buildFlowCanvasNodes(flow, {}, canvasNodeData)
+  const positions = Object.fromEntries(
+    flow.nodes.map((node, index) => [node.id, { x: 80 + index * 300, y: 120 }])
+  )
+  canvasNodes.value = buildFlowCanvasNodes(flow, positions, canvasNodeData)
   void nextTick(() => {
     void flowCanvasInstance.value?.fitView({ padding: 0.18, duration: 240 }).then(persistCanvasState)
   })
