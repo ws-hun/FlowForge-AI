@@ -9,6 +9,7 @@ import {
   createFlowCanvasEdgeId,
   isFlowCanvasNodeMoveKey,
   isFlowCanvasNodeSelectionKey,
+  shouldRecordFlowCanvasKeyboardMove,
   mergeFlowCanvasPositions,
   MAX_FLOW_CANVAS_EDGES,
   MAX_FLOW_CANVAS_EDGE_ID_LENGTH,
@@ -169,6 +170,11 @@ describe('flow canvas state', () => {
     expect(isFlowCanvasNodeMoveKey('ArrowRight')).toBe(true)
     expect(isFlowCanvasNodeMoveKey('Enter')).toBe(false)
     expect(isFlowCanvasNodeMoveKey(' ')).toBe(false)
+  })
+
+  it('records one undo boundary for a held arrow key', () => {
+    expect(shouldRecordFlowCanvasKeyboardMove(false)).toBe(true)
+    expect(shouldRecordFlowCanvasKeyboardMove(true)).toBe(false)
   })
 
   it('restores valid local edges, repairs duplicate IDs and falls back to the visual chain', () => {

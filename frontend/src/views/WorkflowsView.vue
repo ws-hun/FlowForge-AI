@@ -1061,6 +1061,7 @@ import {
   captureFlowCanvasPositions,
   isFlowCanvasNodeMoveKey,
   isFlowCanvasNodeSelectionKey,
+  shouldRecordFlowCanvasKeyboardMove,
   createFlowCanvasEdge,
   createFlowCanvasEdgeId,
   MAX_FLOW_CANVAS_EDGES,
@@ -3262,7 +3263,7 @@ function handleFlowCanvasKeyboardSelection(event: KeyboardEvent) {
     const nodeId = nodeElement.dataset.id
     const selectedNodes = flowCanvasInstance.value?.getSelectedNodes.value || []
     if (nodeId && selectedNodes.some((node) => node.id === nodeId)) {
-      recordCanvasEdit()
+      if (shouldRecordFlowCanvasKeyboardMove(event.repeat)) recordCanvasEdit()
       void nextTick(persistCanvasState)
     }
     return
