@@ -1074,6 +1074,7 @@ import {
   type FlowCanvasHistory
 } from '@/utils/flowCanvasHistory'
 import {
+  createFlowCanvasSyncEpochs,
   flowCanvasStatesDiffer,
   hasFlowCanvasRevisionConflict,
   resolveMissingCloudCanvasDecision,
@@ -1177,6 +1178,7 @@ const activeCanvasFlowId = ref('')
 let canvasStorageWarningShown = false
 let canvasViewportRestoreGeneration = 0
 const canvasServerRevisions = new Map<string, number>()
+const canvasSyncEpochs = createFlowCanvasSyncEpochs()
 const canvasEditGenerations = new Map<string, number>()
 const canvasSyncAvailable = new Set<string>()
 const pendingCanvasSaves = new Map<string, Omit<SaveFlowCanvasStatePayload, 'revision'>>()
@@ -3047,6 +3049,7 @@ function flushCanvasSaveTimer() {
 }
 
 function discardFlowCanvasSyncState(flowId: string) {
+  canvasSyncEpochs.invalidate(flowId)
   if (scheduledCanvasSaveFlowId === flowId && canvasSaveTimer) {
     clearTimeout(canvasSaveTimer)
     canvasSaveTimer = null
@@ -3060,6 +3063,7 @@ function discardFlowCanvasSyncState(flowId: string) {
 async function drainCanvasSaves(flowId: string) {
   if (!canvasSyncAvailable.has(flowId) || canvasSavingFlows.has(flowId)) return
   canvasSavingFlows.add(flowId)
+  const syncEpoch = canvasSyncEpochs.current(flowId)
   try {
     while (canvasSyncAvailable.has(flowId) && pendingCanvasSaves.has(flowId)) {
       const snapshot = pendingCanvasSaves.get(flowId)!
@@ -3070,10 +3074,12 @@ async function drainCanvasSaves(flowId: string) {
           ...snapshot,
           revision: canvasServerRevisions.get(flowId) || 0
         })
+        if (!canvasSyncEpochs.matches(flowId, syncEpoch)) break
         canvasServerRevisions.set(flowId, data.revision)
         writeFlowCanvasServerRevision(flowId, data.revision)
         if (flowId === activeCanvasFlowId.value) canvasSyncStatus.value = 'synced'
       } catch (error: unknown) {
+        if (!canvasSyncEpochs.matches(flowId, syncEpoch)) break
         pendingCanvasSaves.set(flowId, snapshot)
         if (apiErrorStatus(error) === 409) {
           canvasSyncAvailable.delete(flowId)
@@ -3086,6 +3092,9 @@ async function drainCanvasSaves(flowId: string) {
     }
   } finally {
     canvasSavingFlows.delete(flowId)
+    if (!canvasSyncEpochs.matches(flowId, syncEpoch) && canvasSyncAvailable.has(flowId) && pendingCanvasSaves.has(flowId)) {
+      void drainCanvasSaves(flowId)
+    }
   }
 }
 

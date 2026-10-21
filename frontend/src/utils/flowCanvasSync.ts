@@ -6,6 +6,23 @@ export type FlowCanvasRestoreDecision = 'use-cloud' | 'save-local' | 'migrate-lo
 export type OfflineCanvasRestoreDecision = 'identical' | 'resume-local' | 'conflict'
 export type MissingCloudCanvasDecision = 'empty' | 'migrate-local' | 'conflict'
 
+export function createFlowCanvasSyncEpochs() {
+  const epochs = new Map<string, number>()
+  return {
+    current(flowId: string) {
+      return epochs.get(flowId) || 0
+    },
+    invalidate(flowId: string) {
+      const next = this.current(flowId) + 1
+      epochs.set(flowId, next)
+      return next
+    },
+    matches(flowId: string, epoch: number) {
+      return this.current(flowId) === epoch
+    }
+  }
+}
+
 export function resolveMissingCloudCanvasDecision(input: {
   localSaved: boolean
   knownRevision: number | undefined

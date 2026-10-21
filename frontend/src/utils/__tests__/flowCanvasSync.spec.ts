@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  createFlowCanvasSyncEpochs,
   flowCanvasStatesDiffer,
   hasFlowCanvasRevisionConflict,
   resolveMissingCloudCanvasDecision,
@@ -16,6 +17,17 @@ const nodes: FlowNode[] = [
 ]
 
 describe('flow canvas synchronization policy', () => {
+  it('invalidates late sync completions independently for each flow', () => {
+    const epochs = createFlowCanvasSyncEpochs()
+    const requestEpoch = epochs.current('flow-a')
+
+    epochs.invalidate('flow-a')
+
+    expect(epochs.matches('flow-a', requestEpoch)).toBe(false)
+    expect(epochs.matches('flow-b', 0)).toBe(true)
+    expect(epochs.current('flow-a')).toBe(1)
+  })
+
   it('prefers saved cloud state when the user did not edit during loading', () => {
     expect(resolveFlowCanvasRestoreDecision({
       remoteSaved: true,
