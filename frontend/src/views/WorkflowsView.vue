@@ -215,6 +215,7 @@
             <div class="flow-canvas-count">
               <strong>画布</strong>
               <span>{{ canvasNodes.length }} 个节点 · {{ canvasEdges.length }} 条连接</span>
+              <span v-if="selectedCanvasEdgeCount" class="flow-canvas-selection">已选 {{ selectedCanvasEdgeCount }} 条连接</span>
             </div>
             <span class="flow-execution-mode" title="连线与布局仅保存在当前浏览器；运行时仍按节点列表顺序执行。">
               <i></i> 执行：按顺序

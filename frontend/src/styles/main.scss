@@ -5610,6 +5610,11 @@ a {
     font-size: 12px;
     font-variant-numeric: tabular-nums;
   }
+
+  .flow-canvas-selection {
+    color: tokens.$primary;
+    font-weight: 650;
+  }
 }
 
 .flow-execution-mode {
