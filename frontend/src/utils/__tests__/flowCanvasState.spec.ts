@@ -69,6 +69,18 @@ describe('flow canvas state', () => {
     expect(edges[0].focusable).toBe(true)
   })
 
+  it('keeps default connection IDs within the server limit for maximum-length node IDs', () => {
+    const longNodeIds = nodes.map((node, index) => ({
+      ...node,
+      id: `${index}-${'n'.repeat(79)}`
+    }))
+
+    const edges = buildSequentialCanvasEdges(longNodeIds, MarkerType.ArrowClosed)
+
+    expect(edges.every((edge) => edge.id.length <= MAX_FLOW_CANVAS_EDGE_ID_LENGTH)).toBe(true)
+    expect(new Set(edges.map((edge) => edge.id)).size).toBe(edges.length)
+  })
+
   it('captures current canvas positions for content-only node refreshes', () => {
     const graphNodes = buildFlowCanvasNodes(flow, { prompt: { x: 420, y: 260 } }, nodeData)
     expect(captureFlowCanvasPositions(graphNodes)).toEqual({

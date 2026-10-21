@@ -117,7 +117,7 @@ export function buildSequentialCanvasEdges(
   arrowMarker: MarkerType
 ): Edge[] {
   return nodes.slice(0, -1).map((node, index) => ({
-    id: `canvas-${node.id}-${nodes[index + 1].id}`,
+    id: `canvas-${index}-${node.id.slice(0, 40)}-${nodes[index + 1].id.slice(0, 40)}`,
     ariaLabel: `${node.title} 连接到 ${nodes[index + 1].title}`,
     source: node.id,
     target: nodes[index + 1].id,
