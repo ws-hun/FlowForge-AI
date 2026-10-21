@@ -58,7 +58,7 @@ Canvas layout snapshots are stored locally with the last confirmed server revisi
 
 Canvas save failures requeue the attempted snapshot only when no newer edit is already waiting. A network retry therefore always favors the latest local canvas state, while revision conflicts still require the user's explicit choice.
 
-Flow canvas nodes are keyboard-focusable. Enter and Space selection synchronize the Inspector with Vue Flow's selected node after its built-in keyboard handler runs; canceling the unsaved-edit guard restores the prior canvas selection just as it does for pointer selection. Arrow-key movement of a selected node records the same bounded undo snapshot and persistence update as pointer dragging.
+Flow canvas nodes are keyboard-focusable. Enter and Space selection synchronize the Inspector with Vue Flow's selected node after its built-in keyboard handler runs; canceling the unsaved-edit guard restores the prior canvas selection just as it does for pointer selection. Arrow-key movement of a selected node records the same bounded undo snapshot and persistence update as pointer dragging, while repeated keydown events from one held arrow key share a single undo boundary.
 
 Canvas revision tracking distinguishes the last locally acknowledged baseline from the latest revision merely observed in a conflict response. Re-entering a conflicted Flow continues comparing against the acknowledged baseline until the user resolves the conflict, preventing a same-session navigation from silently converting a conflict into an overwrite.
 
