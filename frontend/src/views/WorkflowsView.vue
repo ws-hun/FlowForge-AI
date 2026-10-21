@@ -229,6 +229,8 @@
             :delete-key-code="['Backspace', 'Delete']"
             :min-zoom="0.2"
             :max-zoom="1.6"
+            :snap-to-grid="true"
+            :snap-grid="[16, 16]"
             @pane-ready="setFlowCanvasInstance"
             @node-click="handleFlowCanvasNodeClick"
             @node-drag-stop="persistCanvasState"
