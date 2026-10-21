@@ -9,7 +9,7 @@ import type { FlowNode } from '@/types'
 
 const nodes: FlowNode[] = [
   { id: 'input', type: 'input', title: 'Input', description: 'Goal' },
-  { id: 'transform', type: 'transform', title: 'Transform', description: 'Process' },
+  { id: 'prompt', type: 'prompt', title: 'Prompt', description: 'Process' },
   { id: 'output', type: 'output', title: 'Output', description: 'Result' }
 ]
 
@@ -112,8 +112,8 @@ describe('flow canvas synchronization policy', () => {
     const local = {
       positions: {},
       edges: [
-        { id: 'first', source: 'input', target: 'transform', sourceHandle: 'source', targetHandle: 'target' },
-        { id: 'second', source: 'transform', target: 'output', sourceHandle: 'source', targetHandle: 'target' }
+        { id: 'first', source: 'input', target: 'prompt', sourceHandle: 'source', targetHandle: 'target' },
+        { id: 'second', source: 'prompt', target: 'output', sourceHandle: 'source', targetHandle: 'target' }
       ],
       viewport: null,
       hasSavedEdges: true
@@ -121,8 +121,8 @@ describe('flow canvas synchronization policy', () => {
     const remote = {
       positions: {},
       edges: [
-        { id: 'second', source: 'transform', target: 'output' },
-        { id: 'first', source: 'input', target: 'transform' }
+        { id: 'second', source: 'prompt', target: 'output' },
+        { id: 'first', source: 'input', target: 'prompt' }
       ],
       viewport: null,
       saved: true

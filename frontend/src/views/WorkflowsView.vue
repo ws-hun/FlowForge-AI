@@ -2756,7 +2756,8 @@ async function restoreFlowCanvasFromServer(
 
 async function retryFlowCanvasSync() {
   const flowId = activeCanvasFlowId.value
-  if (!flowId || flowId !== workspace.activeFlowId) return
+  const flow = workspace.activeFlow
+  if (!flowId || !flow || flowId !== workspace.activeFlowId || flow.id !== flowId) return
   canvasSyncStatus.value = 'loading'
   try {
     const { data } = await getFlowCanvasState(flowId)
@@ -2766,8 +2767,23 @@ async function retryFlowCanvasSync() {
     canvasServerRevisions.set(flowId, data.revision)
     canvasSyncAvailable.add(flowId)
     if (data.saved && !pending) {
-      applyServerCanvasState(data)
-      canvasSyncStatus.value = 'synced'
+      const localState = readFlowCanvasState(flowId)
+      const hasLocalCanvas = localState.hasSavedEdges || Object.keys(localState.positions).length > 0 || Boolean(localState.viewport)
+      const offlineDecision = resolveOfflineCanvasRestoreDecision({
+        localDiffersFromCloud: hasLocalCanvas && flowCanvasStatesDiffer(localState, data, flow.nodes),
+        knownRevision,
+        remoteRevision: data.revision
+      })
+      if (offlineDecision === 'identical') {
+        applyServerCanvasState(data)
+        canvasSyncStatus.value = 'synced'
+      } else if (offlineDecision === 'resume-local') {
+        queueCurrentCanvasStateForSync(flowId)
+      } else {
+        queueCurrentCanvasStateForSync(flowId)
+        canvasSyncAvailable.delete(flowId)
+        canvasSyncStatus.value = 'conflict'
+      }
     } else if (hasFlowCanvasRevisionConflict({
       remoteSaved: data.saved,
       hasPendingLocalState: pending,
