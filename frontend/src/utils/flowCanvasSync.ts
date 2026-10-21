@@ -13,6 +13,19 @@ export function resolveKnownCanvasRevision(
   return persistedRevision ?? inMemoryRevision
 }
 
+export function isFlowCanvasViewportRestoreCurrent(input: {
+  flowId: string
+  activeFlowId: string
+  workspaceFlowId: string
+  restoreGeneration: number
+  currentGeneration: number
+}): boolean {
+  return Boolean(input.flowId) &&
+    input.flowId === input.activeFlowId &&
+    input.flowId === input.workspaceFlowId &&
+    input.restoreGeneration === input.currentGeneration
+}
+
 export function preserveLatestCanvasSyncSnapshot<T>(pending: T | undefined, failed: T): T {
   return pending ?? failed
 }

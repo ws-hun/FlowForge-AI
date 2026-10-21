@@ -3,6 +3,7 @@ import {
   createFlowCanvasSyncEpochs,
   flowCanvasStatesDiffer,
   hasFlowCanvasRevisionConflict,
+  isFlowCanvasViewportRestoreCurrent,
   preserveLatestCanvasSyncSnapshot,
   resolveMissingCloudCanvasDecision,
   resolveKnownCanvasRevision,
@@ -52,6 +53,21 @@ describe('flow canvas synchronization policy', () => {
     expect(matches('flow-a', requestEpoch)).toBe(false)
     expect(matches('flow-b', 0)).toBe(true)
     expect(current('flow-a')).toBe(1)
+  })
+
+  it('ignores viewport restores for a different Flow or stale navigation generation', () => {
+    const current = {
+      flowId: 'flow-a',
+      activeFlowId: 'flow-a',
+      workspaceFlowId: 'flow-a',
+      restoreGeneration: 3,
+      currentGeneration: 3
+    }
+
+    expect(isFlowCanvasViewportRestoreCurrent(current)).toBe(true)
+    expect(isFlowCanvasViewportRestoreCurrent({ ...current, activeFlowId: 'flow-b' })).toBe(false)
+    expect(isFlowCanvasViewportRestoreCurrent({ ...current, workspaceFlowId: 'flow-b' })).toBe(false)
+    expect(isFlowCanvasViewportRestoreCurrent({ ...current, currentGeneration: 4 })).toBe(false)
   })
 
   it('prefers saved cloud state when the user did not edit during loading', () => {

@@ -1091,6 +1091,7 @@ import {
   createFlowCanvasSyncEpochs,
   flowCanvasStatesDiffer,
   hasFlowCanvasRevisionConflict,
+  isFlowCanvasViewportRestoreCurrent,
   preserveLatestCanvasSyncSnapshot,
   resolveMissingCloudCanvasDecision,
   resolveKnownCanvasRevision,
@@ -2949,11 +2950,13 @@ function applyServerCanvasState(state: FlowCanvasState) {
   if (state.viewport) {
     const restoreGeneration = canvasViewportRestoreGeneration
     void nextTick(() => {
-      if (
-        state.flowId !== activeCanvasFlowId.value ||
-        state.flowId !== workspace.activeFlowId ||
-        restoreGeneration !== canvasViewportRestoreGeneration
-      ) return
+      if (!isFlowCanvasViewportRestoreCurrent({
+        flowId: state.flowId,
+        activeFlowId: activeCanvasFlowId.value,
+        workspaceFlowId: workspace.activeFlowId,
+        restoreGeneration,
+        currentGeneration: canvasViewportRestoreGeneration
+      })) return
       flowCanvasInstance.value?.setViewport(state.viewport!)
     })
   } else {
@@ -2997,12 +3000,13 @@ function restoreFlowCanvasViewport(flowId: string) {
   const restoreGeneration = canvasViewportRestoreGeneration
   void nextTick(() => {
     const instance = flowCanvasInstance.value
-    if (
-      !instance ||
-      !flowId ||
-      activeCanvasFlowId.value !== flowId ||
-      restoreGeneration !== canvasViewportRestoreGeneration
-    ) return
+    if (!instance || !isFlowCanvasViewportRestoreCurrent({
+      flowId,
+      activeFlowId: activeCanvasFlowId.value,
+      workspaceFlowId: workspace.activeFlowId,
+      restoreGeneration,
+      currentGeneration: canvasViewportRestoreGeneration
+    })) return
     const { viewport } = readFlowCanvasState(flowId)
     if (viewport) {
       void instance.setViewport(viewport)
