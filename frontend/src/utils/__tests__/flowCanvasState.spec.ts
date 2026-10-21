@@ -56,6 +56,8 @@ describe('flow canvas state', () => {
     expect(edges.map(({ source, target }) => [source, target])).toEqual([
       ['input', 'prompt'], ['prompt', 'ai'], ['ai', 'output']
     ])
+    expect(edges[0].ariaLabel).toBe('Input 连接到 Prompt')
+    expect(edges[0].focusable).toBe(true)
   })
 
   it('captures current canvas positions for content-only node refreshes', () => {

@@ -62,6 +62,7 @@ export function buildSequentialCanvasEdges(
 ): Edge[] {
   return nodes.slice(0, -1).map((node, index) => ({
     id: `canvas-${node.id}-${nodes[index + 1].id}`,
+    ariaLabel: `${node.title} 连接到 ${nodes[index + 1].title}`,
     source: node.id,
     target: nodes[index + 1].id,
     sourceHandle: 'source',
@@ -69,7 +70,8 @@ export function buildSequentialCanvasEdges(
     type: 'smoothstep',
     markerEnd: arrowMarker,
     deletable: true,
-    selectable: true
+    selectable: true,
+    focusable: true
   }))
 }
 
@@ -150,7 +152,15 @@ export function resolveFlowCanvasEdges(
     validEdges.push(edge)
   }
   if (!hasSavedEdges) return buildSequentialCanvasEdges(nodes, arrowMarker)
-  return validEdges.map((edge) => ({ ...edge, type: 'smoothstep', markerEnd: arrowMarker, deletable: true, selectable: true }))
+  return validEdges.map((edge) => ({
+    ...edge,
+    ariaLabel: buildCanvasEdgeLabel(edge, nodes),
+    type: 'smoothstep',
+    markerEnd: arrowMarker,
+    deletable: true,
+    selectable: true,
+    focusable: true
+  }))
 }
 
 export function removeFlowCanvasEdges(edges: Edge[], edgeIds: string[]): Edge[] {
@@ -179,6 +189,15 @@ function isStoredEdge(value: unknown): value is StoredFlowCanvasState['edges'][n
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const candidate = value as Record<string, unknown>
   return typeof candidate.id === 'string' && typeof candidate.source === 'string' && typeof candidate.target === 'string'
+}
+
+function buildCanvasEdgeLabel(
+  edge: Pick<Edge, 'source' | 'target'>,
+  nodes: FlowNode[]
+) {
+  const source = nodes.find((node) => node.id === edge.source)?.title || edge.source
+  const target = nodes.find((node) => node.id === edge.target)?.title || edge.target
+  return `${source} 连接到 ${target}`
 }
 
 function isViewport(value: unknown): value is ViewportTransform {
