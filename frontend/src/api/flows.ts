@@ -1,10 +1,12 @@
 import http from './client'
 import type {
   FlowDraft,
+  FlowCanvasState,
   FlowExecutionPreviewRequest,
   FlowExecutionPreviewResponse,
   FlowVersion,
   SaveFlowPayload,
+  SaveFlowCanvasStatePayload,
   TaskHistoryItem
 } from '@/types'
 
@@ -18,6 +20,14 @@ export function createFlow(payload: SaveFlowPayload) {
 
 export function updateFlow(id: string, payload: SaveFlowPayload) {
   return http.put<FlowDraft>(`/api/flows/${id}`, payload)
+}
+
+export function getFlowCanvasState(id: string) {
+  return http.get<FlowCanvasState>(`/api/flows/${id}/canvas`)
+}
+
+export function saveFlowCanvasState(id: string, payload: SaveFlowCanvasStatePayload) {
+  return http.put<FlowCanvasState>(`/api/flows/${id}/canvas`, payload)
 }
 
 export function deleteFlow(id: string, revision: number) {

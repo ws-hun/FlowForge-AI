@@ -420,6 +420,38 @@ export interface SaveFlowPayload {
   sourceFlowVersionId?: string | null
   revision?: number
 }
+
+export interface FlowCanvasPosition {
+  x: number
+  y: number
+}
+
+export interface FlowCanvasEdge {
+  id: string
+  source: string
+  target: string
+  sourceHandle?: string | null
+  targetHandle?: string | null
+}
+
+export interface FlowCanvasViewport {
+  x: number
+  y: number
+  zoom: number
+}
+
+export interface FlowCanvasState {
+  flowId: string
+  revision: number
+  saved: boolean
+  positions: Record<string, FlowCanvasPosition>
+  edges: FlowCanvasEdge[]
+  viewport: FlowCanvasViewport | null
+  updatedAt: string | null
+}
+
+export type SaveFlowCanvasStatePayload = Omit<FlowCanvasState, 'flowId' | 'saved' | 'updatedAt'>
+
 export interface AuthUser {
   id: string
   email: string
