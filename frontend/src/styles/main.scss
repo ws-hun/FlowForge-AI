@@ -5635,6 +5635,7 @@ a {
 
 .flow-canvas-graph {
   height: 520px;
+  touch-action: none;
   background-color: #fbfcff;
   background-image: radial-gradient(rgba(148, 163, 184, 0.28) 1px, transparent 1px);
   background-position: 12px 12px;
@@ -5652,6 +5653,7 @@ a {
     width: 248px;
     border: 0;
     background: transparent;
+    touch-action: none;
   }
 
   .vue-flow__edge-path {
