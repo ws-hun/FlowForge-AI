@@ -62,7 +62,7 @@ Canvas revision tracking distinguishes the last locally acknowledged baseline fr
 
 The editor mirrors persistence limits at interaction time: node positions and canvas navigation use the API's +/-100,000 coordinate boundary, viewport coordinates and zoom are normalized before local or remote saves, and new connections stop at the API's 500-edge maximum. Restored edge IDs are normalized to the API's nonblank 120-character contract; generated default edge IDs stay within that limit even for maximum-length node IDs.
 
-Flow mutation APIs accept at most 50 nodes. Prompt and Context insertion controls reflect remaining capacity, while the workspace store enforces the same limit before any append request so alternate creation paths cannot send an invalid Flow mutation.
+Flow mutation APIs accept at most 50 nodes. Prompt and Context insertion controls reflect remaining capacity, while the workspace store enforces the same limit before any append request so alternate creation paths cannot send an invalid Flow mutation. Store tests verify rejected additions do not call the Flow update API.
 
 ### History Module
 - Execution history tracking
