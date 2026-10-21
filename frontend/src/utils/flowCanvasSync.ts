@@ -71,14 +71,13 @@ export function flowCanvasStatesDiffer(
   const localEdges = resolveFlowCanvasEdges(local.edges, nodes, MarkerType.ArrowClosed, local.hasSavedEdges)
   const remoteEdges = resolveFlowCanvasEdges(remote.edges, nodes, MarkerType.ArrowClosed, remote.saved)
   const normalizeEdges = (edges: typeof localEdges) => edges
-    .map(({ id, source, target, sourceHandle, targetHandle }) => ({
-      id,
+    .map(({ source, target, sourceHandle, targetHandle }) => ({
       source,
       target,
       sourceHandle: sourceHandle || 'source',
       targetHandle: targetHandle || 'target'
     }))
-    .sort((left, right) => left.id.localeCompare(right.id))
+    .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)))
 
   const localSnapshot = {
     positions: mergeFlowCanvasPositions(nodes, local.positions),

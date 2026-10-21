@@ -193,6 +193,13 @@ describe('flow canvas synchronization policy', () => {
     }
 
     expect(flowCanvasStatesDiffer(local, remote, nodes)).toBe(false)
+    expect(flowCanvasStatesDiffer({
+      ...local,
+      edges: local.edges.map((edge) => ({ ...edge, id: `local-${edge.id}` }))
+    }, {
+      ...remote,
+      edges: remote.edges.map((edge) => ({ ...edge, id: `cloud-${edge.id}` }))
+    }, nodes)).toBe(false)
     expect(flowCanvasStatesDiffer(local, {
       ...remote,
       edges: remote.edges.map((edge) => edge.id === 'second' ? { ...edge, target: 'input' } : edge)
