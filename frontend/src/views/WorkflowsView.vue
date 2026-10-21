@@ -2767,8 +2767,12 @@ function handleFlowCanvasHistoryShortcut(event: KeyboardEvent) {
     ctrlKey: event.ctrlKey,
     shiftKey: event.shiftKey,
     altKey: event.altKey,
+    composing: event.isComposing,
     insideCanvas: Boolean(target?.closest('.flow-canvas-graph')),
-    editableTarget: Boolean(target?.closest('input, textarea, select, [contenteditable="true"]'))
+    editableTarget: Boolean(
+      target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])') ||
+      (target instanceof HTMLElement && target.isContentEditable)
+    )
   })
   if (!action) return
   event.preventDefault()

@@ -79,13 +79,22 @@ describe('flow canvas edit history', () => {
   })
 
   it('resolves undo and redo shortcuts only for the focused canvas', () => {
-    const base = { metaKey: false, ctrlKey: true, shiftKey: false, altKey: false, insideCanvas: true, editableTarget: false }
+    const base = {
+      metaKey: false,
+      ctrlKey: true,
+      shiftKey: false,
+      altKey: false,
+      composing: false,
+      insideCanvas: true,
+      editableTarget: false
+    }
     expect(resolveFlowCanvasHistoryShortcut({ ...base, key: 'z' })).toBe('undo')
     expect(resolveFlowCanvasHistoryShortcut({ ...base, key: 'z', metaKey: true, shiftKey: true })).toBe('redo')
     expect(resolveFlowCanvasHistoryShortcut({ ...base, key: 'y' })).toBe('redo')
     expect(resolveFlowCanvasHistoryShortcut({ ...base, key: 'z', insideCanvas: false })).toBeNull()
     expect(resolveFlowCanvasHistoryShortcut({ ...base, key: 'z', editableTarget: true })).toBeNull()
     expect(resolveFlowCanvasHistoryShortcut({ ...base, key: 'z', altKey: true })).toBeNull()
+    expect(resolveFlowCanvasHistoryShortcut({ ...base, key: 'z', composing: true })).toBeNull()
   })
 
   it('reconstructs removed edges whether they are still in the model or already gone', () => {

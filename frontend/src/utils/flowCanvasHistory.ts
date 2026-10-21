@@ -44,10 +44,11 @@ export function resolveFlowCanvasHistoryShortcut(input: {
   ctrlKey: boolean
   shiftKey: boolean
   altKey: boolean
+  composing: boolean
   insideCanvas: boolean
   editableTarget: boolean
 }): FlowCanvasHistoryAction {
-  if ((!input.metaKey && !input.ctrlKey) || input.altKey || !input.insideCanvas || input.editableTarget) return null
+  if ((!input.metaKey && !input.ctrlKey) || input.altKey || input.composing || !input.insideCanvas || input.editableTarget) return null
   const key = input.key.toLowerCase()
   if (key === 'y' || (key === 'z' && input.shiftKey)) return 'redo'
   if (key === 'z') return 'undo'
