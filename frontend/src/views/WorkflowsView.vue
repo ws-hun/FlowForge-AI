@@ -1086,6 +1086,7 @@ const selectedCanvasEdgeCount = computed(() => flowCanvasInstance.value?.getSele
 const flowCanvasInstance = shallowRef<VueFlowStore | null>(null)
 const activeCanvasFlowId = ref('')
 let canvasStorageWarningShown = false
+let canvasViewportRestoreGeneration = 0
 const flowNodeTypes = { flowCanvas: FlowCanvasNode }
 const defaultCanvasEdgeOptions = {
   type: 'smoothstep',
@@ -2561,6 +2562,7 @@ function loadFlowCanvas(flowId: string) {
   const flow = workspace.activeFlow
   if (!flow || flow.id !== flowId) return
   const saved = readFlowCanvasState(flowId)
+  canvasViewportRestoreGeneration += 1
   activeCanvasFlowId.value = flowId
   canvasNodes.value = buildFlowCanvasNodes(flow, saved.positions, canvasNodeData)
   canvasEdges.value = resolveFlowCanvasEdges(saved.edges, flow.nodes, MarkerType.ArrowClosed, saved.hasSavedEdges)
@@ -2597,9 +2599,15 @@ function syncFlowCanvasSelection(nodeId: string, edgeIds: string[] = []) {
 }
 
 function restoreFlowCanvasViewport(flowId: string) {
+  const restoreGeneration = canvasViewportRestoreGeneration
   void nextTick(() => {
     const instance = flowCanvasInstance.value
-    if (!instance || !flowId || activeCanvasFlowId.value !== flowId) return
+    if (
+      !instance ||
+      !flowId ||
+      activeCanvasFlowId.value !== flowId ||
+      restoreGeneration !== canvasViewportRestoreGeneration
+    ) return
     const { viewport } = readFlowCanvasState(flowId)
     if (viewport) {
       void instance.setViewport(viewport)
