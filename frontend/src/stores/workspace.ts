@@ -19,6 +19,7 @@ import { createLatestRequestGate } from '@/utils/latestRequest'
 import { persistAiCommandDraft, readAiCommandDraft, sameAiCommandDraftContent } from '@/utils/aiCommandDraft'
 import { persistActiveFlowId, readActiveFlowId, resolveActiveFlowId } from '@/utils/flowSelection'
 import { canPersistFlowContext, createFlowContextNode } from '@/utils/flowContext'
+import { canAddFlowNode, MAX_FLOW_NODES } from '@/utils/flowLimits'
 import {
   persistFlowRunDrafts,
   readFlowRunDrafts,
@@ -1002,7 +1003,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function addPromptToActiveFlow(prompt: PromptAsset) {
-    if (!activeFlow.value) {
+    if (!activeFlow.value || flowLoading.value) {
+      return null
+    }
+    if (!canAddFlowNode(activeFlow.value.nodes.length)) {
+      ElMessage.warning(`Flow 最多支持 ${MAX_FLOW_NODES} 个节点，请先移除不需要的节点`)
       return null
     }
 
@@ -1026,7 +1031,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   }
 
   async function addContextToActiveFlow(content = '') {
-    if (!activeFlow.value) {
+    if (!activeFlow.value || flowLoading.value) {
+      return null
+    }
+    if (!canAddFlowNode(activeFlow.value.nodes.length)) {
+      ElMessage.warning(`Flow 最多支持 ${MAX_FLOW_NODES} 个节点，请先移除不需要的节点`)
       return null
     }
     if (content.trim() && !canPersistFlowContext(content)) {

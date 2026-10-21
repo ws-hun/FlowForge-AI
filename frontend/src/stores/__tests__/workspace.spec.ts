@@ -46,6 +46,7 @@ vi.mock('@/api/prompts', () => ({
 }))
 
 import { useWorkspaceStore } from '@/stores/workspace'
+import { MAX_FLOW_NODES } from '@/utils/flowLimits'
 
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -129,6 +130,36 @@ describe('workspace bootstrap', () => {
     await workspace.loadApiKeys()
     expect(workspace.apiKeysReady).toBe(true)
     expect(workspace.apiKeys).toEqual([])
+  })
+
+  it('blocks Prompt and Context node creation at the backend Flow limit', async () => {
+    api.listFlows.mockResolvedValueOnce({ data: [{
+      id: 'full-flow',
+      title: 'Full Flow',
+      description: 'At the node limit',
+      nodes: Array.from({ length: MAX_FLOW_NODES }, (_, index) => ({
+        id: `node-${index}`,
+        type: index === 0 ? 'input' : index === MAX_FLOW_NODES - 2 ? 'ai-task' : index === MAX_FLOW_NODES - 1 ? 'output' : 'prompt',
+        title: `Node ${index}`,
+        description: 'Node description'
+      })),
+      revision: 1,
+      createdAt: '2026-10-01T00:00:00Z',
+      updatedAt: '2026-10-01T00:00:00Z'
+    }] })
+    const workspace = useWorkspaceStore()
+    await workspace.loadFlowDrafts()
+
+    const prompt = await workspace.addPromptToActiveFlow({
+      id: 'prompt-1', title: 'Prompt', category: 'Writing', description: 'Prompt description',
+      content: 'Prompt content', tags: [], favorite: false, revision: 1,
+      createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-01T00:00:00Z'
+    })
+    const context = await workspace.addContextToActiveFlow('Useful context')
+
+    expect(prompt).toBeNull()
+    expect(context).toBeNull()
+    expect(api.createFlow).not.toHaveBeenCalled()
   })
 
   it('keeps a saved failed run visible when the follow-up history refresh is offline', async () => {

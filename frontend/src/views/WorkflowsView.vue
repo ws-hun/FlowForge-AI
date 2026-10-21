@@ -144,7 +144,8 @@
             <button
               type="button"
               class="ghost-button flow-add-context-button"
-              :disabled="workspace.flowLoading || flowExecutionBusy"
+              :disabled="workspace.flowLoading || flowExecutionBusy || !canAddFlowNode(workspace.activeFlow.nodes.length)"
+              :title="canAddFlowNode(workspace.activeFlow.nodes.length) ? undefined : `Flow 最多支持 ${MAX_FLOW_NODES} 个节点`"
               @click="addContextNode"
             >
               <el-icon><Plus /></el-icon>
@@ -482,7 +483,8 @@
                 <button
                   type="button"
                   class="ghost-button"
-                  :disabled="savingResultPrompt || workspace.flowLoading"
+                  :disabled="savingResultPrompt || workspace.flowLoading || !canAddFlowNode(workspace.activeFlow.nodes.length)"
+                  :title="canAddFlowNode(workspace.activeFlow.nodes.length) ? undefined : `Flow 最多支持 ${MAX_FLOW_NODES} 个节点`"
                   @click="saveLatestResultAndAddToFlow"
                 >
                   保存并加入 Flow
@@ -930,7 +932,8 @@
             type="button"
             class="prompt-node-option"
             :class="{ 'in-flow': promptAlreadyInFlow(prompt) }"
-            :disabled="!workspace.activeFlow || workspace.flowLoading || promptAlreadyInFlow(prompt)"
+            :disabled="!workspace.activeFlow || workspace.flowLoading || promptAlreadyInFlow(prompt) || !canAddFlowNode(workspace.activeFlow?.nodes.length ?? 0)"
+            :title="canAddFlowNode(workspace.activeFlow?.nodes.length ?? 0) ? undefined : `Flow 最多支持 ${MAX_FLOW_NODES} 个节点`"
             @click="addPromptNode(prompt)"
           >
             <div class="prompt-node-option-meta">
@@ -1036,6 +1039,7 @@ import { createPrompt, listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { compareFlowRevision } from '@/utils/flowRevisions'
 import { canPersistFlowContext, MAX_FLOW_CONTEXT_LENGTH } from '@/utils/flowContext'
+import { canAddFlowNode, MAX_FLOW_NODES } from '@/utils/flowLimits'
 import { shouldConfirmFlowRunSettingsReplacement } from '@/utils/flowRunSnapshots'
 import { persistFlowCreationDraft, readFlowCreationDraft } from '@/utils/flowCreationDraft'
 import { resolveFlowArtifactFocus } from '@/utils/flowArtifactFocus'
