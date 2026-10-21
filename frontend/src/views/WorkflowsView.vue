@@ -224,6 +224,7 @@
             v-model:nodes="canvasNodes"
             v-model:edges="canvasEdges"
             class="flow-canvas-graph"
+            aria-label="Flow 工作流画布"
             :node-types="flowNodeTypes"
             :default-edge-options="defaultCanvasEdgeOptions"
             :delete-key-code="['Backspace', 'Delete']"

@@ -41,6 +41,7 @@ export function buildFlowCanvasNodes(
       draggable: true,
       connectable: true,
       selectable: true,
+      focusable: true,
       deletable: false,
       width: 248,
       ariaLabel: `${node.title}，${data.kindLabel}，${data.stateLabel}，${data.operationLabel}`,

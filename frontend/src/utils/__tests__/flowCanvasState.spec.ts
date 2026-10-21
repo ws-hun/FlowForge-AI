@@ -35,6 +35,7 @@ describe('flow canvas state', () => {
     expect(canvasNodes[1].position).toEqual({ x: 420, y: 260 })
     expect(canvasNodes[2].position).toEqual({ x: 680, y: 120 })
     expect(canvasNodes[0].deletable).toBe(false)
+    expect(canvasNodes[0].focusable).toBe(true)
   })
 
   it('starts with a visual linear chain without changing the Flow model', () => {
