@@ -90,6 +90,7 @@ Current Stage 3 capabilities:
 - Flow Space provides a free-positioning canvas with editable connections, local recovery, and bounded undo / redo history. Connections are visual composition only, while execution remains in saved node order and is not yet driven by graph topology.
 - Auto-arrange distributes long Flows across a balanced grid, and applying the confirmed cloud canvas resets local undo history so discarded work cannot reappear through undo.
 - Canvas recovery compares normalized local and server layouts before restoring or retrying; stale local work is preserved for explicit conflict resolution, and a recovered network automatically retries only non-conflicting sync failures.
+- Canvas conflicts remain anchored to the locally acknowledged server revision across same-session Flow navigation; reading a newer remote revision alone never authorizes an overwrite.
 - Canvas conflict checks compare edge endpoints rather than generated IDs; compatibility ID generation avoids current collisions and repairs duplicate identifiers in legacy local snapshots without dropping valid connections.
 - Flow canvas editing enforces the API's 500-connection limit before submission, with a direct explanation when no more visual edges can be added.
 - Canvas node/navigation coordinates, viewport zoom, 500-edge capacity, and 120-character edge IDs mirror server constraints; legacy migration sends the repaired live graph rather than malformed raw cache entries.
