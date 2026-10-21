@@ -33,6 +33,15 @@ describe('flow canvas synchronization policy', () => {
     expect(resolveKnownCanvasRevision(undefined, undefined)).toBeUndefined()
   })
 
+  it('keeps a same-session remote revision change in conflict after re-entry', () => {
+    const knownRevision = resolveKnownCanvasRevision(4, 5)
+    expect(resolveOfflineCanvasRestoreDecision({
+      localDiffersFromCloud: true,
+      knownRevision,
+      remoteRevision: 5
+    })).toBe('conflict')
+  })
+
   it('invalidates late sync completions independently for each flow', () => {
     const epochs = createFlowCanvasSyncEpochs()
     const { current, invalidate, matches } = epochs
