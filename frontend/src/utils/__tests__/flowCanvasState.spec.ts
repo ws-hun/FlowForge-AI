@@ -7,6 +7,7 @@ import {
   captureFlowCanvasPositions,
   createFlowCanvasEdge,
   createFlowCanvasEdgeId,
+  isFlowCanvasNodeMoveKey,
   isFlowCanvasNodeSelectionKey,
   mergeFlowCanvasPositions,
   MAX_FLOW_CANVAS_EDGES,
@@ -159,6 +160,15 @@ describe('flow canvas state', () => {
     expect(isFlowCanvasNodeSelectionKey(' ')).toBe(true)
     expect(isFlowCanvasNodeSelectionKey('Escape')).toBe(false)
     expect(isFlowCanvasNodeSelectionKey('ArrowRight')).toBe(false)
+  })
+
+  it('recognizes only arrow keys as canvas node movement keys', () => {
+    expect(isFlowCanvasNodeMoveKey('ArrowUp')).toBe(true)
+    expect(isFlowCanvasNodeMoveKey('ArrowDown')).toBe(true)
+    expect(isFlowCanvasNodeMoveKey('ArrowLeft')).toBe(true)
+    expect(isFlowCanvasNodeMoveKey('ArrowRight')).toBe(true)
+    expect(isFlowCanvasNodeMoveKey('Enter')).toBe(false)
+    expect(isFlowCanvasNodeMoveKey(' ')).toBe(false)
   })
 
   it('restores valid local edges, repairs duplicate IDs and falls back to the visual chain', () => {

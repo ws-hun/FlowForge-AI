@@ -1059,6 +1059,7 @@ import {
   buildSequentialCanvasEdges,
   canCreateFlowCanvasEdge,
   captureFlowCanvasPositions,
+  isFlowCanvasNodeMoveKey,
   isFlowCanvasNodeSelectionKey,
   createFlowCanvasEdge,
   createFlowCanvasEdgeId,
@@ -3255,7 +3256,18 @@ async function handleFlowCanvasNodeClick({ node }: NodeMouseEvent) {
 
 function handleFlowCanvasKeyboardSelection(event: KeyboardEvent) {
   const target = event.target instanceof Element ? event.target : null
-  if (!isFlowCanvasNodeSelectionKey(event.key) || !target?.closest('.vue-flow__node')) return
+  const nodeElement = target?.closest<HTMLElement>('.vue-flow__node')
+  if (!nodeElement) return
+  if (isFlowCanvasNodeMoveKey(event.key)) {
+    const nodeId = nodeElement.dataset.id
+    const selectedNodes = flowCanvasInstance.value?.getSelectedNodes.value || []
+    if (nodeId && selectedNodes.some((node) => node.id === nodeId)) {
+      recordCanvasEdit()
+      void nextTick(persistCanvasState)
+    }
+    return
+  }
+  if (!isFlowCanvasNodeSelectionKey(event.key)) return
   const flowId = activeCanvasFlowId.value
   void nextTick(() => {
     if (!flowId || flowId !== activeCanvasFlowId.value) return

@@ -105,6 +105,10 @@ export function isFlowCanvasNodeSelectionKey(key: string): boolean {
   return key === 'Enter' || key === ' '
 }
 
+export function isFlowCanvasNodeMoveKey(key: string): boolean {
+  return key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight'
+}
+
 export function normalizeFlowCanvasViewport(viewport: ViewportTransform | null): ViewportTransform | null {
   if (!viewport || !Number.isFinite(viewport.x) || !Number.isFinite(viewport.y) || !Number.isFinite(viewport.zoom)) {
     return null
