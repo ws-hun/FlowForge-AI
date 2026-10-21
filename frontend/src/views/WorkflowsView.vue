@@ -1072,6 +1072,7 @@ import {
   undoFlowCanvasEdit,
   type FlowCanvasHistory
 } from '@/utils/flowCanvasHistory'
+import { hasFlowCanvasRevisionConflict, resolveFlowCanvasRestoreDecision } from '@/utils/flowCanvasSync'
 import type { FlowEditorDraft } from '@/utils/flowEditorDraft'
 import type {
   FlowCanvasState,
@@ -2682,25 +2683,23 @@ async function restoreFlowCanvasFromServer(
       return
     }
 
-    if ((canvasEditGenerations.get(flowId) || 0) !== editGeneration) {
-      if (data.saved) {
-        queueCurrentCanvasStateForSync(flowId)
-        canvasSyncAvailable.delete(flowId)
-        canvasSyncStatus.value = 'conflict'
-      } else {
-        queueCurrentCanvasStateForSync(flowId)
-      }
+    const hasLocalCanvas = localState.hasSavedEdges || Object.keys(localState.positions).length > 0 || Boolean(localState.viewport)
+    const decision = resolveFlowCanvasRestoreDecision({
+      remoteSaved: data.saved,
+      localSaved: hasLocalCanvas,
+      editedWhileLoading: (canvasEditGenerations.get(flowId) || 0) !== editGeneration
+    })
+    if (decision === 'save-local') {
+      queueCurrentCanvasStateForSync(flowId)
       return
     }
-
-    if (data.saved) {
+    if (decision === 'use-cloud') {
       applyServerCanvasState(data)
       canvasSyncStatus.value = 'synced'
       return
     }
 
-    const hasLocalCanvas = localState.hasSavedEdges || Object.keys(localState.positions).length > 0 || Boolean(localState.viewport)
-    if (hasLocalCanvas) {
+    if (decision === 'migrate-local') {
       pendingCanvasSaves.set(flowId, {
         positions: localState.positions,
         edges: localState.edges,
@@ -2731,7 +2730,12 @@ async function retryFlowCanvasSync() {
     if (data.saved && !pending) {
       applyServerCanvasState(data)
       canvasSyncStatus.value = 'synced'
-    } else if (data.saved && (knownRevision === undefined || knownRevision !== data.revision)) {
+    } else if (hasFlowCanvasRevisionConflict({
+      remoteSaved: data.saved,
+      hasPendingLocalState: pending,
+      knownRevision,
+      remoteRevision: data.revision
+    })) {
       canvasSyncAvailable.delete(flowId)
       canvasSyncStatus.value = 'conflict'
     } else if (pending) {
