@@ -1871,6 +1871,7 @@ watch(
 onMounted(async () => {
   window.addEventListener('beforeunload', handleBeforeUnload)
   window.addEventListener('keydown', handleFlowCanvasHistoryShortcut)
+  window.addEventListener('online', handleCanvasNetworkOnline)
   await Promise.all([workspace.bootstrap(), loadPromptAssets()])
   flowAssetsUnavailable.value = !workspace.flowAssetsReady
   const draftRestored = workspace.flowAssetsReady ? await restoreFlowEditorDraft() : false
@@ -1887,6 +1888,7 @@ onBeforeUnmount(() => {
   flushCanvasSaveTimer()
   window.removeEventListener('beforeunload', handleBeforeUnload)
   window.removeEventListener('keydown', handleFlowCanvasHistoryShortcut)
+  window.removeEventListener('online', handleCanvasNetworkOnline)
   promptAssetsRequest.invalidate()
   flowRunsRequest.invalidate()
   flowVersionsRequest.invalidate()
@@ -2802,6 +2804,10 @@ async function retryFlowCanvasSync() {
       canvasSyncStatus.value = apiErrorStatus(error) === 409 ? 'conflict' : 'local'
     }
   }
+}
+
+function handleCanvasNetworkOnline() {
+  if (canvasSyncStatus.value === 'local') void retryFlowCanvasSync()
 }
 
 async function keepLocalCanvasAfterConflict() {

@@ -88,6 +88,7 @@ Current Stage 3 capabilities:
 
 - Persisted Input, Context, Prompt, AI Task, and Output nodes.
 - Flow Space provides a free-positioning canvas with editable connections, local recovery, and bounded undo / redo history. Connections are visual composition only, while execution remains in saved node order and is not yet driven by graph topology.
+- Canvas recovery compares normalized local and server layouts before restoring or retrying; stale local work is preserved for explicit conflict resolution, and a recovered network automatically retries only non-conflicting sync failures.
 - Canvas layout and visual connections now sync to a dedicated versioned Flow state without creating Flow content revisions. Existing browser layouts migrate when no cloud layout exists, offline edits remain locally available, and multi-window conflicts require an explicit local-or-cloud choice.
 - Flow variables with preflight validation and atomic rename.
 - Server-compiled execution previews.
