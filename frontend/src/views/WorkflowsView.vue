@@ -212,7 +212,7 @@
 
         <div v-if="workspace.activeFlow" class="flow-canvas-frame">
           <div class="flow-canvas-toolbar">
-            <div class="flow-canvas-count">
+            <div class="flow-canvas-count" aria-live="polite">
               <strong>画布</strong>
               <span>{{ canvasNodes.length }} 个节点 · {{ canvasEdges.length }} 条连接</span>
               <span v-if="selectedCanvasEdgeCount" class="flow-canvas-selection">已选 {{ selectedCanvasEdgeCount }} 条连接</span>
