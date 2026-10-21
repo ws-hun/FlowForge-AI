@@ -2898,6 +2898,7 @@ function applyServerCanvasState(state: FlowCanvasState) {
   const positions = mergeFlowCanvasPositions(flow.nodes, state.positions)
   canvasNodes.value = buildFlowCanvasNodes(flow, positions, canvasNodeData)
   canvasEdges.value = resolveFlowCanvasEdges(state.edges, flow.nodes, MarkerType.ArrowClosed, state.saved)
+  canvasHistory.value = createFlowCanvasHistory()
   writeFlowCanvasState(state.flowId, canvasNodes.value, canvasEdges.value, state.viewport)
   writeFlowCanvasServerRevision(state.flowId, state.revision)
   if (state.viewport) {
