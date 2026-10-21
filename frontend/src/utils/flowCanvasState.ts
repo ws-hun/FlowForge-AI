@@ -55,9 +55,11 @@ export function buildFlowCanvasNodes(
 
 export function buildDefaultFlowCanvasPositions(
   nodes: FlowNode[],
-  columnCount = 4
+  columnCount?: number
 ): StoredFlowCanvasState['positions'] {
-  const columns = Math.max(1, Math.floor(columnCount))
+  const columns = columnCount === undefined
+    ? Math.max(1, Math.min(4, Math.ceil(Math.sqrt(nodes.length))))
+    : Math.max(1, Math.floor(columnCount))
   return Object.fromEntries(nodes.map((node, index) => [node.id, {
     x: 80 + (index % columns) * 300,
     y: 120 + Math.floor(index / columns) * 220

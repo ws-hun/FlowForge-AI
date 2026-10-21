@@ -94,7 +94,18 @@ describe('flow canvas state', () => {
     })
   })
 
-  it('places long flows on a balanced two-dimensional default layout', () => {
+  it('uses compact columns for short flows and a balanced grid for long flows', () => {
+    const shortNodes = Array.from({ length: 2 }, (_, index) => ({
+      id: `short-${index}`,
+      type: 'prompt' as const,
+      title: `Short ${index}`,
+      description: ''
+    }))
+    expect(buildDefaultFlowCanvasPositions(shortNodes)).toEqual({
+      'short-0': { x: 80, y: 120 },
+      'short-1': { x: 380, y: 120 }
+    })
+
     const extendedNodes = Array.from({ length: 6 }, (_, index) => ({
       id: `node-${index}`,
       type: 'prompt' as const,
@@ -105,9 +116,9 @@ describe('flow canvas state', () => {
       'node-0': { x: 80, y: 120 },
       'node-1': { x: 380, y: 120 },
       'node-2': { x: 680, y: 120 },
-      'node-3': { x: 980, y: 120 },
-      'node-4': { x: 80, y: 340 },
-      'node-5': { x: 380, y: 340 }
+      'node-3': { x: 80, y: 340 },
+      'node-4': { x: 380, y: 340 },
+      'node-5': { x: 680, y: 340 }
     })
   })
 
