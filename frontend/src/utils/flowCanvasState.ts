@@ -20,6 +20,7 @@ export type StoredFlowCanvasState = {
 }
 
 const STORAGE_PREFIX = 'flowforge.canvas.v1:'
+export const MAX_FLOW_CANVAS_EDGES = 500
 const MIN_CANVAS_ZOOM = 0.2
 const MAX_CANVAS_ZOOM = 1.6
 const MAX_CANVAS_OFFSET = 100_000
@@ -248,6 +249,7 @@ export function removeFlowCanvasEdges(edges: Edge[], edgeIds: string[]): Edge[] 
 export function canCreateFlowCanvasEdge(connection: Connection, edges: Edge[]): boolean {
   const { source, target, sourceHandle, targetHandle } = connection
   if (!source || !target || source === target) return false
+  if (edges.length >= MAX_FLOW_CANVAS_EDGES) return false
   return !edges.some((edge) =>
     edge.source === source &&
     edge.target === target &&

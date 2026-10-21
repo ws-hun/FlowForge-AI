@@ -8,6 +8,7 @@ import {
   createFlowCanvasEdge,
   createFlowCanvasEdgeId,
   mergeFlowCanvasPositions,
+  MAX_FLOW_CANVAS_EDGES,
   readFlowCanvasState,
   removeFlowCanvasState,
   removeFlowCanvasEdges,
@@ -292,6 +293,16 @@ describe('flow canvas state', () => {
     expect(canCreateFlowCanvasEdge({ source: 'input', target: 'input' }, edges)).toBe(false)
     expect(canCreateFlowCanvasEdge({ source: 'input', target: 'prompt', sourceHandle: 'out', targetHandle: 'in' }, edges)).toBe(false)
     expect(canCreateFlowCanvasEdge({ source: 'prompt', target: 'ai' }, edges)).toBe(true)
+  })
+
+  it('enforces the backend visual connection limit', () => {
+    const edges = Array.from({ length: MAX_FLOW_CANVAS_EDGES }, (_, index) => ({
+      id: `edge-${index}`,
+      source: 'input',
+      target: `node-${index}`
+    })) as Edge[]
+
+    expect(canCreateFlowCanvasEdge({ source: 'input', target: 'output' }, edges)).toBe(false)
   })
 
   it('allows distinct handles to represent separate visual relationships', () => {

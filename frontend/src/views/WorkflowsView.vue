@@ -1054,6 +1054,7 @@ import {
   captureFlowCanvasPositions,
   createFlowCanvasEdge,
   createFlowCanvasEdgeId,
+  MAX_FLOW_CANVAS_EDGES,
   mergeFlowCanvasPositions,
   readFlowCanvasState,
   removeFlowCanvasState,
@@ -3192,6 +3193,10 @@ function connectFlowCanvasNodes(connection: Connection) {
   if (!connection.source || !connection.target) return
   if (connection.source === connection.target) {
     ElMessage.info('节点不能连接到自身')
+    return
+  }
+  if (canvasEdges.value.length >= MAX_FLOW_CANVAS_EDGES) {
+    ElMessage.info(`画布最多支持 ${MAX_FLOW_CANVAS_EDGES} 条连接`)
     return
   }
   if (!canCreateFlowCanvasEdge(connection, canvasEdges.value)) {
