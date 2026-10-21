@@ -1072,7 +1072,11 @@ import {
   undoFlowCanvasEdit,
   type FlowCanvasHistory
 } from '@/utils/flowCanvasHistory'
-import { hasFlowCanvasRevisionConflict, resolveFlowCanvasRestoreDecision } from '@/utils/flowCanvasSync'
+import {
+  flowCanvasStatesDiffer,
+  hasFlowCanvasRevisionConflict,
+  resolveFlowCanvasRestoreDecision
+} from '@/utils/flowCanvasSync'
 import type { FlowEditorDraft } from '@/utils/flowEditorDraft'
 import type {
   FlowCanvasState,
@@ -2675,6 +2679,7 @@ async function restoreFlowCanvasFromServer(
 ) {
   try {
     const { data } = await getFlowCanvasState(flowId)
+    const knownRevision = canvasServerRevisions.get(flowId)
     canvasServerRevisions.set(flowId, data.revision)
     canvasSyncAvailable.add(flowId)
 
@@ -2682,8 +2687,29 @@ async function restoreFlowCanvasFromServer(
       if (pendingCanvasSaves.has(flowId)) void drainCanvasSaves(flowId)
       return
     }
+    const flow = workspace.activeFlow
+    if (!flow || flow.id !== flowId) return
 
     const hasLocalCanvas = localState.hasSavedEdges || Object.keys(localState.positions).length > 0 || Boolean(localState.viewport)
+    const localDiffersFromCloud = data.saved && hasLocalCanvas && flowCanvasStatesDiffer(
+      localState,
+      data,
+      flow.nodes
+    )
+    if (data.saved && hasLocalCanvas && !localDiffersFromCloud) {
+      pendingCanvasSaves.delete(flowId)
+    }
+    if (localDiffersFromCloud) {
+      if (knownRevision === data.revision) {
+        queueCurrentCanvasStateForSync(flowId)
+      } else {
+        queueCurrentCanvasStateForSync(flowId)
+        canvasSyncAvailable.delete(flowId)
+        canvasSyncStatus.value = 'conflict'
+      }
+      return
+    }
+
     const decision = resolveFlowCanvasRestoreDecision({
       remoteSaved: data.saved,
       localSaved: hasLocalCanvas,
@@ -2958,6 +2984,17 @@ function flushCanvasSaveTimer() {
   canvasSaveTimer = null
   const flowId = scheduledCanvasSaveFlowId
   if (flowId && flowId === activeCanvasFlowId.value) queueCurrentCanvasStateForSync(flowId)
+}
+
+function discardFlowCanvasSyncState(flowId: string) {
+  if (scheduledCanvasSaveFlowId === flowId && canvasSaveTimer) {
+    clearTimeout(canvasSaveTimer)
+    canvasSaveTimer = null
+  }
+  canvasServerRevisions.delete(flowId)
+  canvasEditGenerations.delete(flowId)
+  canvasSyncAvailable.delete(flowId)
+  pendingCanvasSaves.delete(flowId)
 }
 
 async function drainCanvasSaves(flowId: string) {
@@ -3691,6 +3728,7 @@ async function confirmDeleteFlow() {
     })
     const deleted = await workspace.deleteFlowDraft(flowId)
     if (deleted) {
+      discardFlowCanvasSyncState(flowId)
       removeFlowCanvasState(flowId)
       flowTitle.value = workspace.activeFlow?.title || ''
       flowDescription.value = workspace.activeFlow?.description || ''

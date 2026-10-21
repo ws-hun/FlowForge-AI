@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
+  flowCanvasStatesDiffer,
   hasFlowCanvasRevisionConflict,
   resolveFlowCanvasRestoreDecision
 } from '@/utils/flowCanvasSync'
+import type { FlowNode } from '@/types'
+
+const nodes: FlowNode[] = [
+  { id: 'input', type: 'input', title: 'Input', description: 'Goal' },
+  { id: 'output', type: 'output', title: 'Output', description: 'Result' }
+]
 
 describe('flow canvas synchronization policy', () => {
   it('prefers saved cloud state when the user did not edit during loading', () => {
@@ -56,5 +63,23 @@ describe('flow canvas synchronization policy', () => {
       knownRevision: undefined,
       remoteRevision: 0
     })).toBe(false)
+  })
+
+  it('compares normalized local and cloud state while ignoring stale node IDs', () => {
+    const local = {
+      positions: { input: { x: 80, y: 120 }, stale: { x: 20, y: 20 } },
+      edges: [{ id: 'edge', source: 'input', target: 'output', sourceHandle: 'source', targetHandle: 'target' }],
+      viewport: null,
+      hasSavedEdges: true
+    }
+    const remote = {
+      positions: {},
+      edges: [{ id: 'edge', source: 'input', target: 'output' }],
+      viewport: null,
+      saved: true
+    }
+    expect(flowCanvasStatesDiffer(local, remote, nodes)).toBe(false)
+    expect(flowCanvasStatesDiffer({ ...local, positions: { input: { x: 480, y: 120 } } }, remote, nodes)).toBe(true)
+    expect(flowCanvasStatesDiffer({ ...local, viewport: { x: 12, y: 0, zoom: 1 } }, remote, nodes)).toBe(true)
   })
 })
