@@ -260,6 +260,7 @@
             :translate-extent="canvasNodeExtent"
             :snap-to-grid="true"
             :snap-grid="[16, 16]"
+            @keydown.capture="handleFlowCanvasKeyboardSelection"
             @pane-ready="setFlowCanvasInstance"
             @node-click="handleFlowCanvasNodeClick"
             @node-drag-start="recordCanvasEdit"
@@ -1058,6 +1059,7 @@ import {
   buildSequentialCanvasEdges,
   canCreateFlowCanvasEdge,
   captureFlowCanvasPositions,
+  isFlowCanvasNodeSelectionKey,
   createFlowCanvasEdge,
   createFlowCanvasEdgeId,
   MAX_FLOW_CANVAS_EDGES,
@@ -3249,6 +3251,22 @@ async function handleFlowCanvasNodeClick({ node }: NodeMouseEvent) {
   if (selectedNodeId.value !== node.id) {
     syncFlowCanvasSelection(selectedNodeId.value)
   }
+}
+
+function handleFlowCanvasKeyboardSelection(event: KeyboardEvent) {
+  const target = event.target instanceof Element ? event.target : null
+  if (!isFlowCanvasNodeSelectionKey(event.key) || !target?.closest('.vue-flow__node')) return
+  const flowId = activeCanvasFlowId.value
+  void nextTick(() => {
+    if (!flowId || flowId !== activeCanvasFlowId.value) return
+    const selectedNodes = flowCanvasInstance.value?.getSelectedNodes.value || []
+    const selectedNode = selectedNodes[selectedNodes.length - 1]
+    if (selectedNode) {
+      void selectFlowNode(selectedNode.id).then(() => {
+        if (selectedNodeId.value !== selectedNode.id) syncFlowCanvasSelection(selectedNodeId.value)
+      })
+    }
+  })
 }
 
 async function openExecutionPreviewNode(nodeId: string) {

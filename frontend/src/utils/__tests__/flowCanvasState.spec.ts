@@ -7,6 +7,7 @@ import {
   captureFlowCanvasPositions,
   createFlowCanvasEdge,
   createFlowCanvasEdgeId,
+  isFlowCanvasNodeSelectionKey,
   mergeFlowCanvasPositions,
   MAX_FLOW_CANVAS_EDGES,
   MAX_FLOW_CANVAS_EDGE_ID_LENGTH,
@@ -151,6 +152,13 @@ describe('flow canvas state', () => {
     }))
 
     expect(canvasNode.ariaLabel).toBe('Input，input，待补充，准备上下文')
+  })
+
+  it('recognizes Vue Flow keyboard activation keys for node selection', () => {
+    expect(isFlowCanvasNodeSelectionKey('Enter')).toBe(true)
+    expect(isFlowCanvasNodeSelectionKey(' ')).toBe(true)
+    expect(isFlowCanvasNodeSelectionKey('Escape')).toBe(false)
+    expect(isFlowCanvasNodeSelectionKey('ArrowRight')).toBe(false)
   })
 
   it('restores valid local edges, repairs duplicate IDs and falls back to the visual chain', () => {

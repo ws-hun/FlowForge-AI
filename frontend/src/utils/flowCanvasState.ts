@@ -101,6 +101,10 @@ export function captureFlowCanvasPositions(
   return Object.fromEntries(nodes.map(({ id, position }) => [id, { x: position.x, y: position.y }]))
 }
 
+export function isFlowCanvasNodeSelectionKey(key: string): boolean {
+  return key === 'Enter' || key === ' '
+}
+
 export function normalizeFlowCanvasViewport(viewport: ViewportTransform | null): ViewportTransform | null {
   if (!viewport || !Number.isFinite(viewport.x) || !Number.isFinite(viewport.y) || !Number.isFinite(viewport.zoom)) {
     return null
