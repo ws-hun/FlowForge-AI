@@ -604,7 +604,7 @@
             >
               保存
             </button>
-            <button type="button" class="secondary-button" :disabled="workspace.flowLoading" @click="duplicateActiveFlow">
+            <button type="button" class="secondary-button" :disabled="workspace.flowLoading || flowExecutionBusy" @click="duplicateActiveFlow">
               创建变体
             </button>
             <button type="button" class="danger-button" :disabled="workspace.flowLoading || flowExecutionBusy" @click="confirmDeleteFlow">
@@ -2324,6 +2324,9 @@ async function createFlow() {
 }
 
 async function duplicateActiveFlow() {
+  if (workspace.flowLoading || flowExecutionBusy.value) {
+    return
+  }
   if (!(await resolvePendingEdits())) {
     return
   }
