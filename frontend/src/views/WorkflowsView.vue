@@ -996,6 +996,7 @@ import {
   buildSequentialCanvasEdges,
   canCreateFlowCanvasEdge,
   captureFlowCanvasPositions,
+  createFlowCanvasEdge,
   createFlowCanvasEdgeId,
   readFlowCanvasState,
   removeFlowCanvasEdges,
@@ -2677,16 +2678,10 @@ function connectFlowCanvasNodes(connection: Connection) {
     return
   }
   const id = createFlowCanvasEdgeId()
-  const sourceTitle = workspace.activeFlow?.nodes.find((node) => node.id === connection.source)?.title || connection.source
-  const targetTitle = workspace.activeFlow?.nodes.find((node) => node.id === connection.target)?.title || connection.target
-  canvasEdges.value = addEdge({
-    ...connection,
-    id,
-    ariaLabel: `${sourceTitle} 连接到 ${targetTitle}`,
-    type: 'smoothstep',
-    markerEnd: MarkerType.ArrowClosed,
-    focusable: true
-  }, canvasEdges.value) as Edge[]
+  canvasEdges.value = addEdge(
+    createFlowCanvasEdge(connection, id, workspace.activeFlow?.nodes || [], MarkerType.ArrowClosed),
+    canvasEdges.value
+  ) as Edge[]
   persistCanvasState()
 }
 

@@ -188,6 +188,24 @@ export function createFlowCanvasEdgeId(): string {
   return `edge-${Date.now()}-${fallbackEdgeSequence}`
 }
 
+export function createFlowCanvasEdge(
+  connection: Connection,
+  id: string,
+  nodes: FlowNode[],
+  arrowMarker: MarkerType
+): Edge {
+  return {
+    ...connection,
+    id,
+    ariaLabel: buildCanvasEdgeLabel(connection, nodes),
+    type: 'smoothstep',
+    markerEnd: arrowMarker,
+    deletable: true,
+    selectable: true,
+    focusable: true
+  }
+}
+
 function isStoredEdge(value: unknown): value is StoredFlowCanvasState['edges'][number] {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const candidate = value as Record<string, unknown>

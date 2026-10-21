@@ -4,6 +4,7 @@ import {
   buildSequentialCanvasEdges,
   canCreateFlowCanvasEdge,
   captureFlowCanvasPositions,
+  createFlowCanvasEdge,
   createFlowCanvasEdgeId,
   readFlowCanvasState,
   removeFlowCanvasEdges,
@@ -160,6 +161,23 @@ describe('flow canvas state', () => {
   it('allows distinct handles to represent separate visual relationships', () => {
     const edges = [{ id: 'existing', source: 'input', target: 'prompt', sourceHandle: 'source', targetHandle: 'target' }] as Edge[]
     expect(canCreateFlowCanvasEdge({ source: 'input', target: 'prompt', sourceHandle: 'alternate', targetHandle: 'target' }, edges)).toBe(true)
+  })
+
+  it('builds new connections with labels and keyboard interaction enabled', () => {
+    const edge = createFlowCanvasEdge(
+      { source: 'input', target: 'prompt', sourceHandle: 'source', targetHandle: 'target' },
+      'new-edge',
+      nodes,
+      MarkerType.ArrowClosed
+    )
+    expect(edge).toMatchObject({
+      id: 'new-edge',
+      ariaLabel: 'Input 连接到 Prompt',
+      type: 'smoothstep',
+      deletable: true,
+      selectable: true,
+      focusable: true
+    })
   })
 
   it('creates unique fallback edge IDs when randomUUID is unavailable', () => {
