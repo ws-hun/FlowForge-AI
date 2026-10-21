@@ -1004,7 +1004,6 @@ import {
 import { extractPromptVariables, isValidPromptVariableName } from '@/utils/promptVariables'
 import {
   buildFlowCanvasNodes,
-  buildDefaultFlowCanvasPositions,
   buildSequentialCanvasEdges,
   canCreateFlowCanvasEdge,
   captureFlowCanvasPositions,

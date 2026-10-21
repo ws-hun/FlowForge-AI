@@ -100,11 +100,23 @@ describe('flow canvas state', () => {
   })
 
   it('keeps saved positions while laying out newly added nodes on the default grid', () => {
-    expect(mergeFlowCanvasPositions(nodes, { prompt: { x: 512, y: 288 } })).toEqual({
+    expect(mergeFlowCanvasPositions(nodes, { prompt: { x: 380, y: 120 } })).toEqual({
       input: { x: 80, y: 120 },
-      prompt: { x: 512, y: 288 },
+      prompt: { x: 380, y: 120 },
       ai: { x: 680, y: 120 },
       output: { x: 980, y: 120 }
+    })
+  })
+
+  it('places nodes into unused grid cells around manually moved nodes', () => {
+    expect(mergeFlowCanvasPositions(nodes, {
+      input: { x: 80, y: 120 },
+      prompt: { x: 980, y: 120 }
+    })).toEqual({
+      input: { x: 80, y: 120 },
+      prompt: { x: 980, y: 120 },
+      ai: { x: 380, y: 120 },
+      output: { x: 680, y: 120 }
     })
   })
 

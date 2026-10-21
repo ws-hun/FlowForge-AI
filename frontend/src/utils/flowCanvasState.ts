@@ -66,12 +66,30 @@ export function mergeFlowCanvasPositions(
   savedPositions: StoredFlowCanvasState['positions'],
   columnCount = 4
 ): StoredFlowCanvasState['positions'] {
-  return {
-    ...buildDefaultFlowCanvasPositions(nodes, columnCount),
-    ...Object.fromEntries(nodes
-      .filter((node) => savedPositions[node.id])
-      .map((node) => [node.id, savedPositions[node.id]]))
+  const columns = Math.max(1, Math.floor(columnCount))
+  const positions: StoredFlowCanvasState['positions'] = {}
+  const occupied = new Set<string>()
+
+  for (const node of nodes) {
+    const position = savedPositions[node.id]
+    if (!position) continue
+    positions[node.id] = position
+    occupied.add(positionKey(position))
   }
+
+  let cursor = 0
+  for (const node of nodes) {
+    if (positions[node.id]) continue
+    let position = gridPosition(cursor, columns)
+    while (occupied.has(positionKey(position))) {
+      cursor += 1
+      position = gridPosition(cursor, columns)
+    }
+    positions[node.id] = position
+    occupied.add(positionKey(position))
+    cursor += 1
+  }
+  return positions
 }
 
 export function captureFlowCanvasPositions(
@@ -243,6 +261,14 @@ function buildCanvasEdgeLabel(
   const source = nodes.find((node) => node.id === edge.source)?.title || edge.source
   const target = nodes.find((node) => node.id === edge.target)?.title || edge.target
   return `${source} 连接到 ${target}`
+}
+
+function gridPosition(index: number, columns: number) {
+  return { x: 80 + (index % columns) * 300, y: 120 + Math.floor(index / columns) * 220 }
+}
+
+function positionKey(position: { x: number; y: number }) {
+  return `${position.x}:${position.y}`
 }
 
 function isViewport(value: unknown): value is ViewportTransform {
