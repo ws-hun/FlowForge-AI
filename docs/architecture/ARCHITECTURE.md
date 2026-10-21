@@ -58,6 +58,8 @@ Canvas layout snapshots are stored locally with the last confirmed server revisi
 
 Canvas save failures requeue the attempted snapshot only when no newer edit is already waiting. A network retry therefore always favors the latest local canvas state, while revision conflicts still require the user's explicit choice.
 
+The editor mirrors persistence limits at interaction time: node coordinates stay within the API's +/-100,000 range and new connections stop at the API's 500-edge maximum. Restored edge IDs are normalized to the API's nonblank 120-character contract.
+
 ### History Module
 - Execution history tracking
 
