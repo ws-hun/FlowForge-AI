@@ -9,7 +9,8 @@ const api = vi.hoisted(() => ({
   listApiKeys: vi.fn(),
   listFlows: vi.fn(),
   rerunTask: vi.fn(),
-  runTask: vi.fn()
+  runTask: vi.fn(),
+  updateFlow: vi.fn()
 }))
 
 vi.mock('element-plus', () => ({
@@ -38,7 +39,7 @@ vi.mock('@/api/flows', () => ({
   deleteFlow: vi.fn(),
   listFlows: api.listFlows,
   restoreFlowVersion: vi.fn(),
-  updateFlow: vi.fn()
+  updateFlow: api.updateFlow
 }))
 
 vi.mock('@/api/prompts', () => ({
@@ -160,6 +161,7 @@ describe('workspace bootstrap', () => {
     expect(prompt).toBeNull()
     expect(context).toBeNull()
     expect(api.createFlow).not.toHaveBeenCalled()
+    expect(api.updateFlow).not.toHaveBeenCalled()
   })
 
   it('keeps a saved failed run visible when the follow-up history refresh is offline', async () => {
