@@ -89,6 +89,7 @@ Current Stage 3 capabilities:
 - Persisted Input, Context, Prompt, AI Task, and Output nodes.
 - Flow Space provides a free-positioning canvas with editable connections, local recovery, and bounded undo / redo history. Connections are visual composition only, while execution remains in saved node order and is not yet driven by graph topology.
 - Canvas keyboard access mirrors pointer workflows: Enter/Space selection updates the Inspector, canceled unsaved-edit transitions restore selection, and arrow-key movement participates in undo and persistence.
+- Holding an arrow key moves a selected canvas node continuously while creating one undo step for the gesture instead of filling history with repeated key events.
 - Auto-arrange distributes long Flows across a balanced grid, and applying the confirmed cloud canvas resets local undo history so discarded work cannot reappear through undo.
 - Canvas recovery compares normalized local and server layouts before restoring or retrying; stale local work is preserved for explicit conflict resolution, and a recovered network automatically retries only non-conflicting sync failures.
 - Canvas conflicts remain anchored to the locally acknowledged server revision across same-session Flow navigation; reading a newer remote revision alone never authorizes an overwrite.
