@@ -35,6 +35,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -163,6 +164,24 @@ class WorkflowControllerTest {
                                 }
                                 """))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void rejectsCanvasPositionsOutsideTheSupportedCoordinateRange() throws Exception {
+        UUID flowId = UUID.randomUUID();
+        mockMvc.perform(put("/api/flows/{id}/canvas", flowId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "revision": 0,
+                                  "positions": {"input": {"x": 100001, "y": 0}},
+                                  "edges": [],
+                                  "viewport": null
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verify(workflowCanvasStateService, never()).saveCanvasState(eq(flowId), any());
     }
 
     @Test
