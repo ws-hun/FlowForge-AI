@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   flowCanvasStatesDiffer,
   hasFlowCanvasRevisionConflict,
   resolveOfflineCanvasRestoreDecision,
   resolveFlowCanvasRestoreDecision
 } from '@/utils/flowCanvasSync'
+import { readFlowCanvasState, writeFlowCanvasServerRevision, writeFlowCanvasState } from '@/utils/flowCanvasState'
 import type { FlowNode } from '@/types'
 
 const nodes: FlowNode[] = [
@@ -106,6 +107,33 @@ describe('flow canvas synchronization policy', () => {
     expect(flowCanvasStatesDiffer(local, remote, nodes)).toBe(false)
     expect(flowCanvasStatesDiffer({ ...local, positions: { input: { x: 480, y: 120 } } }, remote, nodes)).toBe(true)
     expect(flowCanvasStatesDiffer({ ...local, viewport: { x: 12, y: 0, zoom: 1 } }, remote, nodes)).toBe(true)
+  })
+
+  it('uses a persisted revision to resume local work after a browser reload', () => {
+    const storage = new Map<string, string>()
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: (key: string) => storage.get(key) || null,
+        setItem: (key: string, value: string) => storage.set(key, value)
+      }
+    })
+    writeFlowCanvasState('flow', [{ id: 'prompt', position: { x: 540, y: 180 } }], [], null)
+    writeFlowCanvasServerRevision('flow', 9)
+
+    const restoredLocalState = readFlowCanvasState('flow')
+    const remote = { positions: {}, edges: [], viewport: null, saved: true }
+    const differs = flowCanvasStatesDiffer(restoredLocalState, remote, nodes)
+
+    expect(resolveOfflineCanvasRestoreDecision({
+      localDiffersFromCloud: differs,
+      knownRevision: restoredLocalState.serverRevision ?? undefined,
+      remoteRevision: 9
+    })).toBe('resume-local')
+    expect(resolveOfflineCanvasRestoreDecision({
+      localDiffersFromCloud: differs,
+      knownRevision: restoredLocalState.serverRevision ?? undefined,
+      remoteRevision: 10
+    })).toBe('conflict')
   })
 
   it('ignores edge ordering and legacy default handles but detects topology changes', () => {
