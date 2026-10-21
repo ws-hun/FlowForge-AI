@@ -9,6 +9,7 @@ import type { FlowNode } from '@/types'
 
 const nodes: FlowNode[] = [
   { id: 'input', type: 'input', title: 'Input', description: 'Goal' },
+  { id: 'transform', type: 'transform', title: 'Transform', description: 'Process' },
   { id: 'output', type: 'output', title: 'Output', description: 'Result' }
 ]
 
@@ -105,5 +106,32 @@ describe('flow canvas synchronization policy', () => {
     expect(flowCanvasStatesDiffer(local, remote, nodes)).toBe(false)
     expect(flowCanvasStatesDiffer({ ...local, positions: { input: { x: 480, y: 120 } } }, remote, nodes)).toBe(true)
     expect(flowCanvasStatesDiffer({ ...local, viewport: { x: 12, y: 0, zoom: 1 } }, remote, nodes)).toBe(true)
+  })
+
+  it('ignores edge ordering and legacy default handles but detects topology changes', () => {
+    const local = {
+      positions: {},
+      edges: [
+        { id: 'first', source: 'input', target: 'transform', sourceHandle: 'source', targetHandle: 'target' },
+        { id: 'second', source: 'transform', target: 'output', sourceHandle: 'source', targetHandle: 'target' }
+      ],
+      viewport: null,
+      hasSavedEdges: true
+    }
+    const remote = {
+      positions: {},
+      edges: [
+        { id: 'second', source: 'transform', target: 'output' },
+        { id: 'first', source: 'input', target: 'transform' }
+      ],
+      viewport: null,
+      saved: true
+    }
+
+    expect(flowCanvasStatesDiffer(local, remote, nodes)).toBe(false)
+    expect(flowCanvasStatesDiffer(local, {
+      ...remote,
+      edges: remote.edges.map((edge) => edge.id === 'second' ? { ...edge, target: 'input' } : edge)
+    }, nodes)).toBe(true)
   })
 })
