@@ -178,8 +178,17 @@ describe('flow canvas state', () => {
     expect(mergeFlowCanvasPositions(nodes, { prompt: { x: 380, y: 120 } })).toEqual({
       input: { x: 80, y: 120 },
       prompt: { x: 380, y: 120 },
-      ai: { x: 680, y: 120 },
-      output: { x: 980, y: 120 }
+      ai: { x: 80, y: 340 },
+      output: { x: 380, y: 340 }
+    })
+  })
+
+  it('uses the same adaptive columns when filling gaps around saved positions', () => {
+    expect(mergeFlowCanvasPositions(nodes, {}, 1)).toEqual({
+      input: { x: 80, y: 120 },
+      prompt: { x: 80, y: 340 },
+      ai: { x: 80, y: 560 },
+      output: { x: 80, y: 780 }
     })
   })
 
@@ -195,7 +204,7 @@ describe('flow canvas state', () => {
       input: { x: 80, y: 120 },
       prompt: { x: 980, y: 120 },
       ai: { x: 380, y: 120 },
-      output: { x: 680, y: 120 }
+      output: { x: 80, y: 340 }
     })
   })
 

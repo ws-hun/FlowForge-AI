@@ -58,11 +58,7 @@ export function buildDefaultFlowCanvasPositions(
   nodes: FlowNode[],
   columnCount?: number
 ): StoredFlowCanvasState['positions'] {
-  const columns = columnCount === undefined
-    ? Math.max(1, Math.min(MAX_DEFAULT_FLOW_CANVAS_COLUMNS, Math.ceil(Math.sqrt(nodes.length))))
-    : Number.isFinite(columnCount)
-      ? Math.max(1, Math.floor(columnCount))
-      : 1
+  const columns = resolveFlowCanvasColumnCount(nodes.length, columnCount)
   return Object.fromEntries(nodes.map((node, index) => [node.id, {
     x: 80 + (index % columns) * 300,
     y: 120 + Math.floor(index / columns) * 220
@@ -72,9 +68,9 @@ export function buildDefaultFlowCanvasPositions(
 export function mergeFlowCanvasPositions(
   nodes: FlowNode[],
   savedPositions: StoredFlowCanvasState['positions'],
-  columnCount = 4
+  columnCount?: number
 ): StoredFlowCanvasState['positions'] {
-  const columns = Math.max(1, Math.floor(columnCount))
+  const columns = resolveFlowCanvasColumnCount(nodes.length, columnCount)
   const positions: StoredFlowCanvasState['positions'] = {}
   const occupied = new Set<string>()
 
@@ -98,6 +94,13 @@ export function mergeFlowCanvasPositions(
     cursor += 1
   }
   return positions
+}
+
+function resolveFlowCanvasColumnCount(nodeCount: number, columnCount?: number): number {
+  if (columnCount === undefined) {
+    return Math.max(1, Math.min(MAX_DEFAULT_FLOW_CANVAS_COLUMNS, Math.ceil(Math.sqrt(nodeCount))))
+  }
+  return Number.isFinite(columnCount) ? Math.max(1, Math.floor(columnCount)) : 1
 }
 
 export function captureFlowCanvasPositions(
