@@ -54,6 +54,8 @@ src/
 - Persisted Flow canvas with Prompt, Result, Flow, and revision lineage
 - Idempotent Result-to-Flow promotion without restricting normal Prompt reuse
 
+Canvas layout snapshots are stored locally with the last confirmed server revision. A fetched revision is not written into that marker until the cloud state is applied, the user explicitly chooses to overwrite it, or a local save succeeds. After reload, local edits can resume automatically only when the server revision still matches; an unknown or changed revision keeps both versions available for explicit resolution.
+
 ### History Module
 - Execution history tracking
 
