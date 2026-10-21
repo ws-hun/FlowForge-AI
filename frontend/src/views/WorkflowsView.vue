@@ -231,6 +231,14 @@
                 >
                   重试同步
                 </button>
+                <template v-if="canvasSyncStatus === 'conflict'">
+                  <button type="button" class="flow-canvas-sync-retry" @click="keepLocalCanvasAfterConflict">
+                    保留本地
+                  </button>
+                  <button type="button" class="flow-canvas-sync-retry" @click="useCloudCanvasAfterConflict">
+                    使用云端
+                  </button>
+                </template>
               </div>
               <span class="flow-execution-mode" title="画布布局保存在 Flow 草稿中；运行时仍按节点列表顺序执行。">
                 <i></i> 执行：按顺序
@@ -1153,7 +1161,7 @@ const canvasSyncLabel = computed(() => ({
   synced: '已同步',
   local: '本地可用',
   saving: '保存中',
-  conflict: '云端有更新'
+  conflict: '需要解决冲突'
 })[canvasSyncStatus.value])
 const selectedCanvasEdgeCount = computed(() => flowCanvasInstance.value?.getSelectedEdges.value.length || 0)
 const flowCanvasInstance = shallowRef<VueFlowStore | null>(null)
@@ -2675,7 +2683,13 @@ async function restoreFlowCanvasFromServer(
     }
 
     if ((canvasEditGenerations.get(flowId) || 0) !== editGeneration) {
-      queueCurrentCanvasStateForSync(flowId)
+      if (data.saved) {
+        queueCurrentCanvasStateForSync(flowId)
+        canvasSyncAvailable.delete(flowId)
+        canvasSyncStatus.value = 'conflict'
+      } else {
+        queueCurrentCanvasStateForSync(flowId)
+      }
       return
     }
 
@@ -2717,7 +2731,7 @@ async function retryFlowCanvasSync() {
     if (data.saved && !pending) {
       applyServerCanvasState(data)
       canvasSyncStatus.value = 'synced'
-    } else if (data.saved && knownRevision !== undefined && knownRevision !== data.revision) {
+    } else if (data.saved && (knownRevision === undefined || knownRevision !== data.revision)) {
       canvasSyncAvailable.delete(flowId)
       canvasSyncStatus.value = 'conflict'
     } else if (pending) {
@@ -2729,6 +2743,49 @@ async function retryFlowCanvasSync() {
     if (flowId === activeCanvasFlowId.value) {
       canvasSyncStatus.value = apiErrorStatus(error) === 409 ? 'conflict' : 'local'
     }
+  }
+}
+
+async function keepLocalCanvasAfterConflict() {
+  const flowId = activeCanvasFlowId.value
+  if (!flowId || flowId !== workspace.activeFlowId) return
+  try {
+    await ElMessageBox.confirm(
+      '保留本地画布会覆盖云端当前布局与连线。',
+      '覆盖云端画布？',
+      { confirmButtonText: '覆盖云端', cancelButtonText: '再想想', type: 'warning' }
+    )
+    const { data } = await getFlowCanvasState(flowId)
+    if (flowId !== activeCanvasFlowId.value || flowId !== workspace.activeFlowId) return
+    canvasServerRevisions.set(flowId, data.revision)
+    canvasSyncAvailable.add(flowId)
+    if (!pendingCanvasSaves.has(flowId)) {
+      pendingCanvasSaves.set(flowId, currentCanvasSyncSnapshot())
+    }
+    void drainCanvasSaves(flowId)
+  } catch (error: unknown) {
+    if (error !== 'cancel' && error !== 'close') ElMessage.error(apiErrorMessage(error, '画布冲突处理失败'))
+  }
+}
+
+async function useCloudCanvasAfterConflict() {
+  const flowId = activeCanvasFlowId.value
+  if (!flowId || flowId !== workspace.activeFlowId) return
+  try {
+    await ElMessageBox.confirm(
+      '使用云端画布会替换当前本地布局与连线。',
+      '使用云端画布？',
+      { confirmButtonText: '使用云端', cancelButtonText: '保留本地', type: 'warning' }
+    )
+    const { data } = await getFlowCanvasState(flowId)
+    if (flowId !== activeCanvasFlowId.value || flowId !== workspace.activeFlowId) return
+    canvasServerRevisions.set(flowId, data.revision)
+    canvasSyncAvailable.add(flowId)
+    pendingCanvasSaves.delete(flowId)
+    applyServerCanvasState(data)
+    canvasSyncStatus.value = 'synced'
+  } catch (error: unknown) {
+    if (error !== 'cancel' && error !== 'close') ElMessage.error(apiErrorMessage(error, '读取云端画布失败'))
   }
 }
 
