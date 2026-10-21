@@ -2644,7 +2644,16 @@ function deleteSelectedCanvasEdges() {
 function connectFlowCanvasNodes(connection: Connection) {
   if (!canCreateFlowCanvasEdge(connection, canvasEdges.value)) return
   const id = createFlowCanvasEdgeId()
-  canvasEdges.value = addEdge({ ...connection, id, type: 'smoothstep', markerEnd: MarkerType.ArrowClosed }, canvasEdges.value) as Edge[]
+  const sourceTitle = workspace.activeFlow?.nodes.find((node) => node.id === connection.source)?.title || connection.source
+  const targetTitle = workspace.activeFlow?.nodes.find((node) => node.id === connection.target)?.title || connection.target
+  canvasEdges.value = addEdge({
+    ...connection,
+    id,
+    ariaLabel: `${sourceTitle} 连接到 ${targetTitle}`,
+    type: 'smoothstep',
+    markerEnd: MarkerType.ArrowClosed,
+    focusable: true
+  }, canvasEdges.value) as Edge[]
   persistCanvasState()
 }
 
