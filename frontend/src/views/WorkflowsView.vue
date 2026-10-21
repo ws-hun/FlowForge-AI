@@ -217,9 +217,25 @@
               <span>{{ canvasNodes.length }} 个节点 · {{ canvasEdges.length }} 条连接</span>
               <span v-if="selectedCanvasEdgeCount" class="flow-canvas-selection">已选 {{ selectedCanvasEdgeCount }} 条连接</span>
             </div>
-            <span class="flow-execution-mode" title="连线与布局仅保存在当前浏览器；运行时仍按节点列表顺序执行。">
-              <i></i> 执行：按顺序
-            </span>
+            <div class="flow-canvas-indicators">
+              <div class="flow-canvas-sync-group">
+                <span class="flow-canvas-sync-state" :class="`is-${canvasSyncStatus}`" aria-live="polite">
+                  <i></i>{{ canvasSyncLabel }}
+                </span>
+                <button
+                  v-if="canvasSyncStatus === 'local'"
+                  type="button"
+                  class="flow-canvas-sync-retry"
+                  :disabled="workspace.flowLoading"
+                  @click="retryFlowCanvasSync"
+                >
+                  重试同步
+                </button>
+              </div>
+              <span class="flow-execution-mode" title="画布布局保存在 Flow 草稿中；运行时仍按节点列表顺序执行。">
+                <i></i> 执行：按顺序
+              </span>
+            </div>
           </div>
           <VueFlow
             v-model:nodes="canvasNodes"
@@ -990,7 +1006,7 @@ import FlowEditorSaveBar from '@/components/flow/FlowEditorSaveBar.vue'
 import FlowExecutionInputPreview from '@/components/flow/FlowExecutionInputPreview.vue'
 import FlowRunTrace from '@/components/flow/FlowRunTrace.vue'
 import { formatExecutionSource } from '@/utils/aiProvider'
-import { apiErrorMessage } from '@/utils/apiError'
+import { apiErrorMessage, apiErrorStatus } from '@/utils/apiError'
 import { providerCanExecute, resolveProviderReadiness } from '@/utils/providerReadiness'
 import { createLatestRequestGate } from '@/utils/latestRequest'
 import {
@@ -1005,7 +1021,7 @@ import {
 } from '@/utils/flowNodeReadiness'
 import FlowRunSnapshot from '@/components/flow/FlowRunSnapshot.vue'
 import FlowCanvasNode from '@/components/flow/FlowCanvasNode.vue'
-import { listFlowRuns, listFlowVersions } from '@/api/flows'
+import { getFlowCanvasState, listFlowRuns, listFlowVersions, saveFlowCanvasState } from '@/api/flows'
 import { createPrompt, listPrompts } from '@/api/prompts'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { compareFlowRevision } from '@/utils/flowRevisions'
@@ -1050,12 +1066,14 @@ import {
 } from '@/utils/flowCanvasHistory'
 import type { FlowEditorDraft } from '@/utils/flowEditorDraft'
 import type {
+  FlowCanvasState,
   FlowNode,
   FlowNodeType,
   FlowRunSnapshot as FlowRunSnapshotType,
   FlowVersion,
   PromptAsset,
   SavePromptPayload,
+  SaveFlowCanvasStatePayload,
   TaskHistoryItem,
   TaskRunResponse
 } from '@/types'
@@ -1129,11 +1147,26 @@ const canvasEdges = shallowRef<Edge[]>([])
 const canvasHistory = ref<FlowCanvasHistory>(createFlowCanvasHistory())
 const canUndoCanvasEdit = computed(() => canvasHistory.value.past.length > 0)
 const canRedoCanvasEdit = computed(() => canvasHistory.value.future.length > 0)
+const canvasSyncStatus = ref<'loading' | 'synced' | 'local' | 'saving' | 'conflict'>('loading')
+const canvasSyncLabel = computed(() => ({
+  loading: '恢复画布',
+  synced: '已同步',
+  local: '本地可用',
+  saving: '保存中',
+  conflict: '云端有更新'
+})[canvasSyncStatus.value])
 const selectedCanvasEdgeCount = computed(() => flowCanvasInstance.value?.getSelectedEdges.value.length || 0)
 const flowCanvasInstance = shallowRef<VueFlowStore | null>(null)
 const activeCanvasFlowId = ref('')
 let canvasStorageWarningShown = false
 let canvasViewportRestoreGeneration = 0
+const canvasServerRevisions = new Map<string, number>()
+const canvasEditGenerations = new Map<string, number>()
+const canvasSyncAvailable = new Set<string>()
+const pendingCanvasSaves = new Map<string, Omit<SaveFlowCanvasStatePayload, 'revision'>>()
+const canvasSavingFlows = new Set<string>()
+let canvasSaveTimer: ReturnType<typeof setTimeout> | null = null
+let scheduledCanvasSaveFlowId = ''
 const flowNodeTypes = { flowCanvas: FlowCanvasNode }
 const defaultCanvasEdgeOptions = {
   type: 'smoothstep',
@@ -1837,6 +1870,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  flushCanvasSaveTimer()
   window.removeEventListener('beforeunload', handleBeforeUnload)
   window.removeEventListener('keydown', handleFlowCanvasHistoryShortcut)
   promptAssetsRequest.invalidate()
@@ -2610,15 +2644,106 @@ function canvasNodeData(node: FlowNode): Omit<FlowCanvasNodeData, 'flowNode'> {
 function loadFlowCanvas(flowId: string) {
   const flow = workspace.activeFlow
   if (!flow || flow.id !== flowId) return
+  flushCanvasSaveTimer()
   const saved = readFlowCanvasState(flowId)
+  const editGeneration = canvasEditGenerations.get(flowId) || 0
   canvasViewportRestoreGeneration += 1
   activeCanvasFlowId.value = flowId
+  canvasSyncStatus.value = 'loading'
   canvasHistory.value = createFlowCanvasHistory()
   const positions = saved.positions
   const canvasPositions = mergeFlowCanvasPositions(flow.nodes, positions)
   canvasNodes.value = buildFlowCanvasNodes(flow, canvasPositions, canvasNodeData)
   canvasEdges.value = resolveFlowCanvasEdges(saved.edges, flow.nodes, MarkerType.ArrowClosed, saved.hasSavedEdges)
   restoreFlowCanvasViewport(flowId)
+  void restoreFlowCanvasFromServer(flowId, editGeneration, saved)
+}
+
+async function restoreFlowCanvasFromServer(
+  flowId: string,
+  editGeneration: number,
+  localState: ReturnType<typeof readFlowCanvasState>
+) {
+  try {
+    const { data } = await getFlowCanvasState(flowId)
+    canvasServerRevisions.set(flowId, data.revision)
+    canvasSyncAvailable.add(flowId)
+
+    if (flowId !== activeCanvasFlowId.value || flowId !== workspace.activeFlowId) {
+      if (pendingCanvasSaves.has(flowId)) void drainCanvasSaves(flowId)
+      return
+    }
+
+    if ((canvasEditGenerations.get(flowId) || 0) !== editGeneration) {
+      queueCurrentCanvasStateForSync(flowId)
+      return
+    }
+
+    if (data.saved) {
+      applyServerCanvasState(data)
+      canvasSyncStatus.value = 'synced'
+      return
+    }
+
+    const hasLocalCanvas = localState.hasSavedEdges || Object.keys(localState.positions).length > 0 || Boolean(localState.viewport)
+    if (hasLocalCanvas) {
+      pendingCanvasSaves.set(flowId, {
+        positions: localState.positions,
+        edges: localState.edges,
+        viewport: localState.viewport
+      })
+      void drainCanvasSaves(flowId)
+      return
+    }
+    canvasSyncStatus.value = 'synced'
+  } catch (error: unknown) {
+    canvasSyncAvailable.delete(flowId)
+    if (flowId !== activeCanvasFlowId.value || flowId !== workspace.activeFlowId) return
+    canvasSyncStatus.value = apiErrorStatus(error) === 409 ? 'conflict' : 'local'
+  }
+}
+
+async function retryFlowCanvasSync() {
+  const flowId = activeCanvasFlowId.value
+  if (!flowId || flowId !== workspace.activeFlowId) return
+  canvasSyncStatus.value = 'loading'
+  try {
+    const { data } = await getFlowCanvasState(flowId)
+    if (flowId !== activeCanvasFlowId.value || flowId !== workspace.activeFlowId) return
+    const pending = pendingCanvasSaves.has(flowId)
+    const knownRevision = canvasServerRevisions.get(flowId)
+    canvasServerRevisions.set(flowId, data.revision)
+    canvasSyncAvailable.add(flowId)
+    if (data.saved && !pending) {
+      applyServerCanvasState(data)
+      canvasSyncStatus.value = 'synced'
+    } else if (data.saved && knownRevision !== undefined && knownRevision !== data.revision) {
+      canvasSyncAvailable.delete(flowId)
+      canvasSyncStatus.value = 'conflict'
+    } else if (pending) {
+      void drainCanvasSaves(flowId)
+    } else {
+      canvasSyncStatus.value = 'synced'
+    }
+  } catch (error: unknown) {
+    if (flowId === activeCanvasFlowId.value) {
+      canvasSyncStatus.value = apiErrorStatus(error) === 409 ? 'conflict' : 'local'
+    }
+  }
+}
+
+function applyServerCanvasState(state: FlowCanvasState) {
+  const flow = workspace.activeFlow
+  if (!flow || flow.id !== state.flowId) return
+  const positions = mergeFlowCanvasPositions(flow.nodes, state.positions)
+  canvasNodes.value = buildFlowCanvasNodes(flow, positions, canvasNodeData)
+  canvasEdges.value = resolveFlowCanvasEdges(state.edges, flow.nodes, MarkerType.ArrowClosed, state.saved)
+  writeFlowCanvasState(state.flowId, canvasNodes.value, canvasEdges.value, state.viewport)
+  if (state.viewport) {
+    void nextTick(() => flowCanvasInstance.value?.setViewport(state.viewport!))
+  } else {
+    restoreFlowCanvasViewport(state.flowId)
+  }
 }
 
 function refreshFlowCanvasNodes() {
@@ -2710,6 +2835,7 @@ function persistCanvasState() {
       canvasStorageWarningShown = true
       ElMessage.warning('浏览器无法保存画布布局，刷新后可能重置')
     }
+    scheduleCanvasServerSave(flowId)
   }
 }
 
@@ -2718,10 +2844,84 @@ function recordCanvasEdit() {
 }
 
 function recordCanvasEditState(edges: ReadonlyArray<Edge>) {
+  const flowId = activeCanvasFlowId.value
+  if (flowId) canvasEditGenerations.set(flowId, (canvasEditGenerations.get(flowId) || 0) + 1)
   canvasHistory.value = recordFlowCanvasEdit(
     canvasHistory.value,
     captureFlowCanvasEditSnapshot(canvasNodes.value, edges)
   )
+}
+
+function currentCanvasSyncSnapshot(): Omit<SaveFlowCanvasStatePayload, 'revision'> {
+  return {
+    positions: captureFlowCanvasPositions(canvasNodes.value),
+    edges: canvasEdges.value.map(({ id, source, target, sourceHandle, targetHandle }) => ({
+      id,
+      source,
+      target,
+      sourceHandle,
+      targetHandle
+    })),
+    viewport: flowCanvasInstance.value?.getViewport() || null
+  }
+}
+
+function queueCurrentCanvasStateForSync(flowId: string) {
+  if (canvasSaveTimer && scheduledCanvasSaveFlowId === flowId) {
+    clearTimeout(canvasSaveTimer)
+    canvasSaveTimer = null
+  }
+  pendingCanvasSaves.set(flowId, currentCanvasSyncSnapshot())
+  void drainCanvasSaves(flowId)
+}
+
+function scheduleCanvasServerSave(flowId: string) {
+  scheduledCanvasSaveFlowId = flowId
+  if (canvasSaveTimer) clearTimeout(canvasSaveTimer)
+  canvasSaveTimer = setTimeout(() => {
+    canvasSaveTimer = null
+    if (flowId !== activeCanvasFlowId.value || flowId !== workspace.activeFlowId) return
+    queueCurrentCanvasStateForSync(flowId)
+  }, 450)
+}
+
+function flushCanvasSaveTimer() {
+  if (!canvasSaveTimer) return
+  clearTimeout(canvasSaveTimer)
+  canvasSaveTimer = null
+  const flowId = scheduledCanvasSaveFlowId
+  if (flowId && flowId === activeCanvasFlowId.value) queueCurrentCanvasStateForSync(flowId)
+}
+
+async function drainCanvasSaves(flowId: string) {
+  if (!canvasSyncAvailable.has(flowId) || canvasSavingFlows.has(flowId)) return
+  canvasSavingFlows.add(flowId)
+  try {
+    while (canvasSyncAvailable.has(flowId) && pendingCanvasSaves.has(flowId)) {
+      const snapshot = pendingCanvasSaves.get(flowId)!
+      pendingCanvasSaves.delete(flowId)
+      if (flowId === activeCanvasFlowId.value) canvasSyncStatus.value = 'saving'
+      try {
+        const { data } = await saveFlowCanvasState(flowId, {
+          ...snapshot,
+          revision: canvasServerRevisions.get(flowId) || 0
+        })
+        canvasServerRevisions.set(flowId, data.revision)
+        if (flowId === activeCanvasFlowId.value) canvasSyncStatus.value = 'synced'
+      } catch (error: unknown) {
+        pendingCanvasSaves.set(flowId, snapshot)
+        if (apiErrorStatus(error) === 409) {
+          canvasSyncAvailable.delete(flowId)
+          if (flowId === activeCanvasFlowId.value) canvasSyncStatus.value = 'conflict'
+        } else if (flowId === activeCanvasFlowId.value) {
+          canvasSyncStatus.value = 'local'
+        }
+        break
+      }
+    }
+  } finally {
+    canvasSavingFlows.delete(flowId)
+  }
 }
 
 function recordRemovedCanvasEdges(changes: EdgeChange[]) {

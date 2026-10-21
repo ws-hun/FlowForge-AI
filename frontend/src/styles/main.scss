@@ -5633,6 +5633,62 @@ a {
   }
 }
 
+.flow-canvas-indicators {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.flow-canvas-sync-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flow-canvas-sync-retry {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: tokens.$primary;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+
+  &:disabled {
+    cursor: wait;
+    opacity: 0.55;
+  }
+}
+
+.flow-canvas-sync-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: tokens.$text-muted;
+  font-size: 11px;
+  white-space: nowrap;
+
+  i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: tokens.$success;
+  }
+
+  &.is-loading i,
+  &.is-saving i {
+    background: tokens.$primary;
+  }
+
+  &.is-local i {
+    background: tokens.$warning;
+  }
+
+  &.is-conflict i {
+    background: tokens.$error;
+  }
+}
+
 .flow-canvas-graph {
   height: 520px;
   touch-action: none;
@@ -8343,6 +8399,11 @@ a {
   .flow-canvas-toolbar {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .flow-canvas-indicators {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .flow-canvas-count {
