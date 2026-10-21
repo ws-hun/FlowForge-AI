@@ -131,6 +131,35 @@ describe('flow canvas state', () => {
     })
   })
 
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    'falls back to one column for an invalid explicit column count (%s)',
+    (columnCount) => {
+      expect(buildDefaultFlowCanvasPositions(nodes, columnCount)).toEqual({
+        input: { x: 80, y: 120 },
+        prompt: { x: 80, y: 340 },
+        ai: { x: 80, y: 560 },
+        output: { x: 80, y: 780 }
+      })
+    }
+  )
+
+  it('creates unique finite grid positions for every supported Flow size', () => {
+    for (let count = 0; count <= 50; count += 1) {
+      const flowNodes = Array.from({ length: count }, (_, index) => ({
+        id: `flow-${count}-node-${index}`,
+        type: 'prompt' as const,
+        title: `Node ${index}`,
+        description: ''
+      }))
+      const positions = Object.values(buildDefaultFlowCanvasPositions(flowNodes))
+      const uniquePositions = new Set(positions.map(({ x, y }) => `${x}:${y}`))
+
+      expect(uniquePositions.size).toBe(count)
+      expect(positions.every(({ x, y }) => Number.isFinite(x) && Number.isFinite(y))).toBe(true)
+      expect(positions.every(({ x }) => x >= 80 && x <= 980)).toBe(true)
+    }
+  })
+
   it('keeps saved positions while laying out newly added nodes on the default grid', () => {
     expect(mergeFlowCanvasPositions(nodes, { prompt: { x: 380, y: 120 } })).toEqual({
       input: { x: 80, y: 120 },
