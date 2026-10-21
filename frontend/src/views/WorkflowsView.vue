@@ -1078,6 +1078,7 @@ import {
   createFlowCanvasSyncEpochs,
   flowCanvasStatesDiffer,
   hasFlowCanvasRevisionConflict,
+  preserveLatestCanvasSyncSnapshot,
   resolveMissingCloudCanvasDecision,
   resolveOfflineCanvasRestoreDecision,
   resolveFlowCanvasRestoreDecision
@@ -3094,7 +3095,10 @@ async function drainCanvasSaves(flowId: string) {
         if (flowId === activeCanvasFlowId.value) canvasSyncStatus.value = 'synced'
       } catch (error: unknown) {
         if (!canvasSyncEpochs.matches(flowId, syncEpoch)) break
-        pendingCanvasSaves.set(flowId, snapshot)
+        pendingCanvasSaves.set(
+          flowId,
+          preserveLatestCanvasSyncSnapshot(pendingCanvasSaves.get(flowId), snapshot)
+        )
         if (apiErrorStatus(error) === 409) {
           canvasSyncAvailable.delete(flowId)
           if (flowId === activeCanvasFlowId.value) canvasSyncStatus.value = 'conflict'

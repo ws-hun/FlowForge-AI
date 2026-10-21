@@ -3,6 +3,7 @@ import {
   createFlowCanvasSyncEpochs,
   flowCanvasStatesDiffer,
   hasFlowCanvasRevisionConflict,
+  preserveLatestCanvasSyncSnapshot,
   resolveMissingCloudCanvasDecision,
   resolveOfflineCanvasRestoreDecision,
   resolveFlowCanvasRestoreDecision
@@ -17,6 +18,14 @@ const nodes: FlowNode[] = [
 ]
 
 describe('flow canvas synchronization policy', () => {
+  it('does not replace a newer queued snapshot when an older save fails', () => {
+    const attempted = { positions: { input: { x: 10, y: 20 } } }
+    const newerPending = { positions: { input: { x: 90, y: 120 } } }
+
+    expect(preserveLatestCanvasSyncSnapshot(newerPending, attempted)).toBe(newerPending)
+    expect(preserveLatestCanvasSyncSnapshot(undefined, attempted)).toBe(attempted)
+  })
+
   it('invalidates late sync completions independently for each flow', () => {
     const epochs = createFlowCanvasSyncEpochs()
     const { current, invalidate, matches } = epochs

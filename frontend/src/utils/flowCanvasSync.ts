@@ -6,6 +6,10 @@ export type FlowCanvasRestoreDecision = 'use-cloud' | 'save-local' | 'migrate-lo
 export type OfflineCanvasRestoreDecision = 'identical' | 'resume-local' | 'conflict'
 export type MissingCloudCanvasDecision = 'empty' | 'migrate-local' | 'conflict'
 
+export function preserveLatestCanvasSyncSnapshot<T>(pending: T | undefined, failed: T): T {
+  return pending ?? failed
+}
+
 export function createFlowCanvasSyncEpochs() {
   const epochs = new Map<string, number>()
   const current = (flowId: string) => epochs.get(flowId) || 0
