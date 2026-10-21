@@ -100,6 +100,17 @@ export function captureFlowCanvasPositions(
   return Object.fromEntries(nodes.map(({ id, position }) => [id, { x: position.x, y: position.y }]))
 }
 
+export function normalizeFlowCanvasViewport(viewport: ViewportTransform | null): ViewportTransform | null {
+  if (!viewport || !Number.isFinite(viewport.x) || !Number.isFinite(viewport.y) || !Number.isFinite(viewport.zoom)) {
+    return null
+  }
+  return {
+    x: Math.max(-MAX_FLOW_CANVAS_OFFSET, Math.min(MAX_FLOW_CANVAS_OFFSET, viewport.x)),
+    y: Math.max(-MAX_FLOW_CANVAS_OFFSET, Math.min(MAX_FLOW_CANVAS_OFFSET, viewport.y)),
+    zoom: Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, viewport.zoom))
+  }
+}
+
 export function buildSequentialCanvasEdges(
   nodes: FlowNode[],
   arrowMarker: MarkerType
@@ -193,7 +204,7 @@ export function writeFlowCanvasState(
     edges: edges.map(({ id, source, target, sourceHandle, targetHandle }) => ({
       id, source, target, sourceHandle, targetHandle
     })),
-    viewport,
+    viewport: normalizeFlowCanvasViewport(viewport),
     hasSavedEdges: true,
     serverRevision: readFlowCanvasState(flowId).serverRevision ?? null
   }

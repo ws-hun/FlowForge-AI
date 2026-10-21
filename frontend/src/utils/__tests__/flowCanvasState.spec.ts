@@ -10,6 +10,7 @@ import {
   mergeFlowCanvasPositions,
   MAX_FLOW_CANVAS_EDGES,
   MAX_FLOW_CANVAS_OFFSET,
+  normalizeFlowCanvasViewport,
   readFlowCanvasState,
   removeFlowCanvasState,
   removeFlowCanvasEdges,
@@ -187,6 +188,15 @@ describe('flow canvas state', () => {
     expect(readFlowCanvasState('flow').viewport).toBeNull()
     getItem.mockReturnValueOnce(JSON.stringify({ viewport: { x: 1_000_000, y: 0, zoom: 1 } }))
     expect(readFlowCanvasState('flow').viewport).toBeNull()
+  })
+
+  it('normalizes viewport coordinates and zoom to backend limits', () => {
+    expect(normalizeFlowCanvasViewport({ x: 120_000, y: -120_000, zoom: 2 })).toEqual({
+      x: 100_000,
+      y: -100_000,
+      zoom: 1.6
+    })
+    expect(normalizeFlowCanvasViewport({ x: Number.NaN, y: 0, zoom: 1 })).toBeNull()
   })
 
   it('keeps legacy canvas snapshots without a viewport readable', () => {

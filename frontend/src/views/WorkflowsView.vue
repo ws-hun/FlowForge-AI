@@ -1058,6 +1058,7 @@ import {
   MAX_FLOW_CANVAS_EDGES,
   MAX_FLOW_CANVAS_OFFSET,
   mergeFlowCanvasPositions,
+  normalizeFlowCanvasViewport,
   readFlowCanvasState,
   removeFlowCanvasState,
   removeFlowCanvasEdges,
@@ -3036,7 +3037,7 @@ function currentCanvasSyncSnapshot(): Omit<SaveFlowCanvasStatePayload, 'revision
       sourceHandle,
       targetHandle
     })),
-    viewport: flowCanvasInstance.value?.getViewport() || null
+    viewport: normalizeFlowCanvasViewport(flowCanvasInstance.value?.getViewport() || null)
   }
 }
 
