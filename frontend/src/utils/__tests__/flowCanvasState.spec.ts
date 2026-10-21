@@ -229,6 +229,19 @@ describe('flow canvas state', () => {
     expect(readFlowCanvasState('flow').serverRevision).toBe(7)
   })
 
+  it.each([-1, 1.5, '7', Number.MAX_SAFE_INTEGER + 1])(
+    'treats invalid cached server revision %s as unknown',
+    (serverRevision) => {
+      vi.stubGlobal('window', {
+        localStorage: {
+          getItem: () => JSON.stringify({ positions: {}, edges: [], serverRevision })
+        }
+      })
+
+      expect(readFlowCanvasState('flow').serverRevision).toBeNull()
+    }
+  )
+
   it('reports when browser storage rejects the canvas snapshot', () => {
     vi.stubGlobal('window', {
       localStorage: {
