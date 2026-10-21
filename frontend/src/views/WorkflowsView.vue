@@ -1075,6 +1075,7 @@ import {
 import {
   flowCanvasStatesDiffer,
   hasFlowCanvasRevisionConflict,
+  resolveOfflineCanvasRestoreDecision,
   resolveFlowCanvasRestoreDecision
 } from '@/utils/flowCanvasSync'
 import type { FlowEditorDraft } from '@/utils/flowEditorDraft'
@@ -2699,14 +2700,19 @@ async function restoreFlowCanvasFromServer(
     if (data.saved && hasLocalCanvas && !localDiffersFromCloud) {
       pendingCanvasSaves.delete(flowId)
     }
-    if (localDiffersFromCloud) {
-      if (knownRevision === data.revision) {
-        queueCurrentCanvasStateForSync(flowId)
-      } else {
-        queueCurrentCanvasStateForSync(flowId)
-        canvasSyncAvailable.delete(flowId)
-        canvasSyncStatus.value = 'conflict'
-      }
+    const offlineDecision = resolveOfflineCanvasRestoreDecision({
+      localDiffersFromCloud,
+      knownRevision,
+      remoteRevision: data.revision
+    })
+    if (offlineDecision === 'resume-local') {
+      queueCurrentCanvasStateForSync(flowId)
+      return
+    }
+    if (offlineDecision === 'conflict') {
+      queueCurrentCanvasStateForSync(flowId)
+      canvasSyncAvailable.delete(flowId)
+      canvasSyncStatus.value = 'conflict'
       return
     }
 

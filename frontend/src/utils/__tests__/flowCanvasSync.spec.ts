@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   flowCanvasStatesDiffer,
   hasFlowCanvasRevisionConflict,
+  resolveOfflineCanvasRestoreDecision,
   resolveFlowCanvasRestoreDecision
 } from '@/utils/flowCanvasSync'
 import type { FlowNode } from '@/types'
@@ -63,6 +64,29 @@ describe('flow canvas synchronization policy', () => {
       knownRevision: undefined,
       remoteRevision: 0
     })).toBe(false)
+  })
+
+  it('resumes offline edits only when the cloud revision is unchanged', () => {
+    expect(resolveOfflineCanvasRestoreDecision({
+      localDiffersFromCloud: true,
+      knownRevision: 4,
+      remoteRevision: 4
+    })).toBe('resume-local')
+    expect(resolveOfflineCanvasRestoreDecision({
+      localDiffersFromCloud: true,
+      knownRevision: undefined,
+      remoteRevision: 4
+    })).toBe('conflict')
+    expect(resolveOfflineCanvasRestoreDecision({
+      localDiffersFromCloud: true,
+      knownRevision: 3,
+      remoteRevision: 4
+    })).toBe('conflict')
+    expect(resolveOfflineCanvasRestoreDecision({
+      localDiffersFromCloud: false,
+      knownRevision: 3,
+      remoteRevision: 4
+    })).toBe('identical')
   })
 
   it('compares normalized local and cloud state while ignoring stale node IDs', () => {

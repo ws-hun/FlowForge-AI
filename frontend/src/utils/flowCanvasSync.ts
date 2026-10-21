@@ -3,6 +3,17 @@ import type { FlowCanvasState, FlowNode } from '@/types'
 import { mergeFlowCanvasPositions, resolveFlowCanvasEdges, type StoredFlowCanvasState } from '@/utils/flowCanvasState'
 
 export type FlowCanvasRestoreDecision = 'use-cloud' | 'save-local' | 'migrate-local' | 'empty' | 'conflict'
+export type OfflineCanvasRestoreDecision = 'identical' | 'resume-local' | 'conflict'
+
+export function resolveOfflineCanvasRestoreDecision(input: {
+  localDiffersFromCloud: boolean
+  knownRevision: number | undefined
+  remoteRevision: number
+}): OfflineCanvasRestoreDecision {
+  if (!input.localDiffersFromCloud) return 'identical'
+  if (input.knownRevision === undefined || input.knownRevision !== input.remoteRevision) return 'conflict'
+  return 'resume-local'
+}
 
 export function resolveFlowCanvasRestoreDecision(input: {
   remoteSaved: boolean
