@@ -1085,6 +1085,7 @@ const canvasEdges = shallowRef<Edge[]>([])
 const selectedCanvasEdgeCount = computed(() => flowCanvasInstance.value?.getSelectedEdges.value.length || 0)
 const flowCanvasInstance = shallowRef<VueFlowStore | null>(null)
 const activeCanvasFlowId = ref('')
+let canvasStorageWarningShown = false
 const flowNodeTypes = { flowCanvas: FlowCanvasNode }
 const defaultCanvasEdgeOptions = {
   type: 'smoothstep',
@@ -2631,7 +2632,16 @@ function restoreSequentialCanvasEdges() {
 function persistCanvasState() {
   const flowId = activeCanvasFlowId.value
   if (flowId && flowId === workspace.activeFlowId) {
-    writeFlowCanvasState(flowId, canvasNodes.value, canvasEdges.value, flowCanvasInstance.value?.getViewport() || null)
+    const saved = writeFlowCanvasState(
+      flowId,
+      canvasNodes.value,
+      canvasEdges.value,
+      flowCanvasInstance.value?.getViewport() || null
+    )
+    if (!saved && !canvasStorageWarningShown) {
+      canvasStorageWarningShown = true
+      ElMessage.warning('浏览器无法保存画布布局，刷新后可能重置')
+    }
   }
 }
 

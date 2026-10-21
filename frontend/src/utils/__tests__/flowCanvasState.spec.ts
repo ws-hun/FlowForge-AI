@@ -122,13 +122,22 @@ describe('flow canvas state', () => {
       }
     })
     const viewport = { x: -240, y: 96, zoom: 1.2 }
-    writeFlowCanvasState('flow', [{ id: 'input', position: { x: 12, y: 24 } }], [], viewport)
+    expect(writeFlowCanvasState('flow', [{ id: 'input', position: { x: 12, y: 24 } }], [], viewport)).toBe(true)
 
     expect(readFlowCanvasState('flow')).toMatchObject({
       positions: { input: { x: 12, y: 24 } },
       edges: [],
       viewport
     })
+  })
+
+  it('reports when browser storage rejects the canvas snapshot', () => {
+    vi.stubGlobal('window', {
+      localStorage: {
+        setItem: () => { throw new Error('storage denied') }
+      }
+    })
+    expect(writeFlowCanvasState('flow', [], [])).toBe(false)
   })
 
   it('removes visual connections by selected graph IDs', () => {

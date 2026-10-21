@@ -115,8 +115,8 @@ export function writeFlowCanvasState(
   nodes: ReadonlyArray<{ id: string; position: { x: number; y: number } }>,
   edges: ReadonlyArray<Pick<Edge, 'id' | 'source' | 'target' | 'sourceHandle' | 'targetHandle'>>,
   viewport: ViewportTransform | null = null
-) {
-  if (typeof window === 'undefined') return
+): boolean {
+  if (typeof window === 'undefined') return false
   const state: StoredFlowCanvasState = {
     positions: Object.fromEntries(nodes.map(({ id, position }) => [id, position])),
     edges: edges.map(({ id, source, target, sourceHandle, targetHandle }) => ({
@@ -127,8 +127,9 @@ export function writeFlowCanvasState(
   }
   try {
     window.localStorage.setItem(`${STORAGE_PREFIX}${flowId}`, JSON.stringify(state))
+    return true
   } catch {
-    // Keep the canvas usable in memory when browser storage is unavailable.
+    return false
   }
 }
 
