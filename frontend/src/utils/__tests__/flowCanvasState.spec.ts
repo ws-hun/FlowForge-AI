@@ -133,7 +133,7 @@ describe('flow canvas state', () => {
     expect(canvasNode.ariaLabel).toBe('Input，input，待补充，准备上下文')
   })
 
-  it('restores only valid local edges and falls back to the visual chain', () => {
+  it('restores valid local edges, repairs duplicate IDs and falls back to the visual chain', () => {
     const saved = [
       { id: 'saved', source: 'input', target: 'output' },
       { id: 'duplicate', source: 'input', target: 'output' },
@@ -142,7 +142,11 @@ describe('flow canvas state', () => {
       { id: 'stale', source: 'gone', target: 'output' }
     ]
     const restored = resolveFlowCanvasEdges(saved, nodes, MarkerType.ArrowClosed)
-    expect(restored.map((edge) => edge.id)).toEqual(['saved'])
+    expect(restored).toHaveLength(2)
+    expect(new Set(restored.map((edge) => edge.id)).size).toBe(2)
+    expect(restored.map((edge) => [edge.source, edge.target])).toEqual([
+      ['input', 'output'], ['prompt', 'output']
+    ])
     expect(restored[0].ariaLabel).toBe('Input 连接到 Output')
     expect(restored[0].sourceHandle).toBe('source')
     expect(restored[0].targetHandle).toBe('target')
