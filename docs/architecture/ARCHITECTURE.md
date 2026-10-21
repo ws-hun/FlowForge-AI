@@ -58,6 +58,8 @@ Canvas layout snapshots are stored locally with the last confirmed server revisi
 
 Canvas save failures requeue the attempted snapshot only when no newer edit is already waiting. A network retry therefore always favors the latest local canvas state, while revision conflicts still require the user's explicit choice.
 
+Flow canvas nodes are keyboard-focusable. Enter and Space selection synchronize the Inspector with Vue Flow's selected node after its built-in keyboard handler runs; canceling the unsaved-edit guard restores the prior canvas selection just as it does for pointer selection.
+
 Canvas revision tracking distinguishes the last locally acknowledged baseline from the latest revision merely observed in a conflict response. Re-entering a conflicted Flow continues comparing against the acknowledged baseline until the user resolves the conflict, preventing a same-session navigation from silently converting a conflict into an overwrite.
 
 The editor mirrors persistence limits at interaction time: node positions and canvas navigation use the API's +/-100,000 coordinate boundary, viewport coordinates and zoom are normalized before local or remote saves, and new connections stop at the API's 500-edge maximum. Restored edge IDs are normalized to the API's nonblank 120-character contract; generated default edge IDs stay within that limit even for maximum-length node IDs.
