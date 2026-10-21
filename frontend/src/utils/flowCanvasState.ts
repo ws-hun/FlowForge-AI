@@ -199,6 +199,8 @@ export function resolveFlowCanvasEdges(
   if (!hasSavedEdges) return buildSequentialCanvasEdges(nodes, arrowMarker)
   return validEdges.map((edge) => ({
     ...edge,
+    sourceHandle: edge.sourceHandle || 'source',
+    targetHandle: edge.targetHandle || 'target',
     ariaLabel: buildCanvasEdgeLabel(edge, nodes),
     type: 'smoothstep',
     markerEnd: arrowMarker,
