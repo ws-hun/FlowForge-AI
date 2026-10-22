@@ -92,7 +92,7 @@ Current Stage 3 capabilities:
 - Holding an arrow key moves a selected canvas node continuously while creating one undo step for the gesture instead of filling history with repeated key events.
 - Auto-arrange uses a compact single row for short Flows and a balanced grid of up to four columns for longer Flows; applying the confirmed cloud canvas resets local undo history so discarded work cannot reappear through undo.
 - Canvas recovery compares normalized local and server layouts before restoring or retrying; stale local work is preserved for explicit conflict resolution, and a recovered network retries pending canvases for both the active and inactive Flows through the same revision checks.
-- A background canvas retry acknowledges an already-landed cloud save by normalized content even when its response was lost, while divergent pending edits still require the last acknowledged revision to match.
+- Canvas retries acknowledge an already-landed cloud save by normalized content even when its response was lost; divergent pending edits require the last acknowledged revision to match, and an active retry refreshes its queued snapshot from the live canvas before saving.
 - Canvas conflicts remain anchored to the locally acknowledged server revision across same-session Flow navigation; reading a newer remote revision alone never authorizes an overwrite.
 - Deferred canvas viewport restores verify both the active workspace Flow and navigation generation, so a late callback cannot move a different Flow's canvas.
 - Canvas conflict checks compare edge endpoints rather than generated IDs; compatibility ID generation avoids current collisions and repairs duplicate identifiers in legacy local snapshots without dropping valid connections.
