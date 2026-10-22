@@ -100,7 +100,7 @@ Current Stage 3 capabilities:
 - Prompt and Context additions stop at the API's 50-node Flow limit in both the workspace controls and shared creation boundary, before a rejected persistence request is sent.
 - Default visual connections use bounded identifiers with an edge-order discriminator, remaining unique even when legal Flow node IDs share maximum-length prefixes.
 - Canvas node/navigation coordinates, viewport zoom, 500-edge capacity, and 120-character edge IDs mirror server constraints; legacy migration sends the repaired live graph rather than malformed raw cache entries.
-- Canvas layout and visual connections now sync to a dedicated versioned Flow state without creating Flow content revisions. Existing browser layouts migrate when no cloud layout exists, offline edits remain locally available, and multi-window conflicts require an explicit local-or-cloud choice.
+- Canvas layout and visual connections now sync to a dedicated versioned Flow state without creating Flow content revisions. Equivalent saves do not advance its revision; real layout or viewport changes do. Existing browser layouts migrate when no cloud layout exists, offline edits remain locally available, and multi-window conflicts require an explicit local-or-cloud choice.
 - Flow variables with preflight validation and atomic rename.
 - Server-compiled execution previews.
 - Immutable run snapshots with source, Provider, model, token usage, and execution duration.
