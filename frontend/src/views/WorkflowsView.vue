@@ -2838,6 +2838,10 @@ async function retryFlowCanvasSync() {
     if (!canvasSyncEpochs.matches(flowId, syncEpoch) || flowId !== activeCanvasFlowId.value || flowId !== workspace.activeFlowId) return
     const pending = pendingCanvasSaves.has(flowId)
     const localState = readFlowCanvasState(flowId)
+    const liveCanvasState = {
+      ...currentCanvasSyncSnapshot(),
+      hasSavedEdges: true
+    }
     const knownRevision = resolveKnownCanvasRevision(localState.serverRevision, canvasServerRevisions.get(flowId))
     canvasSyncAvailable.add(flowId)
     const hasLocalCanvas = localState.hasSavedEdges || Object.keys(localState.positions).length > 0 || Boolean(localState.viewport)
@@ -2845,7 +2849,7 @@ async function retryFlowCanvasSync() {
       const decision = resolvePendingCanvasSyncDecision({
         hasPendingLocalState: true,
         remoteSaved: data.saved,
-        localDiffersFromCloud: data.saved && flowCanvasStatesDiffer(localState, data, flow.nodes),
+        localDiffersFromCloud: data.saved && flowCanvasStatesDiffer(liveCanvasState, data, flow.nodes),
         knownRevision,
         remoteRevision: data.revision
       })
