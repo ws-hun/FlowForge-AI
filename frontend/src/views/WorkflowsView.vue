@@ -254,8 +254,8 @@
             :node-types="flowNodeTypes"
             :default-edge-options="defaultCanvasEdgeOptions"
             :delete-key-code="['Backspace', 'Delete']"
-            :min-zoom="0.2"
-            :max-zoom="1.6"
+            :min-zoom="MIN_FLOW_CANVAS_ZOOM"
+            :max-zoom="MAX_FLOW_CANVAS_ZOOM"
             :node-extent="canvasNodeExtent"
             :translate-extent="canvasNodeExtent"
             :snap-to-grid="true"
@@ -1067,6 +1067,8 @@ import {
   createFlowCanvasEdgeId,
   MAX_FLOW_CANVAS_EDGES,
   MAX_FLOW_CANVAS_OFFSET,
+  MAX_FLOW_CANVAS_ZOOM,
+  MIN_FLOW_CANVAS_ZOOM,
   mergeFlowCanvasPositions,
   normalizeFlowCanvasViewport,
   readFlowCanvasState,
@@ -3086,6 +3088,9 @@ function zoomFlowCanvas(direction: 'in' | 'out') {
   const flowId = activeCanvasFlowId.value
   const instance = flowCanvasInstance.value
   if (!flowId || !instance) return
+  const { zoom: currentZoom } = instance.getViewport()
+  if ((direction === 'in' && currentZoom >= MAX_FLOW_CANVAS_ZOOM) ||
+      (direction === 'out' && currentZoom <= MIN_FLOW_CANVAS_ZOOM)) return
   markCanvasViewportEdited()
   const zoom = direction === 'in' ? instance.zoomIn : instance.zoomOut
   void zoom({ duration: 180 }).then(() => persistCanvasViewport(flowId))

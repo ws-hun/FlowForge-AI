@@ -24,8 +24,8 @@ export const MAX_FLOW_CANVAS_EDGES = 500
 export const MAX_FLOW_CANVAS_OFFSET = 100_000
 export const MAX_FLOW_CANVAS_EDGE_ID_LENGTH = 120
 export const MAX_DEFAULT_FLOW_CANVAS_COLUMNS = 4
-const MIN_CANVAS_ZOOM = 0.2
-const MAX_CANVAS_ZOOM = 1.6
+export const MIN_FLOW_CANVAS_ZOOM = 0.2
+export const MAX_FLOW_CANVAS_ZOOM = 1.6
 let fallbackEdgeSequence = 0
 
 export function buildFlowCanvasNodes(
@@ -142,7 +142,7 @@ export function normalizeFlowCanvasViewport(viewport: ViewportTransform | null):
   return {
     x: Math.max(-MAX_FLOW_CANVAS_OFFSET, Math.min(MAX_FLOW_CANVAS_OFFSET, viewport.x)),
     y: Math.max(-MAX_FLOW_CANVAS_OFFSET, Math.min(MAX_FLOW_CANVAS_OFFSET, viewport.y)),
-    zoom: Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, viewport.zoom))
+    zoom: Math.max(MIN_FLOW_CANVAS_ZOOM, Math.min(MAX_FLOW_CANVAS_ZOOM, viewport.zoom))
   }
 }
 
@@ -366,6 +366,6 @@ function isViewport(value: unknown): value is ViewportTransform {
     Math.abs(candidate.x as number) <= MAX_FLOW_CANVAS_OFFSET &&
     Math.abs(candidate.y as number) <= MAX_FLOW_CANVAS_OFFSET &&
     Number.isFinite(candidate.zoom) &&
-    (candidate.zoom as number) >= MIN_CANVAS_ZOOM &&
-    (candidate.zoom as number) <= MAX_CANVAS_ZOOM
+    (candidate.zoom as number) >= MIN_FLOW_CANVAS_ZOOM &&
+    (candidate.zoom as number) <= MAX_FLOW_CANVAS_ZOOM
 }

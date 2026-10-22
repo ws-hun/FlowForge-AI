@@ -14,6 +14,8 @@ import {
   MAX_FLOW_CANVAS_EDGES,
   MAX_FLOW_CANVAS_EDGE_ID_LENGTH,
   MAX_FLOW_CANVAS_OFFSET,
+  MAX_FLOW_CANVAS_ZOOM,
+  MIN_FLOW_CANVAS_ZOOM,
   MAX_DEFAULT_FLOW_CANVAS_COLUMNS,
   normalizeFlowCanvasViewport,
   readFlowCanvasState,
@@ -222,6 +224,8 @@ describe('flow canvas state', () => {
 
   it('matches the server node-position boundary', () => {
     expect(MAX_FLOW_CANVAS_OFFSET).toBe(100_000)
+    expect(MIN_FLOW_CANVAS_ZOOM).toBe(0.2)
+    expect(MAX_FLOW_CANVAS_ZOOM).toBe(1.6)
   })
 
   it('places nodes into unused grid cells around manually moved nodes', () => {
