@@ -2859,7 +2859,7 @@ async function retryFlowCanvasSync() {
         canvasSyncStatus.value = 'conflict'
       } else if (decision === 'retry') {
         canvasServerRevisions.set(flowId, data.revision)
-        void drainCanvasSaves(flowId)
+        queueCurrentCanvasStateForSync(flowId)
       }
       return
     }
