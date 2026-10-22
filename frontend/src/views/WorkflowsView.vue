@@ -3308,6 +3308,15 @@ function handleFlowCanvasHistoryShortcut(event: KeyboardEvent) {
 }
 
 function persistCanvasViewport() {
+  const flowId = activeCanvasFlowId.value
+  const flow = workspace.activeFlow
+  const baseline = canvasComparisonSnapshots.get(flowId)
+  if (flow && flow.id === flowId && baseline && flowCanvasStatesDiffer(baseline, {
+    ...currentCanvasSyncSnapshot(),
+    saved: true
+  }, flow.nodes)) {
+    canvasEditGenerations.set(flowId, (canvasEditGenerations.get(flowId) || 0) + 1)
+  }
   persistCanvasState()
 }
 
