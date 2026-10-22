@@ -2966,9 +2966,7 @@ async function keepLocalCanvasAfterConflict() {
     canvasServerRevisions.set(flowId, data.revision)
     writeFlowCanvasServerRevision(flowId, data.revision)
     canvasSyncAvailable.add(flowId)
-    if (!pendingCanvasSaves.has(flowId)) {
-      pendingCanvasSaves.set(flowId, currentCanvasSyncSnapshot())
-    }
+    pendingCanvasSaves.set(flowId, currentCanvasSyncSnapshot())
     void drainCanvasSaves(flowId)
   } catch (error: unknown) {
     if (error !== 'cancel' && error !== 'close') ElMessage.error(apiErrorMessage(error, '画布冲突处理失败'))
@@ -2987,8 +2985,17 @@ async function useCloudCanvasAfterConflict() {
       '使用云端画布？',
       { confirmButtonText: '使用云端', cancelButtonText: '保留本地', type: 'warning' }
     )
+    const editGeneration = canvasEditGenerations.get(flowId) || 0
     const { data } = await getFlowCanvasState(flowId)
     if (flowId !== activeCanvasFlowId.value || flowId !== workspace.activeFlowId) return
+    if ((canvasEditGenerations.get(flowId) || 0) !== editGeneration) {
+      ElMessage.info('载入期间画布又有修改，已保留本地内容，请重新选择冲突处理方式')
+      return
+    }
+    if (scheduledCanvasSaveFlowId === flowId && canvasSaveTimer) {
+      clearTimeout(canvasSaveTimer)
+      canvasSaveTimer = null
+    }
     canvasServerRevisions.set(flowId, data.revision)
     canvasSyncAvailable.add(flowId)
     pendingCanvasSaves.delete(flowId)
