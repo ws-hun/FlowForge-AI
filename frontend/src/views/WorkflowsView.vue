@@ -1075,7 +1075,8 @@ import {
   writeFlowCanvasServerRevision,
   writeFlowCanvasState,
   type FlowCanvasGraphNode,
-  type FlowCanvasNodeData
+  type FlowCanvasNodeData,
+  type StoredFlowCanvasState
 } from '@/utils/flowCanvasState'
 import {
   captureFlowCanvasEditSnapshot,
@@ -1197,6 +1198,7 @@ const activeCanvasFlowId = ref('')
 let canvasStorageWarningShown = false
 let canvasViewportRestoreGeneration = 0
 const canvasServerRevisions = new Map<string, number>()
+const canvasComparisonSnapshots = new Map<string, StoredFlowCanvasState>()
 const canvasSyncEpochs = createFlowCanvasSyncEpochs()
 const canvasEditGenerations = new Map<string, number>()
 const canvasSyncAvailable = new Set<string>()
@@ -2694,6 +2696,7 @@ function loadFlowCanvas(flowId: string) {
   if (!flow || flow.id !== flowId) return
   flushCanvasSaveTimer()
   const saved = readFlowCanvasState(flowId)
+  canvasComparisonSnapshots.set(flowId, saved)
   const editGeneration = canvasEditGenerations.get(flowId) || 0
   canvasViewportRestoreGeneration += 1
   activeCanvasFlowId.value = flowId
@@ -2743,6 +2746,7 @@ async function restoreFlowCanvasFromServer(
         pendingCanvasSaves.delete(flowId)
         canvasServerRevisions.set(flowId, data.revision)
         writeFlowCanvasServerRevision(flowId, data.revision)
+        if (pending) rememberCanvasComparisonSnapshot(flowId, pending, data.revision)
       } else if (decision === 'retry') {
         canvasServerRevisions.set(flowId, data.revision)
         void drainCanvasSaves(flowId)
@@ -2857,6 +2861,7 @@ async function retryFlowCanvasSync() {
         pendingCanvasSaves.delete(flowId)
         canvasServerRevisions.set(flowId, data.revision)
         writeFlowCanvasServerRevision(flowId, data.revision)
+        rememberCanvasComparisonSnapshot(flowId, currentCanvasSyncSnapshot(), data.revision)
         canvasSyncStatus.value = 'synced'
       } else if (decision === 'conflict') {
         canvasSyncAvailable.delete(flowId)
@@ -2990,6 +2995,7 @@ function applyServerCanvasState(state: FlowCanvasState) {
   canvasNodes.value = buildFlowCanvasNodes(flow, positions, canvasNodeData)
   canvasEdges.value = resolveFlowCanvasEdges(state.edges, flow.nodes, MarkerType.ArrowClosed, state.saved)
   canvasHistory.value = createFlowCanvasHistory()
+  rememberCanvasComparisonSnapshot(state.flowId, state, state.revision)
   writeFlowCanvasState(state.flowId, canvasNodes.value, canvasEdges.value, state.viewport)
   writeFlowCanvasServerRevision(state.flowId, state.revision)
   if (state.viewport) {
@@ -3088,8 +3094,8 @@ function persistCanvasState() {
   const flowId = activeCanvasFlowId.value
   const flow = workspace.activeFlow
   if (flowId && flow && flowId === workspace.activeFlowId) {
-    const previousState = readFlowCanvasState(flowId)
     const snapshot = currentCanvasSyncSnapshot()
+    const previousState = canvasComparisonSnapshots.get(flowId) || readFlowCanvasState(flowId)
     const hasCanvasChanges = flowCanvasStatesDiffer(previousState, {
       ...snapshot,
       saved: true
@@ -3100,6 +3106,7 @@ function persistCanvasState() {
       canvasEdges.value,
       flowCanvasInstance.value?.getViewport() || null
     )
+    rememberCanvasComparisonSnapshot(flowId, snapshot)
     const serverRevision = canvasServerRevisions.get(flowId)
     if (serverRevision !== undefined) writeFlowCanvasServerRevision(flowId, serverRevision)
     if (!saved && !canvasStorageWarningShown) {
@@ -3137,6 +3144,20 @@ function currentCanvasSyncSnapshot(): Omit<SaveFlowCanvasStatePayload, 'revision
   }
 }
 
+function rememberCanvasComparisonSnapshot(
+  flowId: string,
+  snapshot: Pick<SaveFlowCanvasStatePayload, 'positions' | 'edges' | 'viewport'>,
+  revision = canvasServerRevisions.get(flowId) ?? null
+) {
+  canvasComparisonSnapshots.set(flowId, {
+    positions: { ...snapshot.positions },
+    edges: snapshot.edges.map((edge) => ({ ...edge })),
+    viewport: normalizeFlowCanvasViewport(snapshot.viewport),
+    hasSavedEdges: true,
+    serverRevision: revision
+  })
+}
+
 function queueCurrentCanvasStateForSync(flowId: string) {
   if (canvasSaveTimer && scheduledCanvasSaveFlowId === flowId) {
     clearTimeout(canvasSaveTimer)
@@ -3171,6 +3192,7 @@ function discardFlowCanvasSyncState(flowId: string) {
     canvasSaveTimer = null
   }
   canvasServerRevisions.delete(flowId)
+  canvasComparisonSnapshots.delete(flowId)
   canvasEditGenerations.delete(flowId)
   canvasSyncAvailable.delete(flowId)
   pendingCanvasSaves.delete(flowId)
@@ -3192,6 +3214,7 @@ async function drainCanvasSaves(flowId: string) {
         })
         if (!canvasSyncEpochs.matches(flowId, syncEpoch)) break
         canvasServerRevisions.set(flowId, data.revision)
+        rememberCanvasComparisonSnapshot(flowId, snapshot, data.revision)
         writeFlowCanvasServerRevision(flowId, data.revision)
         if (flowId === activeCanvasFlowId.value) canvasSyncStatus.value = 'synced'
       } catch (error: unknown) {
