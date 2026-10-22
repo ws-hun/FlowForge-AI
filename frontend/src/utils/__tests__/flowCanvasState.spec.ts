@@ -456,6 +456,16 @@ describe('flow canvas state', () => {
     expect(canCreateFlowCanvasEdge({ source: 'prompt', target: 'ai' }, edges)).toBe(true)
   })
 
+  it('treats omitted default handles as equivalent to explicit default handles', () => {
+    const edges = [{ id: 'existing', source: 'input', target: 'prompt' }] as Edge[]
+    expect(canCreateFlowCanvasEdge({
+      source: 'input',
+      target: 'prompt',
+      sourceHandle: 'source',
+      targetHandle: 'target'
+    }, edges)).toBe(false)
+  })
+
   it('enforces the backend visual connection limit', () => {
     const edges = Array.from({ length: MAX_FLOW_CANVAS_EDGES }, (_, index) => ({
       id: `edge-${index}`,

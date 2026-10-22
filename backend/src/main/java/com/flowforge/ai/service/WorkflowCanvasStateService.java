@@ -97,7 +97,12 @@ public class WorkflowCanvasStateService {
                     (edge.targetHandle() != null && !"target".equals(edge.targetHandle()))) {
                 throw new IllegalArgumentException("Canvas edge handle is invalid");
             }
-            List<String> connection = Arrays.asList(edge.source(), edge.sourceHandle(), edge.target(), edge.targetHandle());
+            List<String> connection = Arrays.asList(
+                    edge.source(),
+                    edge.sourceHandle() == null ? "source" : edge.sourceHandle(),
+                    edge.target(),
+                    edge.targetHandle() == null ? "target" : edge.targetHandle()
+            );
             if (!edgeIds.add(edge.id()) || !connections.add(connection)) {
                 throw new IllegalArgumentException("Canvas contains duplicate edges");
             }

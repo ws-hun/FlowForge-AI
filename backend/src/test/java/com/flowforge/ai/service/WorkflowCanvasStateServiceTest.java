@@ -197,7 +197,7 @@ class WorkflowCanvasStateServiceTest {
                 0L,
                 Map.of(),
                 List.of(
-                        new FlowCanvasEdgeDto("edge-1", "input", "output", "source", "target"),
+                        new FlowCanvasEdgeDto("edge-1", "input", "output", null, null),
                         new FlowCanvasEdgeDto("edge-2", "input", "output", "source", "target")
                 ),
                 null

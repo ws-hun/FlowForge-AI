@@ -299,8 +299,8 @@ export function canCreateFlowCanvasEdge(connection: Connection, edges: Edge[]): 
   return !edges.some((edge) =>
     edge.source === source &&
     edge.target === target &&
-    (edge.sourceHandle || null) === (sourceHandle || null) &&
-    (edge.targetHandle || null) === (targetHandle || null)
+    (edge.sourceHandle || 'source') === (sourceHandle || 'source') &&
+    (edge.targetHandle || 'target') === (targetHandle || 'target')
   )
 }
 
