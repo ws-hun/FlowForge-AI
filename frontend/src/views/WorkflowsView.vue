@@ -253,6 +253,7 @@
             aria-label="Flow 工作流画布"
             :node-types="flowNodeTypes"
             :default-edge-options="defaultCanvasEdgeOptions"
+            :is-valid-connection="isFlowCanvasConnectionValid"
             :delete-key-code="['Backspace', 'Delete']"
             :min-zoom="MIN_FLOW_CANVAS_ZOOM"
             :max-zoom="MAX_FLOW_CANVAS_ZOOM"
@@ -3365,6 +3366,10 @@ function connectFlowCanvasNodes(connection: Connection) {
     canvasEdges.value
   ) as Edge[]
   persistCanvasState()
+}
+
+function isFlowCanvasConnectionValid(connection: Connection): boolean {
+  return canCreateFlowCanvasEdge(connection, canvasEdges.value)
 }
 
 async function handleFlowCanvasNodeClick({ node }: NodeMouseEvent) {
