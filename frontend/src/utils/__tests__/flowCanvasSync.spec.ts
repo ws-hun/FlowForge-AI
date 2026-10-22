@@ -223,6 +223,28 @@ describe('flow canvas synchronization policy', () => {
     expect(flowCanvasStatesDiffer({ ...local, viewport: { x: 12, y: 0, zoom: 1 } }, remote, nodes)).toBe(true)
   })
 
+  it('keeps a user viewport gesture from being replaced by an in-flight cloud restore', () => {
+    const local = {
+      positions: {},
+      edges: [],
+      viewport: { x: 48, y: -12, zoom: 1.1 },
+      hasSavedEdges: true
+    }
+    const remote = {
+      positions: {},
+      edges: [],
+      viewport: { x: 0, y: 0, zoom: 1 },
+      saved: true
+    }
+
+    expect(flowCanvasStatesDiffer(local, remote, nodes)).toBe(true)
+    expect(resolveFlowCanvasRestoreDecision({
+      remoteSaved: true,
+      localSaved: true,
+      editedWhileLoading: true
+    })).toBe('conflict')
+  })
+
   it('treats the initial default canvas as unchanged when equivalent cloud state is already saved', () => {
     const initialLocal = {
       positions: {},

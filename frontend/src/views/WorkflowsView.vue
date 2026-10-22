@@ -266,6 +266,7 @@
             @node-drag-start="recordCanvasEdit"
             @node-drag-stop="persistCanvasState"
             @edges-change="recordRemovedCanvasEdges"
+            @move-start="markCanvasViewportEdited"
             @move-end="persistCanvasViewport"
             @connect="connectFlowCanvasNodes"
           >
@@ -3074,6 +3075,7 @@ function restoreFlowCanvasViewport(flowId: string) {
 }
 
 function fitFlowCanvas() {
+  markCanvasViewportEdited()
   void flowCanvasInstance.value?.fitView({ padding: 0.18, duration: 240 }).then(persistCanvasViewport)
 }
 
@@ -3308,16 +3310,12 @@ function handleFlowCanvasHistoryShortcut(event: KeyboardEvent) {
 }
 
 function persistCanvasViewport() {
-  const flowId = activeCanvasFlowId.value
-  const flow = workspace.activeFlow
-  const baseline = canvasComparisonSnapshots.get(flowId)
-  if (flow && flow.id === flowId && baseline && flowCanvasStatesDiffer(baseline, {
-    ...currentCanvasSyncSnapshot(),
-    saved: true
-  }, flow.nodes)) {
-    canvasEditGenerations.set(flowId, (canvasEditGenerations.get(flowId) || 0) + 1)
-  }
   persistCanvasState()
+}
+
+function markCanvasViewportEdited() {
+  const flowId = activeCanvasFlowId.value
+  if (flowId) canvasEditGenerations.set(flowId, (canvasEditGenerations.get(flowId) || 0) + 1)
 }
 
 function deleteSelectedCanvasEdges() {
