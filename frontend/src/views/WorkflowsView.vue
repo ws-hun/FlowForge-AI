@@ -3147,7 +3147,8 @@ function currentCanvasSyncSnapshot(): Omit<SaveFlowCanvasStatePayload, 'revision
 function rememberCanvasComparisonSnapshot(
   flowId: string,
   snapshot: Pick<SaveFlowCanvasStatePayload, 'positions' | 'edges' | 'viewport'>,
-  revision = canvasServerRevisions.get(flowId) ?? null
+  revision = canvasServerRevisions.get(flowId) ??
+    canvasComparisonSnapshots.get(flowId)?.serverRevision ?? null
 ) {
   canvasComparisonSnapshots.set(flowId, {
     positions: { ...snapshot.positions },
