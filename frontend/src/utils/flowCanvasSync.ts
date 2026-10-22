@@ -5,7 +5,7 @@ import { mergeFlowCanvasPositions, resolveFlowCanvasEdges, type StoredFlowCanvas
 export type FlowCanvasRestoreDecision = 'use-cloud' | 'save-local' | 'migrate-local' | 'empty' | 'conflict'
 export type OfflineCanvasRestoreDecision = 'identical' | 'resume-local' | 'conflict'
 export type MissingCloudCanvasDecision = 'empty' | 'migrate-local' | 'conflict'
-export type BackgroundCanvasSyncDecision = 'acknowledged' | 'retry' | 'conflict' | 'idle'
+export type PendingCanvasSyncDecision = 'acknowledged' | 'retry' | 'conflict' | 'idle'
 
 export function resolveKnownCanvasRevision(
   persistedRevision: number | null | undefined,
@@ -37,13 +37,13 @@ export function pendingBackgroundCanvasSyncIds(
   )
 }
 
-export function resolveBackgroundCanvasSyncDecision(input: {
+export function resolvePendingCanvasSyncDecision(input: {
   hasPendingLocalState: boolean
   remoteSaved: boolean
   localDiffersFromCloud: boolean
   knownRevision: number | undefined
   remoteRevision: number
-}): BackgroundCanvasSyncDecision {
+}): PendingCanvasSyncDecision {
   if (!input.hasPendingLocalState) return 'idle'
   if (input.remoteSaved && !input.localDiffersFromCloud) return 'acknowledged'
   if (input.remoteSaved && (
