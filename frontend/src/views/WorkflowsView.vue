@@ -3082,7 +3082,14 @@ function restoreSequentialCanvasEdges() {
 
 function persistCanvasState() {
   const flowId = activeCanvasFlowId.value
-  if (flowId && flowId === workspace.activeFlowId) {
+  const flow = workspace.activeFlow
+  if (flowId && flow && flowId === workspace.activeFlowId) {
+    const previousState = readFlowCanvasState(flowId)
+    const snapshot = currentCanvasSyncSnapshot()
+    const hasCanvasChanges = flowCanvasStatesDiffer(previousState, {
+      ...snapshot,
+      saved: true
+    }, flow.nodes)
     const saved = writeFlowCanvasState(
       flowId,
       canvasNodes.value,
@@ -3095,7 +3102,7 @@ function persistCanvasState() {
       canvasStorageWarningShown = true
       ElMessage.warning('浏览器无法保存画布布局，刷新后可能重置')
     }
-    scheduleCanvasServerSave(flowId)
+    if (hasCanvasChanges) scheduleCanvasServerSave(flowId)
   }
 }
 

@@ -223,6 +223,26 @@ describe('flow canvas synchronization policy', () => {
     expect(flowCanvasStatesDiffer({ ...local, viewport: { x: 12, y: 0, zoom: 1 } }, remote, nodes)).toBe(true)
   })
 
+  it('treats the initial default canvas as unchanged when equivalent cloud state is already saved', () => {
+    const initialLocal = {
+      positions: {},
+      edges: [],
+      viewport: null,
+      hasSavedEdges: false
+    }
+    const defaultCloud = {
+      positions: {},
+      edges: [
+        { id: 'cloud-edge', source: 'input', target: 'prompt' },
+        { id: 'cloud-edge-2', source: 'prompt', target: 'output' }
+      ],
+      viewport: null,
+      saved: true
+    }
+
+    expect(flowCanvasStatesDiffer(initialLocal, defaultCloud, nodes)).toBe(false)
+  })
+
   it('uses a persisted revision to resume local work after a browser reload', () => {
     const storage = new Map<string, string>()
     vi.stubGlobal('window', {
