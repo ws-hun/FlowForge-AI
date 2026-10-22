@@ -480,9 +480,9 @@ describe('flow canvas state', () => {
     expect(canCreateFlowCanvasEdge({ source: 'input', target: 'output' }, edges)).toBe(false)
   })
 
-  it('allows distinct handles to represent separate visual relationships', () => {
+  it('rejects handles that are not present on current canvas nodes', () => {
     const edges = [{ id: 'existing', source: 'input', target: 'prompt', sourceHandle: 'source', targetHandle: 'target' }] as Edge[]
-    expect(canCreateFlowCanvasEdge({ source: 'input', target: 'prompt', sourceHandle: 'alternate', targetHandle: 'target' }, edges)).toBe(true)
+    expect(canCreateFlowCanvasEdge({ source: 'input', target: 'prompt', sourceHandle: 'alternate', targetHandle: 'target' }, edges)).toBe(false)
   })
 
   it('builds new connections with labels and keyboard interaction enabled', () => {

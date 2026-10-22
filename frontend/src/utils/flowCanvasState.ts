@@ -295,6 +295,7 @@ export function removeFlowCanvasEdges(edges: Edge[], edgeIds: string[]): Edge[] 
 export function canCreateFlowCanvasEdge(connection: Connection, edges: Edge[]): boolean {
   const { source, target, sourceHandle, targetHandle } = connection
   if (!source || !target || source === target) return false
+  if ((sourceHandle && sourceHandle !== 'source') || (targetHandle && targetHandle !== 'target')) return false
   if (edges.length >= MAX_FLOW_CANVAS_EDGES) return false
   return !edges.some((edge) =>
     edge.source === source &&
