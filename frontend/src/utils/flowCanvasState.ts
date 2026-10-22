@@ -146,6 +146,10 @@ export function normalizeFlowCanvasViewport(viewport: ViewportTransform | null):
   }
 }
 
+export function canChangeFlowCanvasZoom(zoom: number, direction: 'in' | 'out'): boolean {
+  return direction === 'in' ? zoom < MAX_FLOW_CANVAS_ZOOM : zoom > MIN_FLOW_CANVAS_ZOOM
+}
+
 export function buildSequentialCanvasEdges(
   nodes: FlowNode[],
   arrowMarker: MarkerType

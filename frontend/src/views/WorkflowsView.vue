@@ -1058,6 +1058,7 @@ import {
   buildDefaultFlowCanvasPositions,
   buildFlowCanvasNodes,
   buildSequentialCanvasEdges,
+  canChangeFlowCanvasZoom,
   canCreateFlowCanvasEdge,
   captureFlowCanvasPositions,
   isFlowCanvasNodeMoveKey,
@@ -3089,8 +3090,7 @@ function zoomFlowCanvas(direction: 'in' | 'out') {
   const instance = flowCanvasInstance.value
   if (!flowId || !instance) return
   const { zoom: currentZoom } = instance.getViewport()
-  if ((direction === 'in' && currentZoom >= MAX_FLOW_CANVAS_ZOOM) ||
-      (direction === 'out' && currentZoom <= MIN_FLOW_CANVAS_ZOOM)) return
+  if (!canChangeFlowCanvasZoom(currentZoom, direction)) return
   markCanvasViewportEdited()
   const zoom = direction === 'in' ? instance.zoomIn : instance.zoomOut
   void zoom({ duration: 180 }).then(() => persistCanvasViewport(flowId))
