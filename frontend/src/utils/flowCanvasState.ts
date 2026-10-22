@@ -96,6 +96,20 @@ export function mergeFlowCanvasPositions(
   return positions
 }
 
+export function resolveFlowCanvasLocalRestoreState(
+  persisted: StoredFlowCanvasState,
+  pending?: Pick<StoredFlowCanvasState, 'positions' | 'edges' | 'viewport'> | null
+): StoredFlowCanvasState {
+  if (!pending) return persisted
+  return {
+    ...persisted,
+    positions: { ...pending.positions },
+    edges: pending.edges.map((edge) => ({ ...edge })),
+    viewport: pending.viewport ? { ...pending.viewport } : null,
+    hasSavedEdges: true
+  }
+}
+
 function resolveFlowCanvasColumnCount(nodeCount: number, columnCount?: number): number {
   if (columnCount === undefined) {
     return Math.max(1, Math.min(MAX_DEFAULT_FLOW_CANVAS_COLUMNS, Math.ceil(Math.sqrt(nodeCount))))

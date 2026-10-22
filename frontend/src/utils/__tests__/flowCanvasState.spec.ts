@@ -17,6 +17,7 @@ import {
   MAX_DEFAULT_FLOW_CANVAS_COLUMNS,
   normalizeFlowCanvasViewport,
   readFlowCanvasState,
+  resolveFlowCanvasLocalRestoreState,
   removeFlowCanvasState,
   removeFlowCanvasEdges,
   resolveFlowCanvasEdges,
@@ -190,6 +191,33 @@ describe('flow canvas state', () => {
       ai: { x: 80, y: 560 },
       output: { x: 80, y: 780 }
     })
+  })
+
+  it('restores the newest pending canvas over an older persisted snapshot', () => {
+    const persisted = {
+      positions: { input: { x: 80, y: 120 } },
+      edges: [{ id: 'old-edge', source: 'input', target: 'prompt' }],
+      viewport: { x: 0, y: 0, zoom: 1 },
+      hasSavedEdges: true,
+      serverRevision: 7
+    }
+    const pending = {
+      positions: { input: { x: 240, y: 360 } },
+      edges: [{ id: 'new-edge', source: 'input', target: 'output' }],
+      viewport: { x: -120, y: 80, zoom: 0.8 }
+    }
+
+    expect(resolveFlowCanvasLocalRestoreState(persisted, pending)).toEqual({
+      ...persisted,
+      ...pending,
+      hasSavedEdges: true
+    })
+    expect(persisted.positions.input).toEqual({ x: 80, y: 120 })
+  })
+
+  it('keeps the persisted snapshot when there is no in-memory pending canvas', () => {
+    const persisted = readFlowCanvasState('missing-flow')
+    expect(resolveFlowCanvasLocalRestoreState(persisted)).toBe(persisted)
   })
 
   it('matches the server node-position boundary', () => {

@@ -1069,6 +1069,7 @@ import {
   mergeFlowCanvasPositions,
   normalizeFlowCanvasViewport,
   readFlowCanvasState,
+  resolveFlowCanvasLocalRestoreState,
   removeFlowCanvasState,
   removeFlowCanvasEdges,
   resolveFlowCanvasEdges,
@@ -2695,7 +2696,12 @@ function loadFlowCanvas(flowId: string) {
   const flow = workspace.activeFlow
   if (!flow || flow.id !== flowId) return
   flushCanvasSaveTimer()
-  const saved = readFlowCanvasState(flowId)
+  const persisted = readFlowCanvasState(flowId)
+  const hasPersistedCanvas = persisted.hasSavedEdges ||
+    Object.keys(persisted.positions).length > 0 || Boolean(persisted.viewport)
+  const inMemoryCanvas = pendingCanvasSaves.get(flowId) ||
+    (!hasPersistedCanvas ? canvasComparisonSnapshots.get(flowId) : null)
+  const saved = resolveFlowCanvasLocalRestoreState(persisted, inMemoryCanvas)
   canvasComparisonSnapshots.set(flowId, saved)
   const editGeneration = canvasEditGenerations.get(flowId) || 0
   canvasViewportRestoreGeneration += 1
@@ -3058,7 +3064,7 @@ function restoreFlowCanvasViewport(flowId: string) {
       restoreGeneration,
       currentGeneration: canvasViewportRestoreGeneration
     })) return
-    const { viewport } = readFlowCanvasState(flowId)
+    const { viewport } = canvasComparisonSnapshots.get(flowId) || readFlowCanvasState(flowId)
     if (viewport) {
       void instance.setViewport(viewport)
     } else {
