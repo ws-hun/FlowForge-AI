@@ -101,6 +101,7 @@ Current Stage 3 capabilities:
 - Default visual connections use bounded identifiers with an edge-order discriminator, remaining unique even when legal Flow node IDs share maximum-length prefixes.
 - Canvas node/navigation coordinates, viewport zoom, 500-edge capacity, and 120-character edge IDs mirror server constraints; legacy migration sends the repaired live graph rather than malformed raw cache entries.
 - Canvas layout and visual connections now sync to a dedicated versioned Flow state without creating Flow content revisions. Equivalent saves do not advance its revision; real layout or viewport changes do. Existing browser layouts migrate when no cloud layout exists, offline edits remain locally available, and multi-window conflicts require an explicit local-or-cloud choice.
+- Within the current session, Flow Space restores the latest pending or in-memory canvas when browser storage is unavailable, so changing Flows does not discard an offline layout before the server confirms it.
 - Flow variables with preflight validation and atomic rename.
 - Server-compiled execution previews.
 - Immutable run snapshots with source, Provider, model, token usage, and execution duration.
