@@ -267,7 +267,7 @@
             @node-drag-stop="persistCanvasState"
             @edges-change="recordRemovedCanvasEdges"
             @move-start="markCanvasViewportEdited"
-            @move-end="persistCanvasViewport"
+            @move-end="persistCanvasViewport()"
             @connect="connectFlowCanvasNodes"
           >
             <div
@@ -282,10 +282,10 @@
               </button>
             </div>
             <Panel position="bottom-right" class="flow-canvas-controls">
-              <button type="button" title="缩小画布" aria-label="缩小画布" @click="flowCanvasInstance?.zoomOut()">
+              <button type="button" title="缩小画布" aria-label="缩小画布" @click="zoomFlowCanvas('out')">
                 <el-icon><ZoomOut /></el-icon>
               </button>
-              <button type="button" title="放大画布" aria-label="放大画布" @click="flowCanvasInstance?.zoomIn()">
+              <button type="button" title="放大画布" aria-label="放大画布" @click="zoomFlowCanvas('in')">
                 <el-icon><ZoomIn /></el-icon>
               </button>
               <button type="button" title="适配全部节点" aria-label="适配全部节点" @click="fitFlowCanvas">
@@ -3075,8 +3075,20 @@ function restoreFlowCanvasViewport(flowId: string) {
 }
 
 function fitFlowCanvas() {
+  const flowId = activeCanvasFlowId.value
+  const instance = flowCanvasInstance.value
+  if (!flowId || !instance) return
   markCanvasViewportEdited()
-  void flowCanvasInstance.value?.fitView({ padding: 0.18, duration: 240 }).then(persistCanvasViewport)
+  void instance.fitView({ padding: 0.18, duration: 240 }).then(() => persistCanvasViewport(flowId))
+}
+
+function zoomFlowCanvas(direction: 'in' | 'out') {
+  const flowId = activeCanvasFlowId.value
+  const instance = flowCanvasInstance.value
+  if (!flowId || !instance) return
+  markCanvasViewportEdited()
+  const zoom = direction === 'in' ? instance.zoomIn : instance.zoomOut
+  void zoom({ duration: 180 }).then(() => persistCanvasViewport(flowId))
 }
 
 function arrangeFlowCanvas() {
@@ -3309,7 +3321,8 @@ function handleFlowCanvasHistoryShortcut(event: KeyboardEvent) {
   }
 }
 
-function persistCanvasViewport() {
+function persistCanvasViewport(flowId = activeCanvasFlowId.value) {
+  if (!flowId || flowId !== activeCanvasFlowId.value || flowId !== workspace.activeFlowId) return
   persistCanvasState()
 }
 
