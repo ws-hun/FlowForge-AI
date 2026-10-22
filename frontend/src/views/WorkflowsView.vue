@@ -254,6 +254,7 @@
             :node-types="flowNodeTypes"
             :default-edge-options="defaultCanvasEdgeOptions"
             :is-valid-connection="isFlowCanvasConnectionValid"
+            :edges-updatable="true"
             :delete-key-code="['Backspace', 'Delete']"
             :min-zoom="MIN_FLOW_CANVAS_ZOOM"
             :max-zoom="MAX_FLOW_CANVAS_ZOOM"
@@ -270,6 +271,7 @@
             @move-start="markCanvasViewportEdited"
             @move-end="persistCanvasViewport()"
             @connect="connectFlowCanvasNodes"
+            @edge-update="reconnectFlowCanvasEdge"
           >
             <div
               v-if="!canvasEdges.length && canvasNodes.length > 1"
@@ -1015,7 +1017,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, EditPen, FullScreen, Plus, Refresh, RefreshLeft, RefreshRight, Sort, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
 import { addEdge, MarkerType, Panel, VueFlow } from '@vue-flow/core'
-import type { Connection, CoordinateExtent, Edge, EdgeChange, NodeMouseEvent, VueFlowStore } from '@vue-flow/core'
+import type { Connection, CoordinateExtent, Edge, EdgeChange, EdgeUpdateEvent, NodeMouseEvent, VueFlowStore } from '@vue-flow/core'
 import '@vue-flow/core/dist/style.css'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import FlowEditorSaveBar from '@/components/flow/FlowEditorSaveBar.vue'
@@ -1061,6 +1063,7 @@ import {
   buildSequentialCanvasEdges,
   canChangeFlowCanvasZoom,
   canCreateFlowCanvasEdge,
+  canReconnectFlowCanvasEdge,
   captureFlowCanvasPositions,
   isFlowCanvasNodeMoveKey,
   isFlowCanvasNodeSelectionKey,
@@ -3370,6 +3373,22 @@ function connectFlowCanvasNodes(connection: Connection) {
 
 function isFlowCanvasConnectionValid(connection: Connection): boolean {
   return canCreateFlowCanvasEdge(connection, canvasEdges.value)
+}
+
+function reconnectFlowCanvasEdge({ edge, connection }: EdgeUpdateEvent) {
+  const flow = workspace.activeFlow
+  if (!flow || !canReconnectFlowCanvasEdge(edge.id, connection, canvasEdges.value)) {
+    ElMessage.info('这条连线无法连接到目标节点')
+    return
+  }
+  const currentEdge = canvasEdges.value.find((candidate) => candidate.id === edge.id)
+  if (!currentEdge) return
+  recordCanvasEdit()
+  const updatedEdge = createFlowCanvasEdge(connection, edge.id, flow.nodes, MarkerType.ArrowClosed)
+  canvasEdges.value = canvasEdges.value.map((candidate) =>
+    candidate.id === edge.id ? { ...candidate, ...updatedEdge } : candidate
+  )
+  persistCanvasState()
 }
 
 async function handleFlowCanvasNodeClick({ node }: NodeMouseEvent) {

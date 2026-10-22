@@ -309,6 +309,10 @@ export function canCreateFlowCanvasEdge(connection: Connection, edges: Edge[]): 
   )
 }
 
+export function canReconnectFlowCanvasEdge(edgeId: string, connection: Connection, edges: Edge[]): boolean {
+  return canCreateFlowCanvasEdge(connection, edges.filter((edge) => edge.id !== edgeId))
+}
+
 export function createFlowCanvasEdgeId(existingIds: ReadonlySet<string> = new Set()): string {
   let id = ''
   do {
