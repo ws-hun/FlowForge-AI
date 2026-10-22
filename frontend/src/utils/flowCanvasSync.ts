@@ -5,6 +5,7 @@ import { mergeFlowCanvasPositions, resolveFlowCanvasEdges, type StoredFlowCanvas
 export type FlowCanvasRestoreDecision = 'use-cloud' | 'save-local' | 'migrate-local' | 'empty' | 'conflict'
 export type OfflineCanvasRestoreDecision = 'identical' | 'resume-local' | 'conflict'
 export type MissingCloudCanvasDecision = 'empty' | 'migrate-local' | 'conflict'
+export type BackgroundCanvasSyncDecision = 'acknowledged' | 'retry' | 'conflict' | 'idle'
 
 export function resolveKnownCanvasRevision(
   persistedRevision: number | null | undefined,
@@ -34,6 +35,24 @@ export function pendingBackgroundCanvasSyncIds(
   return [...pendingFlowIds].filter((flowId) =>
     flowId !== activeFlowId && !retryingFlowIds.has(flowId)
   )
+}
+
+export function resolveBackgroundCanvasSyncDecision(input: {
+  hasPendingLocalState: boolean
+  remoteSaved: boolean
+  localDiffersFromCloud: boolean
+  knownRevision: number | undefined
+  remoteRevision: number
+}): BackgroundCanvasSyncDecision {
+  if (!input.hasPendingLocalState) return 'idle'
+  if (input.remoteSaved && !input.localDiffersFromCloud) return 'acknowledged'
+  if (input.remoteSaved && (
+    input.knownRevision === undefined || input.knownRevision !== input.remoteRevision
+  )) return 'conflict'
+  if (!input.remoteSaved && input.knownRevision !== undefined && input.knownRevision !== input.remoteRevision) {
+    return 'conflict'
+  }
+  return 'retry'
 }
 
 export function preserveLatestCanvasSyncSnapshot<T>(pending: T | undefined, failed: T): T {

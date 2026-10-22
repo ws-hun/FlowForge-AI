@@ -5,6 +5,7 @@ import {
   hasFlowCanvasRevisionConflict,
   isFlowCanvasViewportRestoreCurrent,
   pendingBackgroundCanvasSyncIds,
+  resolveBackgroundCanvasSyncDecision,
   preserveLatestCanvasSyncSnapshot,
   resolveMissingCloudCanvasDecision,
   resolveKnownCanvasRevision,
@@ -77,6 +78,54 @@ describe('flow canvas synchronization policy', () => {
       'active',
       new Set(['background-b'])
     )).toEqual(['background-a'])
+  })
+
+  it('acknowledges a background save when the cloud already contains the pending layout', () => {
+    expect(resolveBackgroundCanvasSyncDecision({
+      hasPendingLocalState: true,
+      remoteSaved: true,
+      localDiffersFromCloud: false,
+      knownRevision: 4,
+      remoteRevision: 5
+    })).toBe('acknowledged')
+  })
+
+  it('requires the known revision before retrying divergent background edits', () => {
+    const pending = {
+      hasPendingLocalState: true,
+      remoteSaved: true,
+      localDiffersFromCloud: true,
+      knownRevision: 4
+    }
+    expect(resolveBackgroundCanvasSyncDecision({ ...pending, remoteRevision: 4 })).toBe('retry')
+    expect(resolveBackgroundCanvasSyncDecision({ ...pending, remoteRevision: 5 })).toBe('conflict')
+  })
+
+  it('migrates pending background state when cloud layout is absent and revision is unchanged', () => {
+    expect(resolveBackgroundCanvasSyncDecision({
+      hasPendingLocalState: true,
+      remoteSaved: false,
+      localDiffersFromCloud: false,
+      knownRevision: 0,
+      remoteRevision: 0
+    })).toBe('retry')
+    expect(resolveBackgroundCanvasSyncDecision({
+      hasPendingLocalState: true,
+      remoteSaved: false,
+      localDiffersFromCloud: false,
+      knownRevision: 2,
+      remoteRevision: 0
+    })).toBe('conflict')
+  })
+
+  it.each([
+    { hasPendingLocalState: false, remoteSaved: true, localDiffersFromCloud: true, knownRevision: 1, remoteRevision: 2, expected: 'idle' },
+    { hasPendingLocalState: true, remoteSaved: true, localDiffersFromCloud: false, knownRevision: undefined, remoteRevision: 2, expected: 'acknowledged' },
+    { hasPendingLocalState: true, remoteSaved: true, localDiffersFromCloud: true, knownRevision: 2, remoteRevision: 2, expected: 'retry' },
+    { hasPendingLocalState: true, remoteSaved: true, localDiffersFromCloud: true, knownRevision: 1, remoteRevision: 2, expected: 'conflict' },
+    { hasPendingLocalState: true, remoteSaved: false, localDiffersFromCloud: true, knownRevision: undefined, remoteRevision: 0, expected: 'retry' }
+  ] as const)('keeps background canvas recovery conservative: $expected', ({ expected, ...input }) => {
+    expect(resolveBackgroundCanvasSyncDecision(input)).toBe(expected)
   })
 
   it('prefers saved cloud state when the user did not edit during loading', () => {

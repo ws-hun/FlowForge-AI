@@ -1093,6 +1093,7 @@ import {
   hasFlowCanvasRevisionConflict,
   isFlowCanvasViewportRestoreCurrent,
   pendingBackgroundCanvasSyncIds,
+  resolveBackgroundCanvasSyncDecision,
   preserveLatestCanvasSyncSnapshot,
   resolveMissingCloudCanvasDecision,
   resolveKnownCanvasRevision,
@@ -2720,15 +2721,30 @@ async function restoreFlowCanvasFromServer(
     canvasSyncAvailable.add(flowId)
 
     if (flowId !== activeCanvasFlowId.value || flowId !== workspace.activeFlowId) {
-      const pending = pendingCanvasSaves.has(flowId)
-      if (hasFlowCanvasRevisionConflict({
+      const pending = pendingCanvasSaves.get(flowId)
+      const flow = workspace.flowDrafts.find((draft) => draft.id === flowId)
+      const localDiffersFromCloud = Boolean(pending && (
+        !flow || !data.saved || flowCanvasStatesDiffer({
+          positions: pending.positions,
+          edges: pending.edges,
+          viewport: pending.viewport,
+          hasSavedEdges: true
+        }, data, flow.nodes)
+      ))
+      const decision = resolveBackgroundCanvasSyncDecision({
+        hasPendingLocalState: Boolean(pending),
         remoteSaved: data.saved,
-        hasPendingLocalState: pending,
+        localDiffersFromCloud,
         knownRevision,
         remoteRevision: data.revision
-      })) {
+      })
+      if (decision === 'conflict') {
         canvasSyncAvailable.delete(flowId)
-      } else if (pending) {
+      } else if (decision === 'acknowledged') {
+        pendingCanvasSaves.delete(flowId)
+        canvasServerRevisions.set(flowId, data.revision)
+        writeFlowCanvasServerRevision(flowId, data.revision)
+      } else if (decision === 'retry') {
         canvasServerRevisions.set(flowId, data.revision)
         void drainCanvasSaves(flowId)
       }
