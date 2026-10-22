@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createFlowCanvasSyncEpochs,
   flowCanvasStatesDiffer,
-  hasFlowCanvasRevisionConflict,
   isFlowCanvasViewportRestoreCurrent,
   pendingBackgroundCanvasSyncIds,
   resolvePendingCanvasSyncDecision,
@@ -158,27 +157,6 @@ describe('flow canvas synchronization policy', () => {
       localSaved: true,
       editedWhileLoading: true
     })).toBe('conflict')
-  })
-
-  it('recognizes a server change when pending local edits exist', () => {
-    expect(hasFlowCanvasRevisionConflict({
-      remoteSaved: true,
-      hasPendingLocalState: true,
-      knownRevision: 2,
-      remoteRevision: 3
-    })).toBe(true)
-    expect(hasFlowCanvasRevisionConflict({
-      remoteSaved: true,
-      hasPendingLocalState: true,
-      knownRevision: 3,
-      remoteRevision: 3
-    })).toBe(false)
-    expect(hasFlowCanvasRevisionConflict({
-      remoteSaved: false,
-      hasPendingLocalState: true,
-      knownRevision: undefined,
-      remoteRevision: 0
-    })).toBe(false)
   })
 
   it('resumes offline edits only when the cloud revision is unchanged', () => {

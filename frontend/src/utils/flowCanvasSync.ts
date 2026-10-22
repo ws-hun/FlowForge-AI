@@ -106,16 +106,6 @@ export function resolveFlowCanvasRestoreDecision(input: {
   return input.localSaved ? 'migrate-local' : 'empty'
 }
 
-export function hasFlowCanvasRevisionConflict(input: {
-  remoteSaved: boolean
-  hasPendingLocalState: boolean
-  knownRevision: number | undefined
-  remoteRevision: number
-}): boolean {
-  return input.remoteSaved && input.hasPendingLocalState &&
-    (input.knownRevision === undefined || input.knownRevision !== input.remoteRevision)
-}
-
 export function flowCanvasStatesDiffer(
   local: Pick<StoredFlowCanvasState, 'positions' | 'edges' | 'viewport' | 'hasSavedEdges'>,
   remote: Pick<FlowCanvasState, 'positions' | 'edges' | 'viewport' | 'saved'>,
