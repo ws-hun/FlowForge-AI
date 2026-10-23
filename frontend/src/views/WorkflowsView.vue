@@ -271,7 +271,9 @@
             @move-start="markCanvasViewportEdited"
             @move-end="persistCanvasViewport()"
             @connect="connectFlowCanvasNodes"
+            @edge-update-start="beginCanvasEdgeReconnect"
             @edge-update="reconnectFlowCanvasEdge"
+            @edge-update-end="endCanvasEdgeReconnect"
           >
             <div
               v-if="!canvasEdges.length && canvasNodes.length > 1"
@@ -1017,7 +1019,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, EditPen, FullScreen, Plus, Refresh, RefreshLeft, RefreshRight, Sort, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
 import { addEdge, MarkerType, Panel, VueFlow } from '@vue-flow/core'
-import type { Connection, CoordinateExtent, Edge, EdgeChange, EdgeUpdateEvent, NodeMouseEvent, VueFlowStore } from '@vue-flow/core'
+import type { Connection, CoordinateExtent, Edge, EdgeChange, EdgeMouseEvent, EdgeUpdateEvent, NodeMouseEvent, VueFlowStore } from '@vue-flow/core'
 import '@vue-flow/core/dist/style.css'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import FlowEditorSaveBar from '@/components/flow/FlowEditorSaveBar.vue'
@@ -1193,6 +1195,7 @@ const canvasHistory = ref<FlowCanvasHistory>(createFlowCanvasHistory())
 const canUndoCanvasEdit = computed(() => canvasHistory.value.past.length > 0)
 const canRedoCanvasEdit = computed(() => canvasHistory.value.future.length > 0)
 const canvasSyncStatus = ref<'loading' | 'synced' | 'local' | 'saving' | 'conflict'>('loading')
+const reconnectingCanvasEdgeId = ref('')
 const canvasConflictResolving = ref(false)
 const canvasSyncLabel = computed(() => ({
   loading: '恢复画布',
@@ -3379,7 +3382,18 @@ function connectFlowCanvasNodes(connection: Connection) {
 }
 
 function isFlowCanvasConnectionValid(connection: Connection): boolean {
+  if (reconnectingCanvasEdgeId.value) {
+    return canReconnectFlowCanvasEdge(reconnectingCanvasEdgeId.value, connection, canvasEdges.value)
+  }
   return canCreateFlowCanvasEdge(connection, canvasEdges.value)
+}
+
+function beginCanvasEdgeReconnect({ edge }: EdgeMouseEvent) {
+  reconnectingCanvasEdgeId.value = edge.id
+}
+
+function endCanvasEdgeReconnect() {
+  reconnectingCanvasEdgeId.value = ''
 }
 
 function reconnectFlowCanvasEdge({ edge, connection }: EdgeUpdateEvent) {
