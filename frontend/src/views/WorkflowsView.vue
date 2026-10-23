@@ -2725,6 +2725,8 @@ function loadFlowCanvas(flowId: string) {
   if (!flow || flow.id !== flowId) return
   flushCanvasSaveTimer()
   reconnectingCanvasEdgeId.value = ''
+  canvasViewportGestureStart = null
+  canvasViewportGestureEdited = false
   const persisted = readFlowCanvasState(flowId)
   const hasPersistedCanvas = persisted.hasSavedEdges ||
     Object.keys(persisted.positions).length > 0 || Boolean(persisted.viewport)
