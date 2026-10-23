@@ -150,6 +150,13 @@ export function canChangeFlowCanvasZoom(zoom: number, direction: 'in' | 'out'): 
   return direction === 'in' ? zoom < MAX_FLOW_CANVAS_ZOOM : zoom > MIN_FLOW_CANVAS_ZOOM
 }
 
+export function flowCanvasViewportChanged(
+  previous: ViewportTransform | null,
+  current: ViewportTransform
+): boolean {
+  return !previous || previous.x !== current.x || previous.y !== current.y || previous.zoom !== current.zoom
+}
+
 export function buildSequentialCanvasEdges(
   nodes: FlowNode[],
   arrowMarker: MarkerType

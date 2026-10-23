@@ -268,7 +268,8 @@
             @node-drag-start="recordCanvasEdit"
             @node-drag-stop="persistCanvasState"
             @edges-change="recordRemovedCanvasEdges"
-            @move-start="markCanvasViewportEdited"
+            @move-start="beginCanvasViewportGesture"
+            @move="handleCanvasViewportMove"
             @move-end="persistCanvasViewport()"
             @connect="connectFlowCanvasNodes"
             @edge-update-start="beginCanvasEdgeReconnect"
@@ -1031,7 +1032,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, EditPen, FullScreen, Plus, Refresh, RefreshLeft, RefreshRight, Sort, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
 import { addEdge, MarkerType, Panel, VueFlow } from '@vue-flow/core'
-import type { Connection, CoordinateExtent, Edge, EdgeChange, EdgeMouseEvent, EdgeUpdateEvent, NodeMouseEvent, VueFlowStore } from '@vue-flow/core'
+import type { Connection, CoordinateExtent, Edge, EdgeChange, EdgeMouseEvent, EdgeUpdateEvent, NodeMouseEvent, ViewportTransform, VueFlowStore } from '@vue-flow/core'
 import '@vue-flow/core/dist/style.css'
 import AiResultDocument from '@/components/ai/AiResultDocument.vue'
 import FlowEditorSaveBar from '@/components/flow/FlowEditorSaveBar.vue'
@@ -1078,6 +1079,7 @@ import {
   canChangeFlowCanvasZoom,
   canCreateFlowCanvasEdge,
   canReconnectFlowCanvasEdge,
+  flowCanvasViewportChanged,
   captureFlowCanvasPositions,
   isFlowCanvasNodeMoveKey,
   isFlowCanvasNodeSelectionKey,
@@ -1222,6 +1224,8 @@ const canvasViewportZoom = computed(() => flowCanvasInstance.value?.viewport.val
 const activeCanvasFlowId = ref('')
 let canvasStorageWarningShown = false
 let canvasViewportRestoreGeneration = 0
+let canvasViewportGestureStart: ViewportTransform | null = null
+let canvasViewportGestureEdited = false
 const canvasServerRevisions = new Map<string, number>()
 const canvasComparisonSnapshots = new Map<string, StoredFlowCanvasState>()
 const canvasSyncEpochs = createFlowCanvasSyncEpochs()
@@ -3355,13 +3359,35 @@ function handleFlowCanvasHistoryShortcut(event: KeyboardEvent) {
 }
 
 function persistCanvasViewport(flowId = activeCanvasFlowId.value) {
-  if (!flowId || flowId !== activeCanvasFlowId.value || flowId !== workspace.activeFlowId) return
-  persistCanvasState()
+  if (flowId && flowId === activeCanvasFlowId.value && flowId === workspace.activeFlowId) {
+    persistCanvasState()
+  }
+  canvasViewportGestureStart = null
+  canvasViewportGestureEdited = false
 }
 
 function markCanvasViewportEdited() {
   const flowId = activeCanvasFlowId.value
   if (flowId) canvasEditGenerations.set(flowId, (canvasEditGenerations.get(flowId) || 0) + 1)
+}
+
+function beginCanvasViewportGesture({ flowTransform }: { flowTransform: ViewportTransform }) {
+  canvasViewportGestureStart = { ...flowTransform }
+  canvasViewportGestureEdited = false
+}
+
+function handleCanvasViewportMove({
+  event,
+  flowTransform
+}: {
+  event: { sourceEvent?: Event } | WheelEvent
+  flowTransform: ViewportTransform
+}) {
+  const isUserInput = 'sourceEvent' in event ? Boolean(event.sourceEvent) : event instanceof WheelEvent
+  if (!isUserInput || canvasViewportGestureEdited ||
+      !flowCanvasViewportChanged(canvasViewportGestureStart, flowTransform)) return
+  canvasViewportGestureEdited = true
+  markCanvasViewportEdited()
 }
 
 function deleteSelectedCanvasEdges() {

@@ -18,6 +18,7 @@ import {
   MAX_FLOW_CANVAS_ZOOM,
   MIN_FLOW_CANVAS_ZOOM,
   canChangeFlowCanvasZoom,
+  flowCanvasViewportChanged,
   MAX_DEFAULT_FLOW_CANVAS_COLUMNS,
   normalizeFlowCanvasViewport,
   readFlowCanvasState,
@@ -235,6 +236,13 @@ describe('flow canvas state', () => {
     expect(canChangeFlowCanvasZoom(MIN_FLOW_CANVAS_ZOOM, 'in')).toBe(true)
     expect(canChangeFlowCanvasZoom(MAX_FLOW_CANVAS_ZOOM, 'in')).toBe(false)
     expect(canChangeFlowCanvasZoom(MAX_FLOW_CANVAS_ZOOM, 'out')).toBe(true)
+  })
+
+  it('only treats a changed viewport as a canvas navigation edit', () => {
+    const viewport = { x: 24, y: -16, zoom: 1.2 }
+    expect(flowCanvasViewportChanged(viewport, { ...viewport })).toBe(false)
+    expect(flowCanvasViewportChanged(viewport, { ...viewport, x: 25 })).toBe(true)
+    expect(flowCanvasViewportChanged(null, viewport)).toBe(true)
   })
 
   it('places nodes into unused grid cells around manually moved nodes', () => {
