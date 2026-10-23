@@ -287,10 +287,22 @@
               </button>
             </div>
             <Panel position="bottom-right" class="flow-canvas-controls">
-              <button type="button" title="缩小画布" aria-label="缩小画布" @click="zoomFlowCanvas('out')">
+              <button
+                type="button"
+                title="缩小画布"
+                aria-label="缩小画布"
+                :disabled="!canChangeFlowCanvasZoom(canvasViewportZoom, 'out')"
+                @click="zoomFlowCanvas('out')"
+              >
                 <el-icon><ZoomOut /></el-icon>
               </button>
-              <button type="button" title="放大画布" aria-label="放大画布" @click="zoomFlowCanvas('in')">
+              <button
+                type="button"
+                title="放大画布"
+                aria-label="放大画布"
+                :disabled="!canChangeFlowCanvasZoom(canvasViewportZoom, 'in')"
+                @click="zoomFlowCanvas('in')"
+              >
                 <el-icon><ZoomIn /></el-icon>
               </button>
               <button type="button" title="适配全部节点" aria-label="适配全部节点" @click="fitFlowCanvas">
@@ -1206,6 +1218,7 @@ const canvasSyncLabel = computed(() => ({
 })[canvasSyncStatus.value])
 const selectedCanvasEdgeCount = computed(() => flowCanvasInstance.value?.getSelectedEdges.value.length || 0)
 const flowCanvasInstance = shallowRef<VueFlowStore | null>(null)
+const canvasViewportZoom = computed(() => flowCanvasInstance.value?.viewport.value.zoom ?? 1)
 const activeCanvasFlowId = ref('')
 let canvasStorageWarningShown = false
 let canvasViewportRestoreGeneration = 0
