@@ -2720,6 +2720,7 @@ function loadFlowCanvas(flowId: string) {
   const flow = workspace.activeFlow
   if (!flow || flow.id !== flowId) return
   flushCanvasSaveTimer()
+  reconnectingCanvasEdgeId.value = ''
   const persisted = readFlowCanvasState(flowId)
   const hasPersistedCanvas = persisted.hasSavedEdges ||
     Object.keys(persisted.positions).length > 0 || Boolean(persisted.viewport)
